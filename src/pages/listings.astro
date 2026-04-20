@@ -1,0 +1,908 @@
+---
+import {
+  fetchRepliersListings,
+  getListingAddress,
+  getListingBaths,
+  getListingBeds,
+  getListingDescription,
+  getListingId,
+  getListingImage,
+  getListingPrice,
+  getListingSqft,
+  getListingType,
+  getListingYear
+} from "../lib/repliers";
+
+export const prerender = false;
+
+const url = new URL(Astro.request.url);
+
+const city = url.searchParams.get("city") || "";
+const page = Number(url.searchParams.get("page") || "1");
+
+let listings: any[] = [];
+let error: string | null = null;
+
+try {
+  const data = await fetchRepliersListings({
+    ...(city ? { city } : {}),
+    page,
+    limit: 50
+  });
+
+  listings = data.listings || [];
+} catch (err) {
+  console.error("Failed to load Repliers listings:", err);
+  error = err instanceof Error ? err.message : "Failed to load listings";
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Listings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --card: #ffffff;
+        --text: #1f1f1f;
+        --muted: #6b6b6b;
+        --line: #dddddd;
+        --accent: #111111;
+        --success: #1f7a45;
+        --radius: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scrollbar-gutter: stable;
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+        padding-bottom: 140px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        line-height: 1.1;
+      }
+
+      .subtle {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .saved-pill {
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        padding: 12px;
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card.saved {
+        border-color: var(--success);
+        box-shadow: 0 0 0 1px rgba(31, 122, 69, 0.12);
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+      }
+
+      .image-wrap {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ececec;
+        margin-bottom: 12px;
+        cursor: pointer;
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .price {
+        margin: 0 0 6px;
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
+      .address {
+        margin: 0 0 8px;
+        color: var(--text);
+      }
+
+      .meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .card-actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: white;
+        color: var(--text);
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      button:hover {
+        background: #fafafa;
+      }
+
+      .save-btn.saved {
+        border-color: var(--success);
+        color: var(--success);
+        font-weight: 600;
+      }
+
+      .preview-btn,
+      .sheet-close {
+        background: #fafafa;
+      }
+
+      .empty {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+
+      .error {
+        margin-top: 14px;
+        color: #8b1e1e;
+      }
+
+      .composer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.96);
+        border-top: 1px solid var(--line);
+        backdrop-filter: blur(10px);
+        z-index: 10;
+      }
+
+      .composer-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 14px 24px 18px;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .field input,
+      .field textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font: inherit;
+        background: white;
+      }
+
+      .field textarea {
+        min-height: 44px;
+        max-height: 120px;
+        resize: vertical;
+      }
+
+      .primary-btn {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+        min-height: 44px;
+      }
+
+      .primary-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.42);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 999;
+      }
+
+      .sheet-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        background: #fff;
+        border-radius: 22px 22px 0 0;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
+        max-height: 88vh;
+        overflow: auto;
+        padding: 12px 12px 18px;
+
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(102%);
+        transition:
+          transform 0.22s ease,
+          opacity 0.18s ease,
+          visibility 0s linear 0.22s;
+      }
+
+      .sheet.open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0);
+        transition:
+          transform 0.22s ease,
+          opacity 0.18s ease,
+          visibility 0s linear 0s;
+      }
+
+      .sheet-handle {
+        width: 44px;
+        height: 5px;
+        background: #d4d4d4;
+        border-radius: 999px;
+        margin: 4px auto 14px;
+        pointer-events: none;
+      }
+
+      .sheet-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .sheet-image {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 16px;
+        display: block;
+        background: #ececec;
+        position: relative;
+        z-index: 1;
+      }
+
+      .sheet-body {
+        padding: 14px 2px 0;
+        position: relative;
+        z-index: 3;
+      }
+
+      .sheet-price {
+        margin: 0 0 8px;
+        font-size: 2rem;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+
+      .sheet-address {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        line-height: 1.4;
+      }
+
+      .sheet-meta {
+        margin: 0 0 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .sheet-desc {
+        margin: 0 0 18px;
+        color: #222;
+        line-height: 1.6;
+      }
+
+      .sheet-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #fcfcfc;
+      }
+
+      .stat-label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .stat-value {
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .sheet-actions {
+        display: flex;
+        gap: 10px;
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(to top, #fff 70%, rgba(255, 255, 255, 0.7));
+        padding-top: 8px;
+        z-index: 5;
+      }
+
+      .sheet-actions button {
+        flex: 1;
+        min-height: 46px;
+        position: relative;
+        z-index: 6;
+      }
+
+      @media (max-width: 900px) {
+        .composer-inner {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (min-width: 900px) {
+        .sheet {
+          left: 50%;
+          top: 50%;
+          right: auto;
+          bottom: auto;
+          width: min(720px, calc(100vw - 48px));
+          max-height: min(700px, calc(100vh - 48px));
+          border-radius: 22px;
+          padding: 14px 14px 20px;
+          transform: translate(-50%, -50%) scale(0.98);
+        }
+
+        .sheet.open {
+          transform: translate(-50%, -50%) scale(1);
+        }
+
+        .sheet-content {
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .sheet-body {
+          padding-top: 0;
+        }
+
+        .sheet-image {
+          aspect-ratio: 1 / 1;
+        }
+
+        .sheet-actions {
+          position: static;
+          background: transparent;
+          padding-top: 0;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="page">
+      <div class="topbar">
+        <div>
+          <h1>Listings</h1>
+          <p class="subtle">Select homes, then create a clean client shortlist.</p>
+        </div>
+
+        <div class="saved-pill">
+          <span id="saved-count">0</span> selected
+        </div>
+      </div>
+
+      {
+        listings && listings.length > 0 ? (
+          <div class="grid">
+            {listings.map((listing) => {
+              const listingId = getListingId(listing);
+              const price = getListingPrice(listing);
+              const address = getListingAddress(listing);
+              const beds = getListingBeds(listing);
+              const baths = getListingBaths(listing);
+              const sqft = getListingSqft(listing);
+              const propertyType = getListingType(listing);
+              const yearBuilt = getListingYear(listing);
+              const image = getListingImage(listing);
+              const description = getListingDescription(listing);
+
+              return (
+                <article
+                  class="card"
+                  data-card-id={String(listingId)}
+                  data-mls={String(listing.mlsNumber || listingId)}
+                  data-price={price}
+                  data-address={address}
+                  data-beds={String(beds)}
+                  data-baths={String(baths)}
+                  data-sqft={String(sqft)}
+                  data-type={propertyType}
+                  data-year={String(yearBuilt)}
+                  data-image={image}
+                  data-description={description}
+                >
+                  <div class="image-wrap">
+                    <img src={image} alt={address} />
+                  </div>
+
+                  <p class="price">{price}</p>
+                  <p class="address">{address}</p>
+                  <p class="meta">
+                    {beds} bed • {baths} bath
+                  </p>
+
+                  <div class="card-actions">
+                    <button
+                      type="button"
+                      class="save-btn"
+                      data-listing-id={String(listingId)}
+                    >
+                      Save
+                    </button>
+
+                    <button
+                      type="button"
+                      class="preview-btn"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div class="empty">
+            No listings found yet.
+            {error && <div class="error">There was a problem loading listings.</div>}
+          </div>
+        )
+      }
+    </main>
+
+    <div class="sheet-overlay" id="sheet-overlay"></div>
+
+    <aside
+      class="sheet"
+      id="preview-sheet"
+      aria-hidden="true"
+      aria-label="Listing preview"
+    >
+      <div class="sheet-handle"></div>
+
+      <div class="sheet-content">
+        <img
+          id="sheet-image"
+          class="sheet-image"
+          src="https://placehold.co/800x600?text=Listing"
+          alt="Listing preview"
+        />
+
+        <div class="sheet-body">
+          <h2 class="sheet-price" id="sheet-price">$0</h2>
+          <p class="sheet-address" id="sheet-address">Address</p>
+          <p class="sheet-meta" id="sheet-meta">Home details</p>
+
+          <div class="sheet-stats">
+            <div class="stat">
+              <div class="stat-label">Property type</div>
+              <div class="stat-value" id="sheet-type">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Interior</div>
+              <div class="stat-value" id="sheet-sqft">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Year built</div>
+              <div class="stat-value" id="sheet-year">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Layout</div>
+              <div class="stat-value" id="sheet-layout">-</div>
+            </div>
+          </div>
+
+          <p class="sheet-desc" id="sheet-description"></p>
+
+          <div class="sheet-actions">
+            <button class="sheet-save" id="sheet-save-btn" type="button">Save</button>
+            <button class="sheet-close" id="sheet-close-btn" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="composer">
+      <div class="composer-inner">
+        <div class="field">
+          <label for="shortlist-title">Shortlist title</label>
+          <input
+            id="shortlist-title"
+            type="text"
+            placeholder="Example: Best options this week"
+          />
+        </div>
+
+        <div class="field">
+          <label for="client-name">Client name</label>
+          <input
+            id="client-name"
+            type="text"
+            placeholder="Example: Sarah + Mike"
+          />
+        </div>
+
+        <div class="field">
+          <label for="agent-note">Intro note</label>
+          <textarea
+            id="agent-note"
+            placeholder="Example: These are the homes that best match your budget, layout, and view preferences."
+          ></textarea>
+        </div>
+
+        <div class="field">
+          <button type="button" id="create-shortlist-btn" class="primary-btn">
+            Create Shortlist
+          </button>
+          <div class="status" id="status"></div>
+        </div>
+      </div>
+    </section>
+
+    <script is:inline>
+      const STORAGE_KEY = "agent-shortlist";
+
+      const savedCountEl = document.getElementById("saved-count");
+      const createBtn = document.getElementById("create-shortlist-btn");
+      const statusEl = document.getElementById("status");
+      const titleInput = document.getElementById("shortlist-title");
+      const clientNameInput = document.getElementById("client-name");
+      const agentNoteInput = document.getElementById("agent-note");
+
+      const sheet = document.getElementById("preview-sheet");
+      const overlay = document.getElementById("sheet-overlay");
+      const sheetImage = document.getElementById("sheet-image");
+      const sheetPrice = document.getElementById("sheet-price");
+      const sheetAddress = document.getElementById("sheet-address");
+      const sheetMeta = document.getElementById("sheet-meta");
+      const sheetType = document.getElementById("sheet-type");
+      const sheetSqft = document.getElementById("sheet-sqft");
+      const sheetYear = document.getElementById("sheet-year");
+      const sheetLayout = document.getElementById("sheet-layout");
+      const sheetDescription = document.getElementById("sheet-description");
+      const sheetSaveBtn = document.getElementById("sheet-save-btn");
+      const sheetCloseBtn = document.getElementById("sheet-close-btn");
+
+      let activePreviewId = null;
+
+      function loadShortlist() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function saveShortlist(items) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      }
+
+      let shortlist = loadShortlist();
+
+      function hasId(id) {
+        return shortlist.some((item) => String(item.id) === String(id));
+      }
+
+      function getCardSnapshot(card) {
+        return {
+          id: String(card.dataset.cardId || ""),
+          repliers_listing_id: String(card.dataset.mls || ""),
+          address: card.dataset.address || "",
+          price_text: card.dataset.price || "",
+          image_url: card.dataset.image || "",
+          beds: card.dataset.beds || "",
+          baths: card.dataset.baths || "",
+          property_type: card.dataset.type || "",
+          sqft: card.dataset.sqft || "",
+          year_built: card.dataset.year || "",
+          description: card.dataset.description || ""
+        };
+      }
+
+      function updateSheetSaveButton() {
+        if (!sheetSaveBtn) return;
+
+        if (!activePreviewId) {
+          sheetSaveBtn.textContent = "Save";
+          sheetSaveBtn.classList.remove("saved");
+          return;
+        }
+
+        const saved = hasId(activePreviewId);
+        sheetSaveBtn.textContent = saved ? "Saved" : "Save";
+        sheetSaveBtn.classList.toggle("saved", saved);
+      }
+
+      function updateUI() {
+        if (savedCountEl) {
+          savedCountEl.textContent = String(shortlist.length);
+        }
+
+        document.querySelectorAll(".save-btn").forEach((btn) => {
+          const id = String(btn.dataset.listingId || "");
+          const card = btn.closest(".card");
+          const saved = !!id && hasId(id);
+
+          btn.textContent = saved ? "Saved" : "Save";
+          btn.classList.toggle("saved", saved);
+          card?.classList.toggle("saved", saved);
+        });
+
+        if (createBtn) {
+          createBtn.disabled = shortlist.length === 0;
+        }
+
+        if (statusEl) {
+          statusEl.textContent = shortlist.length
+            ? `${shortlist.length} listing${shortlist.length === 1 ? "" : "s"} ready`
+            : "No listings selected";
+        }
+
+        updateSheetSaveButton();
+      }
+
+      function toggleSaveFromCard(card) {
+        const snapshot = getCardSnapshot(card);
+        if (!snapshot.id) return;
+
+        if (hasId(snapshot.id)) {
+          shortlist = shortlist.filter((item) => String(item.id) !== snapshot.id);
+        } else {
+          shortlist = [...shortlist, snapshot];
+        }
+
+        saveShortlist(shortlist);
+        updateUI();
+      }
+
+      function openSheetFromCard(card) {
+        if (!card) return;
+
+        activePreviewId = String(card.dataset.cardId || "");
+
+        const beds = card.dataset.beds || "-";
+        const baths = card.dataset.baths || "-";
+        const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
+        const type = card.dataset.type || "-";
+        const year = card.dataset.year || "-";
+
+        sheetImage.src = card.dataset.image || "https://placehold.co/800x600?text=Listing";
+        sheetImage.alt = card.dataset.address || "Listing preview";
+        sheetPrice.textContent = card.dataset.price || "Price unavailable";
+        sheetAddress.textContent = card.dataset.address || "Address unavailable";
+        sheetMeta.textContent = `${beds} bed • ${baths} bath`;
+        sheetType.textContent = type;
+        sheetSqft.textContent = sqft;
+        sheetYear.textContent = year;
+        sheetLayout.textContent = `${beds} bed / ${baths} bath`;
+        sheetDescription.textContent =
+          card.dataset.description || "No additional description available.";
+
+        updateSheetSaveButton();
+
+        sheet.classList.add("open");
+        overlay.classList.add("open");
+        sheet.setAttribute("aria-hidden", "false");
+
+        if (window.innerWidth < 900) {
+          document.body.style.overflow = "hidden";
+        }
+      }
+
+      function closeSheet() {
+        sheet.classList.remove("open");
+        overlay.classList.remove("open");
+        sheet.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        activePreviewId = null;
+        updateSheetSaveButton();
+      }
+
+      document.querySelectorAll(".card").forEach((card) => {
+        const imageWrap = card.querySelector(".image-wrap");
+        const previewBtn = card.querySelector(".preview-btn");
+        const saveBtn = card.querySelector(".save-btn");
+
+        imageWrap?.addEventListener("click", () => {
+          openSheetFromCard(card);
+        });
+
+        previewBtn?.addEventListener("click", () => {
+          openSheetFromCard(card);
+        });
+
+        saveBtn?.addEventListener("click", () => {
+          toggleSaveFromCard(card);
+        });
+      });
+
+      sheetSaveBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!activePreviewId) return;
+
+        const card = document.querySelector(`[data-card-id="${activePreviewId}"]`);
+        if (card) toggleSaveFromCard(card);
+        closeSheet();
+      });
+
+      sheetCloseBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSheet();
+      });
+
+      overlay?.addEventListener("click", (event) => {
+        event.preventDefault();
+        closeSheet();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && sheet.classList.contains("open")) {
+          closeSheet();
+        }
+      });
+
+      createBtn?.addEventListener("click", async () => {
+        if (!shortlist.length) {
+          if (statusEl) statusEl.textContent = "Select at least one listing first";
+          return;
+        }
+
+        createBtn.disabled = true;
+        createBtn.textContent = "Creating...";
+        if (statusEl) statusEl.textContent = "Building shortlist...";
+
+        try {
+          const res = await fetch("/api/shortlists/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              listings: shortlist,
+              title: titleInput?.value?.trim() || null,
+              clientName: clientNameInput?.value?.trim() || null,
+              note: agentNoteInput?.value?.trim() || null
+            })
+          });
+
+          const json = await res.json();
+          console.log("CREATE SHORTLIST RESPONSE:", json);
+
+          if (json.ok && json.shortlistUrl) {
+            localStorage.removeItem(STORAGE_KEY);
+            window.location.href = json.shortlistUrl;
+            return;
+          }
+
+          if (statusEl) statusEl.textContent = json.error || "Could not create shortlist";
+          createBtn.disabled = false;
+          createBtn.textContent = "Create Shortlist";
+        } catch (err) {
+          console.error(err);
+          if (statusEl) statusEl.textContent = "Request failed";
+          createBtn.disabled = false;
+          createBtn.textContent = "Create Shortlist";
+        }
+      });
+
+      closeSheet();
+      updateUI();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+---
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Test Shortlist</title>
+  </head>
+  <body>
+    <button id="test-shortlist">Test shortlist insert</button>
+
+    <script>
+      const btn = document.getElementById("test-shortlist");
+
+      btn?.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/api/shortlists/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              listingIds: [
+                "84b4da25-4ecc-4e26-90ae-9367607f1950"
+              ]
+            })
+          });
+
+          const json = await res.json();
+          console.log("API RESPONSE:", json);
+
+          if (json.ok && json.shortlistUrl) {
+            window.location.href = json.shortlistUrl;
+            return;
+          }
+
+          alert(JSON.stringify(json, null, 2));
+        } catch (err) {
+          console.error(err);
+          alert("Request failed");
+        }
+      });
+    </script>
+  </body>
+</html>

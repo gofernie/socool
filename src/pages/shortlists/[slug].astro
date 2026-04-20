@@ -1,0 +1,610 @@
+---
+import { supabase } from "../../lib/supabase";
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+// 1. get shortlist row
+const { data: shortlist, error: shortlistError } = await supabase
+  .from("shortlist_sends")
+  .select("*")
+  .eq("shortlist_slug", slug)
+  .single();
+
+console.log("SHORTLIST ROW:", shortlist);
+console.log("SHORTLIST ERROR:", shortlistError);
+
+// 2. get stored shortlist item snapshots directly from Supabase
+let listings: any[] = [];
+
+if (shortlist) {
+  const { data: items, error: itemsError } = await supabase
+    .from("shortlist_items")
+    .select(`
+      id,
+      repliers_listing_id,
+      address,
+      price_text,
+      image_url,
+      beds,
+      baths,
+      property_type,
+      sqft,
+      year_built,
+      description,
+      sort_order
+    `)
+    .eq("shortlist_send_id", shortlist.id)
+    .order("sort_order", { ascending: true });
+
+  console.log("SHORTLIST ITEMS:", items);
+  console.log("SHORTLIST ITEMS ERROR:", itemsError);
+
+  listings = items || [];
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Shortlist</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --card: #ffffff;
+        --text: #1f1f1f;
+        --muted: #6b6b6b;
+        --line: #dddddd;
+        --accent: #111111;
+        --success: #1f7a45;
+        --radius: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scrollbar-gutter: stable;
+      }
+
+      body {
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+        padding-bottom: 60px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        line-height: 1.1;
+      }
+
+      .subtle {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .saved-pill {
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        padding: 12px;
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+      }
+
+      .image-wrap {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #ececec;
+        margin-bottom: 12px;
+        cursor: pointer;
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .price {
+        margin: 0 0 6px;
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
+      .address {
+        margin: 0 0 8px;
+        color: var(--text);
+      }
+
+      .meta {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .card-actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: white;
+        color: var(--text);
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      button:hover {
+        background: #fafafa;
+      }
+
+      .preview-btn,
+      .sheet-close {
+        background: #fafafa;
+      }
+
+      .empty {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+
+      .sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.42);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 999;
+      }
+
+      .sheet-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        background: #fff;
+        border-radius: 22px 22px 0 0;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
+        max-height: 88vh;
+        overflow: auto;
+        padding: 12px 12px 18px;
+
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(102%);
+        transition:
+          transform 0.22s ease,
+          opacity 0.18s ease,
+          visibility 0s linear 0.22s;
+      }
+
+      .sheet.open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0);
+        transition:
+          transform 0.22s ease,
+          opacity 0.18s ease,
+          visibility 0s linear 0s;
+      }
+
+      .sheet-handle {
+        width: 44px;
+        height: 5px;
+        background: #d4d4d4;
+        border-radius: 999px;
+        margin: 4px auto 14px;
+        pointer-events: none;
+      }
+
+      .sheet-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .sheet-image {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 16px;
+        display: block;
+        background: #ececec;
+        position: relative;
+        z-index: 1;
+      }
+
+      .sheet-body {
+        padding: 14px 2px 0;
+        position: relative;
+        z-index: 3;
+      }
+
+      .sheet-price {
+        margin: 0 0 8px;
+        font-size: 2rem;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+
+      .sheet-address {
+        margin: 0 0 8px;
+        font-size: 1rem;
+        line-height: 1.4;
+      }
+
+      .sheet-meta {
+        margin: 0 0 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .sheet-desc {
+        margin: 0 0 18px;
+        color: #222;
+        line-height: 1.6;
+      }
+
+      .sheet-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: #fcfcfc;
+      }
+
+      .stat-label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .stat-value {
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .sheet-actions {
+        display: flex;
+        gap: 10px;
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(to top, #fff 70%, rgba(255, 255, 255, 0.7));
+        padding-top: 8px;
+        z-index: 5;
+      }
+
+      .sheet-actions button {
+        flex: 1;
+        min-height: 46px;
+        position: relative;
+        z-index: 6;
+      }
+
+      @media (min-width: 900px) {
+        .sheet {
+          left: 50%;
+          top: 50%;
+          right: auto;
+          bottom: auto;
+          width: min(720px, calc(100vw - 48px));
+          max-height: min(700px, calc(100vh - 48px));
+          border-radius: 22px;
+          padding: 14px 14px 20px;
+          transform: translate(-50%, -50%) scale(0.98);
+        }
+
+        .sheet.open {
+          transform: translate(-50%, -50%) scale(1);
+        }
+
+        .sheet-content {
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .sheet-body {
+          padding-top: 0;
+        }
+
+        .sheet-image {
+          aspect-ratio: 1 / 1;
+        }
+
+        .sheet-actions {
+          position: static;
+          background: transparent;
+          padding-top: 0;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="page">
+      <div class="topbar">
+        <div>
+          <h1>Shortlist</h1>
+          <p class="subtle">
+            {shortlist?.message_body || "A clean set of homes selected for easy review."}
+          </p>
+        </div>
+
+        <div class="saved-pill">
+          {listings.length} selected
+        </div>
+      </div>
+
+      {
+        listings && listings.length > 0 ? (
+          <div class="grid">
+            {listings.map((listing) => {
+              const listingId = listing.repliers_listing_id || listing.id;
+              const price = listing.price_text || "Price unavailable";
+              const address = listing.address || "Address unavailable";
+              const beds = listing.beds || "-";
+              const baths = listing.baths || "-";
+              const sqft = listing.sqft || "";
+              const propertyType = listing.property_type || "Home";
+              const yearBuilt = listing.year_built || "";
+              const image =
+                listing.image_url || "https://placehold.co/800x600?text=Listing";
+              const description =
+                listing.description || "A quick preview of this property.";
+
+              return (
+                <article
+                  class="card"
+                  data-card-id={String(listingId)}
+                  data-price={price}
+                  data-address={address}
+                  data-beds={String(beds)}
+                  data-baths={String(baths)}
+                  data-sqft={String(sqft)}
+                  data-type={propertyType}
+                  data-year={String(yearBuilt)}
+                  data-image={image}
+                  data-description={description}
+                >
+                  <div class="image-wrap">
+                    <img src={image} alt={address} />
+                  </div>
+
+                  <p class="price">{price}</p>
+                  <p class="address">{address}</p>
+                  <p class="meta">
+                    {beds} bed • {baths} bath
+                  </p>
+
+                  <div class="card-actions">
+                    <button type="button" class="preview-btn">
+                      Preview
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div class="empty">
+            No listings found yet.
+          </div>
+        )
+      }
+    </main>
+
+    <div class="sheet-overlay" id="sheet-overlay"></div>
+
+    <aside
+      class="sheet"
+      id="preview-sheet"
+      aria-hidden="true"
+      aria-label="Listing preview"
+    >
+      <div class="sheet-handle"></div>
+
+      <div class="sheet-content">
+        <img
+          id="sheet-image"
+          class="sheet-image"
+          src="https://placehold.co/800x600?text=Listing"
+          alt="Listing preview"
+        />
+
+        <div class="sheet-body">
+          <h2 class="sheet-price" id="sheet-price">$0</h2>
+          <p class="sheet-address" id="sheet-address">Address</p>
+          <p class="sheet-meta" id="sheet-meta">Home details</p>
+
+          <div class="sheet-stats">
+            <div class="stat">
+              <div class="stat-label">Property type</div>
+              <div class="stat-value" id="sheet-type">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Interior</div>
+              <div class="stat-value" id="sheet-sqft">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Year built</div>
+              <div class="stat-value" id="sheet-year">-</div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-label">Layout</div>
+              <div class="stat-value" id="sheet-layout">-</div>
+            </div>
+          </div>
+
+          <p class="sheet-desc" id="sheet-description"></p>
+
+          <div class="sheet-actions">
+            <button class="sheet-close" id="sheet-close-btn" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <script is:inline>
+      const sheet = document.getElementById("preview-sheet");
+      const overlay = document.getElementById("sheet-overlay");
+      const sheetImage = document.getElementById("sheet-image");
+      const sheetPrice = document.getElementById("sheet-price");
+      const sheetAddress = document.getElementById("sheet-address");
+      const sheetMeta = document.getElementById("sheet-meta");
+      const sheetType = document.getElementById("sheet-type");
+      const sheetSqft = document.getElementById("sheet-sqft");
+      const sheetYear = document.getElementById("sheet-year");
+      const sheetLayout = document.getElementById("sheet-layout");
+      const sheetDescription = document.getElementById("sheet-description");
+      const sheetCloseBtn = document.getElementById("sheet-close-btn");
+
+      function openSheetFromCard(card) {
+        if (!card) return;
+
+        const beds = card.dataset.beds || "-";
+        const baths = card.dataset.baths || "-";
+        const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
+        const type = card.dataset.type || "-";
+        const year = card.dataset.year || "-";
+
+        sheetImage.src = card.dataset.image || "https://placehold.co/800x600?text=Listing";
+        sheetImage.alt = card.dataset.address || "Listing preview";
+        sheetPrice.textContent = card.dataset.price || "Price unavailable";
+        sheetAddress.textContent = card.dataset.address || "Address unavailable";
+        sheetMeta.textContent = `${beds} bed • ${baths} bath`;
+        sheetType.textContent = type;
+        sheetSqft.textContent = sqft;
+        sheetYear.textContent = year;
+        sheetLayout.textContent = `${beds} bed / ${baths} bath`;
+        sheetDescription.textContent =
+          card.dataset.description || "No additional description available.";
+
+        sheet.classList.add("open");
+        overlay.classList.add("open");
+        sheet.setAttribute("aria-hidden", "false");
+
+        if (window.innerWidth < 900) {
+          document.body.style.overflow = "hidden";
+        }
+      }
+
+      function closeSheet() {
+        sheet.classList.remove("open");
+        overlay.classList.remove("open");
+        sheet.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+      }
+
+      document.querySelectorAll(".card").forEach((card) => {
+        const imageWrap = card.querySelector(".image-wrap");
+        const previewBtn = card.querySelector(".preview-btn");
+
+        imageWrap?.addEventListener("click", () => {
+          openSheetFromCard(card);
+        });
+
+        previewBtn?.addEventListener("click", () => {
+          openSheetFromCard(card);
+        });
+      });
+
+      sheetCloseBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSheet();
+      });
+
+      overlay?.addEventListener("click", (event) => {
+        event.preventDefault();
+        closeSheet();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && sheet.classList.contains("open")) {
+          closeSheet();
+        }
+      });
+
+      closeSheet();
+    </script>
+  </body>
+</html>
