@@ -1,610 +1,5051 @@
 ---
 import { supabase } from "../../lib/supabase";
+import {
+  fetchRepliersListings,
+  getListingAddress,
+  getListingBaths,
+  getListingBeds,
+  getListingDescription,
+  getListingId,
+  getListingImage,
+  getListingPrice,
+  getListingSqft,
+  getListingType,
+  getListingYear
+} from "../../lib/repliers"; 
 
 export const prerender = false;
 
 const { slug } = Astro.params;
+const isAgentView = Astro.url.searchParams.get("agent") === "1";
+const clientLink = `/shortlists/${slug}`;
+const sendId = Astro.url.searchParams.get("s");
+function normalizeImageUrl(url: any) {
+  const value = String(url || "").trim();
 
-// 1. get shortlist row
-const { data: shortlist, error: shortlistError } = await supabase
+  if (!value) return "";
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("/")) {
+    return `https://cdn.repliers.io${value}`;
+  }
+
+  return value;
+}
+function getListingLat(listing: any) {
+  return (
+    listing?.lat ||
+    listing?.latitude ||
+    listing?.map?.lat ||
+    listing?.address?.lat ||
+    listing?.raw?.lat ||
+    listing?.raw?.latitude ||
+    listing?.raw?.address?.lat ||
+    listing?.raw?.map?.lat ||
+    ""
+  );
+}
+
+function getListingLng(listing: any) {
+  return (
+    listing?.lng ||
+    listing?.lon ||
+    listing?.longitude ||
+    listing?.map?.lng ||
+    listing?.address?.lng ||
+    listing?.raw?.lng ||
+    listing?.raw?.lon ||
+    listing?.raw?.longitude ||
+    listing?.raw?.address?.lng ||
+    listing?.raw?.map?.lng ||
+    ""
+  );
+}
+function normalizeLiveListing(live: any, saved: any) {
+  return {
+    ...saved,
+    live_listing: live || null,
+    repliers_listing_id:
+      getListingId(live) ||
+      saved?.repliers_listing_id ||
+      saved?.listing_id ||
+      saved?.id ||
+      "",
+price_text: live ? getListingPrice(live) : saved?.price_text || "Price unavailable",
+   address: live ? getListingAddress(live) : saved?.address || "Address unavailable",
+beds: live ? getListingBeds(live) : saved?.beds || "-",
+baths: live ? getListingBaths(live) : saved?.baths || "-",
+sqft: live ? getListingSqft(live) : saved?.sqft || "",
+property_type: live ? getListingType(live) : saved?.property_type || "Home",
+year_built: live ? getListingYear(live) : saved?.year_built || "",
+lat: live ? getListingLat(live) : getListingLat(saved),
+lng: live ? getListingLng(live) : getListingLng(saved),
+   image_url:
+  live
+    ? normalizeImageUrl(getListingImage(live))
+    : normalizeImageUrl(saved?.image_url) ||
+      "https://placehold.co/800x600?text=Listing",
+
+description:
+  live
+    ? getListingDescription(live)
+    : saved?.description || "A quick preview of this property."
+  };
+}
+const { data: shortlist } = await supabase
   .from("shortlist_sends")
-  .select("*")
+.select(`
+    *,
+    agent:agent_id (
+      id,
+      name
+    ),
+    client:client_id (
+      id,
+      name,
+      phone
+    )
+  `)
   .eq("shortlist_slug", slug)
   .single();
 
-console.log("SHORTLIST ROW:", shortlist);
-console.log("SHORTLIST ERROR:", shortlistError);
+if (sendId) {
+  await supabase.rpc("track_shortlist_send_open", {
+    send_id: sendId
+  });
+}
 
-// 2. get stored shortlist item snapshots directly from Supabase
-let listings: any[] = [];
+let items: any[] = [];
+let resources: any[] = [];
 
-if (shortlist) {
-  const { data: items, error: itemsError } = await supabase
+if (shortlist?.id) {
+  const res = await supabase
     .from("shortlist_items")
-    .select(`
-      id,
-      repliers_listing_id,
-      address,
-      price_text,
-      image_url,
-      beds,
-      baths,
-      property_type,
-      sqft,
-      year_built,
-      description,
-      sort_order
-    `)
+    .select("*")
     .eq("shortlist_send_id", shortlist.id)
     .order("sort_order", { ascending: true });
 
-  console.log("SHORTLIST ITEMS:", items);
-  console.log("SHORTLIST ITEMS ERROR:", itemsError);
+  items = res.data || [];
 
-  listings = items || [];
+const selectedRes = await supabase
+  .from("shortlist_resource_vendors")
+  .select("vendor_id, sort_order")
+  .eq("shortlist_slug", slug)
+  .eq("is_selected", true)
+  .order("sort_order", { ascending: true });
+
+const vendorIds = (selectedRes.data || [])
+  .map((row: any) => row.vendor_id)
+  .filter(Boolean);
+
+if (vendorIds.length) {
+  const vendorRes = await supabase
+    .from("buyer_resource_vendors")
+    .select("id, type, name, email, phone, website, note, is_active")
+    .in("id", vendorIds)
+    .eq("is_active", true);
+
+  const vendorMap = new Map(
+    (vendorRes.data || []).map((vendor: any) => [vendor.id, vendor])
+  );
+
+  resources = vendorIds
+    .map((id: string) => vendorMap.get(id))
+    .filter(Boolean);
 }
+}
+
+let liveListingsById = new Map();
+
+const savedListingIds = items
+  .map((item: any) => item.repliers_listing_id || item.listing_id)
+  .filter(Boolean)
+  .map((id: any) => String(id).trim());
+
+if (savedListingIds.length) {
+  try {
+    const liveData = await fetchRepliersListings({
+      limit: 100
+    });
+
+    const liveListings = liveData?.listings || [];
+
+    liveListingsById = new Map(
+      liveListings
+        .map((listing: any) => {
+          const id = String(getListingId(listing) || "").trim();
+          return [id, listing];
+        })
+        .filter(([id]) => Boolean(id))
+    );
+  } catch (err) {
+    console.error("Failed to refresh shortlist listings from Repliers:", err);
+  }
+}
+function getListingSortScore(listing: any) {
+  const toNumber = (value: any) =>
+    parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
+
+  const price = toNumber(listing.price_text);
+  const sqft = toNumber(listing.sqft);
+  const beds = toNumber(listing.beds);
+  const baths = toNumber(listing.baths);
+  const year = toNumber(listing.year_built);
+  const desc = String(listing.description || "").toLowerCase();
+
+  let score = 0;
+  if (listing.is_favourite) score += 100;
+if (listing.decision === "maybe") score += 20;
+if (listing.decision === "pass") score -= 500;
+
+  if (price && sqft) score += Math.round((price / sqft) * -1);
+  if (sqft) score += sqft * 0.02;
+  if (beds) score += beds * 12;
+  if (baths) score += baths * 6;
+  if (year >= 2015) score += 25;
+
+  if (/\b(ocean view|mountain view|lake view|river view|city view|water view|panoramic view)\b/i.test(desc)) score += 35;
+  if (/\b(cul[- ]de[- ]sac|dead end|quiet street)\b/i.test(desc)) score += 18;
+  if (/\b(move[- ]in ready|turnkey|updated|renovated|modern)\b/i.test(desc)) score += 16;
+  if (/\b(garage|double garage|attached garage)\b/i.test(desc)) score += 10;
+  if (/\b(yard|backyard|garden|fully fenced|fenced)\b/i.test(desc)) score += 8;
+
+  return score;
+}
+const listings = [...items]
+  .map((item: any) => {
+    const id = String(item.repliers_listing_id || item.listing_id || "").trim();
+    const live = liveListingsById.get(id);
+    return normalizeLiveListing(live, item);
+  })
+.sort((a, b) => {
+ const rank = (item) => {
+  const isNew = !item?.is_favourite && !item?.decision;
+
+  if (isNew) return 0;
+  if (item?.is_favourite) return 1;
+  if (item?.decision === "maybe") return 2;
+  if (item?.decision === "pass") return 4;
+
+  return 3;
+};
+
+  const aRank = rank(a);
+  const bRank = rank(b);
+
+  if (aRank !== bRank) return aRank - bRank;
+
+  const aOrder = Number(a?.sort_order ?? 999999);
+  const bOrder = Number(b?.sort_order ?? 999999);
+
+  return aOrder - bOrder;
+});
+
+const clientDisplayName =
+  shortlist?.client_name ||
+  shortlist?.client?.name ||
+  "";
+
+const agentName =
+  shortlist?.agent_name ||
+  shortlist?.agent?.name ||
+  "Chris Crump";
+
+const pageTitle = shortlist?.client_name
+  ? `${shortlist.client_name}'s shortlist`
+  : "Your Shortlist";
+
+const createdLabel = shortlist?.created_at
+  ? new Date(shortlist.created_at).toLocaleDateString("en-CA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    })
+  : "";
+
+const shortlistStatus = shortlist?.sent_at ? "Sent" : "Draft";
+
+const defaultIntroMessage =
+  "I pulled these homes together based on what you're looking for. Start with the first one - it’s the strongest match, then work your way through the rest.";
+
+const heroMessage = shortlist?.note?.trim() || defaultIntroMessage;
+const smsImageUrl = shortlist?.sms_image_url || "";
+const presetSmsImages = [
+  {
+    label: "New homes added",
+    url: "https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/aec87d01-e6d7-410d-f583-0924a6ced300/hero"
+  },
+  {
+    label: "Mortgage info added",
+    url: "https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/e436932a-2b37-4169-bd94-1245ca986300/hero"
+  },
+  {
+    label: "Home inspector info",
+    url: "https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/bd8a291a-1db0-4346-e807-eec80c70a400/hero"
+  },
+  {
+    label: "Market update",
+    url: "https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/27294214-7d6a-4fdf-64a4-18c4c7adba00/hero"
+  }
+];
+
+const firstListingImage =
+  listings?.[0]?.image_url ||
+  listings?.[0]?.images?.[0]?.url ||
+  "";
+
+const previewImageUrl =
+  smsImageUrl ||
+  firstListingImage ||
+  "https://placehold.co/1200x630?text=Shortlist";
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Shortlist</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <title>{pageTitle}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <style>
-      :root {
-        --bg: #f7f7f5;
-        --card: #ffffff;
-        --text: #1f1f1f;
-        --muted: #6b6b6b;
-        --line: #dddddd;
-        --accent: #111111;
-        --success: #1f7a45;
-        --radius: 16px;
-      }
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content="" />
+<meta property="og:image" content={previewImageUrl} />
+<meta property="og:image:secure_url" content={previewImageUrl} />
+<meta property="og:type" content="website" />
 
-      * {
-        box-sizing: border-box;
-      }
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={pageTitle} />
+<meta name="twitter:description" content="" />
+<meta name="twitter:image" content={previewImageUrl} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
+      rel="stylesheet"
+    />
 
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-      }
+    <link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --bg-card: #ffffff;
+    --bg-overlay: #f0ede8;
+    --bg-dark: #181614;
+    --bg-dark-2: #211f1c;
 
-      html {
-        scrollbar-gutter: stable;
-      }
+    --text-primary: #18160f;
+    --text-secondary: #6b6760;
+    --text-muted: #a09c96;
+    --text-on-dark: #f0ede8;
+    --text-dim: rgba(240, 237, 232, 0.45);
 
-      body {
-        font-family: system-ui, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-      }
+    --accent: #2d5016;
+    --accent-mid: #3d6b20;
+    --accent-light: #eef4e9;
+    --accent-border: #b5cfa0;
 
-      .page {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 24px;
-        padding-bottom: 60px;
-      }
+    --border: #e4e0d9;
+    --border-strong: #ccc8c0;
 
-      .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: end;
-        gap: 16px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
+    --gold: #b07d2a;
+    --gold-bg: #fdf6e8;
+    --gold-border: #e8cc8a;
+    --gold-soft: #f6ebcf;
+    --pass: #8b1a1a;
+    --pass-bg: #fdf0f0;
+    --pass-border: #e8a0a0;
+    --danger: #9f2f2f;
+    --danger-dark: #872828;
 
-      h1 {
-        margin: 0;
-        font-size: 2rem;
-        line-height: 1.1;
-      }
+    --shadow-soft: 0 16px 50px rgba(17, 14, 9, 0.12);
+    --shadow-card: 0 8px 30px rgba(17, 14, 9, 0.07);
 
-      .subtle {
-        margin: 6px 0 0;
-        color: var(--muted);
-      }
+    --f-display: "DM Serif Display", Georgia, serif;
+    --f-body: "DM Sans", system-ui, sans-serif;
 
-      .saved-pill {
-        border: 1px solid var(--line);
-        background: var(--card);
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-size: 0.95rem;
-        white-space: nowrap;
-      }
+    --r-sm: 4px;
+    --r: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-2xl: 22px;
+  }
 
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
-      }
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        overflow: hidden;
-        padding: 12px;
-        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-        display: flex;
-        flex-direction: column;
-      }
+  html {
+    scrollbar-gutter: stable;
+    scroll-behavior: smooth;
+  }
 
-      .card:hover {
-        transform: translateY(-2px);
-      }
+  body {
+    font-family: var(--f-body);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
 
-      .image-wrap {
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #ececec;
-        margin-bottom: 12px;
-        cursor: pointer;
-      }
+  .agent-bar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    background: var(--bg-dark);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0 32px;
+  }
 
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
+  .agent-bar__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 10px 0;
+  }
 
-      .price {
-        margin: 0 0 6px;
-        font-size: 1.25rem;
-        font-weight: 700;
-      }
+  .agent-bar__left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
 
-      .address {
-        margin: 0 0 8px;
-        color: var(--text);
-      }
+  .agent-bar__badge {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3px 8px;
+    border-radius: var(--r-sm);
+  }
 
-      .meta {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
+  .agent-bar__name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-      .card-actions {
-        margin-top: 14px;
-        display: flex;
-        gap: 8px;
-      }
+  .agent-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #6bc96b;
+    flex-shrink: 0;
+  }
 
-      button {
-        appearance: none;
-        border: 1px solid var(--line);
-        background: white;
-        color: var(--text);
-        padding: 10px 14px;
-        border-radius: 10px;
-        cursor: pointer;
-        font: inherit;
-      }
+  .agent-bar__sep {
+    color: rgba(255, 255, 255, 0.15);
+    font-size: 0.75rem;
+  }
 
-      button:hover {
-        background: #fafafa;
-      }
+  .agent-bar__date {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.3);
+  }
 
-      .preview-btn,
-      .sheet-close {
-        background: #fafafa;
-      }
+  .agent-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 
-      .empty {
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 20px;
-      }
+  .ab-btn {
+    height: 30px;
+    padding: 0 14px;
+    border-radius: var(--r-sm);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
 
-      .sheet-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.42);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-        z-index: 999;
-      }
+  .ab-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
 
-      .sheet-overlay.open {
-        opacity: 1;
-        pointer-events: auto;
-      }
+  .ab-btn--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
 
-      .sheet {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1000;
-        background: #fff;
-        border-radius: 22px 22px 0 0;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
-        max-height: 88vh;
-        overflow: auto;
-        padding: 12px 12px 18px;
+  .ab-btn--primary:hover {
+    background: var(--accent-mid);
+    border-color: var(--accent-mid);
+    color: #fff;
+  }
 
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-        transform: translateY(102%);
-        transition:
-          transform 0.22s ease,
-          opacity 0.18s ease,
-          visibility 0s linear 0.22s;
-      }
+  .ab-btn--danger {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
 
-      .sheet.open {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transform: translateY(0);
-        transition:
-          transform 0.22s ease,
-          opacity 0.18s ease,
-          visibility 0s linear 0s;
-      }
+  .ab-btn--danger[data-editing="true"] {
+    background: rgba(255, 255, 255, 0.09);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.24);
+  }
 
-      .sheet-handle {
-        width: 44px;
-        height: 5px;
-        background: #d4d4d4;
-        border-radius: 999px;
-        margin: 4px auto 14px;
-        pointer-events: none;
-      }
+  .masthead {
+    background: var(--bg-dark);
+    color: var(--text-on-dark);
+    padding: 0 32px;
+  }
 
-      .sheet-content {
-        position: relative;
-        z-index: 1;
-      }
+  .masthead__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 72px 0 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: end;
+  }
 
-      .sheet-image {
-        width: 100%;
-        aspect-ratio: 4 / 3;
-        object-fit: cover;
-        border-radius: 16px;
-        display: block;
-        background: #ececec;
-        position: relative;
-        z-index: 1;
-      }
+  .masthead__eyebrow {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-border);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-      .sheet-body {
-        padding: 14px 2px 0;
-        position: relative;
-        z-index: 3;
-      }
+  .masthead__eyebrow::before {
+    content: "";
+    display: block;
+    width: 18px;
+    height: 1px;
+    background: var(--accent-border);
+  }
 
-      .sheet-price {
-        margin: 0 0 8px;
-        font-size: 2rem;
-        line-height: 1;
-        letter-spacing: -0.03em;
-      }
+  .masthead__heading {
+    font-family: var(--f-display);
+    font-size: clamp(3rem, 5.5vw, 5.5rem);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 24px;
+  }
 
-      .sheet-address {
-        margin: 0 0 8px;
-        font-size: 1rem;
-        line-height: 1.4;
-      }
+  .masthead__heading em {
+    font-style: italic;
+    color: var(--text-dim);
+  }
 
-      .sheet-meta {
-        margin: 0 0 12px;
-        color: var(--muted);
-        line-height: 1.4;
-      }
+  .masthead__client {
+    margin: 0 0 14px;
+    font-size: 1.15rem;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.01em;
+  }
 
-      .sheet-desc {
-        margin: 0 0 18px;
-        color: #222;
-        line-height: 1.6;
-      }
+  .masthead__client strong {
+    color: #fff;
+    font-weight: 500;
+  }
 
-      .sheet-stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 18px;
-      }
+  .masthead__message {
+    font-size: 0.9rem;
+    line-height: 1.75;
+    color: rgba(255, 255, 255, 0.38);
+    max-width: 70ch;
+    margin-top: 16px;
+  }
 
-      .stat {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px;
-        background: #fcfcfc;
-      }
+  .masthead__right {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    padding-bottom: 8px;
+    gap: 24px;
+  }
 
-      .stat-label {
-        font-size: 0.78rem;
-        color: var(--muted);
-        margin-bottom: 4px;
-      }
+  .masthead__stat-block {
+    text-align: right;
+  }
 
-      .stat-value {
-        font-size: 1rem;
-        font-weight: 700;
-        line-height: 1.2;
-      }
+  .masthead__count-num {
+    font-family: var(--f-display);
+    font-size: clamp(5rem, 9vw, 8.5rem);
+    line-height: 1;
+    letter-spacing: -0.05em;
+    color: rgba(255, 255, 255, 0.12);
+    display: block;
+  }
 
-      .sheet-actions {
-        display: flex;
-        gap: 10px;
-        position: sticky;
-        bottom: 0;
-        background: linear-gradient(to top, #fff 70%, rgba(255, 255, 255, 0.7));
-        padding-top: 8px;
-        z-index: 5;
-      }
+  .masthead__count-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.2);
+    margin-top: 4px;
+    display: block;
+  }
 
-      .sheet-actions button {
-        flex: 1;
-        min-height: 46px;
-        position: relative;
-        z-index: 6;
-      }
+  .masthead__hints {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+  }
 
-      @media (min-width: 900px) {
-        .sheet {
-          left: 50%;
-          top: 50%;
-          right: auto;
-          bottom: auto;
-          width: min(720px, calc(100vw - 48px));
-          max-height: min(700px, calc(100vh - 48px));
-          border-radius: 22px;
-          padding: 14px 14px 20px;
-          transform: translate(-50%, -50%) scale(0.98);
-        }
+  .masthead__hint {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-        .sheet.open {
-          transform: translate(-50%, -50%) scale(1);
-        }
+  .masthead__hint::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+  }
 
-        .sheet-content {
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 18px;
-          align-items: start;
-        }
+  .body-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 32px 100px;
+  }
 
-        .sheet-body {
-          padding-top: 0;
-        }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
 
-        .sheet-image {
-          aspect-ratio: 1 / 1;
-        }
+  .section-title {
+    font-family: var(--f-display);
+    font-size: 1.25rem;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--text-primary);
+  }
 
-        .sheet-actions {
-          position: static;
-          background: transparent;
-          padding-top: 0;
-        }
-      }
-    </style>
+  .section-meta {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .edit-banner {
+    display: none;
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+  }
+
+  .edit-banner.show {
+    display: block;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+ .card {
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+  transition:
+    background 0.2s,
+    opacity 0.2s ease,
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  position: relative;
+  border: 2px solid rgba(122, 111, 102, 0.16);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+  .card[data-decision="pass"] {
+    opacity: 0.2;
+    filter: saturate(0.72);
+  }
+
+  .card[data-decision="pass"]:hover {
+    opacity: 1;
+  }
+
+  .card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+  }
+
+  .card__remove {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 4;
+    display: none;
+    appearance: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--danger);
+    cursor: pointer;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+    transition: transform 0.14s ease, background 0.14s ease, color 0.14s ease;
+  }
+
+  .card__remove:hover {
+    transform: scale(1.04);
+    background: var(--danger);
+    color: #fff;
+  }
+
+  body.edit-mode .card__remove[data-agent-only="true"] {
+    display: inline-flex;
+  }
+
+  .card.is-removing {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .card__image-wrap {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-overlay);
+    cursor: pointer;
+  }
+
+  .card__image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .card:hover .card__image-wrap img {
+    transform: scale(1.04);
+  }
+
+  .card__image-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.32) 0%, transparent 52%);
+    pointer-events: none;
+  }
+
+  .card__index {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    font-family: var(--f-body);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    z-index: 3;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+ .card__preview-image-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 4;
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.94);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.16);
+  display: none;
+}
+
+body.edit-mode .card__preview-image-btn {
+  display: inline-flex;
+}
+
+.card__preview-image-btn:hover {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+  .card__love-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .card__love-badge-heart {
+    color: #e35b66;
+    font-size: 0.85rem;
+  }
+.card__new-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 24px rgba(45, 80, 22, 0.28);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+  .card__maybe-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+  .card__body {
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .card__price {
+    font-family: var(--f-display);
+    font-size: 1.65rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .card__address {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .card__meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    letter-spacing: 0.01em;
+  }
+
+  .card__desc {
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .card__action {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    padding: 9px 14px;
+    border-radius: var(--r);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: background 0.14s, border-color 0.14s, color 0.14s;
+    width: 100%;
+    text-align: center;
+  }
+
+  .card__action:hover {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: #fff;
+  }
+
+  .empty {
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-lg);
+    padding: 80px 40px;
+    text-align: center;
+    font-family: var(--f-display);
+    font-style: italic;
+    font-size: 1.4rem;
+    color: var(--text-muted);
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 8, 5, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 800;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .panel {
+    position: fixed;
+    left: 50%;
+    top: 0;
+    width: min(860px, calc(100vw - 32px));
+    max-height: 100vh;
+    background: #fff;
+    z-index: 900;
+    overflow: hidden;
+    transform: translate(-50%, -106%);
+    transition: transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-2xl) var(--r-2xl);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+  }
+
+  .panel.open {
+    transform: translate(-50%, 0);
+  }
+
+  .panel.dragging {
+    transition: none !important;
+  }
+
+  .panel.closing-down {
+    pointer-events: none;
+  }
+
+  .panel__grab {
+    display: none;
+  }
+
+  .panel__progress-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .panel__progress-track {
+    height: 5px;
+    width: 100%;
+    background: #ece8e2;
+    overflow: hidden;
+  }
+
+  .panel__progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-mid));
+    transition: width 0.32s ease;
+  }
+
+  .panel__header {
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+  }
+
+  .panel__position {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .panel__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel__top-btn,
+  .panel__close {
+    appearance: none;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.14s, border-color 0.14s, color 0.14s, opacity 0.14s;
+  }
+
+  .panel__top-btn:hover,
+  .panel__close:hover {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: #fff;
+  }
+
+  .panel__close {
+    width: 36px;
+    padding: 0;
+    color: var(--text-secondary);
+  }
+
+  .panel__view {
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .panel__summary {
+    display: none;
+    padding: 34px 32px 38px;
+  }
+
+  .panel__summary.open {
+    display: block;
+  }
+
+  .summary__eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .summary__title {
+    font-family: var(--f-display);
+    font-size: clamp(2rem, 4.2vw, 3.3rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+
+  .summary__copy {
+    color: var(--text-secondary);
+    max-width: 560px;
+    font-size: 0.98rem;
+    line-height: 1.8;
+    margin-bottom: 26px;
+  }
+
+  .summary__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 26px;
+  }
+
+  .summary__stat {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--bg);
+    padding: 18px 16px;
+  }
+
+  .summary__num {
+    display: block;
+    font-family: var(--f-display);
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .summary__label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+    .summary__comment-box {
+    border-top: 1px solid var(--border);
+    padding-top: 22px;
+  }
+
+  .summary__comment-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .summary__comment-copy {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+
+  .summary__comment-input {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font: inherit;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+
+  .summary__quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .summary__comment-status {
+    min-height: 20px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .summary__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .summary__btn {
+    appearance: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .summary__btn--primary {
+    background: var(--text-primary);
+    color: #fff;
+    border-color: var(--text-primary);
+  }
+
+  .panel__content {
+    display: none;
+  }
+
+  .panel__content.open {
+    display: block;
+  }
+
+  .panel__image-stage {
+    position: relative;
+    background: var(--bg-overlay);
+  }
+
+  .panel__image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+  }
+
+  .panel__photo-count {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 2;
+    background: rgba(17, 14, 9, 0.58);
+    color: rgba(255, 255, 255, 0.94);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .photo-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.75);
+  background: rgba(17,14,9,0.48);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-nav--prev { left: 14px; }
+.photo-nav--next { right: 14px; }
+
+.photo-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+ .panel__body {
+  padding: 30px 32px 30px;
+}
+
+.panel__price {
+    font-family: var(--f-display);
+    font-size: clamp(2.1rem, 4.2vw, 3rem);
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .panel__address {
+    font-size: 1.35rem;
+    color: var(--text-secondary);
+    line-height: 1.42;
+    margin-bottom: 10px;
+  }
+
+ .panel__headline {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+  .panel__headline > div {
+    min-width: 0;
+  }
+
+ .panel__meta {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.panel__meta-item {
+  display: inline-flex !important;
+  align-items: baseline;
+  gap: 4px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  text-align: center;
+}
+
+.panel__meta-item + .panel__meta-item {
+  border-left: 1px solid var(--border);
+}
+
+.panel__meta-label {
+  display: inline !important;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.panel__meta-item strong {
+  display: inline !important;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+
+
+  .panel__intelligence {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+  }
+
+  .panel__intelligence::before {
+    content: "✦";
+    font-size: 0.9rem;
+  }
+
+ .decision-wrap {
+    text-align: center;
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+  .decision-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  .decision-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }.masthead__logo {
+  display: block;
+  width: 220px;
+  max-width: 70vw;
+  height: auto;
+  margin-bottom: 28px;
+}
+
+  .decision-btn {
+    appearance: none;
+    min-height: 46px;
+    opacity: 0.94;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease,
+      color 0.16s ease,
+      opacity 0.16s ease;
+  }
+
+.review-complete__faves {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin: 12px 0 16px;
+}
+
+.review-complete__fave-card {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.review-complete__fave-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.review-complete__faves img {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.review-complete__faves img:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+.review-complete__faves button {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.review-complete__faves button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+  @media (hover: hover) and (pointer: fine) {
+    .decision-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-card);
+    }
+
+    .decision-btn--love:hover {
+      background: var(--gold-bg);
+      border-color: var(--gold-border);
+      color: var(--gold);
+    }
+
+    .decision-btn--maybe:hover {
+      background: #f5f3ef;
+      border-color: var(--border-strong);
+    }
+
+    .decision-btn--pass:hover {
+      background: var(--pass-bg);
+      border-color: var(--pass-border);
+      color: var(--pass);
+    }
+  }
+
+.decision-btn--love.is-selected {
+  background: var(--gold-bg);
+  border-color: var(--gold-border);
+  color: var(--gold);
+  animation: loveButtonGlow 0.9s ease-out, loveFade 0.4s ease-out;
+}
+
+@keyframes loveFade {
+  0% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+@keyframes loveButtonGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(176, 125, 42, 0);
+  }
+
+  45% {
+    box-shadow: 0 0 0 6px rgba(176, 125, 42, 0.14);
+  }
+
+  100% {
+    box-shadow: 0 0 0 14px rgba(176, 125, 42, 0);
+  }
+}
+
+  .decision-btn--maybe.is-selected {
+    background: #f5f3ef;
+    border-color: var(--border-strong);
+  }
+
+  .decision-btn--pass.is-selected {
+    background: var(--pass-bg);
+    border-color: var(--pass-border);
+    color: var(--pass);
+  }
+
+  .panel__feedback {
+    min-height: 22px;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 0px;
+  }
+
+  .panel__feedback.is-love {
+    color: var(--gold);
+  }
+
+  .panel__feedback.is-pass {
+    color: var(--pass);
+  }
+
+  .panel__feedback.is-maybe {
+    color: var(--text-secondary);
+  }
+
+  .panel__micro {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .panel__micro-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .panel__micro-badge--love {
+    background: var(--gold-bg);
+    border-color: var(--gold-border);
+    color: var(--gold);
+  }
+
+  .panel__micro-badge--maybe {
+    background: #f5f3ef;
+    color: var(--text-secondary);
+  }
+
+  .panel__micro-badge--pass {
+    background: var(--pass-bg);
+    border-color: var(--pass-border);
+    color: var(--pass);
+  }
+
+  .panel__desc {
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin: 0 0 18px;
+  }
+
+  .panel__desc.is-collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+.panel__secondary {
+    border-top: 0;
+    padding-top: 4px;
+    margin-top: 4px;
+  }
+
+  .panel__secondary-title {
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .chip {
+    appearance: none;
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: all 0.13s;
+  }
+
+  .chip:hover {
+    border-color: var(--text-primary);
+    background: #fff;
+  }
+
+  .chip.active {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: #fff;
+  }
+
+  .panel__footer {
+    display: flex;
+    justify-content: center;
+    padding-top: 4px;
+  }
+
+  .panel__next-btn {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: opacity 0.14s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  }
+
+  .panel__next-btn:hover {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: #fff;
+  }
+
+  .panel__next-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+.panel.is-love-pulse .panel__image-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  animation: loveWarmGlow 0.9s ease;
+}
+
+  .panel.is-pass-fade .panel__content {
+    animation: passFade 0.45s ease;
+  }
+
+@keyframes loveWarmGlow {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(176, 125, 42, 0);
+  }
+
+  35% {
+    box-shadow:
+      inset 0 0 0 10px rgba(176, 125, 42, 0.1),
+      0 0 28px rgba(176, 125, 42, 0.18);
+  }
+
+  65% {
+    box-shadow:
+      inset 0 0 0 6px rgba(176, 125, 42, 0.08),
+      0 0 18px rgba(176, 125, 42, 0.12);
+  }
+
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(176, 125, 42, 0);
+  }
+}
+
+  @keyframes passFade {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    50% {
+      opacity: 0.78;
+      transform: translateX(-8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+.card[data-is-favourite="true"] {
+  border-color: rgba(201, 155, 100, 0.62);
+  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.08);
+}
+
+.card[data-is-favourite="true"]:hover {
+  border-color: rgba(201, 155, 100, 0.82);
+}
+
+.card[data-decision="maybe"] {
+  border-color: rgba(122, 111, 102, 0.38);
+  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.06);
+}
+
+.card[data-decision="maybe"]:hover {
+  border-color: rgba(122, 111, 102, 0.58);
+}
+.card[data-is-new="true"] {
+  border-color: rgba(45, 80, 22, 0.34);
+  box-shadow: 0 10px 24px rgba(45, 80, 22, 0.06);
+}
+
+.card[data-is-new="true"]:hover {
+  border-color: rgba(45, 80, 22, 0.52);
+}
+.card[data-featured="true"]:not([data-is-favourite="true"]):not([data-decision="maybe"]):not([data-decision="pass"]) {
+  border-color: var(--accent-border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.card[data-featured="true"][data-is-favourite="true"] .card__index::after {
+  content: "  •  Top pick";
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+.resource-picker {
+  display: none;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+
+body.edit-mode .resource-picker {
+  display: block;
+}
+
+.resource-picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.resource-picker__head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.resource-vendor-list {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-vendor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.resource-vendor-row strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.resource-vendor-row small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+  .resource-section {
+    margin-top: 44px;
+  }
+
+  .resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+  .resource-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 20px;
+  }
+
+  .resource-card__type {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .resource-card h3 {
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+  }
+
+  .resource-card p {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+  }
+
+  .resource-card__links {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .cta {
+    margin-top: 40px;
+    padding: 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    text-align: center;
+  }
+
+  .cta strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+
+  .cta p {
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    background: var(--text-primary);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: var(--r);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+.agent-edit-grid {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.agent-edit-grid .edit-banner {
+  grid-column: 1 / -1;
+}
+
+.review-complete {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.review-complete__title {
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.review-complete__sub {
+  color: #6b6b6b;
+  max-width: 520px;
+}
+
+.review-complete__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.stat {
+  border-radius: 14px;
+  padding: 18px;
+  background: #f8f8f8;
+  text-align: center;
+}
+
+.stat__num {
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.stat__label {
+  font-size: 14px;
+  color: #666;
+}
+
+/* subtle tone differences */
+.stat--love {
+  background: #f6f3ea;
+}
+
+.stat--maybe {
+  background: #f4f4f4;
+}
+
+.stat--pass {
+  background: #f7f7f7;
+}
+
+.review-complete__cta .btn-primary {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 999px;
+}
+
+.review-complete__note textarea {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.quick-actions button {
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #f3f3f3;
+}
+
+@media (max-width: 760px) {
+  .agent-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+  .note-editor {
+  display: none;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+
+.preset-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.preset-image-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.preset-image-btn img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 7px;
+  background: var(--bg-overlay);
+}
+
+.preset-image-btn span {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.preset-image-btn:hover {
+  border-color: var(--text-primary);
+}
+
+.preset-image-btn.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.preset-image-btn.is-selected::after {
+  content: "Selected";
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+body.edit-mode .agent-edit-grid {
+  display: grid;
+}
+
+body.edit-mode .note-editor {
+  display: block;
+}
+
+.note-editor__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.note-editor__input {
+  width: 100%;
+  min-height: 110px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+}
+
+
+
+  @media (max-width: 960px) {
+    .masthead {
+      padding: 0 24px;
+    }
+
+    .masthead__inner {
+      padding: 56px 0 48px;
+      gap: 40px;
+    }
+
+    .body-wrap {
+      padding: 36px 24px 80px;
+    }
+
+    .agent-bar {
+      padding: 0 24px;
+    }
+
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .summary__stats {
+      grid-template-columns: 1fr;
+    }
+
+    .review-send-prompt {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+.review-send-copy h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.review-send-copy p {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.review-send-actions {
+  display: flex;
+  gap: 10px;
+}
+  }
+
+  @media (max-width: 640px) {
+    .masthead__inner {
+      grid-template-columns: 1fr;
+      gap: 0;
+      padding: 44px 0 40px;
+    }
+
+    .masthead__right {
+      display: none;
+    }
+
+    .masthead__heading {
+      font-size: 3rem;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 14px;
+    }
+
+    .card {
+      width: min(100%, 420px);
+    }
+
+    .body-wrap {
+      padding: 28px 16px 60px;
+    }
+
+    .agent-bar {
+      padding: 0 16px;
+    }
+
+    .agent-bar__badge,
+    .agent-bar__date,
+    .agent-bar__sep {
+      display: none;
+    }
+
+    .agent-bar__inner {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .agent-bar__left {
+      width: 100%;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .agent-bar__name {
+  font-size: 0.78rem;
+}
+    .agent-bar__actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ab-btn {
+      width: 100%;
+      justify-content: center;
+      text-align: center;
+      height: 38px;
+      padding: 0 10px;
+      font-size: 0.8rem;
+    }
+
+    .panel {
+      left: 0;
+      right: 0;
+      top: 0;
+      width: 100%;
+      max-height: 100svh;
+      border-radius: 0 0 var(--r-xl) var(--r-xl);
+      transform: translateY(-106%);
+      touch-action: pan-y;
+      will-change: transform;
+    }
+
+    .panel.open {
+      transform: translateY(0);
+    }
+
+    .panel.closing-down {
+      transition: transform 0.22s ease !important;
+      transform: translateY(100svh) !important;
+    }
+
+    .panel__grab {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px 0 2px;
+      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 9;
+    }
+
+    .panel__grab::before {
+      content: "";
+      width: 42px;
+      height: 4px;
+      border-radius: 999px;
+      background: #d4cfc7;
+    }
+
+    .panel__header {
+      padding: 12px 14px;
+      grid-template-columns: 1fr auto auto;
+    }
+
+    .panel__top-btn,
+    .panel__close {
+      height: 34px;
+      font-size: 0.76rem;
+    }
+
+    .panel__body {
+      padding: 20px 20px 24px;
+    }
+
+    .decision-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .decision-btn {
+      min-height: 48px;
+      padding: 0 6px;
+      font-size: 0.74rem;
+      gap: 4px;
+      border-radius: 14px;
+    }
+
+    .summary__actions {
+      flex-direction: column;
+    }
+
+    .panel__headline {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.panel__headline > div {
+  min-width: 0;
+}
+
+.panel__meta {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.panel__meta-item {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  text-align: center;
+}
+
+.panel__meta-item + .panel__meta-item {
+  border-left: 1px solid var(--border);
+}
+
+.panel__meta-label {
+  display: inline !important;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1;
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.panel__meta-item strong {
+  display: inline !important;
+  color: var(--text-primary);
+  font-size: 1.02rem;
+  line-height: 1;
+  font-weight: 800;
+    letter-spacing: -0.01em;
+
+}
+    .summary__btn {
+      width: 100%;
+    }
+  }
+
+  .decision-btn:focus,
+  .decision-btn:focus-visible,
+  .chip:focus,
+  .chip:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .decision-btn,
+  .chip {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .decision-btn:active,
+  .chip:active {
+    transform: none;
+  }
+
+  .masthead__logo {
+  display: block;
+  width: 240px;
+  max-width: 34vw;
+  height: auto;
+  margin-bottom: 12px;
+  opacity: 0.95;
+}
+  .panel__top-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+    background: #eee;
+    color: #999;
+    border-color: #ddd;
+  }
+.panel__desc-wrap {
+  margin-top: 0px;
+  margin-bottom: 18px;
+}
+
+.panel__desc {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.panel__desc.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.panel__desc-toggle {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.panel__desc-toggle:hover {
+  color: var(--text-primary);
+}
+.masthead__eyebrow {
+  color: #c09b64;
+}
+
+.masthead__eyebrow::before {
+  background: #c09b64;
+}
+
+@media (max-width: 700px) {
+  .resource-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel__map-btn {
+  appearance: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.panel__mini-map {
+  height: 340px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 0 0 18px;
+  background: #e8e8e8;
+}
+
+.panel__mini-map[hidden] {
+  display: none;
+}
+</style>
   </head>
 
-  <body>
-    <main class="page">
-      <div class="topbar">
-        <div>
-          <h1>Shortlist</h1>
-          <p class="subtle">
-            {shortlist?.message_body || "A clean set of homes selected for easy review."}
-          </p>
-        </div>
+  <body
+  data-agent-view={isAgentView ? "true" : "false"}
+  data-shortlist-slug={slug}
+>
+    {isAgentView && (
+      <div class="agent-bar">
+        <div class="agent-bar__inner">
+          <div class="agent-bar__left">
+            <span class="agent-bar__badge">Agent view</span>
+            <span class="agent-bar__name">
+              <span class="agent-dot"></span>
+              {shortlist?.client_name || "Client"}
+              <span class="agent-bar__sep">·</span>
+              {shortlistStatus}
+            </span>
+            {createdLabel && <span class="agent-bar__date">{createdLabel}</span>}
+          </div>
 
-        <div class="saved-pill">
-          {listings.length} selected
+          <div class="agent-bar__actions">
+            <button
+              class="ab-btn"
+              type="button"
+              id="edit-shortlist-toggle"
+              data-editing="false">
+              Edit shortlist
+            </button>
+
+            <a class="ab-btn" href={`/listings?shortlist=${slug}`}>
+              Add homes
+            </a>
+
+         <button
+  class="ab-btn ab-btn--primary"
+  type="button"
+  id="nav-send-text-btn"
+  data-send-text
+  data-shortlist-slug={slug}
+  data-client-name={shortlist?.client?.name || shortlist?.client_name || ""}
+  data-client-phone={shortlist?.client_phone || shortlist?.client?.phone || ""}
+  data-note={shortlist?.note || ""}
+  data-sms-image-url={smsImageUrl}>
+  Send text
+</button>
+
+            <button
+              class="ab-btn"
+              type="button"
+              id="nav-copy-link-btn"
+              data-copy-link={clientLink}>
+              Copy link
+            </button>
+
+            <a class="ab-btn" href="/shortlists">Back</a>
+          </div>
         </div>
       </div>
+    )}
 
-      {
-        listings && listings.length > 0 ? (
-          <div class="grid">
-            {listings.map((listing) => {
-              const listingId = listing.repliers_listing_id || listing.id;
-              const price = listing.price_text || "Price unavailable";
-              const address = listing.address || "Address unavailable";
-              const beds = listing.beds || "-";
-              const baths = listing.baths || "-";
-              const sqft = listing.sqft || "";
-              const propertyType = listing.property_type || "Home";
-              const yearBuilt = listing.year_built || "";
-              const image =
-                listing.image_url || "https://placehold.co/800x600?text=Listing";
-              const description =
-                listing.description || "A quick preview of this property.";
+    <header class="masthead">
+      <div class="masthead__inner">
+        <div class="masthead__left">
+  
 
-              return (
-                <article
-                  class="card"
-                  data-card-id={String(listingId)}
-                  data-price={price}
-                  data-address={address}
-                  data-beds={String(beds)}
-                  data-baths={String(baths)}
-                  data-sqft={String(sqft)}
-                  data-type={propertyType}
-                  data-year={String(yearBuilt)}
-                  data-image={image}
-                  data-description={description}
-                >
-                  <div class="image-wrap">
-                    <img src={image} alt={address} />
-                  </div>
 
-                  <p class="price">{price}</p>
-                  <p class="address">{address}</p>
-                  <p class="meta">
-                    {beds} bed • {baths} bath
+
+<h1 class="masthead__heading">
+  {clientDisplayName ? (
+    <>
+      {clientDisplayName.split(" ")[0]}'s<br /><em>shortlist.</em>
+    </>
+  ) : (
+    <>
+      Your<br /><em>shortlist.</em>
+    </>
+  )}
+</h1>
+
+     <p class="masthead__client">
+  Curated by <strong>{agentName}</strong>
+</p>
+
+         <p class="masthead__message" id="masthead-message">{heroMessage}</p>
+
+       
+        </div>
+
+       <div class="masthead__right">
+  <img
+    src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/74000c47-a1d2-424c-2f16-3d2ebc30e300/card"
+    alt="Logo"
+    class="masthead__logo"
+  />
+
+  <div class="masthead__stat-block">
+            <span class="masthead__count-num" id="homes-count-num">
+              {String(listings.length).padStart(2, "0")}
+            </span>
+            <span class="masthead__count-label">homes selected</span>
+          </div>
+          <div class="masthead__hints">
+            <span class="masthead__hint">Tap any card to review</span>
+            <span class="masthead__hint">Move quickly through the shortlist</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+       <main class="body-wrap">
+      {isAgentView && (
+        <div class="agent-edit-grid">
+          <div class="edit-banner" id="edit-banner">
+            Edit mode is on. Remove anything that does not belong, then use <strong>Add homes</strong> to keep building this shortlist.
+          </div>
+
+          <div class="note-editor" id="note-editor">
+            <label class="note-editor__label" for="shortlist-note-input">
+              Buyer intro message
+            </label>
+
+            <textarea
+              id="shortlist-note-input"
+              class="note-editor__input"
+              rows="4"
+            >{heroMessage}</textarea>
+
+            <button type="button" class="ab-btn ab-btn--primary" id="save-note-btn">
+              Save message
+            </button>
+          </div>
+
+          <div class="note-editor" id="sms-message-editor">
+  <label class="note-editor__label" for="sms-message-input">
+    Text message (SMS)
+  </label>
+
+  <textarea
+    id="sms-message-input"
+    class="note-editor__input"
+    rows="3"
+    placeholder="What the buyer receives via text"
+  >{shortlist?.sms_message || heroMessage}</textarea>
+
+  <button
+    type="button"
+    class="ab-btn ab-btn--primary"
+    id="save-sms-message-btn"
+  >
+    Save text message
+  </button>
+</div>
+
+          <div class="note-editor" id="sms-image-editor">
+            <label class="note-editor__label" for="sms-image-url-input">
+              Text preview image
+            </label>
+
+            <div class="preset-image-grid">
+              {presetSmsImages.map((preset) => (
+                <button
+                  type="button"
+                  class={`preset-image-btn ${smsImageUrl === preset.url ? "is-selected" : ""}`}
+                  data-preset-image-url={preset.url}>
+                  <img src={preset.url} alt={preset.label} loading="lazy" />
+                  <span>{preset.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <input
+              id="sms-image-url-input"
+              class="note-editor__input"
+              style="min-height:44px;"
+              value={smsImageUrl}
+              placeholder="Paste image URL, or choose one from the homes below"
+            />
+
+            <button type="button" class="ab-btn ab-btn--primary" id="save-sms-image-btn">
+              Save image URL
+            </button>
+          </div>
+<div class="note-editor" id="resource-add-editor">
+  <label class="note-editor__label">
+    Add buyer resource
+  </label>
+
+  <select id="resource-type-input" class="note-editor__input" style="min-height:44px;">
+    <option value="mortgage_broker">Mortgage broker</option>
+    <option value="home_inspector">Home inspector</option>
+    <option value="lawyer">Lawyer</option>
+    <option value="insurance">Insurance</option>
+    <option value="other">Other</option>
+  </select>
+
+  <input id="resource-name-input" class="note-editor__input" style="min-height:44px;" placeholder="Name" />
+  <input id="resource-phone-input" class="note-editor__input" style="min-height:44px;" placeholder="Phone" />
+  <input id="resource-email-input" class="note-editor__input" style="min-height:44px;" placeholder="Email" />
+  <input id="resource-website-input" class="note-editor__input" style="min-height:44px;" placeholder="Website URL" />
+
+  <textarea
+    id="resource-description-input"
+    class="note-editor__input"
+    rows="3"
+    placeholder="Short note for the buyer"
+  ></textarea>
+
+  <button type="button" class="ab-btn ab-btn--primary" id="add-resource-btn">
+    Add resource
+  </button>
+</div>
+<div class="resource-picker">
+  <div class="resource-picker__head">
+    <div>
+      <p class="eyebrow">Buyer resources</p>
+      <h3>Choose resources to show</h3>
+    </div>
+
+    <button type="button" class="ab-btn ab-btn--primary" id="save-resource-vendors-btn">
+      Save resources
+    </button>
+  </div>
+
+  <div id="resource-vendor-list" class="resource-vendor-list">
+    Loading resources...
+  </div>
+</div>
+          <div class="note-editor" id="resource-visibility-editor">
+            <label class="note-editor__label">
+              Buyer resources section
+            </label>
+
+            <label style="display:flex; align-items:center; gap:10px; font-size:0.9rem;">
+              <input
+                type="checkbox"
+                id="show-resources-toggle"
+                checked={shortlist?.show_resources !== false}
+              />
+              Show helpful next steps to buyer
+            </label>
+
+            <button
+              type="button"
+              class="ab-btn ab-btn--primary"
+              id="save-resource-visibility-btn"
+              style="margin-top:14px;">
+              Save resource setting
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div class="section-header">
+        <h2 class="section-title">Selected properties</h2>
+        <span class="section-meta" id="section-meta-count">
+          {listings.length} {listings.length === 1 ? "home" : "homes"} chosen for review
+        </span>
+      </div>
+
+      {listings.length > 0 ? (
+        <div class="grid" id="shortlist-grid">
+          {listings.map((listing: any, i: number) => {
+            const listingId = listing.repliers_listing_id || listing.id;
+            const itemId = listing.shortlist_item_id || listing.id;
+            const price = listing.price_text || "Price unavailable";
+            const address = listing.address || "Address unavailable";
+            const beds = listing.beds || "-";
+            const baths = listing.baths || "-";
+            const sqft = listing.sqft || "";
+            const propertyType = listing.property_type || "Home";
+            const yearBuilt = listing.year_built || "";
+            const image =
+  normalizeImageUrl(listing.image_url) ||
+  "https://placehold.co/800x600?text=Listing";
+            const description = listing.description || "A quick preview of this property.";
+            const likedTags = Array.isArray(listing.liked_tags) ? listing.liked_tags : [];
+            const isFavourite = Boolean(listing.is_favourite);
+            const decision = listing.decision || "";
+const isNew = !isFavourite && !decision;
+const num = String(i + 1).padStart(2, "0");
+
+            return (
+             <article
+  class="card"
+  data-item-id={String(itemId)}
+  data-card-id={String(listingId)}
+data-lat={listing?.lat || ""}
+data-lng={listing?.lng || ""}
+                data-price={price}
+                data-address={address}
+                data-beds={String(beds)}
+                data-baths={String(baths)}
+                data-sqft={String(sqft)}
+data-type={propertyType}
+data-lot-size={String(listing.lot_size || listing.lotSize || listing.lot_sqft || listing.lotSqft || "")}
+data-year={String(yearBuilt)}
+                data-image={image}
+data-images={JSON.stringify(listing.images || listing.photo_urls || [])}
+data-description={description}
+                data-liked-tags={JSON.stringify(likedTags)}
+                data-is-favourite={isFavourite ? "true" : "false"}
+               data-decision={decision}
+data-is-new={isNew ? "true" : "false"}
+data-featured={i === 0 ? "true" : "false"}>
+                {isAgentView && (
+                  <button
+                    type="button"
+                    class="card__remove"
+                    data-agent-only="true"
+                    data-remove-item-id={String(itemId)}
+                    aria-label="Remove listing from shortlist"
+                    title="Remove listing">
+                    ✕
+                  </button>
+                )}
+
+                <div class="card__image-wrap">
+                  {isFavourite && (
+  <div class="card__love-badge">
+    <span class="card__love-badge-heart">♥</span>
+    <span>Loved</span>
+  </div>
+)}
+{isNew && (
+  <div class="card__new-badge">
+    <span>✨</span>
+    <span>New</span>
+  </div>
+)}
+{!isFavourite && decision === "maybe" && (
+  <div class="card__maybe-badge">
+    <span>🤔</span>
+    <span>Not sure</span>
+  </div>
+)}
+
+                  <img src={image} alt={address} loading="lazy" />
+                  <span class="card__index">No. {num}</span>
+
+{isAgentView && (
+  <button
+    type="button"
+    class="card__preview-image-btn"
+    data-preview-image-url={image}>
+    Use as text preview
+  </button>
+)}
+                </div>
+
+                <div class="card__body">
+                  <p class="card__price">{price}</p>
+                  <p class="card__address">{address}</p>
+                  <p class="card__meta">
+                    {beds} bed · {baths} bath
+                    {sqft ? ` · ${sqft} sqft` : ""}
+                    {yearBuilt ? ` · Built ${yearBuilt}` : ""}
                   </p>
+                  <p class="card__desc">{description}</p>
+                  <button type="button" class="card__action preview-btn">View property →</button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+       ) : (
+        <div class="empty" id="empty-state">No listings added yet.</div>
+      )}
 
-                  <div class="card-actions">
-                    <button type="button" class="preview-btn">
-                      Preview
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+      {shortlist?.show_resources !== false && (resources.length > 0 || isAgentView) && (
+  <section class="resource-section">
+          <div class="section-header">
+            <h2 class="section-title">Helpful next steps</h2>
+            <span class="section-meta">Resources from your agent</span>
           </div>
+
+          <div class="resource-grid">
+            {resources.map((resource: any) => (
+             <article class="resource-card">
+  <p class="resource-card__type">
+    {resource.type === "mortgage_broker" ? "Mortgage broker" : resource.type}
+  </p>
+
+  {resource.name ? (
+    <h3>{resource.name}</h3>
+  ) : (
+    <h3>{resource.title}</h3>
+  )}
+
+ {resource.note && <p>{resource.note}</p>}
+
+  <div class="resource-card__links">
+    {resource.phone && <a href={`tel:${resource.phone}`}>{resource.phone}</a>}
+    {resource.email && <a href={`mailto:${resource.email}`}>Email</a>}
+    {resource.website && <a href={resource.website}>Website</a>}
+  </div>
+</article>
+            ))}
+                   </div>
+
+          {resources?.length === 0 && isAgentView && (
+            <div class="empty" style="margin-top:16px;">
+              No buyer resources added yet.
+            </div>
+          )}
+        </section>
+      )}
+
+      <div class="cta">
+        <strong>Want to see any of these?</strong>
+        <p>Reply or text me and we’ll set it up.</p>
+
+        {isAgentView ? (
+          <p style="font-size:0.8rem; opacity:0.6;">Client sees this as a contact prompt</p>
         ) : (
-          <div class="empty">
-            No listings found yet.
-          </div>
-        )
-      }
+          <a href="sms:" class="cta-btn">Text your agent</a>
+        )}
+      </div>
     </main>
 
-    <div class="sheet-overlay" id="sheet-overlay"></div>
+    <div class="overlay" id="sheet-overlay"></div>
 
-    <aside
-      class="sheet"
-      id="preview-sheet"
-      aria-hidden="true"
-      aria-label="Listing preview"
-    >
-      <div class="sheet-handle"></div>
+    <aside class="panel" id="preview-sheet" aria-hidden="true">
+      <div class="panel__grab" id="sheet-grab-handle" aria-hidden="true"></div>
 
-      <div class="sheet-content">
-        <img
-          id="sheet-image"
-          class="sheet-image"
-          src="https://placehold.co/800x600?text=Listing"
-          alt="Listing preview"
-        />
+      <div class="panel__progress-wrap">
+        <div class="panel__progress-track">
+          <div class="panel__progress-bar" id="sheet-progress-bar"></div>
+        </div>
 
-        <div class="sheet-body">
-          <h2 class="sheet-price" id="sheet-price">$0</h2>
-          <p class="sheet-address" id="sheet-address">Address</p>
-          <p class="sheet-meta" id="sheet-meta">Home details</p>
+        <div class="panel__header">
+          <div class="panel__position" id="sheet-position">1 of 1</div>
 
-          <div class="sheet-stats">
-            <div class="stat">
-              <div class="stat-label">Property type</div>
-              <div class="stat-value" id="sheet-type">-</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-label">Interior</div>
-              <div class="stat-value" id="sheet-sqft">-</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-label">Year built</div>
-              <div class="stat-value" id="sheet-year">-</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-label">Layout</div>
-              <div class="stat-value" id="sheet-layout">-</div>
-            </div>
+          <div class="panel__header-actions">
+            <button class="panel__map-btn" id="sheet-map-btn" type="button">Map</button>
+<button class="panel__top-btn" id="sheet-next-top-btn" type="button">Next →</button>
           </div>
 
-          <p class="sheet-desc" id="sheet-description"></p>
-
-          <div class="sheet-actions">
-            <button class="sheet-close" id="sheet-close-btn" type="button">Close</button>
-          </div>
+          <button class="panel__close" id="sheet-close-btn" type="button" aria-label="Close">✕</button>
         </div>
       </div>
+<div class="panel__view">
+        <section class="panel__summary" id="sheet-summary">
+          <div class="review-complete">
+
+  <!-- Header -->
+  <div class="review-complete__header">
+    <div class="eyebrow">Shortlist reviewed</div>
+
+    <h2 class="review-complete__title">
+      You’ve reviewed all the homes — nice work.
+    </h2>
+
+    <p class="review-complete__sub">
+      Most buyers don’t make it this far — this really helps narrow things down.
+      Your top picks are ready for a closer look.
+    </p>
+  </div>
+
+  <div class="review-complete__faves" id="summary-fave-strip"></div>
+
+<!-- Stats -->
+<div class="review-complete__stats">
+    <div class="stat stat--love">
+   <div class="stat__num" id="summary-love-count">0</div>
+      <div class="stat__label">❤️ You loved</div>
+    </div>
+
+    <div class="stat stat--maybe">
+      <div class="stat__num" id="summary-maybe-count">0</div>
+      <div class="stat__label">🤔 Worth a second look</div>
+    </div>
+
+    <div class="stat stat--pass">
+      <div class="stat__num" id="summary-pass-count">0</div>
+      <div class="stat__label">✕ Not your fit</div>
+    </div>
+  </div>
+
+  <!-- Primary CTA -->
+  <div class="review-complete__cta">
+   <button class="btn-primary" id="summary-send-comment-btn" type="button">
+  Send a quick note to your agent
+</button>
+  </div>
+
+  <!-- Optional prompt -->
+  <div class="review-complete__note">
+    <h4>What would you like to do next?</h4>
+
+   <textarea
+  id="summary-comment-input"
+  placeholder="We’d like to see the first two — the rest aren’t quite right."
+></textarea>
+
+<div class="summary__comment-status" id="summary-comment-status"></div>
+
+   <div class="quick-actions">
+  <button type="button" data-summary-comment="We’d like to set up showings for the homes we loved.">
+    👍 Set up showings
+  </button>
+
+  <button type="button" data-summary-comment="Can you help narrow the search based on what we liked?">
+    🎯 Narrow the search
+  </button>
+
+  <button type="button" data-summary-comment="These aren’t quite right. Can we look at some better options?">
+    🙅 Not quite right
+  </button>
+</div>
+  </div>
+
+</div>
+        </section>
+
+         
+        
+
+        <section class="panel__content" id="sheet-content">
+          <div class="panel__image-stage">
+           <img
+  id="sheet-image"
+  class="panel__image"
+  src="https://placehold.co/800x600?text=Loading"
+  alt=""
+  loading="eager"
+  decoding="async"
+  fetchpriority="high"
+/>
+            <button type="button" class="photo-nav photo-nav--prev" id="photo-prev-btn">‹</button>
+<button type="button" class="photo-nav photo-nav--next" id="photo-next-btn">›</button>
+<div class="panel__photo-count" id="sheet-photo-count">1 / 1 photos</div>
+          </div>
+
+          <div class="panel__body">
+            <div class="panel__headline">
+  <div>
+    <h2 class="panel__price" id="sheet-price">—</h2>
+    <p class="panel__address" id="sheet-address">Address</p>
+  </div>
+
+  <div class="panel__meta" id="sheet-meta">—</div>
+</div>
+<div id="sheet-mini-map" class="panel__mini-map" hidden></div>
+<div class="panel__intelligence" id="sheet-intelligence">
+              Strongest match based on your criteria
+            </div>
+
+            
+
+            <div class="panel__feedback" id="sheet-feedback"></div>
+
+         <div class="panel__desc-wrap">
+  <p class="panel__desc is-collapsed" id="sheet-description"></p>
+
+  <button
+    type="button"
+    class="panel__desc-toggle"
+    id="sheet-desc-toggle">
+    Read more
+  </button>
+</div>
+
+<div class="decision-wrap">
+              <p class="decision-title">How does this one feel?</p>
+
+              <div class="decision-actions">
+                <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">
+                  <span>❤️</span>
+                  <span>Love this</span>
+                </button>
+
+                <button class="decision-btn decision-btn--maybe" type="button" id="decision-maybe-btn">
+                  <span>🤔</span>
+                  <span>Not sure</span>
+                </button>
+
+                <button class="decision-btn decision-btn--pass" type="button" id="decision-pass-btn">
+                  <span>✕</span>
+                  <span>Not for me</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="panel__secondary">
+              <p class="panel__secondary-title">What stood out</p>
+              <div class="chip-group" id="feedback-chips">
+                <button class="chip" data-tag="view">View</button>
+                <button class="chip" data-tag="layout">Layout</button>
+                <button class="chip" data-tag="price">Price</button>
+                <button class="chip" data-tag="location">Location</button>
+                <button class="chip" data-tag="finishes">Finishes</button>
+                <button class="chip" data-tag="size">Size</button>
+                <button class="chip" data-tag="yard">Yard</button>
+                <button class="chip" data-tag="needs-work">Needs work</button>
+              </div>
+            </div>
+
+            <div class="panel__footer">
+              <button class="panel__next-btn" id="sheet-next-btn" type="button">Next listing →</button>
+            </div>
+          </div>
+        </section>
+      </div>
     </aside>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script is:inline>
-      const sheet = document.getElementById("preview-sheet");
-      const overlay = document.getElementById("sheet-overlay");
-      const sheetImage = document.getElementById("sheet-image");
-      const sheetPrice = document.getElementById("sheet-price");
-      const sheetAddress = document.getElementById("sheet-address");
-      const sheetMeta = document.getElementById("sheet-meta");
-      const sheetType = document.getElementById("sheet-type");
-      const sheetSqft = document.getElementById("sheet-sqft");
-      const sheetYear = document.getElementById("sheet-year");
-      const sheetLayout = document.getElementById("sheet-layout");
-      const sheetDescription = document.getElementById("sheet-description");
-      const sheetCloseBtn = document.getElementById("sheet-close-btn");
+      function initShortlistPage() {
+        const body = document.body;
+        const isAgentView = body?.dataset.agentView === "true";
+const pageSlug = body?.dataset.shortlistSlug || "";
 
-      function openSheetFromCard(card) {
-        if (!card) return;
+const viewedKey = `shortlist_viewed_${pageSlug}`;
 
-        const beds = card.dataset.beds || "-";
-        const baths = card.dataset.baths || "-";
-        const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
-        const type = card.dataset.type || "-";
-        const year = card.dataset.year || "-";
+function getViewedListings() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(viewedKey) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
 
-        sheetImage.src = card.dataset.image || "https://placehold.co/800x600?text=Listing";
-        sheetImage.alt = card.dataset.address || "Listing preview";
-        sheetPrice.textContent = card.dataset.price || "Price unavailable";
-        sheetAddress.textContent = card.dataset.address || "Address unavailable";
-        sheetMeta.textContent = `${beds} bed • ${baths} bath`;
-        sheetType.textContent = type;
-        sheetSqft.textContent = sqft;
-        sheetYear.textContent = year;
-        sheetLayout.textContent = `${beds} bed / ${baths} bath`;
-        sheetDescription.textContent =
-          card.dataset.description || "No additional description available.";
+function markListingViewed(card) {
+  if (!card) return;
 
-        sheet.classList.add("open");
-        overlay.classList.add("open");
-        sheet.setAttribute("aria-hidden", "false");
+  const id = card.dataset.itemId || card.dataset.cardId || "";
+  if (!id) return;
 
-        if (window.innerWidth < 900) {
+  const viewed = getViewedListings();
+  viewed.add(id);
+  localStorage.setItem(viewedKey, JSON.stringify([...viewed]));
+
+  card.dataset.viewed = "true";
+  card.dataset.isNew = "false";
+  card.querySelector(".card__new-badge")?.remove();
+}
+
+        const sheet = document.getElementById("preview-sheet");
+        const overlay = document.getElementById("sheet-overlay");
+        const sheetImage = document.getElementById("sheet-image");
+        const sheetPrice = document.getElementById("sheet-price");
+        const sheetAddress = document.getElementById("sheet-address");
+        const sheetMeta = document.getElementById("sheet-meta");
+        const sheetDescription = document.getElementById("sheet-description");
+const descToggle = document.getElementById("sheet-desc-toggle");
+const sheetCloseBtn = document.getElementById("sheet-close-btn");
+        const sheetNextBtn = document.getElementById("sheet-next-btn");
+        const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
+        const sheetProgressBar = document.getElementById("sheet-progress-bar");
+        const sheetPosition = document.getElementById("sheet-position");
+        const sheetFeedback = document.getElementById("sheet-feedback");
+        const sheetIntelligence = document.getElementById("sheet-intelligence");
+       const sheetPhotoCount = document.getElementById("sheet-photo-count");
+const photoPrevBtn = document.getElementById("photo-prev-btn");
+const photoNextBtn = document.getElementById("photo-next-btn");
+const sheetMapBtn = document.getElementById("sheet-map-btn");
+let activePhotoUrls = [];
+let activePhotoIndex = 0;
+let photoTouchStartX = 0;
+let photoTouchEndX = 0;
+
+const sheetContent = document.getElementById("sheet-content");
+const sheetSummary = document.getElementById("sheet-summary");
+        const summaryLoveCount = document.getElementById("summary-love-count");
+        const summaryMaybeCount = document.getElementById("summary-maybe-count");
+        const summaryPassCount = document.getElementById("summary-pass-count");
+        const summaryRestartBtn = document.getElementById("summary-restart-btn");
+        const editToggleBtn = document.getElementById("edit-shortlist-toggle");
+        const editBanner = document.getElementById("edit-banner");
+        const homesCountNum = document.getElementById("homes-count-num");
+        const sectionMetaCount = document.getElementById("section-meta-count");
+        const shortlistGrid = document.getElementById("shortlist-grid");
+        const emptyState = document.getElementById("empty-state");
+       const navSendTextBtn = document.getElementById("nav-send-text-btn");
+       const navCopyLinkBtn = document.getElementById("nav-copy-link-btn");
+const saveNoteBtn = document.getElementById("save-note-btn");
+const noteInput = document.getElementById("shortlist-note-input");
+const smsMessageInput = document.getElementById("sms-message-input");
+const saveSmsMessageBtn = document.getElementById("save-sms-message-btn");
+const mastheadMessage = document.getElementById("masthead-message");
+const sendTextButtons = Array.from(document.querySelectorAll("[data-send-text]"));
+const saveSmsImageBtn = document.getElementById("save-sms-image-btn");
+const smsImageInput = document.getElementById("sms-image-url-input");
+const presetImageButtons = Array.from(document.querySelectorAll("[data-preset-image-url]"));
+const showResourcesToggle = document.getElementById("show-resources-toggle");
+const saveResourceVisibilityBtn = document.getElementById("save-resource-visibility-btn");
+const addResourceBtn = document.getElementById("add-resource-btn");
+const resourceTypeInput = document.getElementById("resource-type-input");
+const resourceNameInput = document.getElementById("resource-name-input");
+const resourcePhoneInput = document.getElementById("resource-phone-input");
+const resourceEmailInput = document.getElementById("resource-email-input");
+const resourceWebsiteInput = document.getElementById("resource-website-input");
+const resourceDescriptionInput = document.getElementById("resource-description-input");
+const resourceVendorList = document.getElementById("resource-vendor-list");
+const saveResourceVendorsBtn = document.getElementById("save-resource-vendors-btn");       
+const decisionLoveBtn = document.getElementById("decision-love-btn");
+        const decisionMaybeBtn = document.getElementById("decision-maybe-btn");
+        const decisionPassBtn = document.getElementById("decision-pass-btn");
+        const feedbackChips = Array.from(document.querySelectorAll(".chip[data-tag]"));
+
+        if (!sheet || !overlay) return;
+        if (sheet.dataset.initialized === "true") return;
+        sheet.dataset.initialized = "true";
+
+        let activeCard = null;
+        let activeItemId = "";
+        let activeTags = [];
+        let activeFavourite = false;
+        let activeDecision = "";
+        let isSaving = false;
+        let shouldRefreshOnClose = false;
+        let editMode = false;
+        let isShowingSummary = false;
+let hasAutoSentReviewSummary = false;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchCurrentX = 0;
+        let touchCurrentY = 0;
+        let isDraggingSheet = false;
+        let dragMode = "";
+        let touchStartedOnInteractive = false;
+        let isAnimatingGesture = false;
+        let dragCloseY = 0;
+
+        function getCards() {
+          return Array.from(document.querySelectorAll(".card"));
+        }
+
+        function currentCardIndex() {
+          const cards = getCards();
+          if (!activeCard) return -1;
+          return cards.indexOf(activeCard);
+        }
+
+        function updateCounts() {
+          const count = getCards().length;
+
+          if (homesCountNum) {
+            homesCountNum.textContent = String(count).padStart(2, "0");
+          }
+
+          if (sectionMetaCount) {
+            sectionMetaCount.textContent = `${count} ${count === 1 ? "home" : "homes"} chosen for review`;
+          }
+
+          if (shortlistGrid && emptyState) {
+            if (count === 0) {
+              shortlistGrid.style.display = "none";
+              emptyState.style.display = "block";
+            } else {
+              shortlistGrid.style.display = "";
+              emptyState.style.display = "none";
+            }
+          }
+        }
+
+        function syncEditModeUI() {
+          body.classList.toggle("edit-mode", editMode);
+
+          if (editToggleBtn) {
+            editToggleBtn.textContent = editMode ? "Done editing" : "Edit shortlist";
+            editToggleBtn.setAttribute("data-editing", editMode ? "true" : "false");
+          }
+
+          if (editBanner) {
+            editBanner.classList.toggle("show", editMode);
+          }
+        }
+
+        function isMobileSheet() {
+          return window.innerWidth <= 640;
+        }
+
+        function parseTags(v) {
+          try {
+            const p = JSON.parse(v || "[]");
+            return Array.isArray(p) ? p : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function setSheetTransform(value) {
+          if (!isMobileSheet()) return;
+          sheet.style.transform = value;
+        }
+
+        function resetSheetTransform() {
+          sheet.style.transform = "";
+          sheet.style.opacity = "";
+          overlay.style.opacity = "";
+        }
+
+        function setOverlayOpacityByProgress(progress) {
+          const minOpacity = 0.12;
+          const maxOpacity = 1;
+          const clamped = Math.max(0, Math.min(1, progress));
+          const opacity = minOpacity + (maxOpacity - minOpacity) * clamped;
+          overlay.style.opacity = String(opacity);
+        }
+
+    function buildIntelligenceLabel(index, card) {
+  const cards = getCards();
+
+  const toNumber = (value) =>
+    parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
+
+  const price = toNumber(card.dataset.price);
+  const beds = toNumber(card.dataset.beds);
+  const baths = toNumber(card.dataset.baths);
+  const sqft = toNumber(card.dataset.sqft);
+  const type = String(card.dataset.type || "").toLowerCase();
+  const desc = String(card.dataset.description || "").toLowerCase();
+  const address = String(card.dataset.address || "").toLowerCase();
+  const text = `${address} ${desc}`;
+
+  const similar = cards.filter((c) => {
+    const cPrice = toNumber(c.dataset.price);
+    const cType = String(c.dataset.type || "").toLowerCase();
+
+    if (!price || !cPrice || !type || !cType) return false;
+
+    return (
+      cType === type &&
+      Math.abs(cPrice - price) <= price * 0.15
+    );
+  });
+
+  const insights = [];
+
+  if (index === 0) {
+    insights.push("Best overall match in this group");
+  }
+
+  
+
+  if (similar.length >= 3) {
+    const prices = similar
+      .map((c) => toNumber(c.dataset.price))
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+
+    const medianPrice = prices[Math.floor(prices.length / 2)];
+
+    if (price && medianPrice && price < medianPrice * 0.95) {
+      insights.push("Priced below most similar homes");
+    }
+
+    const avgBeds =
+      similar.reduce((sum, c) => sum + toNumber(c.dataset.beds), 0) /
+      similar.length;
+
+    if (beds && beds > avgBeds + 0.5) {
+      insights.push("More bedrooms than typical in this group");
+    }
+
+    const avgBaths =
+      similar.reduce((sum, c) => sum + toNumber(c.dataset.baths), 0) /
+      similar.length;
+
+    if (baths && baths > avgBaths + 0.5) {
+      insights.push("More bathrooms than most comparable homes");
+    }
+
+    const sqftValues = similar
+      .map((c) => toNumber(c.dataset.sqft))
+      .filter(Boolean);
+
+    const largestSqft = sqftValues.length ? Math.max(...sqftValues) : 0;
+
+    if (sqft && largestSqft && sqft === largestSqft) {
+      insights.push("Largest home in this shortlist");
+    }
+  }
+
+  const hasView = /\b(ocean view|mountain view|lake view|river view|city view|water view|panoramic view)\b/i.test(text);
+  const hasGarage = /\b(garage|double garage|attached garage)\b/i.test(text);
+  const hasYard = /\b(yard|backyard|garden|fully fenced|fenced)\b/i.test(text);
+
+  const quiet = /\b(cul[- ]de[- ]sac|dead end|quiet street)\b/i.test(text);
+
+  if (hasView) insights.push("View is a standout feature");
+  if (quiet) insights.push("Quiet street setting");
+
+  if (hasGarage) insights.push("Garage adds everyday function");
+  if (hasYard) insights.push("Outdoor space is a plus");
+
+  if (price && price < 600000) {
+    insights.push("Entry-level pricing usually draws attention");
+  } else if (price >= 600000 && price <= 900000) {
+    insights.push("Popular mid-market price range");
+  }
+
+  if (beds && baths) {
+    insights.push(`${beds} bed / ${baths} bath option`);
+  }
+
+return insights[0] || "Solid fundamentals compared with the rest";
+}
+        function updateDecisionButtons() {
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            btn?.classList.remove("is-selected");
+          });
+
+          if (activeFavourite && decisionLoveBtn) {
+            decisionLoveBtn.classList.add("is-selected");
+          }
+
+          if (activeDecision === "maybe" && decisionMaybeBtn) {
+            decisionMaybeBtn.classList.add("is-selected");
+          }
+
+          if (activeDecision === "pass" && decisionPassBtn) {
+            decisionPassBtn.classList.add("is-selected");
+          }
+
+          feedbackChips.forEach((c) => {
+            c.classList.toggle("active", activeTags.includes(c.dataset.tag || ""));
+          });
+        }
+
+        function updateHeaderProgress() {
+          const cards = getCards();
+          const total = cards.length;
+          const index = currentCardIndex();
+          const mapEl = document.getElementById("sheet-mini-map");
+
+if (mapEl) {
+  mapEl.hidden = true;
+  mapEl.innerHTML = "";
+}
+
+if (sheetMiniMap) {
+  sheetMiniMap.remove();
+  sheetMiniMap = null;
+  sheetMiniMarker = null;
+}
+
+          if (!sheetPosition || !sheetProgressBar) return;
+
+          if (isShowingSummary) {
+            sheetPosition.textContent = `${total} of ${total}`;
+            sheetProgressBar.style.width = "100%";
+            return;
+          }
+
+          const displayIndex = index >= 0 ? index + 1 : 1;
+          sheetPosition.textContent = `${displayIndex} of ${Math.max(total, 1)}`;
+
+          const progress = total > 0 ? (displayIndex / total) * 100 : 0;
+          sheetProgressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        }
+function preloadImage(src) {
+  if (!src) return;
+
+  const img = new Image();
+  img.src = src;
+}
+
+function renderActivePhoto() {
+  if (!sheetImage || !activePhotoUrls.length) return;
+
+  sheetImage.src = activePhotoUrls[activePhotoIndex];
+  sheetImage.alt = activeCard?.dataset.address || "";
+
+  preloadImage(activePhotoUrls[activePhotoIndex + 1]);
+  preloadImage(activePhotoUrls[activePhotoIndex - 1]);
+
+  if (sheetPhotoCount) {
+    sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+  }
+
+  if (photoPrevBtn) {
+    photoPrevBtn.disabled = activePhotoIndex === 0;
+  }
+
+  if (photoNextBtn) {
+    photoNextBtn.disabled = activePhotoIndex === activePhotoUrls.length - 1;
+  }
+}
+
+function showPrevPhoto() {
+  if (activePhotoIndex <= 0) return;
+  activePhotoIndex -= 1;
+  renderActivePhoto();
+}
+
+function showNextPhoto() {
+  if (activePhotoIndex >= activePhotoUrls.length - 1) return;
+  activePhotoIndex += 1;
+  renderActivePhoto();
+}
+
+photoPrevBtn?.addEventListener("click", showPrevPhoto);
+photoNextBtn?.addEventListener("click", showNextPhoto);
+
+sheetImage?.addEventListener(
+  "touchstart",
+  (event) => {
+    event.stopPropagation();
+    photoTouchStartX = event.changedTouches[0].screenX;
+  },
+  { passive: true }
+);
+
+sheetImage?.addEventListener(
+  "touchmove",
+  (event) => {
+    event.stopPropagation();
+  },
+  { passive: true }
+);
+
+sheetImage?.addEventListener(
+  "touchend",
+  (event) => {
+    event.stopPropagation();
+
+    photoTouchEndX = event.changedTouches[0].screenX;
+
+    const swipeDistance = photoTouchEndX - photoTouchStartX;
+
+    if (Math.abs(swipeDistance) < 50) return;
+
+    if (swipeDistance < 0) {
+      showNextPhoto();
+    } else {
+      showPrevPhoto();
+    }
+  },
+  { passive: true }
+);
+
+
+        function renderCardStateToPanel(card) {
+          if (!card) return;
+
+          const beds = card.dataset.beds || "—";
+          const baths = card.dataset.baths || "—";
+          const sqft = card.dataset.sqft ? ` · ${card.dataset.sqft} sqft` : "";
+          const index = currentCardIndex();
+
+          if (sheetImage) {
+const rawImages = JSON.parse(card.dataset.images || "[]");
+
+const normalizePhotoUrl = (url) => {
+  const value = String(url || "").trim();
+
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+
+  return `https://cdn.repliers.io/${value}`;
+};
+
+const photoUrls = rawImages
+  .map((img) => {
+    if (typeof img === "string") return normalizePhotoUrl(img);
+
+    return normalizePhotoUrl(
+      img.highRes ||
+      img.mediumRes ||
+      img.lowRes ||
+      img.url ||
+      ""
+    );
+  })
+  .filter(Boolean);
+
+  if (!photoUrls.length) {
+    photoUrls.push(card.dataset.image || "https://placehold.co/800x600?text=Listing");
+  }
+
+  activePhotoUrls = photoUrls;
+activePhotoIndex = 0;
+renderActivePhoto();
+
+ 
+}
+          if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
+          if (sheetAddress) sheetAddress.textContent = card.dataset.address || "—";
+
+                    if (sheetMeta) {
+            sheetMeta.innerHTML = `
+              <div class="panel__meta-item">
+              <span class="panel__meta-label">beds</span>
+                <strong>${beds}</strong>
+              </div>
+
+              <div class="panel__meta-item">
+                <span class="panel__meta-label">bath</span>
+                <strong>${baths}</strong>
+              </div>
+
+              ${card.dataset.sqft ? `
+                <div class="panel__meta-item">
+                  <span class="panel__meta-label">sqft</span>
+                  <strong>${card.dataset.sqft}</strong>
+                </div>
+              ` : ""}
+            `;
+          }
+
+          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
+         if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
+          
+
+          updateHeaderProgress();
+          updateDecisionButtons();
+        }
+
+        function showSummary() {
+          isShowingSummary = true;
+          activeCard = null;
+          activeItemId = "";
+
+          const cards = getCards();
+          const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
+          const maybeCount = cards.filter((card) => card.dataset.decision === "maybe").length;
+          const passCount = cards.filter((card) => card.dataset.decision === "pass").length;
+const faveStrip = document.getElementById("summary-fave-strip");
+
+if (faveStrip) {
+  const faveCards = cards
+    .filter((card) => card.dataset.isFavourite === "true")
+    .slice(0, 4);
+
+  faveStrip.style.display = faveCards.length ? "grid" : "none";
+  faveStrip.style.gridTemplateColumns = `repeat(${Math.max(faveCards.length, 1)}, minmax(0, 1fr))`;
+  faveStrip.style.gap = "12px";
+  faveStrip.style.width = "100%";
+  faveStrip.style.margin = "12px 0 18px";
+
+  faveStrip.innerHTML = faveCards
+    .map((card) => {
+      const img = card.dataset.image || "";
+      const address = card.dataset.address || "Favourite home";
+      if (!img) return "";
+
+      return `
+  <button
+    type="button"
+    data-summary-fave-card-id="${card.dataset.cardId || ""}"
+    style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;transition:transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;border-radius:14px;"
+  >
+    <img
+      src="${img}"
+      alt="${address}"
+      style="width:100%;height:150px;max-height:150px;object-fit:cover;border-radius:14px;display:block;"
+    >
+  </button>
+`;
+    })
+        .join("");
+
+faveStrip.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
+  btn.addEventListener("mouseenter", () => {
+  btn.style.transform = "translateY(-2px)";
+  btn.style.boxShadow = "0 8px 18px rgba(0,0,0,0.08)";
+  btn.style.opacity = "0.96";
+});
+
+btn.addEventListener("mouseleave", () => {
+  btn.style.transform = "";
+  btn.style.boxShadow = "";
+  btn.style.opacity = "";
+});
+
+  btn.addEventListener("click", () => {
+      const cardId = btn.getAttribute("data-summary-fave-card-id");
+      const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
+
+      if (card) {
+        openSheetFromCard(card);
+      }
+    });
+  });
+}
+      if (summaryLoveCount) {
+  summaryLoveCount.textContent = String(loveCount);
+  summaryLoveCount.setAttribute("data-count", "favourites");
+}
+
+if (summaryMaybeCount) {
+  summaryMaybeCount.textContent = String(maybeCount);
+  summaryMaybeCount.setAttribute("data-count", "maybes");
+}
+
+if (summaryPassCount) {
+  summaryPassCount.textContent = String(passCount);
+  summaryPassCount.setAttribute("data-count", "not");
+}
+
+          sheetContent?.classList.remove("open");
+          sheetSummary?.classList.add("open");
+          updateHeaderProgress();
+
+          if (sheetNextBtn) sheetNextBtn.disabled = true;
+
+       if (sheetNextTopBtn) {
+  sheetNextTopBtn.disabled = false;
+  sheetNextTopBtn.textContent = "Review again →";
+}
+
+autoSendReviewComplete();
+        }
+let sheetMiniMap = null;
+let sheetMiniMarker = null;
+
+sheetMapBtn?.addEventListener("click", async () => {
+  if (!activeCard || typeof L === "undefined") return;
+
+  const mapEl = document.getElementById("sheet-mini-map");
+  if (!mapEl) return;
+
+  mapEl.hidden = !mapEl.hidden;
+  if (mapEl.hidden) return;
+
+  let lat = Number(activeCard.dataset.lat || "");
+  let lng = Number(activeCard.dataset.lng || "");
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+    const address = `${activeCard.dataset.address || ""}, British Columbia, Canada`;
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+      );
+
+      const data = await res.json();
+
+      lat = Number(data?.[0]?.lat || "");
+      lng = Number(data?.[0]?.lon || "");
+    } catch (err) {
+      console.warn("Map geocode failed", err);
+    }
+  }
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+    mapEl.innerHTML = "<p style='padding:14px;'>No map location available for this listing.</p>";
+    return;
+  }
+
+  mapEl.innerHTML = "";
+
+  setTimeout(() => {
+    if (sheetMiniMap) {
+      sheetMiniMap.remove();
+      sheetMiniMap = null;
+      sheetMiniMarker = null;
+    }
+
+    sheetMiniMap = L.map(mapEl, {
+      zoomControl: false,
+      scrollWheelZoom: false
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(sheetMiniMap);
+
+    sheetMiniMap.setView([lat, lng], 15);
+    sheetMiniMarker = L.marker([lat, lng]).addTo(sheetMiniMap);
+
+    sheetMiniMap.invalidateSize();
+  }, 120);
+});
+  function buildReviewMessage(reason = "completed") {
+  const cards = getCards();
+
+  const favs = cards.filter((card) => card.dataset.isFavourite === "true").length;
+  const maybes = cards.filter((card) => card.dataset.decision === "maybe").length;
+  const no = cards.filter((card) => card.dataset.decision === "pass").length;
+  const reviewed = favs + maybes + no;
+
+  const parts = [];
+
+  if (favs > 0) parts.push(`${favs} favourite${favs > 1 ? "s" : ""}`);
+  if (maybes > 0) parts.push(`${maybes} maybe${maybes > 1 ? "s" : ""}`);
+  if (no > 0) parts.push(`${no} not for me`);
+
+  const summary = parts.length ? parts.join(", ") : "no choices saved yet";
+
+  if (reason === "skipped") {
+  return `Buyer left after reviewing ${reviewed} of ${cards.length} homes: ${summary}.`;
+}
+
+if (reason === "comment") {
+  return `Buyer added a note after reviewing ${cards.length} homes: ${summary}.`;
+}
+
+return `Buyer reviewed all ${cards.length} homes: ${summary}.`;
+}
+
+async function sendReviewComplete(reason = "completed", comment = "") {
+  try {
+    const res = await fetch("/api/shortlists/review-complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        message: buildReviewMessage(reason),
+        comment,
+        reason
+      })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed");
+    }
+
+    return true;
+  } catch (err) {
+    console.warn("Could not send review summary", err);
+    return false;
+  }
+}
+
+async function autoSendReviewComplete(reason = "completed") {
+  if (isAgentView) return;
+  if (hasAutoSentReviewSummary) return;
+
+  hasAutoSentReviewSummary = true;
+  await sendReviewComplete(reason, "");
+}
+        function showContent() {
+          isShowingSummary = false;
+          sheetSummary?.classList.remove("open");
+          sheetContent?.classList.add("open");
+        }
+function sortCardsByReview() {
+  if (!shortlistGrid) return;
+
+  const cards = getCards();
+
+  cards
+    .sort((a, b) => {
+   const score = (card) => {
+  if (card.dataset.isNew === "true") return 0;
+  if (card.dataset.isFavourite === "true") return 1;
+  if (card.dataset.decision === "maybe") return 2;
+  if (card.dataset.decision === "pass") return 4;
+
+  return 3;
+};
+
+      const aScore = score(a);
+      const bScore = score(b);
+
+      if (aScore !== bScore) return aScore - bScore;
+
+      const aOrder = Number(a.dataset.originalOrder || "999999");
+      const bOrder = Number(b.dataset.originalOrder || "999999");
+
+      return aOrder - bOrder;
+    })
+    .forEach((card, index) => {
+      shortlistGrid.appendChild(card);
+
+      const indexEl = card.querySelector(".card__index");
+      if (indexEl) {
+        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
+      }
+
+      card.dataset.featured =
+        index === 0 && card.dataset.isFavourite === "true" ? "true" : "false";
+    });
+}
+        function refreshCardUI(card, tags, isFav, decision) {
+  if (!card) return;
+
+  card.dataset.likedTags = JSON.stringify(tags);
+  card.dataset.isFavourite = isFav ? "true" : "false";
+  card.dataset.decision = decision || "";
+// once viewed, never show NEW again
+card.dataset.isNew = card.dataset.viewed === "true"
+  ? "false"
+  : (!isFav && !decision ? "true" : "false");
+
+  const wrap = card.querySelector(".card__image-wrap");
+  if (!wrap) return;
+
+  wrap.querySelector(".card__love-badge")?.remove();
+  wrap.querySelector(".card__maybe-badge")?.remove();
+wrap.querySelector(".card__new-badge")?.remove();
+  if (isFav) {
+    const badge = document.createElement("div");
+    badge.className = "card__love-badge";
+    badge.innerHTML = `
+      <span class="card__love-badge-heart">♥</span>
+      <span>Loved</span>
+    `;
+    wrap.appendChild(badge);
+    return;
+  }
+
+  if (decision === "maybe") {
+    const badge = document.createElement("div");
+    badge.className = "card__maybe-badge";
+    badge.innerHTML = `
+      <span>🤔</span>
+      <span>Not sure</span>
+    `;
+    wrap.appendChild(badge);
+  }
+}
+
+        function getNextCard() {
+          const cards = getCards();
+          const currentIndex = currentCardIndex();
+          if (currentIndex === -1 || !cards.length) return null;
+          if (currentIndex >= cards.length - 1) return null;
+          return cards[currentIndex + 1] || null;
+        }
+
+        function resetDecisionUI() {
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            if (!btn) return;
+            btn.classList.remove("is-selected");
+            btn.blur();
+          });
+
+          feedbackChips.forEach((chip) => {
+            chip.classList.remove("active");
+            chip.blur();
+          });
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          sheet.classList.remove("is-love-pulse", "is-pass-fade");
+        }
+
+        function openSheetFromCard(card) {
+          if (!card) return;
+          if (editMode && isAgentView) return;
+
+          activeCard = null;
+          activeItemId = "";
+          activeTags = [];
+          activeFavourite = false;
+          activeDecision = "";
+
+          resetDecisionUI();
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          if (sheetNextBtn) sheetNextBtn.disabled = false;
+          if (sheetNextTopBtn) {
+            sheetNextTopBtn.disabled = false;
+            sheetNextTopBtn.textContent = "Next →";
+          }
+
+          showContent();
+
+         activeCard = card;
+markListingViewed(card);
+
+activeItemId = String(card.dataset.itemId || "").trim();
+activeTags = parseTags(card.dataset.likedTags || "[]");
+activeFavourite = card.dataset.isFavourite === "true";
+activeDecision = card.dataset.decision || "";
+
+// 🔥 mark as viewed immediately (removes NEW pill)
+card.dataset.isNew = "false";
+card.dataset.viewed = "true";
+
+const wrap = card.querySelector(".card__image-wrap");
+wrap?.querySelector(".card__new-badge")?.remove();
+
+          renderCardStateToPanel(card);
+
+          sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
+          resetSheetTransform();
+          sheet.classList.add("open");
+          overlay.classList.add("open");
+          sheet.setAttribute("aria-hidden", "false");
           document.body.style.overflow = "hidden";
+
+          resetPanelScroll();
         }
-      }
 
-      function closeSheet() {
-        sheet.classList.remove("open");
-        overlay.classList.remove("open");
-        sheet.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
-      }
+        async function saveFeedback() {
+          if (!activeItemId || isSaving || !activeCard) return false;
+          isSaving = true;
 
-      document.querySelectorAll(".card").forEach((card) => {
-        const imageWrap = card.querySelector(".image-wrap");
-        const previewBtn = card.querySelector(".preview-btn");
+          try {
+            const res = await fetch("/api/shortlists/feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                shortlistItemId: activeItemId,
+                liked_tags: activeTags,
+                is_favourite: activeFavourite,
+                decision: activeDecision || null
+              })
+            });
 
-        imageWrap?.addEventListener("click", () => {
-          openSheetFromCard(card);
+            const json = await res.json();
+            if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to save");
+
+            const savedTags = Array.isArray(json?.item?.liked_tags) ? json.item.liked_tags : activeTags;
+            const savedFav = Boolean(json?.item?.is_favourite);
+            const savedDecision = json?.item?.decision || "";
+
+            activeTags = savedTags;
+            activeFavourite = savedFav;
+            activeDecision = savedDecision;
+
+        refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
+sortCardsByReview();
+updateDecisionButtons();
+shouldRefreshOnClose = true;
+
+return true;
+          } catch (err) {
+            if (sheetFeedback) {
+              sheetFeedback.textContent = err instanceof Error ? err.message : "Could not save";
+              sheetFeedback.className = "panel__feedback";
+            }
+            return false;
+          } finally {
+            isSaving = false;
+          }
+        }
+
+        async function handleDecision(kind) {
+          if (!activeCard) return;
+
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+
+          if (kind === "love") {
+            activeFavourite = true;
+            activeDecision = "";
+            sheet.classList.remove("is-pass-fade");
+            sheet.classList.add("is-love-pulse");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--love">Saved ✓</span><span>Ready when you are</span></span>`;
+              sheetFeedback.className = "panel__feedback is-love";
+            }
+          }
+
+          if (kind === "maybe") {
+            activeFavourite = false;
+            activeDecision = "maybe";
+            sheet.classList.remove("is-love-pulse", "is-pass-fade");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--maybe">Maybe</span><span>Saved - review this one, then continue</span></span>`;
+              sheetFeedback.className = "panel__feedback is-maybe";
+            }
+          }
+
+          if (kind === "pass") {
+            activeFavourite = false;
+            activeDecision = "pass";
+            sheet.classList.remove("is-love-pulse");
+            sheet.classList.add("is-pass-fade");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--pass">Passed</span><span>Saved - continue when ready</span></span>`;
+              sheetFeedback.className = "panel__feedback is-pass";
+            }
+          }
+
+          refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
+          updateDecisionButtons();
+
+          const ok = await saveFeedback();
+
+       if (ok) {
+            updateHeaderProgress();
+            updateDecisionButtons();
+
+            if (sheetNextBtn) sheetNextBtn.disabled = false;
+            if (sheetNextTopBtn) {
+              sheetNextTopBtn.disabled = false;
+              sheetNextTopBtn.textContent = "Next →";
+            }
+          }
+
+          window.setTimeout(() => {
+            sheet.classList.remove("is-love-pulse", "is-pass-fade");
+          }, 900);
+        }
+
+        function goToNextCard(e) {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+
+          if (isShowingSummary) return;
+
+          const nextCard = getNextCard();
+          if (nextCard) {
+            openSheetFromCard(nextCard);
+            resetPanelScroll();
+          } else {
+            resetDecisionUI();
+            showSummary();
+            resetPanelScroll();
+          }
+        }
+
+        function closeSheet(skipReload = false) {
+          sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
+
+          if (isMobileSheet()) {
+            sheet.style.transition = "none";
+            sheet.classList.remove("open");
+            overlay.classList.remove("open");
+            sheet.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+            resetSheetTransform();
+
+            requestAnimationFrame(() => {
+              sheet.style.transition = "";
+            });
+          } else {
+            sheet.classList.remove("open");
+            overlay.classList.remove("open");
+            sheet.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+            resetSheetTransform();
+          }
+
+          const needsRefresh = shouldRefreshOnClose && !skipReload;
+
+          activeCard = null;
+          activeItemId = "";
+          activeTags = [];
+          activeFavourite = false;
+          activeDecision = "";
+          isSaving = false;
+          isShowingSummary = false;
+          shouldRefreshOnClose = false;
+          touchStartX = 0;
+          touchStartY = 0;
+          touchCurrentX = 0;
+          touchCurrentY = 0;
+          isDraggingSheet = false;
+          dragMode = "";
+          touchStartedOnInteractive = false;
+          isAnimatingGesture = false;
+          dragCloseY = 0;
+
+          sheetContent?.classList.remove("open");
+          sheetSummary?.classList.remove("open");
+          updateDecisionButtons();
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          if (sheetPosition) sheetPosition.textContent = "1 of 1";
+          if (sheetProgressBar) sheetProgressBar.style.width = "0%";
+
+          sheet.scrollTop = 0;
+          if (needsRefresh) window.location.reload();
+        }
+
+        async function removeShortlistItem(card) {
+          if (!isAgentView || !card) return;
+
+          const itemId = String(card.dataset.itemId || "").trim();
+          if (!itemId) {
+            alert("Missing shortlist item id.");
+            return;
+          }
+
+          const ok = window.confirm("Remove this home from the shortlist?");
+          if (!ok) return;
+
+          card.classList.add("is-removing");
+
+          try {
+            const res = await fetch("/api/shortlists/remove-item", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: itemId })
+            });
+
+            const json = await res.json().catch(() => null);
+
+            if (!res.ok || !json?.ok) {
+              throw new Error(json?.error || "Could not remove listing");
+            }
+
+            if (activeCard === card) {
+              closeSheet(true);
+            }
+
+            card.remove();
+            updateCounts();
+          } catch (err) {
+            card.classList.remove("is-removing");
+            alert(err instanceof Error ? err.message : "Could not remove listing");
+          }
+        }
+
+        function animateSheetBack(mode = "close") {
+          if (!isMobileSheet()) return;
+          isAnimatingGesture = true;
+          sheet.classList.remove("dragging");
+
+          if (mode === "nav") {
+            sheet.style.transition = "transform 0.22s ease, opacity 0.22s ease";
+            sheet.style.transform = "translateX(0)";
+            sheet.style.opacity = "1";
+            window.setTimeout(() => {
+              sheet.style.transition = "";
+              sheet.style.opacity = "";
+              resetSheetTransform();
+              isAnimatingGesture = false;
+            }, 220);
+            return;
+          }
+
+          sheet.style.transition = "transform 0.22s ease";
+          overlay.style.transition = "opacity 0.22s ease";
+          setSheetTransform("translateY(0)");
+          overlay.style.opacity = "";
+          window.setTimeout(() => {
+            sheet.style.transition = "";
+            overlay.style.transition = "";
+            resetSheetTransform();
+            isAnimatingGesture = false;
+          }, 220);
+        }
+
+        function animateSheetOffscreenAndClose() {
+          if (!isMobileSheet()) {
+            closeSheet();
+            return;
+          }
+
+          isAnimatingGesture = true;
+          sheet.classList.remove("dragging");
+
+          const startY = Math.max(0, dragCloseY || 0);
+          sheet.style.transition = "none";
+          sheet.style.transform = `translateY(${startY}px)`;
+
+          overlay.style.transition = "opacity 0.22s ease";
+          requestAnimationFrame(() => {
+            sheet.classList.add("closing-down");
+            overlay.style.opacity = "0";
+          });
+
+          window.setTimeout(() => {
+            sheet.classList.remove("closing-down");
+            sheet.style.transition = "";
+            overlay.style.transition = "";
+            closeSheet();
+            isAnimatingGesture = false;
+          }, 220);
+        }
+
+        function clearInteractionState() {
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            btn?.classList.remove("is-selected");
+            btn?.blur?.();
+          });
+
+          feedbackChips.forEach((chip) => {
+            chip.classList.remove("active");
+            chip?.blur?.();
+          });
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          sheet.classList.remove("is-love-pulse", "is-pass-fade");
+        }
+
+        function resetPanelScroll() {
+          requestAnimationFrame(() => {
+            const scrollArea = sheet.querySelector(".panel__view");
+            if (scrollArea) {
+              scrollArea.scrollTop = 0;
+            } else {
+              sheet.scrollTop = 0;
+            }
+          });
+        }
+
+        function animateHorizontalCardChange(direction) {
+          if (isShowingSummary) return;
+          if (direction !== "next") return;
+
+          clearInteractionState();
+
+          activeFavourite = false;
+          activeDecision = "";
+          activeTags = [];
+
+          sheet.classList.remove("dragging", "is-love-pulse", "is-pass-fade");
+          sheet.style.transition = "";
+          sheet.style.opacity = "";
+          resetSheetTransform();
+
+          isAnimatingGesture = true;
+          goToNextCard();
+
+          window.setTimeout(() => {
+            isAnimatingGesture = false;
+          }, 40);
+        }
+
+        function bindCardEvents(card) {
+          card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openSheetFromCard(card);
+          });
+
+          card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openSheetFromCard(card);
+          });
+
+          card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await removeShortlistItem(card);
+          });
+
+          card.querySelector("[data-preview-image-url]")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const btn = e.currentTarget;
+  const imageUrl = btn?.getAttribute("data-preview-image-url") || "";
+
+  if (!imageUrl || !smsImageInput) return;
+
+  smsImageInput.value = imageUrl;
+
+  try {
+    btn.textContent = "Saving...";
+    await saveSmsImageUrl(imageUrl);
+    btn.textContent = "Selected ✓";
+
+    setTimeout(() => {
+  btn.textContent = "Use as text preview";
+}, 1200);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save image.");
+    btn.textContent = "Use as text preview";
+  }
+});
+        }
+
+        async function sendShortlistText(sendBtn) {
+      const slug = sendBtn?.getAttribute("data-shortlist-slug") || "";
+const clientName = sendBtn?.getAttribute("data-client-name") || "";
+const phone = sendBtn?.getAttribute("data-client-phone") || "";
+const note = sendBtn?.getAttribute("data-note") || "";
+const smsImageUrl = sendBtn?.getAttribute("data-sms-image-url") || "";
+const agentName = "{agentName}";
+
+          if (!slug) {
+            alert("Missing shortlist slug.");
+            return;
+          }
+
+          if (!phone) {
+            alert("No client phone number found.");
+            return;
+          }
+
+          const originalText = sendBtn.textContent || "Send text";
+
+          sendBtn.disabled = true;
+          sendBtn.textContent = "Sending...";
+
+          try {
+            const res = await fetch("/api/shortlists/send-text", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+  slug,
+  clientName,
+  phone,
+  note,
+  agentName,
+  smsImageUrl
+})
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data?.ok) {
+              throw new Error(data?.error || "Failed to send text.");
+            }
+
+            sendBtn.textContent = "Text sent ✓";
+
+            setTimeout(() => {
+              sendBtn.textContent = originalText;
+            }, 1800);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to send text.");
+            sendBtn.textContent = originalText;
+          } finally {
+            sendBtn.disabled = false;
+          }
+        }
+
+        async function copyShortlistLink(copyBtn) {
+          const path = copyBtn?.getAttribute("data-copy-link");
+          if (!path) return;
+
+          const url = `${window.location.origin}${path}`;
+
+          try {
+            await navigator.clipboard.writeText(url);
+            const orig = copyBtn.textContent || "Copy link";
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => {
+              copyBtn.textContent = orig;
+            }, 1400);
+          } catch {
+            alert(url);
+          }
+        }
+async function loadResourceVendors() {
+  if (!resourceVendorList) return;
+
+  resourceVendorList.textContent = "Loading resources...";
+
+  try {
+    const res = await fetch("/api/buyer-resources/vendors");
+const data = await res.json();
+
+const selectedRes = await fetch(`/api/buyer-resources/selected?shortlistSlug=${encodeURIComponent(pageSlug)}`);
+const selectedData = await selectedRes.json();
+
+const vendors = data.vendors || [];
+const selectedIds = new Set(selectedData.vendorIds || []);
+
+    if (!vendors.length) {
+      resourceVendorList.textContent = "No vendors added yet.";
+      return;
+    }
+
+    resourceVendorList.innerHTML = vendors.map((vendor) => `
+      <label class="resource-vendor-row">
+        <input type="checkbox" value="${vendor.id}" ${selectedIds.has(vendor.id) ? "checked" : ""} />
+        <span>
+          <strong>${vendor.name}</strong>
+          <small>${vendor.type}${vendor.email ? ` · ${vendor.email}` : ""}</small>
+        </span>
+      </label>
+    `).join("");
+  } catch (err) {
+    resourceVendorList.textContent = "Could not load resources.";
+  }
+}
+
+async function saveSelectedResourceVendors() {
+  if (!saveResourceVendorsBtn) return;
+
+  const selectedIds = Array.from(
+    document.querySelectorAll("#resource-vendor-list input[type='checkbox']:checked")
+  ).map((input) => input.value);
+
+  const originalText = saveResourceVendorsBtn.textContent || "Save resources";
+
+  saveResourceVendorsBtn.disabled = true;
+  saveResourceVendorsBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/buyer-resources/select", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+     body: JSON.stringify({
+        shortlistSlug:
+          document.body.dataset.shortlistSlug ||
+          window.location.pathname.split("/").filter(Boolean).pop(),
+        vendorIds: selectedIds
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save resources.");
+    }
+
+    if (showResourcesToggle) showResourcesToggle.checked = true;
+
+await fetch("/api/shortlists/update-resource-visibility", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    slug: pageSlug,
+    showResources: true
+  })
+});
+
+saveResourceVendorsBtn.textContent = "Saved ✓";
+
+setTimeout(() => {
+  window.location.reload();
+}, 500);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save resources.");
+    saveResourceVendorsBtn.textContent = originalText;
+  } finally {
+    saveResourceVendorsBtn.disabled = false;
+
+    setTimeout(() => {
+      saveResourceVendorsBtn.textContent = originalText;
+    }, 1200);
+  }
+}
+        async function saveSmsImageUrl(url) {
+  const cleanUrl = String(url || "").trim();
+
+  const res = await fetch("/api/shortlists/update-sms-image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      slug: pageSlug,
+      smsImageUrl: cleanUrl
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || "Failed to save image.");
+  }
+
+  sendTextButtons.forEach((btn) => {
+    btn.setAttribute("data-sms-image-url", cleanUrl);
+  });
+
+  return cleanUrl;
+}
+
+        const viewedListings = getViewedListings();
+
+getCards().forEach((card, index) => {
+  card.dataset.originalOrder = String(index);
+
+  const id = card.dataset.itemId || card.dataset.cardId || "";
+
+  if (id && viewedListings.has(id)) {
+    card.dataset.viewed = "true";
+    card.dataset.isNew = "false";
+    card.querySelector(".card__new-badge")?.remove();
+  }
+
+  bindCardEvents(card);
+});
+
+sortCardsByReview();
+
+presetImageButtons.forEach((btn) => {
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    const imageUrl = btn.getAttribute("data-preset-image-url") || "";
+    if (!imageUrl || !smsImageInput) return;
+
+    const label = btn.querySelector("span");
+    const originalText = label?.textContent || "Preset";
+
+    smsImageInput.value = imageUrl;
+
+presetImageButtons.forEach((b) => b.classList.remove("is-selected"));
+btn.classList.add("is-selected");
+
+    try {
+      if (label) label.textContent = "Saving...";
+      await saveSmsImageUrl(imageUrl);
+      if (label) label.textContent = "Selected ✓";
+
+      setTimeout(() => {
+  if (label) label.textContent = originalText;
+}, 1200);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save image.");
+      if (label) label.textContent = originalText;
+    }
+  });
+});
+
+        if (editToggleBtn) {
+          editToggleBtn.addEventListener("click", () => {
+            editMode = !editMode;
+            syncEditModeUI();
+          });
+        }
+
+        decisionLoveBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("love");
         });
 
-        previewBtn?.addEventListener("click", () => {
-          openSheetFromCard(card);
+        decisionMaybeBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("maybe");
         });
-      });
 
-      sheetCloseBtn?.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        closeSheet();
-      });
+        decisionPassBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("pass");
+        });
 
-      overlay?.addEventListener("click", (event) => {
-        event.preventDefault();
-        closeSheet();
-      });
+        feedbackChips.forEach((chip) => {
+          chip.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget?.blur?.();
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && sheet.classList.contains("open")) {
+            const tag = chip.dataset.tag || "";
+            if (!tag || !activeCard) return;
+
+            activeTags = activeTags.includes(tag)
+              ? activeTags.filter((t) => t !== tag)
+              : [...activeTags, tag];
+
+            updateDecisionButtons();
+            refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
+            await saveFeedback();
+          });
+        });
+descToggle?.addEventListener("click", () => {
+  if (!sheetDescription) return;
+
+  const isCollapsed = sheetDescription.classList.contains("is-collapsed");
+
+  sheetDescription.classList.toggle("is-collapsed");
+
+  descToggle.textContent = isCollapsed ? "Show less" : "Read more";
+});
+
+sheetNextBtn?.addEventListener("click", goToNextCard);
+        
+
+        sheetNextTopBtn?.addEventListener("click", (e) => {
+          if (isShowingSummary) {
+            e.preventDefault();
+            const firstCard = getCards()[0];
+            if (firstCard) openSheetFromCard(firstCard);
+            return;
+          }
+
+          goToNextCard(e);
+        });
+
+               summaryRestartBtn?.addEventListener("click", () => {
+          const firstCard = getCards()[0];
+          if (firstCard) openSheetFromCard(firstCard);
+        });
+
+        document.querySelectorAll("[data-summary-comment]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const input = document.getElementById("summary-comment-input");
+            const text = btn.getAttribute("data-summary-comment") || "";
+            if (input) input.value = text;
+          });
+        });
+
+        document.getElementById("summary-send-comment-btn")?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+          const btn = e.currentTarget;
+          const input = document.getElementById("summary-comment-input");
+          const status = document.getElementById("summary-comment-status");
+          const comment = String(input?.value || "").trim();
+
+          if (!comment) {
+            if (status) status.textContent = "Add a quick note first.";
+            return;
+          }
+
+          const originalText = btn.textContent || "Send note to agent";
+
+          btn.disabled = true;
+          btn.textContent = "Sending...";
+
+         const ok = await sendReviewComplete("comment", comment);
+
+          btn.textContent = ok ? "Sent ✓" : originalText;
+
+          if (status) {
+            status.textContent = ok
+              ? "Thanks - your note was sent."
+              : "Could not send that note.";
+          }
+
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = originalText;
+          }, 1400);
+        });
+
+        navSendTextBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await sendShortlistText(navSendTextBtn);
+        });
+
+        navCopyLinkBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await copyShortlistLink(navCopyLinkBtn);
+        });
+
+                saveSmsImageBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+          const originalText = saveSmsImageBtn.textContent || "Save image URL";
+
+          try {
+            saveSmsImageBtn.disabled = true;
+            saveSmsImageBtn.textContent = "Saving...";
+
+            await saveSmsImageUrl(smsImageInput?.value || "");
+
+            saveSmsImageBtn.textContent = "Saved ✓";
+
+setTimeout(() => {
+  window.location.reload();
+}, 500);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to save image.");
+            saveSmsImageBtn.textContent = originalText;
+          } finally {
+            saveSmsImageBtn.disabled = false;
+          }
+        });
+        addResourceBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = addResourceBtn.textContent || "Add resource";
+
+  addResourceBtn.disabled = true;
+  addResourceBtn.textContent = "Adding...";
+
+  try {
+    const res = await fetch("/api/shortlists/add-resource", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        type: resourceTypeInput?.value || "other",
+        name: resourceNameInput?.value?.trim() || "",
+        phone: resourcePhoneInput?.value?.trim() || "",
+        email: resourceEmailInput?.value?.trim() || "",
+        website_url: resourceWebsiteInput?.value?.trim() || "",
+        description: resourceDescriptionInput?.value?.trim() || ""
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to add resource.");
+    }
+
+    addResourceBtn.textContent = "Added ✓";
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to add resource.");
+    addResourceBtn.textContent = originalText;
+  } finally {
+    addResourceBtn.disabled = false;
+  }
+});
+saveResourceVisibilityBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = saveResourceVisibilityBtn.textContent || "Save resource setting";
+  const showResources = Boolean(showResourcesToggle?.checked);
+
+  saveResourceVisibilityBtn.disabled = true;
+  saveResourceVisibilityBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-resource-visibility", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        showResources
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save setting.");
+    }
+
+    saveResourceVisibilityBtn.textContent = "Saved ✓";
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save setting.");
+    saveResourceVisibilityBtn.textContent = originalText;
+  } finally {
+    saveResourceVisibilityBtn.disabled = false;
+  }
+});
+saveSmsMessageBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = saveSmsMessageBtn.textContent || "Save text message";
+  const smsMessage = smsMessageInput?.value?.trim() || "";
+
+  saveSmsMessageBtn.disabled = true;
+  saveSmsMessageBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-sms-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: pageSlug,
+        smsMessage
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save SMS message.");
+    }
+
+    saveSmsMessageBtn.textContent = "Saved ✓";
+
+   setTimeout(() => {
+  saveSmsMessageBtn.textContent = originalText;
+}, 1400);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save SMS message.");
+    saveSmsMessageBtn.textContent = originalText;
+  } finally {
+    saveSmsMessageBtn.disabled = false;
+  }
+});
+        saveNoteBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+  const note = String(noteInput?.value || "").trim();
+  const originalText = saveNoteBtn.textContent || "Save message";
+
+  saveNoteBtn.disabled = true;
+  saveNoteBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-note", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        note
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save message.");
+    }
+
+    if (mastheadMessage) mastheadMessage.textContent = note;
+
+    sendTextButtons.forEach((btn) => {
+      btn.setAttribute("data-note", note);
+    });
+
+    saveNoteBtn.textContent = "Saved ✓";
+
+    setTimeout(() => {
+      saveNoteBtn.textContent = originalText;
+    }, 1400);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save message.");
+    saveNoteBtn.textContent = originalText;
+  } finally {
+    saveNoteBtn.disabled = false;
+  }
+});
+
+        sendTextButtons.forEach((btn) => {
+          if (btn === navSendTextBtn) return;
+          btn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            await sendShortlistText(btn);
+          });
+        });
+
+        sheetCloseBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
           closeSheet();
-        }
-      });
+        });
 
-      closeSheet();
+        overlay.addEventListener("click", (e) => {
+          e.preventDefault();
+          closeSheet();
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (!sheet.classList.contains("open")) return;
+
+          if (e.key === "Escape") closeSheet();
+          if (e.key === "ArrowRight" && !sheetNextBtn?.disabled) goToNextCard();
+        });
+
+        sheet.addEventListener(
+          "touchstart",
+          (e) => {
+            if (!sheet.classList.contains("open")) return;
+            if (!isMobileSheet()) return;
+            if (isAnimatingGesture) return;
+
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            touchStartedOnInteractive = Boolean(
+              target.closest("button, a, input, textarea, select, [data-tag], [data-decision]")
+            );
+
+            if (touchStartedOnInteractive) return;
+
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchCurrentX = touch.clientX;
+            touchCurrentY = touch.clientY;
+            isDraggingSheet = false;
+            dragMode = "";
+            dragCloseY = 0;
+          },
+          { passive: true }
+        );
+
+        sheet.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!sheet.classList.contains("open")) return;
+            if (!isMobileSheet()) return;
+            if (isAnimatingGesture) return;
+            if (touchStartedOnInteractive) return;
+
+            const touch = e.touches[0];
+            touchCurrentX = touch.clientX;
+            touchCurrentY = touch.clientY;
+
+            const deltaX = touchCurrentX - touchStartX;
+            const deltaY = touchCurrentY - touchStartY;
+
+            if (!dragMode) {
+              if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                if (deltaY > 0 && sheet.scrollTop <= 0) {
+                  dragMode = "close";
+                } else {
+                  return;
+                }
+              } else if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                dragMode = "nav";
+              } else {
+                return;
+              }
+            }
+
+            if (dragMode === "close") {
+  dragMode = "";
+  return;
+}
+
+            if (dragMode === "nav") {
+              isDraggingSheet = true;
+              sheet.classList.add("dragging");
+              const limitedX = Math.max(-90, Math.min(90, deltaX));
+              sheet.style.transform = `translateX(${limitedX}px)`;
+              sheet.style.opacity = String(1 - Math.min(Math.abs(limitedX) / 220, 0.22));
+              e.preventDefault();
+            }
+          },
+          { passive: false }
+        );
+
+        sheet.addEventListener("touchend", () => {
+          if (!sheet.classList.contains("open")) return;
+          if (!isMobileSheet()) return;
+          if (isAnimatingGesture) return;
+
+          const deltaX = touchCurrentX - touchStartX;
+          const deltaY = touchCurrentY - touchStartY;
+          const absX = Math.abs(deltaX);
+          const absY = Math.abs(deltaY);
+
+        if (dragMode === "nav") {
+            if (deltaX < -70) {
+              clearInteractionState();
+              animateHorizontalCardChange("next");
+            } else {
+              animateSheetBack("nav");
+            }
+          }
+
+          if (!dragMode) {
+            resetSheetTransform();
+          }
+
+          touchStartX = 0;
+          touchStartY = 0;
+          touchCurrentX = 0;
+          touchCurrentY = 0;
+          isDraggingSheet = false;
+          dragMode = "";
+          touchStartedOnInteractive = false;
+          dragCloseY = 0;
+        });
+
+        loadResourceVendors();
+
+saveResourceVendorsBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  await saveSelectedResourceVendors();
+});
+
+syncEditModeUI();
+updateCounts();
+closeSheet(true);
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initShortlistPage, { once: true });
+      } else {
+        initShortlistPage();
+      }
+
+      document.addEventListener("astro:page-load", initShortlistPage);
     </script>
   </body>
 </html>

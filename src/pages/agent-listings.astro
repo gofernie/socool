@@ -1,0 +1,2419 @@
+---
+import { createClient } from "@supabase/supabase-js";
+
+const slug = "chris-crump";
+
+const fallbackPage = {
+  agentName: "Chris Crump",
+  agentTitle: "Real Estate Advisor",
+  phone: "250.619.0390",
+  email: "chris@example.com",
+  city: "Nanaimo",
+  heroEyebrow: "Curated by Chris Crump",
+  heroHeading: "Nanaimo homes.",
+  heroIntro:
+    "A simple, curated place to explore homes in Nanaimo - organized by property type, price point, and what buyers are watching right now.",
+  agentPickTitle: "Not a giant listing portal.",
+  agentPickText: "Just the homes and categories buyers actually ask about most.",
+  featuredListingMls: "",
+
+  linkedinUrl: "",
+  twitterUrl: "",
+  instagramUrl: "",
+  facebookUrl: "",
+  socialTitle: "Follow along.",
+  socialIntro:
+    "Market notes, listing updates, and local real estate context from your agent.",
+  socialFeedType: "",
+  socialFeedUrl: "",
+  socialFeedEmbed: "",
+
+  cityIntro:
+    "Nanaimo has a mix of established neighbourhoods, newer subdivisions, condo options, waterfront pockets, and family-friendly areas.",
+  cityNotes:
+    "Add neighbourhood notes, buyer tips, local context, and links to popular searches here.",
+  agentBio:
+    "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
+  newListingsTitle: "New listings.",
+  newListingsIntro: "The latest homes to hit the market.",
+  newListingsCity: "Nanaimo",
+  newListingsType: "",
+  newListingsMaxPrice: "",
+  newListingsLimit: 6,
+  groups: [
+    {
+      title: "Condos in Nanaimo",
+      kicker: "Low-maintenance living",
+      href: "/explore?city=Nanaimo&type=condo",
+      text: "Explore condos close to shops, trails, the waterfront, and everyday amenities."
+    },
+    {
+      title: "Single-family homes",
+      kicker: "Room to grow",
+      href: "/explore?city=Nanaimo&type=house",
+      text: "Detached homes across popular Nanaimo neighbourhoods and family-friendly pockets."
+    },
+    {
+      title: "Popular under $800k",
+      kicker: "Buyer sweet spot",
+      href: "/explore?city=Nanaimo&maxPrice=800",
+      text: "Homes in one of the most watched price ranges for active buyers."
+    },
+    {
+      title: "New listings",
+      kicker: "Fresh to market",
+      href: "/explore?city=Nanaimo&sort=newest",
+      text: "Recently listed homes worth watching before they get buried."
+    }
+  ]
+};
+
+let page = fallbackPage;
+
+try {
+  const res = await fetch(`${Astro.url.origin}/api/agent-page?slug=${slug}`);
+  const json = await res.json();
+  page = { ...fallbackPage, ...(json?.data || {}) };
+} catch (error) {
+  console.error("Could not load agent page:", error);
+}
+
+const agent = {
+  name: page.agentName,
+  title: page.agentTitle,
+  phone: page.phone,
+  email: page.email,
+  city: page.city,
+  bio: page.agentBio
+};
+
+function buildExploreHref(group) {
+  const params = new URLSearchParams();
+
+  if (group.city) params.set("city", group.city);
+  if (group.area) params.set("area", group.area);
+  if (group.type) params.set("type", group.type);
+  if (group.minPrice) params.set("minPrice", group.minPrice);
+  if (group.maxPrice) params.set("maxPrice", group.maxPrice);
+  if (group.sort) params.set("sort", group.sort);
+
+  const query = params.toString();
+  return query ? `/explore?${query}` : "/explore";
+}
+
+const groups = (Array.isArray(page.groups) ? page.groups : fallbackPage.groups).map((group) => ({
+  ...group,
+  href: buildExploreHref(group)
+}));
+
+const heroHeadingWords = String(page.heroHeading || `${agent.city} homes.`).split(" ");
+const heroHeadingAccent = heroHeadingWords.pop() || "homes.";
+const heroHeadingMain = heroHeadingWords.join(" ") || agent.city;
+
+const listingCity = page.newListingsCity || agent.city || "Nanaimo";
+const listingType = page.newListingsType || "";
+const listingMinPrice = Number(page.newListingsMinPrice || 0);
+const listingMaxPrice = Number(page.newListingsMaxPrice || 0);
+const listingLimit = Number(page.newListingsLimit || 6);
+const listingSort = page.newListingsSort || "newest";
+
+const newListingsHref = `/explore?city=${encodeURIComponent(listingCity)}${
+  listingType ? `&type=${encodeURIComponent(listingType)}` : ""
+}${
+  listingMinPrice ? `&minPrice=${listingMinPrice}` : ""
+}${
+  listingMaxPrice ? `&maxPrice=${listingMaxPrice}` : ""
+}&sort=newest`;
+
+let newListings = [];
+let featuredListing = null;
+
+const socialLinks = [
+  { label: "LinkedIn", url: page.linkedinUrl },
+  { label: "X / Twitter", url: page.twitterUrl },
+  { label: "Instagram", url: page.instagramUrl },
+  { label: "Facebook", url: page.facebookUrl }
+].filter((item) => item.url);
+
+const hasSocialSection = socialLinks.length > 0;
+
+const clean = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim();
+
+const typeMatches = (listingTypeValue, targetTypeValue) => {
+  const type = clean(listingTypeValue);
+  const target = clean(targetTypeValue);
+
+  if (!target) return true;
+
+  if (target === "house") {
+    return (
+      type.includes("house") ||
+      type.includes("detached") ||
+      type.includes("single family") ||
+      type.includes("single-family") ||
+      type.includes("residential")
+    );
+  }
+
+  if (target === "condo") {
+    return type.includes("condo") || type.includes("apartment");
+  }
+
+  if (target === "townhouse") {
+    return (
+      type.includes("townhouse") ||
+      type.includes("townhome") ||
+      type.includes("row")
+    );
+  }
+
+  return type.includes(target);
+};
+
+const getListingMls = (listing) =>
+  String(
+    listing.mls_number ||
+      listing.mlsNumber ||
+      listing.id ||
+      listing.repliers_listing_id ||
+      listing.raw?.mlsNumber ||
+      listing.raw?.id ||
+      ""
+  ).replace(/[^0-9]/g, "");
+
+const getListingPrice = (listing) => {
+  const raw = listing.price ?? listing.listPrice ?? listing.priceNumber ?? null;
+  const num = Number(raw);
+
+  if (Number.isFinite(num) && num > 1000) {
+    return `$${Math.round(num).toLocaleString()}`;
+  }
+
+  return listing.price_text || listing.priceText || "Price on request";
+};
+
+const getListingAddress = (listing) =>
+  listing.address ||
+  listing.full_address ||
+  listing.addressText ||
+  listing.addressObj?.streetAddress ||
+  [
+    listing.addressObj?.streetNumber,
+    listing.addressObj?.streetName,
+    listing.addressObj?.streetSuffix
+  ]
+    .filter(Boolean)
+    .join(" ") ||
+  "Address available";
+
+const normalizeListingImageUrl = (value) => {
+  if (!value) return "";
+
+  const raw =
+    typeof value === "string"
+      ? value
+   : value.highRes || value.mediumRes || value.lowRes || value.url || value.src || value.href || value.path || "";
+
+  if (!raw) return "";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+
+  if (cleaned.startsWith("/vreb/")) {
+    return `https://cdn.repliers.io${cleaned}`;
+  }
+
+  return cleaned;
+};
+
+const getListingImage = (listing) => {
+  const image =
+    listing.image_url ||
+    listing.image ||
+    listing.photo ||
+    listing.images?.[0] ||
+    listing.images?.[1] ||
+    listing.raw?.images?.[0] ||
+    listing.raw?.images?.[1] ||
+    listing.raw?.images?.[0]?.url ||
+    listing.raw?.images?.[1]?.url;
+
+  return normalizeListingImageUrl(image);
+};
+
+const getListingImages = (listing) => {
+  const rawImages =
+    listing.images ||
+    listing.photo_urls ||
+    listing.photos ||
+    listing.raw?.images ||
+    [];
+
+  const images = Array.isArray(rawImages)
+    ? rawImages
+        .map((img) => {
+          if (typeof img === "string") return normalizeListingImageUrl(img);
+
+          return normalizeListingImageUrl(
+            img.highRes ||
+              img.mediumRes ||
+              img.lowRes ||
+              img.url ||
+              img.src ||
+              img.href ||
+              img.path ||
+              ""
+          );
+        })
+        .filter(Boolean)
+    : [];
+
+  const firstImage = getListingImage(listing);
+
+  return Array.from(new Set([firstImage, ...images].filter(Boolean)));
+};
+
+const getListingBeds = (listing) =>
+  listing.beds ||
+  listing.bedrooms ||
+  listing.details?.numBedrooms ||
+  listing.raw?.details?.numBedrooms ||
+  0;
+
+const getListingBaths = (listing) =>
+  listing.baths ||
+  listing.bathrooms ||
+  listing.details?.numBathrooms ||
+  listing.raw?.details?.numBathrooms ||
+  0;
+
+const getListingSqft = (listing) =>
+  listing.sqft ||
+  listing.square_feet ||
+  listing.squareFeet ||
+  listing.details?.sqft ||
+  listing.details?.squareFeet ||
+  listing.raw?.details?.sqft ||
+  listing.raw?.details?.squareFeet ||
+  "";
+const getListingYearBuilt = (listing) =>
+  listing.year_built ||
+  listing.yearBuilt ||
+  listing.details?.yearBuilt ||
+  listing.raw?.details?.yearBuilt ||
+  "";
+
+const getListingLotSize = (listing) =>
+  listing.lot_size ||
+  listing.lotSize ||
+  listing.details?.lotSize ||
+  listing.raw?.details?.lotSize ||
+  "";
+
+const getListingArea = (listing) =>
+  listing.area ||
+  listing.neighborhood ||
+  listing.addressObj?.neighborhood ||
+  listing.address?.neighborhood ||
+  listing.details?.area ||
+  listing.details?.subArea ||
+  listing.raw?.address?.neighborhood ||
+  listing.raw?.details?.area ||
+  listing.raw?.details?.subArea ||
+  "";
+
+const titleCase = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getListingPropertyType = (listing) =>
+  titleCase(
+    listing.normalized_type ||
+      listing.property_type ||
+      listing.propertyType ||
+      listing.type ||
+      listing.details?.propertyType ||
+      listing.raw?.details?.propertyType ||
+      ""
+  );
+
+const getListingDom = (listing) => {
+  const direct =
+    listing.days_on_market ||
+    listing.daysOnMarket ||
+    listing.dom ||
+    listing.daysOnMarketText ||
+    listing.details?.daysOnMarket ||
+    listing.details?.dom ||
+    listing.raw?.daysOnMarket ||
+    listing.raw?.dom ||
+    listing.raw?.details?.daysOnMarket ||
+    listing.raw?.details?.dom;
+
+  if (direct) return direct;
+
+  const listedRaw =
+    listing.listed_at ||
+    listing.list_date ||
+    listing.listDate ||
+    listing.created_at ||
+    listing.raw?.listDate ||
+    listing.raw?.list_date ||
+    listing.raw?.timestamps?.listingUpdated;
+
+  const listedTime = new Date(listedRaw).getTime();
+  if (!listedTime) return "";
+
+  const diff = Date.now() - listedTime;
+  const days = Math.max(0, Math.floor(diff / 86400000));
+
+  return days;
+};
+
+const buildListingHighlights = (listing) => {
+  const desc = String(getListingDescription(listing) || "").toLowerCase();
+  const propertyType = String(getListingPropertyType(listing) || "").toLowerCase();
+  const highlights = [];
+
+  const sqft = Number(String(getListingSqft(listing) || "").replace(/[^0-9.]/g, ""));
+  const beds = Number(getListingBeds(listing));
+
+  const isCondo =
+    propertyType.includes("condo") ||
+    propertyType.includes("apartment");
+
+  const isTownhouse =
+    propertyType.includes("townhouse") ||
+    propertyType.includes("townhome") ||
+    propertyType.includes("row");
+
+  const isHouse =
+    propertyType.includes("house") ||
+    propertyType.includes("detached") ||
+    propertyType.includes("single family");
+
+const hasView =
+  /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc) &&
+  !/viewing|preview|virtual tour|view today|viewing appointment/.test(desc);  const hasSuite = /suite|mortgage helper|income|secondary suite|legal suite/.test(desc);
+  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+  const quiet = /cul-de-sac|quiet street|private|privacy/.test(desc);
+  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+
+ if (isCondo) {
+    if (hasView) highlights.push("Open outlook");
+    if (amenities) highlights.push("Building amenities");
+    if (hasParking) highlights.push("Parking included");
+    if (outdoor) highlights.push("Outdoor space");
+    if (isUpdated) highlights.push("Updated interior");
+    if (sqft && sqft >= 900) highlights.push("Larger layout");
+
+    if (highlights.length === 0) {
+      highlights.push("Low-maintenance living");
+    }
+  } else if (isTownhouse) {
+    if (beds && beds >= 3) highlights.push("Family-friendly layout");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Private outdoor space");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quieter setting");
+    if (sqft && sqft >= 1600) highlights.push("Generous townhome space");
+    highlights.push("Lock-and-leave option");
+  } else if (isHouse) {
+    if (sqft && sqft >= 2500) highlights.push("Generous floor plan");
+    if (beds && beds >= 4) highlights.push("Family-sized");
+    if (hasView) highlights.push("View potential");
+    if (hasSuite) highlights.push("Suite potential");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quiet setting");
+    if (hasParking) highlights.push("Good parking");
+  } else {
+    if (hasView) highlights.push("View setting");
+    if (isUpdated) highlights.push("Updated features");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Outdoor space");
+  }
+
+  return Array.from(new Set(highlights)).slice(0, 3);
+};
+const scoreListing = (listing) => {
+  const desc = String(getListingDescription(listing) || "").toLowerCase();
+  const dom = Number(getListingDom(listing) || 0);
+  const year = Number(getListingYearBuilt(listing) || 0);
+  const sqft = Number(String(getListingSqft(listing) || "").replace(/[^0-9.]/g, ""));
+  const beds = Number(getListingBeds(listing) || 0);
+  const baths = Number(getListingBaths(listing) || 0);
+
+  let score = 0;
+
+  if (dom && dom <= 7) score += 30;
+  if (year >= 2015) score += 18;
+  if (sqft >= 2500) score += 16;
+  if (beds >= 4 && baths >= 3) score += 16;
+  if (/ocean|water|harbour|harbor|lake|mountain|view/.test(desc)) score += 18;
+  if (/suite|income|mortgage helper|secondary suite|legal suite/.test(desc)) score += 18;
+  if (/renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc)) score += 12;
+  if (/cul-de-sac|quiet|private|privacy/.test(desc)) score += 10;
+  if (/garage|rv parking|double garage/.test(desc)) score += 8;
+
+  return score;
+};
+const getListingDescription = (listing) =>
+  listing.description ||
+  listing.publicRemarks ||
+  listing.remarks ||
+  listing.details?.description ||
+  listing.details?.publicRemarks ||
+  listing.details?.remarks ||
+  listing.raw?.description ||
+  listing.raw?.publicRemarks ||
+  listing.raw?.remarks ||
+  listing.raw?.details?.description ||
+  listing.raw?.details?.publicRemarks ||
+  listing.raw?.details?.remarks ||
+  "A quick preview of this property.";
+
+const getListingDate = (listing) => {
+  const raw =
+    listing.listed_at ||
+    listing.list_date ||
+    listing.listDate ||
+    listing.created_at ||
+    listing.updated_at ||
+    listing.raw?.timestamps?.listingUpdated ||
+    0;
+
+  return new Date(raw).getTime() || 0;
+};
+
+try {
+  const supabase = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  let query = supabase
+    .from("listing_rows")
+    .select("*")
+    .limit(listingLimit);
+
+  if (listingCity) {
+    query = query.eq("normalized_city", clean(listingCity));
+  }
+
+  if (listingType) {
+    if (listingType === "house") {
+      query = query.eq("normalized_type", "detached");
+    } else {
+      query = query.eq("normalized_type", clean(listingType));
+    }
+  }
+
+  if (listingMinPrice) {
+    query = query.gte("price", listingMinPrice * 1000);
+  }
+
+  if (listingMaxPrice) {
+    query = query.lte("price", listingMaxPrice * 1000);
+  }
+
+if (listingSort === "price-low") {
+  query = query.order("price", { ascending: true });
+} else if (listingSort === "price-high") {
+  query = query.order("price", { ascending: false });
+} else if (listingSort === "beds-high") {
+  query = query.order("beds", { ascending: false });
+} else {
+  query = query.order("listed_at", { ascending: false });
+}
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("New listings query failed:", error);
+  } else if (Array.isArray(data)) {
+    newListings = data;
+  }
+
+   const featuredMls = getListingMls({ id: page.featuredListingMls });
+
+  if (featuredMls) {
+    const { data: featuredRows, error: featuredError } = await supabase
+      .from("listing_rows")
+      .select("*")
+      .limit(2000);
+
+    if (featuredError) {
+      console.error("Featured listing query failed:", featuredError);
+    } else {
+      featuredListing =
+        (featuredRows || []).find((listing) => getListingMls(listing) === featuredMls) ||
+        null;
+
+      if (!featuredListing) {
+        console.warn("Featured MLS not found:", featuredMls);
+      }
+    }
+  }
+} catch (error) {
+  console.error("Could not load new listings:", error);
+}
+---
+
+<html lang="en">
+  <head>
+    <title>{agent.city} Homes Curated by {agent.name}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content={`A simple curated ${agent.city} listing page with condos, single-family homes, popular price points, and new listings.`}
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #f7f6f3;
+        --card: #ffffff;
+        --warm: #f0ede8;
+        --dark: #181614;
+        --dark-2: #211f1c;
+        --ink: #18160f;
+        --muted: #6b6760;
+        --soft: #a09c96;
+        --gold: #c09b64;
+        --gold-soft: #f6ebcf;
+        --line: #e4e0d9;
+        --line-strong: #ccc8c0;
+        --green: #2d5016;
+        --green-mid: #3d6b20;
+
+        --f-display: "DM Serif Display", Georgia, serif;
+        --f-body: "DM Sans", system-ui, sans-serif;
+
+        --shadow: 0 16px 50px rgba(17, 14, 9, 0.12);
+        --shadow-card: 0 8px 30px rgba(17, 14, 9, 0.07);
+
+        --r-sm: 4px;
+        --r: 8px;
+        --r-lg: 12px;
+        --r-xl: 16px;
+        --r-2xl: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        margin: 0;
+        overflow-x: hidden;
+      }
+
+      body {
+        font-family: var(--f-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        min-height: 100vh;
+      }
+
+      .shell {
+        width: min(1280px, calc(100% - 64px));
+        margin: 0 auto;
+      }
+
+      .agent-header {
+        background: var(--dark);
+        color: #f0ede8;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        padding: 16px 0;
+      }
+
+      .agent-header__inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .agent-brand {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .agent-brand strong {
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      .agent-brand span {
+        font-size: 0.78rem;
+        color: rgba(240,237,232,0.48);
+      }
+
+      .agent-contact {
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 999px;
+        padding: 9px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(255,255,255,0.78);
+      }
+
+      .agent-contact:hover {
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+      }
+
+      .hero {
+        background: var(--dark);
+        color: #f0ede8;
+        padding: 74px 0 68px;
+      }
+
+      .hero__grid {
+        display: grid;
+        grid-template-columns: 1fr 0.76fr;
+        gap: 64px;
+        align-items: end;
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: var(--gold);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .hero-title {
+        margin: 0;
+        font-family: var(--f-display);
+        font-size: clamp(3.2rem, 7vw, 6.8rem);
+        font-weight: 400;
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      .hero-title span,
+      .hero-title em {
+        display: block;
+      }
+
+      .hero-title em {
+        font-style: italic;
+        color: rgba(240,237,232,0.42);
+      }
+
+      .hero p {
+        max-width: 680px;
+        margin: 22px 0 0;
+        color: rgba(240,237,232,0.48);
+        font-size: 1rem;
+        line-height: 1.75;
+      }
+
+      .hero-card {
+        min-height: 330px;
+        padding: 28px;
+        border: 1px solid rgba(255,255,255,0.09);
+        border-radius: 24px;
+        background: var(--dark-2);
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .hero-card strong {
+        display: block;
+        font-family: var(--f-display);
+        font-size: 2rem;
+        font-weight: 400;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        color: #fff;
+      }
+
+      .hero-card p {
+        color: rgba(240,237,232,0.48);
+        font-size: 0.92rem;
+      }
+
+      .featured-listing {
+        display: grid;
+        gap: 18px;
+      }
+
+      .featured-listing__image {
+        min-height: 210px;
+        border-radius: 18px;
+        background:
+          linear-gradient(135deg, rgba(192,155,100,0.28), rgba(255,250,241,0.08));
+        background-size: cover;
+        background-position: center;
+      }
+
+      .featured-listing span {
+        display: block;
+        margin-top: 6px;
+        color: rgba(240,237,232,0.52);
+      }
+
+      .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 30px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        border-radius: 999px;
+        padding: 0 16px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn--dark {
+        background: var(--green);
+        color: #fff;
+      }
+
+      .btn--dark:hover {
+        background: var(--green-mid);
+      }
+
+      .btn--light {
+        background: transparent;
+        color: #f0ede8;
+        border: 1px solid rgba(255,255,255,0.16);
+      }
+
+      .section {
+        padding: 52px 0;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 28px;
+        padding-bottom: 18px;
+        margin-bottom: 22px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-family: var(--f-display);
+        font-size: clamp(2rem, 4vw, 3.8rem);
+        font-weight: 400;
+        font-style: italic;
+        line-height: 0.98;
+        letter-spacing: -0.03em;
+      }
+
+      .section-head p {
+        max-width: 500px;
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .group-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .group-card,
+      .listing-placeholder,
+      .bio,
+      .social-profile-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(17,14,9,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+
+      .group-card:hover,
+      .listing-placeholder:hover,
+      .social-profile-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--line-strong);
+        box-shadow: var(--shadow-card);
+      }
+
+      .group-card {
+        min-height: 230px;
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .group-card small,
+      .social-profile-card small {
+        color: var(--gold);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.68rem;
+      }
+
+      .group-card h3 {
+        margin: 12px 0 10px;
+        font-family: var(--f-display);
+        font-size: 1.55rem;
+        font-weight: 400;
+        line-height: 1.05;
+      }
+
+      .group-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.55;
+      }
+
+      .card-link-text {
+        margin-top: 18px;
+        font-size: 0.82rem;
+      }
+
+      .card-link-text::after {
+        content: " →";
+      }
+
+      .city-band {
+        background: var(--dark);
+        color: #f0ede8;
+        border-radius: 28px;
+        padding: 38px;
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 34px;
+        box-shadow: var(--shadow);
+      }
+
+      .city-band h2 {
+        margin: 0;
+        font-family: var(--f-display);
+        font-size: clamp(2.4rem, 4vw, 4.4rem);
+        font-weight: 400;
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+      }
+
+      .city-band p {
+        color: rgba(240,237,232,0.58);
+        line-height: 1.7;
+        margin: 0 0 14px;
+      }
+
+      .listing-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .listing-placeholder {
+        appearance: none;
+        width: 100%;
+        overflow: hidden;
+        text-align: left;
+        cursor: pointer;
+        color: inherit;
+        padding: 0;
+      }
+
+      .listing-placeholder__image {
+        height: 220px;
+        background:
+          linear-gradient(135deg, rgba(192,155,100,0.26), rgba(24,22,20,0.08));
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .listing-placeholder__image::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.24), transparent 52%);
+      }
+
+      .listing-placeholder__body {
+        padding: 18px 20px 20px;
+      }
+
+      .listing-placeholder__body strong {
+        display: block;
+        font-family: var(--f-display);
+        font-size: 1.6rem;
+        font-weight: 400;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+
+      .listing-placeholder__body span {
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .listing-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+      }
+
+      .listing-meta span + span::before {
+        content: "•";
+        margin-right: 10px;
+        color: var(--soft);
+      }
+
+      .listing-card-desc {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+      .social-card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .social-profile-card {
+        min-height: 180px;
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .social-profile-card strong {
+        font-family: var(--f-display);
+        font-size: 1.55rem;
+        font-weight: 400;
+      }
+
+      .social-profile-card span {
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 0.88rem;
+      }
+
+      .bio {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 28px;
+        align-items: center;
+        padding: 26px;
+        border-radius: 28px;
+      }
+
+      .bio__photo {
+        border-radius: 22px;
+        aspect-ratio: 1;
+        background:
+          linear-gradient(135deg, rgba(24,22,20,0.14), rgba(192,155,100,0.28));
+      }
+
+      .bio h2 {
+        margin: 0 0 10px;
+        font-family: var(--f-display);
+        font-size: 2.8rem;
+        font-weight: 400;
+        letter-spacing: -0.03em;
+      }
+
+      .bio p {
+        color: var(--muted);
+        line-height: 1.7;
+        margin: 0;
+      }
+
+      .bio .btn--light {
+        color: var(--ink);
+        background: var(--warm);
+        border-color: var(--line);
+      }
+
+      footer {
+        padding: 34px 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 8, 5, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+        z-index: 800;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+
+      .modal-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .panel {
+        position: fixed;
+        left: 50%;
+        top: 0;
+        width: min(860px, calc(100vw - 32px));
+        max-height: 100vh;
+        background: #fff;
+        z-index: 900;
+        overflow: hidden;
+        transform: translate(-50%, -106%);
+        transition: transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--line);
+        border-top: 0;
+        border-radius: 0 0 var(--r-2xl) var(--r-2xl);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+      }
+
+      .panel.open {
+        transform: translate(-50%, 0);
+      }
+
+      .panel__grab {
+        display: none;
+      }
+
+      .panel__progress-wrap {
+        position: sticky;
+        top: 0;
+        z-index: 8;
+        background: #fff;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      }
+
+      .panel__progress-track {
+        height: 5px;
+        width: 100%;
+        background: #ece8e2;
+        overflow: hidden;
+      }
+
+      .panel__progress-bar {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, var(--green), var(--green-mid));
+      }
+
+      .panel__header {
+        padding: 14px 18px;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+      }
+
+      .panel__position {
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .panel__header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .panel__top-btn,
+      .panel__close {
+        appearance: none;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.14s, border-color 0.14s, color 0.14s, opacity 0.14s;
+        text-decoration: none;
+      }
+
+      .panel__top-btn:hover,
+      .panel__close:hover {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+
+      .panel__close {
+        width: 36px;
+        padding: 0;
+        color: var(--muted);
+      }
+
+      .panel__view {
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .panel__content {
+        display: block;
+      }
+
+      .panel__image-stage {
+        position: relative;
+        background: var(--warm);
+      }
+
+      .panel__image {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        display: block;
+      }
+
+      .panel__photo-count {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        z-index: 2;
+        background: rgba(17, 14, 9, 0.58);
+        color: rgba(255, 255, 255, 0.94);
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+
+      .panel__detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.panel__detail-row span + span::before {
+  content: "•";
+  margin-right: 14px;
+  color: var(--soft);
+}
+
+.panel__highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+.panel__highlight-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: #6f4f1f;
+  border: 1px solid rgba(192,155,100,0.38);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+      .photo-nav {
+        position: absolute;
+        top: 50%;
+        z-index: 3;
+        transform: translateY(-50%);
+        width: 38px;
+        height: 38px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.75);
+        background: rgba(17,14,9,0.48);
+        color: #fff;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .photo-nav--prev {
+        left: 14px;
+      }
+
+      .photo-nav--next {
+        right: 14px;
+      }
+
+      .photo-nav:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
+
+      .panel__body {
+        padding: 30px 32px 30px;
+      }
+
+    .panel__headline {
+  display: block;
+  margin-bottom: 16px;
+}
+
+      .panel__headline > div {
+        min-width: 0;
+      }
+
+      .panel__price {
+        font-family: var(--f-display);
+        font-size: clamp(2.1rem, 4.2vw, 3rem);
+        font-weight: 400;
+        letter-spacing: -0.03em;
+        line-height: 1;
+        color: var(--ink);
+        margin: 0 0 6px;
+      }
+
+      .panel__address {
+        font-size: 1.35rem;
+        color: var(--muted);
+        line-height: 1.42;
+        margin: 0 0 10px;
+      }
+
+
+
+      .panel__meta-item {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 4px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        text-align: center;
+      }
+
+      .panel__meta-label {
+        display: inline;
+        color: var(--soft);
+        font-size: 0.7rem;
+        line-height: 1;
+        margin-bottom: 0;
+        font-weight: 600;
+      }
+
+      .panel__meta-item strong {
+        display: inline;
+        color: var(--ink);
+        font-size: 0.86rem;
+        line-height: 1;
+        font-weight: 700;
+      }
+
+      .panel__intelligence {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eef4e9;
+        border: 1px solid #b5cfa0;
+        color: var(--green);
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+      }
+
+      .panel__intelligence::before {
+        content: "✦";
+        font-size: 0.9rem;
+      }
+
+      .panel__desc-wrap {
+        margin-top: 0;
+        margin-bottom: 18px;
+      }
+
+      .panel__desc {
+        font-size: 0.9rem;
+        line-height: 1.8;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .panel__desc.is-collapsed {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .panel__desc-toggle {
+        margin-top: 6px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--soft);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0;
+      }
+
+      .panel__desc-toggle:hover {
+        color: var(--ink);
+      }
+
+.panel__section-title {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+      .panel__footer {
+        display: flex;
+        justify-content: center;
+        padding-top: 6px;
+      }
+
+      .panel__cta-row {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 14px;
+}
+
+.panel__sms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.panel__sms-btn:hover {
+  background: var(--green-mid);
+}
+
+      .panel__nav-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+      .panel__next-btn {
+        appearance: none;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        padding: 10px 16px;
+        border-radius: 999px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 600;
+        transition: opacity 0.14s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+        text-decoration: none;
+      }
+
+      .panel__next-btn:hover {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+
+      @media (max-width: 980px) {
+        .shell {
+          width: calc(100% - 32px);
+        }
+
+        .hero {
+          padding: 52px 0 44px;
+        }
+
+        .hero__grid,
+        .city-band,
+        .bio {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+
+        .hero-title {
+          font-size: clamp(3rem, 13vw, 4.7rem);
+        }
+
+        .group-grid,
+        .social-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .listing-strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-head {
+          display: block;
+        }
+
+        .section-head p {
+          margin-top: 10px;
+        }
+
+        .bio__photo {
+          width: 150px;
+          max-width: 100%;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .panel {
+          left: 0;
+          right: 0;
+          top: 0;
+          width: 100%;
+          max-height: 100svh;
+          border-radius: 0 0 var(--r-xl) var(--r-xl);
+          transform: translateY(-106%);
+        }
+
+        .panel.open {
+          transform: translateY(0);
+        }
+
+        .panel__grab {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 10px 0 2px;
+          background: #fff;
+          position: sticky;
+          top: 0;
+          z-index: 9;
+        }
+
+        .panel__grab::before {
+          content: "";
+          width: 42px;
+          height: 4px;
+          border-radius: 999px;
+          background: #d4cfc7;
+        }
+
+        .panel__header {
+          padding: 12px 14px;
+          grid-template-columns: 1fr auto auto;
+        }
+
+        .panel__top-btn,
+        .panel__close {
+          height: 34px;
+          font-size: 0.76rem;
+        }
+
+        .panel__body {
+          padding: 20px 20px 24px;
+        }
+
+        .panel__headline { 
+          display: block;
+          margin-bottom: 16px;
+        }
+
+      .panel__meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 2px 0 18px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+        .panel__meta-item {
+          align-items: center;
+          gap: 6px;
+          padding: 9px 13px;
+        }
+
+        .panel__meta-label {
+          font-size: 0.82rem;
+        }
+
+        .panel__meta-item strong {
+          font-size: 1.02rem;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .shell {
+          width: calc(100% - 24px);
+        }
+
+        .agent-header__inner {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .agent-contact {
+          width: 100%;
+          text-align: center;
+        }
+
+        .hero {
+          padding: 42px 0 36px;
+        }
+
+        .hero-card {
+          min-height: auto;
+          padding: 22px;
+          border-radius: 20px;
+        }
+
+        .group-grid,
+        .listing-strip,
+        .social-card-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .listing-placeholder__image {
+          height: 190px;
+        }
+
+        .city-band {
+          padding: 26px;
+          border-radius: 22px;
+        }
+
+        .bio {
+          text-align: center;
+          padding: 22px;
+          border-radius: 22px;
+        }
+
+        .bio__photo {
+          margin: 0 auto;
+        }
+
+        .bio .btn-row {
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="page">
+      <header class="agent-header">
+        <div class="shell agent-header__inner">
+          <a class="agent-brand" href="/">
+            <strong>{agent.name}</strong>
+            <span>{agent.title} · {agent.city}</span>
+          </a>
+
+          <a class="agent-contact" href={`tel:${agent.phone}`}>Call {agent.phone}</a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="shell hero__grid">
+          <div>
+            <p class="eyebrow">{page.heroEyebrow}</p>
+
+            <h1 class="hero-title">
+              <span>{heroHeadingMain}</span>
+              <em>{heroHeadingAccent}</em>
+            </h1>
+
+            <p>{page.heroIntro}</p>
+
+            <div class="btn-row">
+              <a class="btn btn--dark" href={newListingsHref}>View new listings</a>
+              <a class="btn btn--light" href={`mailto:${agent.email}`}>Ask {agent.name}</a>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            {featuredListing ? (
+              <button
+                type="button"
+                class="featured-listing listing-modal-trigger"
+                data-price={getListingPrice(featuredListing)}
+                data-address={getListingAddress(featuredListing)}
+                data-image={getListingImage(featuredListing)}
+data-images={JSON.stringify(getListingImages(featuredListing))}
+                data-beds={String(getListingBeds(featuredListing))}
+                data-baths={String(getListingBaths(featuredListing))}
+                data-sqft={String(getListingSqft(featuredListing))}
+                data-description={getListingDescription(featuredListing)}
+data-year={String(getListingYearBuilt(featuredListing))}
+data-lot-size={String(getListingLotSize(featuredListing))}
+data-area={String(getListingArea(featuredListing))}
+data-property-type={String(getListingPropertyType(featuredListing))}
+data-dom={String(getListingDom(featuredListing))}
+data-highlights={JSON.stringify(buildListingHighlights(featuredListing))}
+data-mls={getListingMls(featuredListing)}
+                data-href={featuredListing.listing_url || `/listings?mls=${getListingMls(featuredListing)}`}
+                style="appearance:none;border:0;background:transparent;color:inherit;text-align:left;padding:0;cursor:pointer;"
+              >
+                <div
+                  class="featured-listing__image"
+                  style={
+                    getListingImage(featuredListing)
+                      ? `background-image:url('${getListingImage(featuredListing)}');`
+                      : ""
+                  }
+                ></div>
+
+                <div>
+                  <p class="eyebrow">Featured listing</p>
+                  <strong>{getListingPrice(featuredListing)}</strong>
+                  <span>{getListingAddress(featuredListing)}</span>
+                </div>
+              </button>
+            ) : (
+              <div>
+                <p class="eyebrow">Agent pick</p>
+                <strong>{page.agentPickTitle}</strong>
+                <p>{page.agentPickText}</p>
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell">
+          <div class="section-head">
+            <h2>Homes worth watching.</h2>
+            <p>
+              Quick groups that help buyers jump into the right part of the market
+              without sorting through everything.
+            </p>
+          </div>
+
+          <div class="group-grid">
+            {groups.map((group) => (
+              <a class="group-card" href={group.href}>
+                <div>
+                  <small>{group.kicker}</small>
+                  <h3>{group.title}</h3>
+                  <p>{group.text}</p>
+                </div>
+                <strong class="card-link-text">View homes</strong>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell city-band">
+          <div>
+            <p class="eyebrow">About the city</p>
+            <h2>Buying in {agent.city}.</h2>
+          </div>
+
+          <div>
+            <p>{page.cityIntro}</p>
+            <p>{page.cityNotes}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="shell">
+          <div class="section-head">
+            <h2>{page.newListingsTitle}</h2>
+            <p>{page.newListingsIntro}</p>
+          </div>
+
+          <div class="listing-strip">
+            {newListings.length > 0 ? (
+              newListings.map((listing) => {
+                const image = getListingImage(listing);
+const images = getListingImages(listing);
+                const address = getListingAddress(listing);
+                const price = getListingPrice(listing);
+                const beds = getListingBeds(listing);
+                const baths = getListingBaths(listing);
+                const sqft = getListingSqft(listing);
+                const description = getListingDescription(listing);
+                const mls = getListingMls(listing);
+                const href = listing.listing_url || `/listings?mls=${mls}`;
+
+                return (
+                  <button
+                    type="button"
+                    class="listing-placeholder listing-modal-trigger"
+                    data-price={price}
+                    data-address={address}
+                    data-image={image}
+                    data-images={JSON.stringify(images)}
+                    data-beds={String(beds)}
+                    data-baths={String(baths)}
+                    data-sqft={String(sqft)}
+                   data-description={description}
+data-year={String(getListingYearBuilt(listing))}
+data-lot-size={String(getListingLotSize(listing))}
+data-area={String(getListingArea(listing))}
+data-property-type={String(getListingPropertyType(listing))}
+data-dom={String(getListingDom(listing))}
+data-highlights={JSON.stringify(buildListingHighlights(listing))}
+data-mls={mls}
+                    data-href={href}
+                  >
+                    <div
+                      class="listing-placeholder__image"
+                      style={image ? `background-image:url('${image}');` : ""}
+                    ></div>
+
+                    <div class="listing-placeholder__body">
+                      <strong>{price}</strong>
+                     <span class="listing-meta">
+  <span>{address}</span>
+  <span>{beds} bed</span>
+  <span>{baths} bath</span>
+  {getListingDom(listing) ? <span>{getListingDom(listing)} DOM</span> : null}
+</span>
+
+<p class="listing-card-desc">{description}</p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              [1, 2, 3, 4, 5, 6].map(() => (
+                <a class="listing-placeholder" href={newListingsHref}>
+                  <div class="listing-placeholder__image"></div>
+                  <div class="listing-placeholder__body">
+                    <strong>New listing placeholder</strong>
+                    <span>$000,000 • 3 bed • 2 bath • {listingCity}</span>
+                  </div>
+                </a>
+              ))
+            )}
+          </div>
+
+          <div class="btn-row">
+            <a class="btn btn--dark" href={newListingsHref}>
+              View all matching listings
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {hasSocialSection && (
+        <section class="section">
+          <div class="shell">
+            <div class="section-head">
+              <h2>{page.socialTitle || "Follow along."}</h2>
+              <p>{page.socialIntro}</p>
+            </div>
+
+            <div class="social-card-grid">
+              {socialLinks.map((link) => (
+                <a
+                  class={`social-profile-card social-profile-card--${link.label.toLowerCase().replace(/[^a-z]/g, "")}`}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <small>{link.label}</small>
+                  <strong>{agent.name}</strong>
+                  <span>View latest updates →</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section class="section">
+        <div class="shell bio">
+          <div class="bio__photo"></div>
+          <div>
+            <p class="eyebrow">Meet your agent</p>
+            <h2>{agent.name}</h2>
+            <p>{agent.bio}</p>
+
+            <div class="btn-row">
+              <a class="btn btn--dark" href={`tel:${agent.phone}`}>Call {agent.name}</a>
+              <a class="btn btn--light" href={`mailto:${agent.email}`}>Email agent</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div class="shell">
+          Listings, market data, and availability are subject to change. This page is
+          intended as a simple curated buyer resource.
+        </div>
+      </footer>
+    </main>
+
+    <div class="modal-overlay" id="listing-modal-overlay"></div>
+
+   <aside
+  class="panel"
+  id="listing-modal"
+  aria-hidden="true"
+  data-agent-name={agent.name}
+  data-agent-phone={agent.phone}
+  data-agent-email={agent.email}
+>
+      <div class="panel__grab" aria-hidden="true"></div>
+
+      <div class="panel__progress-wrap">
+        <div class="panel__progress-track">
+          <div class="panel__progress-bar"></div>
+        </div>
+
+        <div class="panel__header">
+          <div class="panel__position" id="listing-modal-position">Listing preview</div>
+
+          <div class="panel__header-actions">
+          <button class="panel__top-btn" id="listing-modal-prev" type="button">
+  ← Previous
+</button>
+
+<button class="panel__top-btn" id="listing-modal-next" type="button">
+  Next →
+</button>
+          </div>
+
+          <button class="panel__close" id="listing-modal-close" type="button" aria-label="Close">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div class="panel__view" id="listing-modal-scroll">
+        <section class="panel__content">
+          <div class="panel__image-stage">
+            <img
+              id="listing-modal-image"
+              class="panel__image"
+              src="https://placehold.co/800x600?text=Listing"
+              alt=""
+             loading="lazy"
+decoding="async"
+            />
+            <button type="button" class="photo-nav photo-nav--prev" id="listing-photo-prev">‹</button>
+            <button type="button" class="photo-nav photo-nav--next" id="listing-photo-next">›</button>
+            <div class="panel__photo-count" id="listing-photo-count">1 / 1 photos</div>
+          </div>
+       <div class="panel__body">
+            <div class="panel__headline"> 
+  <div>
+    <h2 class="panel__price" id="listing-modal-price">—</h2>
+    <p class="panel__address" id="listing-modal-address">Address</p>
+    <div class="panel__meta" id="listing-modal-meta">—</div>
+  </div>
+</div>
+
+       <div class="panel__intelligence" id="listing-modal-intelligence">
+  Fresh listing worth a closer look
+</div>
+
+<div class="panel__detail-row" id="listing-modal-detail-row"></div>
+
+<div class="panel__highlights" id="listing-modal-highlights"></div>
+
+            <div class="panel__desc-wrap">
+  <h3 class="panel__section-title">Description</h3>
+
+  <p class="panel__desc" id="listing-modal-description">
+    A quick preview of this property.
+  </p>
+</div>
+
+<div class="panel__cta-row">
+  <a class="panel__sms-btn" id="listing-modal-sms" href="#">
+    Request info / showing →
+  </a>
+</div>
+
+<div class="panel__footer">
+          <div class="panel__nav-row">
+  <button class="panel__next-btn" id="listing-modal-bottom-prev" type="button">
+    ← Previous
+  </button>
+
+  <button class="panel__next-btn" id="listing-modal-bottom-next" type="button">
+    Next →
+  </button>
+</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <script is:inline>
+  function initAgentListingModal() {
+    const modal = document.getElementById("listing-modal");
+    const overlay = document.getElementById("listing-modal-overlay");
+    const closeBtn = document.getElementById("listing-modal-close");
+    const imageEl = document.getElementById("listing-modal-image");
+    const priceEl = document.getElementById("listing-modal-price");
+    const addressEl = document.getElementById("listing-modal-address");
+    const metaEl = document.getElementById("listing-modal-meta");
+    const descEl = document.getElementById("listing-modal-description");
+    const linkEl = document.getElementById("listing-modal-link");
+const smsEl = document.getElementById("listing-modal-sms");
+    const positionEl = document.getElementById("listing-modal-position");
+    const intelligenceEl = document.getElementById("listing-modal-intelligence");
+    const detailRowEl = document.getElementById("listing-modal-detail-row");
+const highlightsEl = document.getElementById("listing-modal-highlights");
+    const photoCountEl = document.getElementById("listing-photo-count");
+const photoPrevBtn = document.getElementById("listing-photo-prev");
+const photoNextBtn = document.getElementById("listing-photo-next");
+const prevListingBtn = document.getElementById("listing-modal-prev");
+const nextListingBtn = document.getElementById("listing-modal-next");
+const bottomNextListingBtn = document.getElementById("listing-modal-bottom-next");
+const bottomPrevListingBtn = document.getElementById("listing-modal-bottom-prev");
+const scrollArea = document.getElementById("listing-modal-scroll");
+
+    if (!modal || !overlay) return;
+
+    let activePhotos = [];
+    let activePhotoIndex = 0;
+let allCards = [];
+let activeIndex = -1;
+    function parseImages(value, fallback) {
+      try {
+        const parsed = JSON.parse(value || "[]");
+        const images = Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        return Array.from(new Set([fallback, ...images].filter(Boolean)));
+      } catch {
+        return fallback ? [fallback] : [];
+      }
+    }
+
+  function preloadImage(src) {
+  if (!src) return;
+
+  const img = new Image();
+  img.src = src;
+}
+
+function renderPhoto() {
+  if (!imageEl) return;
+
+  const src =
+    activePhotos[activePhotoIndex] ||
+    "https://placehold.co/800x600?text=Listing";
+
+  imageEl.src = src;
+
+  // Keep nearby swipes fast
+  preloadImage(activePhotos[activePhotoIndex + 1]);
+  preloadImage(activePhotos[activePhotoIndex - 1]);
+
+  // Quietly lazy-load the rest after the first 8
+  window.requestIdleCallback?.(() => {
+    activePhotos.slice(8).forEach(preloadImage);
+  }) || setTimeout(() => {
+    activePhotos.slice(8).forEach(preloadImage);
+  }, 800);
+
+  if (photoCountEl) {
+    photoCountEl.textContent = `${activePhotoIndex + 1} / ${Math.max(activePhotos.length, 1)} photos`;
+  }
+
+  if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+  if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotos.length - 1;
+}
+
+    function showPrevPhoto() {
+      if (activePhotoIndex <= 0) return;
+      activePhotoIndex -= 1;
+      renderPhoto();
+    }
+
+    function showNextPhoto() {
+      if (activePhotoIndex >= activePhotos.length - 1) return;
+      activePhotoIndex += 1;
+      renderPhoto();
+    }
+
+    function showNextListing() {
+  if (!allCards.length) return;
+
+ if (activeIndex >= allCards.length - 1) return;
+activeIndex += 1;
+  const nextCard = allCards[activeIndex];
+
+  if (nextCard) {
+    openModal(nextCard);
+  }
+}
+
+function showPrevListing() {
+  if (!allCards.length) return;
+  if (activeIndex <= 0) return;
+
+  activeIndex -= 1;
+  const prevCard = allCards[activeIndex];
+
+  if (prevCard) {
+    openModal(prevCard);
+  }
+}
+function pickNote(seed, options) {
+  const text = String(seed || "");
+  const total = text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return options[total % options.length];
+}
+    function openModal(card) {
+  allCards = Array.from(document.querySelectorAll(".listing-modal-trigger"));
+  activeIndex = allCards.indexOf(card);
+
+  const image = card.dataset.image || "";
+
+      activePhotos = parseImages(card.dataset.images || "[]", image);
+      activePhotoIndex = 0;
+
+      if (priceEl) priceEl.textContent = card.dataset.price || "Price on request";
+      if (addressEl) addressEl.textContent = card.dataset.address || "Address available";
+      if (imageEl) imageEl.alt = card.dataset.address || "Listing";
+     if (descEl) {
+  descEl.textContent = card.dataset.description || "A quick preview of this property.";
+  descEl.classList.remove("is-collapsed");
+}
+
+if (linkEl) linkEl.href = card.dataset.href || "/listings";
+if (smsEl) {
+  const phone = String(modal.dataset.agentPhone || "").replace(/[^0-9]/g, "");
+  const email = modal.dataset.agentEmail || "";
+  const agentName = modal.dataset.agentName || "there";
+
+  const message = `Hi ${agentName}, I'd like more info or a showing for ${card.dataset.address || "this listing"}${card.dataset.mls ? ` MLS ${card.dataset.mls}` : ""}.`;
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  smsEl.textContent = isMobile
+    ? "Text for info / showing →"
+    : "Email for info / showing →";
+
+  if (isMobile && phone) {
+    smsEl.href = `sms:${phone}?&body=${encodeURIComponent(message)}`;
+  } else {
+    smsEl.href = `mailto:${email}?subject=Listing Inquiry&body=${encodeURIComponent(message)}`;
+  }
+}
+      if (positionEl) positionEl.textContent = card.dataset.mls ? `MLS ${card.dataset.mls}` : "Listing preview";
+if (intelligenceEl) {
+  const desc = String(card.dataset.description || "").toLowerCase();
+  const propertyType = String(card.dataset.propertyType || "").toLowerCase();
+
+  const beds = Number(card.dataset.beds || 0);
+  const baths = Number(card.dataset.baths || 0);
+  const sqft = Number(String(card.dataset.sqft || "").replace(/[^0-9.]/g, ""));
+  const year = Number(card.dataset.year || 0);
+  const dom = Number(card.dataset.dom || 0);
+
+  const isCondo =
+    propertyType.includes("condo") ||
+    propertyType.includes("apartment");
+
+  const isTownhouse =
+    propertyType.includes("townhouse") ||
+    propertyType.includes("townhome") ||
+    propertyType.includes("row");
+
+  const isHouse =
+    propertyType.includes("house") ||
+    propertyType.includes("detached") ||
+    propertyType.includes("single family");
+
+  const isNew = dom && dom <= 7;
+
+  const hasView =
+    /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc);
+
+  const hasSuite =
+    isHouse &&
+    /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
+
+  const isUpdated =
+    /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+
+  const hasParking =
+    /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+
+  const amenities =
+    /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+
+  const outdoor =
+    /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+
+  let note = "";
+
+  // CONDO
+  if (isCondo) {
+    if (sqft >= 900 && outdoor) {
+      note = "Feels bigger than most condos";
+} else if (isUpdated) {
+ note = pickNote(card.dataset.mls || card.dataset.address, [
+  "Move-in ready condo option",
+  "Clean, easy condo choice",
+  "A simpler option to step into",
+  "Low-effort condo living"
+]);
+} else if (sqft >= 900) {
+  note = "More room than the typical condo";
+    } else if (amenities) {
+      note = "Easy living with building perks";
+    } else if (hasParking) {
+      note = "Convenient everyday setup";
+
+    } else if (isNew) {
+      note = "Fresh option worth a look";
+    } else {
+      note = "Simple, low-maintenance living";
+    }
+  }
+
+  // TOWNHOUSE
+  else if (isTownhouse) {
+    if (beds >= 3 && outdoor) {
+      note = "Great layout for everyday living";
+    } else if (hasParking) {
+      note = "Practical townhome setup";
+    } else if (isUpdated) {
+      note = "Updated townhome option";
+    } else if (isNew) {
+      note = "New townhome worth a look";
+    } else {
+      note = "Balanced space with low upkeep";
+    }
+  }
+
+  // HOUSE
+  else if (isHouse) {
+    const isFamilySized = beds >= 4 && baths >= 3;
+    const isLarge = sqft >= 2500;
+    const isNewer = year >= 2015;
+
+    if (hasView && hasSuite) {
+      note = "Strong upside with income potential";
+    } else if (isNewer && isFamilySized && isLarge) {
+      note = "Checks the boxes for a growing family";
+    } else if (isUpdated && isLarge) {
+      note = "Updated home with real space";
+    } else if (hasSuite) {
+      note = "Flexible layout with income potential";
+    } else if (hasView) {
+      note = "Nice outlook from main living areas";
+    } else if (isNew) {
+      note = "New listing worth acting on";
+    } else {
+      note = "Solid detached option to consider";
+    }
+  }
+
+  // FALLBACK
+  else {
+    if (hasView) {
+      note = "Open outlook worth noting";
+    } else if (isUpdated) {
+      note = "Updated features stand out";
+    } else {
+      note = "Worth a closer look";
+    }
+  }
+
+  intelligenceEl.textContent = note;
+}  
+
+if (detailRowEl) {
+  const details = [
+    card.dataset.propertyType,
+card.dataset.area ? `${card.dataset.area}` : "",
+    card.dataset.year ? `Built ${card.dataset.year}` : "",
+    card.dataset.lotSize ? `${card.dataset.lotSize} lot` : "",
+  card.dataset.dom ? `${card.dataset.dom} Days on Market` : ""
+  ].filter(Boolean);
+
+  detailRowEl.innerHTML = details.map((item) => `<span>${item}</span>`).join("");
+}
+
+if (highlightsEl) {
+  let highlights = [];
+
+  try {
+    highlights = JSON.parse(card.dataset.highlights || "[]");
+  } catch {
+    highlights = [];
+  }
+
+  highlightsEl.innerHTML = highlights
+    .map((item) => `<span class="panel__highlight-chip">${item}</span>`)
+    .join("");
+}
+
+    if (metaEl) {
+  const facts = [
+card.dataset.beds ? `${card.dataset.beds} Bed` : "",
+card.dataset.baths ? `${card.dataset.baths} Bath` : "",
+card.dataset.sqft ? `${card.dataset.sqft} Sq Ft` : ""
+  ].filter(Boolean);
+
+  metaEl.innerHTML = facts.join(" • ");
+}  
+
+      renderPhoto();
+
+      modal.classList.add("open");
+      overlay.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+
+      requestAnimationFrame(() => {
+        if (scrollArea) scrollArea.scrollTop = 0;
+      });
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      overlay.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest(".listing-modal-trigger");
+      if (!trigger) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      openModal(trigger);
+    });
+
+    closeBtn?.addEventListener("click", closeModal);
+    overlay?.addEventListener("click", closeModal);
+   photoPrevBtn?.addEventListener("click", showPrevPhoto);
+photoNextBtn?.addEventListener("click", showNextPhoto);
+prevListingBtn?.addEventListener("click", showPrevListing);
+nextListingBtn?.addEventListener("click", showNextListing);
+bottomNextListingBtn?.addEventListener("click", showNextListing);
+bottomPrevListingBtn?.addEventListener("click", showPrevListing);
+
+  
+
+    document.addEventListener("keydown", (event) => {
+      if (!modal.classList.contains("open")) return;
+      if (event.key === "Escape") closeModal();
+      if (event.key === "ArrowLeft") showPrevPhoto();
+      if (event.key === "ArrowRight") showNextPhoto();
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAgentListingModal, { once: true });
+  } else {
+    initAgentListingModal();
+  }
+
+document.addEventListener("astro:page-load", initAgentListingModal);
+
+window.addEventListener("load", () => {
+  document.querySelectorAll('a[href^="/explore"]').forEach((link) => {
+    const prefetch = document.createElement("link");
+    prefetch.rel = "prefetch";
+    prefetch.href = link.href;
+    prefetch.as = "document";
+    document.head.appendChild(prefetch);
+  });
+});
+</script>
+  </body>
+</html>

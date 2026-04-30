@@ -1,0 +1,672 @@
+---
+const slug = "chris-crump";
+---
+
+<html>
+  <head>
+    <title>Agent Page Editor</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f4efe7;
+        color: #181614;
+      }
+
+      .shell {
+        width: min(900px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 40px 0;
+      }
+
+      h1 {
+        font-size: 42px;
+        letter-spacing: -0.06em;
+      }
+
+      label {
+        display: block;
+        margin: 18px 0 6px;
+        font-weight: 700;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid rgba(24, 22, 20, 0.18);
+        border-radius: 12px;
+        font: inherit;
+        background: white;
+      }
+
+      textarea {
+        min-height: 100px;
+      }
+
+      button,
+      a.preview {
+        display: inline-flex;
+        margin-top: 22px;
+        margin-right: 10px;
+        padding: 12px 16px;
+        border-radius: 999px;
+        border: 0;
+        background: #181614;
+        color: white;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .status {
+        margin-top: 14px;
+        color: #6f5a38;
+        font-weight: 700;
+      }
+
+      .card {
+        background: #fffaf1;
+        border: 1px solid rgba(24, 22, 20, 0.12);
+        border-radius: 24px;
+        padding: 22px;
+        margin-top: 22px;
+      }
+
+      .group-editor {
+        border-top: 1px solid rgba(24, 22, 20, 0.12);
+        margin-top: 18px;
+        padding-top: 18px;
+      }
+
+      .group-editor h3 {
+        margin: 0 0 10px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .hint {
+        margin: 8px 0 0;
+        color: rgba(24, 22, 20, 0.62);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 700px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="shell">
+      <h1>Agent page editor</h1>
+
+      <form id="agentForm">
+        <div class="card">
+          <h2>Agent</h2>
+
+          <label>Agent name</label>
+          <input name="agentName" />
+
+          <label>Agent title</label>
+          <input name="agentTitle" />
+
+          <label>Phone</label>
+          <input name="phone" />
+
+          <label>Email</label>
+          <input name="email" />
+
+          <label>City</label>
+          <input name="city" />
+        </div>
+
+        <div class="card">
+          <h2>Hero</h2>
+
+          <label>Hero eyebrow</label>
+          <input name="heroEyebrow" />
+
+          <label>Hero heading</label>
+          <input name="heroHeading" />
+
+          <label>Hero intro</label>
+          <textarea name="heroIntro"></textarea>
+
+          <label>Agent pick title</label>
+          <input name="agentPickTitle" />
+
+          <label>Agent pick text</label>
+          <textarea name="agentPickText"></textarea>
+
+          <label>Featured listing MLS number</label>
+          <input name="featuredListingMls" placeholder="Example: 1032478" />
+          <p class="hint">
+            Optional. Add an MLS number to feature one listing in the hero card.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Social links and feeds</h2>
+          <p class="hint">
+            Add profile links for the buttons. Feed embed fields are optional. X/Twitter profile
+            URLs can usually render as a feed. LinkedIn is often better as a profile link unless
+            the agent has a specific public embed snippet or post URL.
+          </p>
+
+          <div class="grid-2">
+            <div>
+              <label>LinkedIn profile URL</label>
+              <input name="linkedinUrl" placeholder="https://www.linkedin.com/in/..." />
+            </div>
+
+            <div>
+              <label>X / Twitter profile URL</label>
+              <input name="twitterUrl" placeholder="https://twitter.com/..." />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label>Instagram URL</label>
+              <input name="instagramUrl" placeholder="https://www.instagram.com/..." />
+            </div>
+
+            <div>
+              <label>Facebook URL</label>
+              <input name="facebookUrl" placeholder="https://www.facebook.com/..." />
+            </div>
+          </div>
+
+          <label>Social section title</label>
+          <input name="socialTitle" />
+
+          <label>Social section intro</label>
+          <textarea name="socialIntro"></textarea>
+
+          <label>Feed type</label>
+          <select name="socialFeedType">
+            <option value="">No embedded feed</option>
+            <option value="twitter">X / Twitter profile feed</option>
+            <option value="manual">Manual embed / custom content</option>
+          </select>
+
+          <label>Feed URL</label>
+          <input name="socialFeedUrl" placeholder="Example: https://twitter.com/chriscrump" />
+
+          <label>Social feed (Elfsight ID or embed code)</label>
+          <textarea name="socialFeedEmbed"></textarea>
+          <p class="hint">
+            Use this for a simple note, embed code, or a manually pasted public post block.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Listing sections</h2>
+          <p class="hint">
+            These are the four curated cards near the top of the page. Agents select filters here;
+            the Explore link is generated automatically.
+          </p>
+
+          {[1, 2, 3, 4].map((num) => (
+            <div class="group-editor">
+              <h3>Section {num}</h3>
+
+              <label>Small label</label>
+              <input name={`group${num}Kicker`} />
+
+              <label>Title</label>
+              <input name={`group${num}Title`} />
+
+              <label>Description</label>
+              <textarea name={`group${num}Text`}></textarea>
+
+              <div class="grid-2">
+                <div>
+                  <label>City</label>
+                  <select name={`group${num}City`} class="group-city-select">
+                    <option value="">Loading cities...</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Area / neighbourhood</label>
+                  <input
+                    name={`group${num}Area`}
+                    list={`group${num}AreaList`}
+                    placeholder="Example: Departure Bay"
+                  />
+                  <datalist id={`group${num}AreaList`}>
+                    <option value="Departure Bay"></option>
+                    <option value="North Nanaimo"></option>
+                    <option value="South Nanaimo"></option>
+                    <option value="Central Nanaimo"></option>
+                    <option value="Old City"></option>
+                    <option value="Hammond Bay"></option>
+                    <option value="Lantzville"></option>
+                  </datalist>
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <div>
+                  <label>Type</label>
+                  <select name={`group${num}Type`}>
+                    <option value="">Any type</option>
+                    <option value="condo">Condos</option>
+                    <option value="house">Single-family homes</option>
+                    <option value="townhouse">Townhomes</option>
+                    <option value="land">Land</option>
+                    <option value="mobile">Mobile / manufactured</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Sort</label>
+                  <select name={`group${num}Sort`}>
+                    <option value="newest">Newest first</option>
+                    <option value="price-low">Price low to high</option>
+                    <option value="price-high">Price high to low</option>
+                    <option value="beds-high">Most bedrooms</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid-2">
+                <div>
+                  <label>Min price in 000s</label>
+                  <input name={`group${num}MinPrice`} inputmode="numeric" placeholder="0" />
+                </div>
+
+                <div>
+                  <label>Max price in 000s</label>
+                  <input name={`group${num}MaxPrice`} inputmode="numeric" placeholder="Example: 800" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div class="card">
+          <h2>Live listings section</h2>
+          <p class="hint">
+            Default is the 6 newest Nanaimo listings. Change the city, area, property type, price,
+            sort, or limit to show a different live listing group.
+          </p>
+
+          <label>Section title</label>
+          <input name="newListingsTitle" />
+
+          <label>Section intro</label>
+          <textarea name="newListingsIntro"></textarea>
+
+          <div class="grid-2">
+            <div>
+              <label>Listing city</label>
+              <select name="newListingsCity" id="newListingsCitySelect">
+                <option value="">Loading cities...</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Area / neighbourhood</label>
+              <input name="newListingsArea" placeholder="Example: Departure Bay" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label>Property type</label>
+              <select name="newListingsType">
+                <option value="">Any type</option>
+                <option value="condo">Condos</option>
+                <option value="house">Single-family homes</option>
+                <option value="townhouse">Townhomes</option>
+                <option value="land">Land</option>
+                <option value="mobile">Mobile / manufactured</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Sort</label>
+              <select name="newListingsSort">
+                <option value="newest">Newest first</option>
+                <option value="price-low">Price low to high</option>
+                <option value="price-high">Price high to low</option>
+                <option value="beds-high">Most bedrooms</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label>Min price in 000s</label>
+              <input name="newListingsMinPrice" inputmode="numeric" placeholder="0" />
+            </div>
+
+            <div>
+              <label>Max price in 000s</label>
+              <input name="newListingsMaxPrice" inputmode="numeric" placeholder="Example: 800" />
+            </div>
+          </div>
+
+          <label>Number to show</label>
+          <input name="newListingsLimit" inputmode="numeric" placeholder="6" />
+        </div>
+
+        <div class="card">
+          <h2>City section</h2>
+
+          <label>City intro</label>
+          <textarea name="cityIntro"></textarea>
+
+          <label>City notes</label>
+          <textarea name="cityNotes"></textarea>
+        </div>
+
+        <div class="card">
+          <h2>Agent bio</h2>
+
+          <label>Bio</label>
+          <textarea name="agentBio"></textarea>
+        </div>
+
+        <button type="submit">Save page</button>
+        <a class="preview" href="/agent-listings" target="_blank">Preview page</a>
+
+        <div class="status" id="status"></div>
+      </form>
+    </main>
+
+    <script>
+      const slug = "chris-crump";
+      const form = document.getElementById("agentForm");
+      const status = document.getElementById("status");
+
+      const defaults = {
+        agentName: "Chris Crump",
+        agentTitle: "Real Estate Advisor",
+        phone: "250.619.0390",
+        email: "chris@example.com",
+        city: "Nanaimo",
+        heroEyebrow: "Curated by Chris Crump",
+        heroHeading: "Nanaimo homes.",
+        heroIntro:
+          "A simple, curated place to explore homes in Nanaimo - organized by property type, price point, and what buyers are watching right now.",
+        agentPickTitle: "Not a giant listing portal.",
+        agentPickText:
+          "Just the homes and categories buyers actually ask about most.",
+        featuredListingMls: "",
+
+        linkedinUrl: "",
+        twitterUrl: "",
+        instagramUrl: "",
+        facebookUrl: "",
+        socialTitle: "Follow along.",
+        socialIntro:
+          "Market notes, listing updates, and local real estate context from your agent.",
+        socialFeedType: "",
+        socialFeedUrl: "",
+        socialFeedEmbed: "",
+
+        cityIntro:
+          "Nanaimo has a mix of established neighbourhoods, newer subdivisions, condo options, waterfront pockets, and family-friendly areas.",
+        cityNotes:
+          "Add neighbourhood notes, buyer tips, local context, and links to popular searches here.",
+        agentBio:
+          "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
+
+        newListingsTitle: "New listings.",
+        newListingsIntro: "The latest homes to hit the market.",
+        newListingsCity: "Nanaimo",
+        newListingsArea: "",
+        newListingsType: "",
+        newListingsMinPrice: "",
+        newListingsMaxPrice: "",
+        newListingsSort: "newest",
+        newListingsLimit: "6",
+
+        groups: [
+          {
+            title: "Condos in Nanaimo",
+            kicker: "Low-maintenance living",
+            text: "Explore condos close to shops, trails, the waterfront, and everyday amenities.",
+            city: "Nanaimo",
+            area: "",
+            type: "condo",
+            minPrice: "",
+            maxPrice: "",
+            sort: "newest",
+            href: "/explore?city=Nanaimo&type=condo&sort=newest"
+          },
+          {
+            title: "Single-family homes",
+            kicker: "Room to grow",
+            text: "Detached homes across popular Nanaimo neighbourhoods and family-friendly pockets.",
+            city: "Nanaimo",
+            area: "",
+            type: "house",
+            minPrice: "",
+            maxPrice: "",
+            sort: "newest",
+            href: "/explore?city=Nanaimo&type=house&sort=newest"
+          },
+          {
+            title: "Popular under $800k",
+            kicker: "Buyer sweet spot",
+            text: "Homes in one of the most watched price ranges for active buyers.",
+            city: "Nanaimo",
+            area: "",
+            type: "",
+            minPrice: "",
+            maxPrice: "800",
+            sort: "newest",
+            href: "/explore?city=Nanaimo&maxPrice=800&sort=newest"
+          },
+          {
+            title: "New listings",
+            kicker: "Fresh to market",
+            text: "Recently listed homes worth watching before they get buried.",
+            city: "Nanaimo",
+            area: "",
+            type: "",
+            minPrice: "",
+            maxPrice: "",
+            sort: "newest",
+            href: "/explore?city=Nanaimo&sort=newest"
+          }
+        ]
+      };
+
+      function buildExploreHref(group) {
+        const params = new URLSearchParams();
+
+        if (group.city) params.set("city", group.city);
+        if (group.area) params.set("area", group.area);
+        if (group.type) params.set("type", group.type);
+        if (group.minPrice) params.set("minPrice", group.minPrice);
+        if (group.maxPrice) params.set("maxPrice", group.maxPrice);
+        if (group.sort) params.set("sort", group.sort);
+
+        const query = params.toString();
+        return query ? `/explore?${query}` : "/explore";
+      }
+
+      function fillForm(data) {
+        const savedGroups = Array.isArray(data?.groups) ? data.groups : [];
+
+        const mergedGroups = [1, 2, 3, 4].map((_, index) => {
+          const saved = savedGroups[index] || {};
+          const fallback = defaults.groups[index] || {};
+
+          const isBlank =
+            !saved.kicker &&
+            !saved.title &&
+            !saved.text &&
+            !saved.href &&
+            !saved.city &&
+            !saved.area &&
+            !saved.type &&
+            !saved.minPrice &&
+            !saved.maxPrice;
+
+          return isBlank ? fallback : { ...fallback, ...saved };
+        });
+
+        const merged = {
+          ...defaults,
+          ...(data || {}),
+          groups: mergedGroups
+        };
+
+        Object.entries(merged).forEach(([key, value]) => {
+          if (key === "groups") return;
+
+          const field = form.elements[key];
+          if (field) field.value = value || "";
+        });
+
+        [1, 2, 3, 4].forEach((num) => {
+          const group = merged.groups[num - 1] || {};
+
+          form.elements[`group${num}Kicker`].value = group.kicker || "";
+          form.elements[`group${num}Title`].value = group.title || "";
+          form.elements[`group${num}Text`].value = group.text || "";
+          form.elements[`group${num}City`].value = group.city || "";
+          form.elements[`group${num}Area`].value = group.area || "";
+          form.elements[`group${num}Type`].value = group.type || "";
+          form.elements[`group${num}Sort`].value = group.sort || "newest";
+          form.elements[`group${num}MinPrice`].value = group.minPrice || "";
+          form.elements[`group${num}MaxPrice`].value = group.maxPrice || "";
+        });
+      }
+
+      async function loadCityOptions(selectedCity = "") {
+        const citySelects = [
+          form.elements.newListingsCity,
+          ...Array.from(document.querySelectorAll(".group-city-select"))
+        ].filter(Boolean);
+
+        try {
+          const res = await fetch("/api/listing-cities");
+          const json = await res.json();
+
+          const cities = Array.isArray(json?.cities) ? json.cities : [];
+
+          citySelects.forEach((citySelect) => {
+            const currentValue = citySelect.value || selectedCity || "";
+
+            citySelect.innerHTML = [
+              `<option value="">Any city</option>`,
+              ...cities.map((city) => {
+                const selected = city === currentValue ? "selected" : "";
+                return `<option value="${city}" ${selected}>${city}</option>`;
+              })
+            ].join("");
+          });
+        } catch (error) {
+          citySelects.forEach((citySelect) => {
+            const fallback = citySelect.value || selectedCity || "Nanaimo";
+            citySelect.innerHTML = `<option value="${fallback}">${fallback}</option>`;
+          });
+        }
+      }
+
+      async function loadPage() {
+        const res = await fetch(`/api/agent-page?slug=${encodeURIComponent(slug)}`);
+        const json = await res.json();
+
+        const data = json?.data || defaults;
+
+        fillForm(data);
+        await loadCityOptions(data.newListingsCity || defaults.newListingsCity);
+        fillForm(data);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        status.textContent = "Saving...";
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        data.groups = [1, 2, 3, 4]
+          .map((num) => {
+            const group = {
+              kicker: data[`group${num}Kicker`] || "",
+              title: data[`group${num}Title`] || "",
+              text: data[`group${num}Text`] || "",
+              city: data[`group${num}City`] || "",
+              area: data[`group${num}Area`] || "",
+              type: data[`group${num}Type`] || "",
+              minPrice: data[`group${num}MinPrice`] || "",
+              maxPrice: data[`group${num}MaxPrice`] || "",
+              sort: data[`group${num}Sort`] || "newest"
+            };
+
+            return {
+              ...group,
+              href: buildExploreHref(group)
+            };
+          })
+          .filter((group) => group.title || group.text || group.href);
+
+        [1, 2, 3, 4].forEach((num) => {
+          delete data[`group${num}Kicker`];
+          delete data[`group${num}Title`];
+          delete data[`group${num}Text`];
+          delete data[`group${num}City`];
+          delete data[`group${num}Area`];
+          delete data[`group${num}Type`];
+          delete data[`group${num}Sort`];
+          delete data[`group${num}MinPrice`];
+          delete data[`group${num}MaxPrice`];
+        });
+
+        data.newListingsLimit = data.newListingsLimit || "6";
+        data.newListingsArea = data.newListingsArea || "";
+        data.newListingsMinPrice = data.newListingsMinPrice || "";
+        data.newListingsMaxPrice = data.newListingsMaxPrice || "";
+        data.newListingsSort = data.newListingsSort || "newest";
+        data.featuredListingMls = data.featuredListingMls || "";
+
+        data.linkedinUrl = data.linkedinUrl || "";
+        data.twitterUrl = data.twitterUrl || "";
+        data.instagramUrl = data.instagramUrl || "";
+        data.facebookUrl = data.facebookUrl || "";
+        data.socialTitle = data.socialTitle || "";
+        data.socialIntro = data.socialIntro || "";
+        data.socialFeedType = data.socialFeedType || "";
+        data.socialFeedUrl = data.socialFeedUrl || "";
+        data.socialFeedEmbed = data.socialFeedEmbed || "";
+
+        const res = await fetch("/api/agent-page", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ slug, data })
+        });
+
+        const json = await res.json();
+
+        status.textContent = json.ok ? "Saved." : json.error || "Save failed.";
+      });
+
+      loadPage();
+    </script>
+  </body>
+</html>

@@ -12,8 +12,12 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.9",
     "@astrojs/netlify": "^7.0.7",
     "@supabase/supabase-js": "^2.103.3",
-    "astro": "^6.1.8"
+    "astro": "^6.1.8",
+    "dotenv": "^17.4.2",
+    "twilio": "^6.0.0",
+    "typescript": "^5.9.3"
   }
 }

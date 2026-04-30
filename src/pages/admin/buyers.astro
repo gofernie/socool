@@ -1,0 +1,126 @@
+---
+---
+
+<html>
+  <head>
+    <title>Buyers</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui;
+        background: #f4efe7;
+        color: #181614;
+      }
+
+      .shell {
+        width: min(1100px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 40px 0;
+      }
+
+      h1 {
+        font-size: 42px;
+        letter-spacing: -0.05em;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .card {
+        background: white;
+        border-radius: 20px;
+        padding: 18px;
+        border: 1px solid rgba(0,0,0,0.08);
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .name {
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .meta {
+        font-size: 14px;
+        color: rgba(0,0,0,0.6);
+        margin-top: 4px;
+      }
+
+      .stats {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+        font-weight: 700;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+
+      .love { background: #fde7d9; }
+      .maybe { background: #f3ecd9; }
+      .pass { background: #eee; }
+    </style>
+  </head>
+
+  <body>
+    <main class="shell">
+      <h1>Buyers</h1>
+
+      <div id="grid" class="grid"></div>
+    </main>
+
+    <script>
+      const grid = document.getElementById("grid");
+
+      function formatDate(d) {
+        if (!d) return "No activity";
+        return new Date(d).toLocaleString();
+      }
+
+      async function load() {
+        const res = await fetch("/api/buyers");
+        const json = await res.json();
+
+        if (!json.ok) {
+          grid.innerHTML = "Error loading buyers";
+          return;
+        }
+
+        grid.innerHTML = json.buyers.map(b => `
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="name">${b.name || "Unnamed buyer"}</div>
+                <div class="meta">
+                  Last viewed: ${formatDate(b.stats.lastViewed)}
+                </div>
+              </div>
+              <div class="meta">
+                ${b.stats.shortlists} shortlist(s)
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="pill love">❤️ ${b.stats.loved}</div>
+              <div class="pill maybe">🤔 ${b.stats.maybe}</div>
+              <div class="pill pass">✕ ${b.stats.notForMe}</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      load();
+    </script>
+  </body>
+</html>

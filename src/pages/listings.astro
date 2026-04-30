@@ -1,6 +1,8 @@
+monday
+
+
 ---
 import {
-  fetchRepliersListings,
   getListingAddress,
   getListingBaths,
   getListingBeds,
@@ -12,28 +14,481 @@ import {
   getListingType,
   getListingYear
 } from "../lib/repliers";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const prerender = false;
 
 const url = new URL(Astro.request.url);
 
 const city = url.searchParams.get("city") || "";
-const page = Number(url.searchParams.get("page") || "1");
+const beds = url.searchParams.get("beds") || "";
+const baths = url.searchParams.get("baths") || "";
+const type = url.searchParams.get("type") || "";
+const minPrice = url.searchParams.get("minPrice") || "";
+const maxPrice = url.searchParams.get("maxPrice") || "";
+const area = url.searchParams.get("area") || "";
+const sort = url.searchParams.get("sort") || "";
+const mls = url.searchParams.get("mls") || "";
+const shortlistSlug = url.searchParams.get("shortlist") || "";
 
 let listings: any[] = [];
+let areaOptions: string[] = [];
 let error: string | null = null;
 
-try {
-  const data = await fetchRepliersListings({
-    ...(city ? { city } : {}),
-    page,
-    limit: 50
-  });
+const hasListingFilters = Boolean(city || area || beds || baths || type || minPrice || maxPrice || mls);
 
-  listings = data.listings || [];
-} catch (err) {
-  console.error("Failed to load Repliers listings:", err);
-  error = err instanceof Error ? err.message : "Failed to load listings";
+function cleanArea(value: string) {
+  return String(value || "")
+    .replace(/^na\s+/i, "")
+    .trim();
+}
+
+
+
+
+
+function getListingAreaName(listing: any) {
+  const raw =
+    listing?.area ||
+    listing?.normalized_area ||
+    listing?.raw?.details?.subArea ||
+    listing?.details?.subArea ||
+    listing?.raw?.details?.area ||
+    listing?.details?.area ||
+    listing?.raw?.address?.neighborhood ||
+    listing?.address?.neighborhood ||
+    "";
+
+  const rawArea = String(raw || "")
+    .replace(/^na\s+/i, "")
+    .trim();
+
+  const addressText = String(
+    listing?.address ||
+      listing?.raw?.address?.streetName ||
+      listing?.raw?.address?.addressKey ||
+      getListingAddress(listing) ||
+      ""
+  ).toLowerCase();
+
+  const SOUTH_NANAIMO_STREETS = [
+    "ninth",
+    "highview",
+    "petroglyph",
+    "howard",
+    "bruce",
+    "victoria",
+    "harewood",
+    "duke"
+  ];
+
+  if (SOUTH_NANAIMO_STREETS.some((street) => addressText.includes(street))) {
+    return "South Nanaimo";
+  }
+
+  const NORTH_NANAIMO_STREETS = [
+    "uplands",
+    "dover",
+    "edgewater",
+    "blueback",
+    "vista view",
+    "mcrobb",
+    "sentinal",
+    "metral"
+  ];
+
+  if (NORTH_NANAIMO_STREETS.some((street) => addressText.includes(street))) {
+    return "North Nanaimo";
+  }
+
+  const uselessAreas = [
+    "other",
+    "nanaimo",
+    "nanaimo, city of",
+    "city of nanaimo"
+  ];
+
+  if (rawArea && !uselessAreas.includes(rawArea.toLowerCase())) {
+    return rawArea;
+  }
+
+  const desc = String(listing?.raw?.details?.description || "").toLowerCase();
+
+  if (desc.includes("south nanaimo")) return "South Nanaimo";
+  if (desc.includes("north nanaimo")) return "North Nanaimo";
+
+  return rawArea;
+}
+function normalizeArea(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/^na\s+/i, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+if (hasListingFilters) {
+  try {
+  const searchKey = mls ? "nanaimo" : city ? city.toLowerCase() : "nanaimo";
+
+const { data: snapshot, error: dbError } = await supabase
+  .from("listing_snapshots")
+  .select("listings")
+  .eq("search_key", searchKey)
+  .single();
+
+    if (dbError) {
+      throw new Error(dbError.message);
+    }
+
+    const rawListings = snapshot?.listings || [];
+    console.log("SOUTH RTWN CHECK:", rawListings
+  .filter((l) => {
+    const id = String(
+      l?.id ||
+      l?.repliers_listing_id ||
+      l?.raw?.id ||
+      l?.raw?.mlsNumber ||
+      ""
+    );
+
+    return [
+      "1033060",
+      "1028779",
+      "1026458",
+      "1026381",
+      "1022543",
+      "1020180",
+      "1019391",
+      "1026067"
+    ].includes(id);
+  })
+  .map((l) => ({
+    id: l?.id || l?.repliers_listing_id || l?.raw?.id || l?.raw?.mlsNumber,
+    address: l?.address || l?.raw?.address?.addressKey,
+    area: l?.area || l?.raw?.details?.subArea,
+    type: l?.type,
+    normalized_type: l?.normalized_type,
+    raw_type: l?.raw_type,
+    s_type: l?.s_type || l?.raw?.s_type || l?.raw?.details?.sType
+  }))
+);
+
+   const MAIN_NANAIMO_AREAS = [
+  "Cedar",
+  "Central Nanaimo",
+  "Chase River",
+  "Departure Bay",
+  "Diver Lake",
+  "Hammond Bay",
+  "Lower Lantzville",
+  "North Jingle Pot",
+  "North Nanaimo",
+  "Old City",
+  "Pleasant Valley",
+  "South Jingle Pot",
+  "South Nanaimo",
+  "University District",
+  "Uplands",
+  "Upper Lantzville",
+  "Brechin Hill"
+];
+
+areaOptions =
+  city?.toLowerCase() === "nanaimo"
+    ? MAIN_NANAIMO_AREAS
+    : Array.from(
+        new Set(
+          rawListings
+            .map((listing) => getListingAreaName(listing))
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b));
+
+    listings = rawListings.filter((listing) => {
+      const listingBeds = Number(listing?.beds || getListingBeds(listing) || 0);
+      const listingBaths = Number(listing?.baths || getListingBaths(listing) || 0);
+
+      const priceNumber = Number(
+        listing?.price ||
+          String(getListingPrice(listing) || "").replace(/[^0-9]/g, "")
+      );
+
+      const selectedCity = city.toLowerCase();
+
+      const listingCity = String(
+        listing?.city ||
+          listing?.address?.city ||
+          listing?.raw?.address?.city ||
+          ""
+      ).toLowerCase();
+
+      const listingMarketCity = String(listing?.market_city || "").toLowerCase();
+
+      const addressText = String(getListingAddress(listing) || "").toLowerCase();
+
+const cityOk = selectedCity
+  ? (
+      listingMarketCity.includes(selectedCity) ||
+      listingCity.includes(selectedCity) ||
+      addressText.includes(selectedCity)
+    )
+  : true;
+
+
+
+const selectedMls = String(mls || "").replace(/[^0-9]/g, "");
+
+let mlsOk = true;
+
+if (selectedMls) {
+  const listingMls = String(
+    listing?.id ||
+      listing?.repliers_listing_id ||
+      listing?.raw?.id ||
+      listing?.raw?.mlsNumber ||
+      listing?.raw?.ml_num ||
+      listing?.mlsNumber ||
+      listing?.ml_num ||
+      ""
+  ).replace(/[^0-9]/g, "");
+
+  mlsOk = listingMls === selectedMls;
+}
+
+const listingArea = getListingAreaName(listing);
+const safeArea = listingArea || "unknown";
+
+const rawAreaText = String(
+  listing?.area ||
+    listing?.raw?.details?.subArea ||
+    listing?.details?.subArea ||
+    listing?.raw?.details?.area ||
+    listing?.details?.area ||
+    ""
+);
+
+const normalizedSelected = normalizeArea(area);
+const cleanWanted = type.toLowerCase();
+// get BOTH sources
+const rawArea = normalizeArea(rawAreaText);
+const fallbackArea = normalizeArea(getListingAreaName(listing));
+
+// decide best available
+// combine BOTH sources
+const combinedArea = [rawArea, fallbackArea]
+  .filter(Boolean)
+  .join(" ")
+  .replace(/^na\s+/i, "")   // remove "na "
+  .replace(/district of/g, "")
+  .replace(/area/g, "")
+  .trim();
+
+// flexible match
+const addressArea = normalizeArea(getListingAddress(listing));
+
+const southNanaimoTownhomeIds = [
+  "1033060",
+  "1028779",
+  "1026458",
+  "1026381",
+  "1022543",
+  "1020180",
+  "1019391"
+];
+
+const listingMlsForOverride = String(
+  listing?.id ||
+    listing?.repliers_listing_id ||
+    listing?.raw?.id ||
+    listing?.raw?.mlsNumber ||
+    ""
+).replace(/[^0-9]/g, "");
+
+const isSouthNanaimoTownhomeOverride =
+  normalizedSelected === "south nanaimo" &&
+  cleanWanted === "townhouse" &&
+  southNanaimoTownhomeIds.includes(listingMlsForOverride);
+
+const areaOk = area
+  ? (
+      isSouthNanaimoTownhomeOverride ||
+      combinedArea.includes(normalizedSelected) ||
+      normalizedSelected.includes(combinedArea)
+    )
+  : true;
+
+
+
+  const normalizedType = String(listing?.type || "").toLowerCase();
+  const rawType = String(listing?.raw_type || "").toLowerCase();
+
+  const matrixType = String(
+    listing?.s_type ||
+      listing?.sType ||
+      listing?.raw?.s_type ||
+      listing?.raw?.sType ||
+      listing?.raw?.details?.sType ||
+      listing?.raw?.details?.["S Type"] ||
+      ""
+  ).toLowerCase();
+
+ 
+
+
+
+// beds
+const bedsOk = beds
+  ? listingBeds >= Number(beds)
+  : true;
+
+// baths
+const bathsOk = baths
+  ? listingBaths >= Number(baths)
+  : true;
+
+// price
+const minPriceOk = minPrice
+  ? priceNumber >= Number(minPrice)
+  : true;
+
+const maxPriceOk = maxPrice
+  ? priceNumber <= Number(maxPrice)
+  : true;
+
+// TYPE LOGIC
+let typeOk = true;
+
+
+
+const cleanNormalizedType = String(
+  listing?.normalized_type ||
+    listing?.type ||
+    ""
+).toLowerCase();
+
+const blob = [
+  cleanNormalizedType,
+  listing?.raw_type,
+  listing?.raw?.details?.propertyType,
+  listing?.raw?.details?.style,
+  listing?.raw?.details?.type,
+  listing?.raw?.details?.propertySubType,
+  listing?.raw?.details?.buildingType,
+  listing?.raw?.details?.ownershipType,
+  listing?.raw?.s_type,
+  listing?.raw?.sType
+]
+  .filter(Boolean)
+  .join(" ")
+  .toLowerCase();
+
+
+
+if (cleanWanted) {
+if (cleanWanted === "condo") {
+  const isTownhouseLike =
+    blob.includes("townhouse") ||
+    blob.includes("townhome") ||
+    blob.includes("row") ||
+    blob.includes("patio home");
+
+  typeOk =
+    !isTownhouseLike &&
+    (
+      blob.includes("condo apartment") ||
+      blob.includes("apartment") ||
+      blob.includes("apt") ||
+      matrixType === "con"
+    );
+}
+
+else if (cleanWanted === "townhouse") {
+  typeOk =
+    isSouthNanaimoTownhomeOverride ||
+    cleanNormalizedType === "townhouse" ||
+    cleanNormalizedType === "townhome" ||
+    matrixType === "rtwn" ||
+    matrixType === "row" ||
+    blob.includes("townhouse") ||
+    blob.includes("townhome") ||
+    blob.includes("row") ||
+    blob.includes("patio home");
+}
+
+  else if (cleanWanted === "detached") {
+    typeOk =
+      cleanNormalizedType === "detached" ||
+      matrixType === "det" ||
+      blob.includes("detached") ||
+      blob.includes("single family") ||
+      blob.includes("house") ||
+      blob.includes("sfd");
+  }
+
+  else if (cleanWanted === "mobile") {
+    typeOk =
+      cleanNormalizedType === "mobile" ||
+      matrixType === "manu" ||
+      blob.includes("mobile") ||
+      blob.includes("manufactured") ||
+      blob.includes("modular") ||
+      blob.includes("park model");
+  }
+
+  else if (cleanWanted === "land") {
+    typeOk =
+      cleanNormalizedType === "land" ||
+      matrixType === "lnd" ||
+      blob.includes("land") ||
+      blob.includes("lot");
+  }
+}
+
+const locationOk = area ? areaOk : cityOk;
+
+
+
+const pass =
+  cityOk &&
+  areaOk &&
+  bedsOk &&
+  bathsOk &&
+  minPriceOk &&
+  maxPriceOk &&
+  typeOk &&
+  mlsOk;
+
+
+
+
+
+
+
+
+
+
+return pass;
+    });
+
+    listings = listings.sort((a, b) => {
+      const priceA = Number(a?.price || String(getListingPrice(a) || "").replace(/[^0-9]/g, ""));
+      const priceB = Number(b?.price || String(getListingPrice(b) || "").replace(/[^0-9]/g, ""));
+
+      if (sort === "price-asc") return priceA - priceB;
+      if (sort === "price-desc") return priceB - priceA;
+
+      return 0;
+    });
+  } catch (err) {
+    console.error("Failed to load listings:", err);
+    error = err instanceof Error ? err.message : "Failed to load listings";
+  }
 }
 ---
 
@@ -42,16 +497,21 @@ try {
     <meta charset="utf-8" />
     <title>Listings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
     <style>
       :root {
-        --bg: #f7f7f5;
+        --bg: #181614;
         --card: #ffffff;
         --text: #1f1f1f;
         --muted: #6b6b6b;
         --line: #dddddd;
         --accent: #111111;
         --success: #1f7a45;
+        --danger: #8b1e1e;
+        --danger-bg: #fff6f6;
         --radius: 16px;
       }
 
@@ -79,7 +539,7 @@ try {
         max-width: 1200px;
         margin: 0 auto;
         padding: 24px;
-        padding-bottom: 140px;
+        padding-bottom: 280px;
       }
 
       .topbar {
@@ -110,6 +570,108 @@ try {
         font-size: 0.95rem;
         white-space: nowrap;
       }
+
+.filters {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  align-items: end;
+  width: 100%;
+  overflow: hidden;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font: inherit;
+  background: white;
+  color: var(--text);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filter-clear {
+  text-decoration: none;
+  border: 1px solid var(--line);
+  background: #fafafa;
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 20px;
+    padding-bottom: 110px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+
+  .saved-pill {
+    padding: 9px 14px;
+  }
+
+   .filters {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .filters label {
+    min-width: 0;
+  }
+
+   .filters label:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .filters input,
+  .filters select {
+    width: 100%;
+    min-width: 0;
+  }
+
+    .filter-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+    .filter-actions button,
+  .filter-actions a {
+    width: 100%;
+  }
+}
 
       .grid {
         display: grid;
@@ -189,12 +751,44 @@ try {
       }
 
       button:hover {
-        background: #fafafa;
+  background: #fafafa;
+}
+.page-logo {
+  display: block;
+  width: 220px;
+  max-width: 70vw;
+  height: auto;
+}
+
+.brand-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.primary-btn:hover {
+  background: #242424;
+  color: #fff;
+  border-color: #242424;
+}
+
+      button:disabled {
+        cursor: default;
+        opacity: 1;
+        background: #fff;
       }
 
-      .save-btn.saved {
+      .save-btn.saved,
+      .sheet-save.saved {
         border-color: var(--success);
         color: var(--success);
+        font-weight: 600;
+      }
+
+      .save-btn.remove,
+      .sheet-save.remove {
+        border-color: rgba(139, 30, 30, 0.28);
+        color: var(--danger);
+        background: var(--danger-bg);
         font-weight: 600;
       }
 
@@ -215,60 +809,154 @@ try {
         color: #8b1e1e;
       }
 
-      .composer {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.96);
-        border-top: 1px solid var(--line);
-        backdrop-filter: blur(10px);
-        z-index: 10;
-      }
+.composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(245, 242, 236, 0.98);
+  border-top: 1px solid #d7d1c7;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(14px);
+  z-index: 10000;
+}
 
       .composer-inner {
         max-width: 1200px;
         margin: 0 auto;
         padding: 14px 24px 18px;
-        display: grid;
-        grid-template-columns: 1.2fr 1fr 1fr auto;
-        gap: 12px;
-        align-items: end;
       }
 
-      .field {
+      .composer-inner--edit {
+        display: block;
+      }
+
+    .composer-fields {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1.5fr auto;
+  gap: 16px;
+  align-items: start;
+  padding: 28px 0 32px;
+}
+
+      .composer-toggle {
+        display: none;
+      }
+
+      .composer-toggle-row {
+        display: none;
+      }
+
+      .composer-handle {
+        display: none;
+      }
+
+      .composer-toggle-left {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        align-items: flex-start;
+        gap: 3px;
       }
 
-      .field label {
-        font-size: 0.85rem;
+      .composer-toggle-kicker {
+        font-size: 0.78rem;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      .composer-toggle-title {
+        font-size: 0.98rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .composer-toggle-meta {
+        font-size: 0.88rem;
         color: var(--muted);
       }
 
-      .field input,
-      .field textarea {
-        width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px 12px;
-        font: inherit;
-        background: white;
+      .composer-chev {
+        font-size: 1.1rem;
+        color: var(--muted);
+        transition: transform 0.18s ease;
       }
 
-      .field textarea {
-        min-height: 44px;
-        max-height: 120px;
-        resize: vertical;
+      .edit-shortlist-bar {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 14px 24px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
-      .primary-btn {
-        background: var(--accent);
-        color: white;
-        border-color: var(--accent);
-        min-height: 44px;
+      .edit-shortlist-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
+
+      .edit-shortlist-copy strong {
+        font-size: 0.98rem;
+      }
+
+      .edit-shortlist-copy span {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .edit-back-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        padding: 10px 16px;
+      }
+
+     .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  align-self: start;
+}
+
+      .field label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.composer-fields .field:last-child {
+  padding-top: 26px;
+}
+
+     .field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  background: white;
+}
+
+      .field textarea {
+  min-height: 90px;
+  max-height: 180px;
+  resize: vertical;
+}
+
+     .primary-btn {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  min-height: 44px;
+}
 
       .primary-btn:disabled {
         opacity: 0.5;
@@ -281,15 +969,15 @@ try {
         font-size: 0.92rem;
       }
 
-      .sheet-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.42);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-        z-index: 999;
-      }
+     .sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 20000;
+}
 
       .sheet-overlay.open {
         opacity: 1;
@@ -301,14 +989,13 @@ try {
         left: 0;
         right: 0;
         bottom: 0;
-        z-index: 1000;
+        z-index: 20001;
         background: #fff;
         border-radius: 22px 22px 0 0;
         box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
         max-height: 88vh;
-        overflow: auto;
+        overflow: hidden;
         padding: 12px 12px 18px;
-
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
@@ -318,6 +1005,8 @@ try {
           opacity 0.18s ease,
           visibility 0s linear 0.22s;
       }
+
+      
 
       .sheet.open {
         opacity: 1;
@@ -339,10 +1028,14 @@ try {
         pointer-events: none;
       }
 
-      .sheet-content {
-        position: relative;
-        z-index: 1;
-      }
+    .sheet-content {
+  position: relative;
+  z-index: 1;
+  height: calc(88vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
 
       .sheet-image {
         width: 100%;
@@ -369,10 +1062,12 @@ try {
       }
 
       .sheet-address {
-        margin: 0 0 8px;
-        font-size: 1rem;
-        line-height: 1.4;
-      }
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
 
       .sheet-meta {
         margin: 0 0 12px;
@@ -387,30 +1082,44 @@ try {
       }
 
       .sheet-stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 18px;
-      }
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sheet-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
 
-      .stat {
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 12px;
-        background: #fcfcfc;
-      }
+.sheet-stat-strip span:nth-child(odd) {
+  color: var(--text);
+  font-weight: 600;
+}
+    .stat {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fcfcfc;
+}
 
       .stat-label {
-        font-size: 0.78rem;
-        color: var(--muted);
-        margin-bottom: 4px;
-      }
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.75;
+  margin-bottom: 2px;
+}
 
       .stat-value {
-        font-size: 1rem;
-        font-weight: 700;
-        line-height: 1.2;
-      }
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
 
       .sheet-actions {
         display: flex;
@@ -429,96 +1138,487 @@ try {
         z-index: 6;
       }
 
+      .view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: -6px 0 16px;
+}
+
+.view-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.results-map {
+  height: 70vh;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 22px;
+  background: #e8e8e8;
+}
+
+.sheet-mini-map {
+  height: 340px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 0 0 18px;
+  background: #e8e8e8;
+}
+
+.sheet-mini-map[hidden] {
+  display: none;
+}
+
+.grid.map-hidden {
+  display: none;
+}
+.sheet-photo-wrap {
+    position: relative;
+  width: 100%;
+  height: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ececec;
+}
+
+.sheet-main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--line);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.photo-prev {
+  left: 10px;
+}
+
+.photo-next {
+  right: 10px;
+}
+
+.photo-count {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  background: rgba(0,0,0,0.68);
+  color: white;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.78rem;
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 18px;
+  margin: 14px 0 16px;
+}
+
+.sheet-save-top {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  min-width: 92px;
+}
+
+.sheet-head-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sheet-save-top,
+.sheet-map-btn,
+.sheet-close-top {
+  min-width: 84px;
+  min-height: 40px;
+}
+
+.sheet-map-btn {
+  background: #fafafa;
+}
+
+.sheet-close-top {
+  background: #fafafa;
+}
+
       @media (max-width: 900px) {
+        .page {
+          padding-bottom: 92px;
+        }
+
+        .composer {
+          border-top-left-radius: 18px;
+          border-top-right-radius: 18px;
+          box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+          overflow: hidden;
+        }
+
         .composer-inner {
+          padding: 0;
+        }
+
+        .composer-toggle {
+          display: block;
+          width: 100%;
+          appearance: none;
+          border: 0;
+          background: transparent;
+          padding: 10px 16px 12px;
+          cursor: pointer;
+          font: inherit;
+        }
+
+        .composer-toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .composer-handle {
+          display: block;
+          width: 42px;
+          height: 5px;
+          border-radius: 999px;
+          background: #d7d7d7;
+          margin: 8px auto 4px;
+        }
+
+        .composer-fields {
           grid-template-columns: 1fr;
+          gap: 12px;
+          max-height: 0;
+          overflow: hidden;
+          opacity: 0;
+          padding: 0 16px;
+          transition:
+            max-height 0.24s ease,
+            opacity 0.18s ease,
+            padding 0.18s ease;
+        }
+
+        .composer.open .composer-fields {
+          max-height: 70vh;
+          overflow: auto;
+          opacity: 1;
+          padding: 0 16px 16px;
+        }
+
+        .composer.open .composer-chev {
+          transform: rotate(180deg);
+        }
+
+        .edit-shortlist-bar {
+          padding: 14px 16px 18px;
+          align-items: stretch;
+        }
+
+        .edit-back-btn {
+          width: 100%;
         }
       }
 
       @media (min-width: 900px) {
-        .sheet {
-          left: 50%;
-          top: 50%;
-          right: auto;
-          bottom: auto;
-          width: min(720px, calc(100vw - 48px));
-          max-height: min(700px, calc(100vh - 48px));
-          border-radius: 22px;
-          padding: 14px 14px 20px;
-          transform: translate(-50%, -50%) scale(0.98);
-        }
+  .sheet {
+    left: 50%;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(860px, calc(100vw - 48px));
+    max-height: min(760px, calc(100vh - 48px));
+    border-radius: 22px;
+    padding: 14px 14px 20px;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
 
-        .sheet.open {
-          transform: translate(-50%, -50%) scale(1);
-        }
+  .sheet.open {
+    transform: translate(-50%, -50%) scale(1);
+  }
 
-        .sheet-content {
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 18px;
-          align-items: start;
-        }
+  .sheet-content {
+  display: block;
+  height: calc(min(760px, calc(100vh - 48px)) - 34px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
 
-        .sheet-body {
-          padding-top: 0;
-        }
+  .sheet-body {
+  padding: 10px 2px 0;
+}
 
-        .sheet-image {
-          aspect-ratio: 1 / 1;
-        }
-
-        .sheet-actions {
-          position: static;
-          background: transparent;
-          padding-top: 0;
-        }
-      }
+.sheet-actions {
+    position: static;
+    background: transparent;
+    padding-top: 0;
+  }
+}
     </style>
   </head>
 
-  <body>
+  <body data-shortlist-slug={shortlistSlug}>
     <main class="page">
       <div class="topbar">
-        <div>
-          <h1>Listings</h1>
-          <p class="subtle">Select homes, then create a clean client shortlist.</p>
+        <div class="brand-head">
+  <img
+    src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/74000c47-a1d2-424c-2f16-3d2ebc30e300/card"
+    alt="Logo"
+    class="page-logo"
+  />
+  <p class="subtle">
+            {shortlistSlug
+              ? "Add more homes to this shortlist or remove existing ones."
+              : "Select homes, then create a clean client shortlist."}
+          </p>
         </div>
 
-        <div class="saved-pill">
-          <span id="saved-count">0</span> selected
-        </div>
+        
+
+       <div class="saved-pill">
+  <span id="saved-count">0</span> selected
+  <span id="visible-saved-count" style="color:#6b6b6b;"></span>
+</div>
       </div>
 
-      {
-        listings && listings.length > 0 ? (
+<form class="filters" method="get" action="/listings">
+  {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
+
+ <label>
+  City
+  <select name="city">
+    <option value="" selected={city === ""}>Any city</option>
+    <option value="Nanaimo" selected={city.toLowerCase() === "nanaimo"}>Nanaimo</option>
+    <option value="Lantzville" selected={city.toLowerCase() === "lantzville"}>Lantzville</option>
+    <option value="Parksville" selected={city.toLowerCase() === "parksville"}>Parksville</option>
+    <option value="Qualicum Beach" selected={city.toLowerCase() === "qualicum beach"}>Qualicum Beach</option>
+    <option value="Duncan" selected={city.toLowerCase() === "duncan"}>Duncan</option>
+    <option value="Ladysmith" selected={city.toLowerCase() === "ladysmith"}>Ladysmith</option>
+    <option value="Port Alberni" selected={city.toLowerCase() === "port alberni"}>Port Alberni</option>
+    <option value="Campbell River" selected={city.toLowerCase() === "campbell river"}>Campbell River</option>
+    <option value="Courtenay" selected={city.toLowerCase() === "courtenay"}>Courtenay</option>
+    <option value="Comox" selected={city.toLowerCase() === "comox"}>Comox</option>
+    <option value="Victoria" selected={city.toLowerCase() === "victoria"}>Victoria</option>
+    <option value="Saanich" selected={city.toLowerCase() === "saanich"}>Saanich</option>
+    <option value="Langford" selected={city.toLowerCase() === "langford"}>Langford</option>
+    <option value="Colwood" selected={city.toLowerCase() === "colwood"}>Colwood</option>
+    <option value="Sooke" selected={city.toLowerCase() === "sooke"}>Sooke</option>
+  </select>
+</label>
+
+<label>
+  Sub Area
+  <select name="area" id="area-select" data-selected-area={area}>
+    <option value="">All areas</option>
+  </select>
+</label>
+
+  <label>
+    Beds
+    <select name="beds">
+      <option value="" selected={beds === ""}>Any</option>
+      <option value="1" selected={beds === "1"}>1+</option>
+      <option value="2" selected={beds === "2"}>2+</option>
+      <option value="3" selected={beds === "3"}>3+</option>
+      <option value="4" selected={beds === "4"}>4+</option>
+      <option value="5" selected={beds === "5"}>5+</option>
+    </select>
+  </label>
+
+  <label>
+    Baths
+    <select name="baths">
+      <option value="" selected={baths === ""}>Any</option>
+      <option value="1" selected={baths === "1"}>1+</option>
+      <option value="2" selected={baths === "2"}>2+</option>
+      <option value="3" selected={baths === "3"}>3+</option>
+      <option value="4" selected={baths === "4"}>4+</option>
+    </select>
+  </label>
+
+  <label>
+    Type
+    <select name="type">
+      <option value="" selected={type === ""}>Any</option>
+<option value="detached" selected={type === "detached"}>Detached</option>
+<option value="condo" selected={type === "condo"}>Condo</option>
+<option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
+<option value="land" selected={type === "land"}>Land</option>
+<option value="mobile" selected={type === "mobile"}>Mobile / park model</option>
+    </select>
+  </label>
+
+  <label>
+    Min price (000s)
+    <input name="minPrice" value={minPrice} inputmode="numeric" />
+  </label>
+
+  <label>
+  Max price (000s)
+  <input name="maxPrice" value={maxPrice} inputmode="numeric"  />
+</label>
+<label>
+  MLS #
+  <input name="mls" value={mls} placeholder="1033342" />
+</label>
+<label>
+  Sort
+  <select name="sort">
+    <option value="" selected={sort === ""}>Default</option>
+    <option value="price-asc" selected={sort === "price-asc"}>Price low to high</option>
+    <option value="price-desc" selected={sort === "price-desc"}>Price high to low</option>
+  </select>
+</label>
+
+  <div class="filter-actions">
+    <button type="submit" class="primary-btn">Filter</button>
+    <a
+      class="filter-clear"
+      href={shortlistSlug ? `/listings?shortlist=${shortlistSlug}` : "/listings"}
+    >
+      Clear
+    </a>
+  </div>
+</form>
+{hasListingFilters && listings.length > 0 && (
+  <div class="view-toggle">
+    <button type="button" id="list-view-btn" class="view-btn active">List</button>
+    <button type="button" id="map-view-btn" class="view-btn">Map</button>
+  </div>
+
+  <div id="results-map" class="results-map" hidden></div>
+)}
+{!hasListingFilters ? (
+  <p class="subtle" style="margin:-8px 0 18px;">
+    Apply filters to see listings
+  </p>
+) : (
+  <p class="subtle" style="margin:-8px 0 18px;">
+    Showing {listings.length} result{listings.length === 1 ? "" : "s"}
+  </p>
+)}
+
+{
+  listings && listings.length > 0 ? (
           <div class="grid">
             {listings.map((listing) => {
-              const listingId = getListingId(listing);
-              const price = getListingPrice(listing);
-              const address = getListingAddress(listing);
-              const beds = getListingBeds(listing);
-              const baths = getListingBaths(listing);
-              const sqft = getListingSqft(listing);
-              const propertyType = getListingType(listing);
-              const yearBuilt = getListingYear(listing);
-              const image = getListingImage(listing);
-              const description = getListingDescription(listing);
+            const raw = listing?.raw || listing;
+
+const listingId = listing?.id || getListingId(raw) || "";
+
+const price = listing?.price
+  ? `$${Number(listing.price).toLocaleString()}`
+  : getListingPrice(raw) || "Price unavailable";
+
+const address = listing?.address || getListingAddress(raw) || "Address unavailable";
+
+const beds = listing?.beds || getListingBeds(raw) || "-";
+const baths = listing?.baths || getListingBaths(raw) || "-";
+const sqft = getListingSqft(raw) || "";
+const propertyType = listing?.raw_type || getListingType(raw) || listing?.type || "Home";
+const yearBuilt = getListingYear(raw) || "";
+
+function normalizeImageUrl(url) {
+  const value = String(url || "").trim();
+
+  if (!value) return "";
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("/vreb/")) {
+    return `https://cdn.repliers.io${value}`;
+  }
+
+ if (value.startsWith("/")) {
+  return `https://cdn.repliers.io${value}`;
+}
+
+if (value.startsWith("vreb/")) {
+  return `https://cdn.repliers.io/${value}`;
+}
+
+return value;
+}
+
+// 👇 THIS IS WHAT YOU WERE MISSING
+const image =
+normalizeImageUrl(getListingImage(raw)) ||
+normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
+  "https://placehold.co/800x600?text=Listing";
+  
+              const description =
+  getListingDescription(raw) ||
+  listing?.raw?.description ||
+  listing?.raw?.details?.description ||
+  "A quick preview of this property.";
 
               return (
                 <article
-                  class="card"
-                  data-card-id={String(listingId)}
-                  data-mls={String(listing.mlsNumber || listingId)}
-                  data-price={price}
-                  data-address={address}
-                  data-beds={String(beds)}
-                  data-baths={String(baths)}
-                  data-sqft={String(sqft)}
-                  data-type={propertyType}
-                  data-year={String(yearBuilt)}
-                  data-image={image}
-                  data-description={description}
-                >
+  class="card"
+  data-card-id={String(listingId).trim()}
+  data-mls={String(listingId).trim()}
+  data-price={price}
+  data-address={address}
+  data-beds={String(beds)}
+  data-baths={String(baths)}
+  data-sqft={String(sqft)}
+  data-type={propertyType}
+  data-year={String(yearBuilt)}
+  data-image={image}
+ data-images={JSON.stringify(
+  (listing.images || listing.photo_urls || [])
+    .map((img) =>
+      normalizeImageUrl(
+        typeof img === "string"
+          ? img
+          : img?.highRes ||
+            img?.mediumRes ||
+            img?.lowRes ||
+            img?.url ||
+            ""
+      )
+    )
+    .filter(Boolean)
+)}
+  data-description={description}
+  data-lat={
+    listing?.lat ||
+    listing?.latitude ||
+    listing?.raw?.map?.latitude ||
+    listing?.raw?.coordinates?.latitude ||
+    listing?.raw?.address?.latitude ||
+    ""
+  }
+  data-lng={
+    listing?.lng ||
+    listing?.longitude ||
+    listing?.raw?.map?.longitude ||
+    listing?.raw?.coordinates?.longitude ||
+    listing?.raw?.address?.longitude ||
+    ""
+  }
+  data-shortlist-item-id=""
+>
                   <div class="image-wrap">
                     <img src={image} alt={address} />
                   </div>
@@ -526,8 +1626,12 @@ try {
                   <p class="price">{price}</p>
                   <p class="address">{address}</p>
                   <p class="meta">
-                    {beds} bed • {baths} bath
-                  </p>
+  {beds} bed • {baths} bath • {propertyType}
+</p>
+
+<p class="meta" style="font-size:0.78rem;">
+  {listing?.raw?.details?.style || listing?.raw?.details?.propertyType || listing?.raw_type || "Property details"}
+</p>
 
                   <div class="card-actions">
                     <button
@@ -538,10 +1642,7 @@ try {
                       Save
                     </button>
 
-                    <button
-                      type="button"
-                      class="preview-btn"
-                    >
+                    <button type="button" class="preview-btn">
                       Preview
                     </button>
                   </div>
@@ -569,96 +1670,161 @@ try {
       <div class="sheet-handle"></div>
 
       <div class="sheet-content">
-        <img
-          id="sheet-image"
-          class="sheet-image"
-          src="https://placehold.co/800x600?text=Listing"
-          alt="Listing preview"
-        />
+        <div class="sheet-photo-wrap">
+  <button type="button" class="photo-nav photo-prev" id="photo-prev">‹</button>
+
+  <img
+    id="sheet-main-image"
+    class="sheet-main-image"
+    src="https://placehold.co/800x600?text=Listing"
+    alt="Listing photo"
+  />
+
+  <button type="button" class="photo-nav photo-next" id="photo-next">›</button>
+
+  <div class="photo-count" id="photo-count"></div>
+</div>
 
         <div class="sheet-body">
-          <h2 class="sheet-price" id="sheet-price">$0</h2>
-          <p class="sheet-address" id="sheet-address">Address</p>
-          <p class="sheet-meta" id="sheet-meta">Home details</p>
+        <div class="sheet-head">
+  <div>
+    <h2 class="sheet-price" id="sheet-price">$0</h2>
+    <p class="sheet-address" id="sheet-address">Address</p>
+    <div class="sheet-stat-strip" id="sheet-stat-strip">
+  <span id="sheet-year">-</span>
+  <span>•</span>
+  <span id="sheet-sqft">-</span>
+  <span>•</span>
+  <span id="sheet-layout">-</span>
+</div>
+  </div>
 
-          <div class="sheet-stats">
-            <div class="stat">
-              <div class="stat-label">Property type</div>
-              <div class="stat-value" id="sheet-type">-</div>
-            </div>
+  <div class="sheet-head-actions">
+  <button class="sheet-save sheet-save-top" id="sheet-save-btn" type="button">
+    Save
+  </button>
 
-            <div class="stat">
-              <div class="stat-label">Interior</div>
-              <div class="stat-value" id="sheet-sqft">-</div>
-            </div>
+  <button class="sheet-map-btn" id="sheet-map-btn" type="button">
+    Map
+  </button>
 
-            <div class="stat">
-              <div class="stat-label">Year built</div>
-              <div class="stat-value" id="sheet-year">-</div>
-            </div>
+  <button class="sheet-close sheet-close-top" id="sheet-close-btn" type="button">
+    Close
+  </button>
+</div>
+</div>
 
-            <div class="stat">
-              <div class="stat-label">Layout</div>
-              <div class="stat-value" id="sheet-layout">-</div>
-            </div>
-          </div>
+      
 
-          <p class="sheet-desc" id="sheet-description"></p>
+<div id="sheet-mini-map" class="sheet-mini-map" hidden></div>
 
-          <div class="sheet-actions">
-            <button class="sheet-save" id="sheet-save-btn" type="button">Save</button>
-            <button class="sheet-close" id="sheet-close-btn" type="button">Close</button>
-          </div>
+<p class="sheet-desc" id="sheet-description"></p>
+
+        
         </div>
       </div>
     </aside>
 
     <section class="composer">
-      <div class="composer-inner">
-        <div class="field">
-          <label for="shortlist-title">Shortlist title</label>
-          <input
-            id="shortlist-title"
-            type="text"
-            placeholder="Example: Best options this week"
-          />
-        </div>
+      {shortlistSlug ? (
+        <div class="composer-inner composer-inner--edit">
+          <div class="edit-shortlist-bar">
+            <div class="edit-shortlist-copy">
+              <strong>Editing existing shortlist</strong>
+              <span>Save adds a home. Remove takes it off this shortlist.</span>
+            </div>
 
-        <div class="field">
-          <label for="client-name">Client name</label>
-          <input
-            id="client-name"
-            type="text"
-            placeholder="Example: Sarah + Mike"
-          />
+            <a class="primary-btn edit-back-btn" href={`/shortlists/${shortlistSlug}?agent=1`}>
+              Back to shortlist
+            </a>
+          </div>
         </div>
+      ) : (
+        <div class="composer-inner">
+          <button
+            type="button"
+            class="composer-toggle"
+            id="composer-toggle"
+            aria-expanded="false"
+            aria-controls="composer-fields"
+          >
+            <div class="composer-handle"></div>
 
-        <div class="field">
-          <label for="agent-note">Intro note</label>
-          <textarea
-            id="agent-note"
-            placeholder="Example: These are the homes that best match your budget, layout, and view preferences."
-          ></textarea>
-        </div>
+            <div class="composer-toggle-row">
+              <div class="composer-toggle-left">
+                <span class="composer-toggle-kicker">Shortlist builder</span>
+                <span class="composer-toggle-title">Create client shortlist</span>
+                <span class="composer-toggle-meta">
+                  <span id="composer-selected-count">0</span> selected
+                </span>
+              </div>
 
-        <div class="field">
-          <button type="button" id="create-shortlist-btn" class="primary-btn">
-            Create Shortlist
+              <span class="composer-chev">⌃</span>
+            </div>
           </button>
-          <div class="status" id="status"></div>
-        </div>
-      </div>
-    </section>
 
+          <div class="composer-fields" id="composer-fields">
+            <div class="field">
+              <label for="shortlist-title">Shortlist title</label>
+              <input
+                id="shortlist-title"
+                type="text"
+                placeholder="Example: Best options this week"
+              />
+            </div>
+
+            <div class="field">
+              <label for="client-name">Client name</label>
+              <input
+                id="client-name"
+                type="text"
+                placeholder="Example: Sarah + Mike"
+              />
+            </div>
+
+            <div class="field">
+              <label for="client-phone">Phone number</label>
+              <input
+                id="client-phone"
+                type="text"
+                placeholder="Example: 250-555-1234"
+              />
+            </div>
+
+            <div class="field">
+              <label for="agent-note">Intro note</label>
+              <textarea
+                id="agent-note"
+                placeholder="Example: These are the homes that best match your budget, layout, and view preferences."
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <button type="button" id="create-shortlist-btn" class="primary-btn">
+                Create Shortlist
+              </button>
+              <div class="status" id="status"></div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script is:inline>
       const STORAGE_KEY = "agent-shortlist";
 
       const savedCountEl = document.getElementById("saved-count");
+const visibleSavedCountEl = document.getElementById("visible-saved-count");
       const createBtn = document.getElementById("create-shortlist-btn");
       const statusEl = document.getElementById("status");
       const titleInput = document.getElementById("shortlist-title");
       const clientNameInput = document.getElementById("client-name");
+      const clientPhoneInput = document.getElementById("client-phone");
       const agentNoteInput = document.getElementById("agent-note");
+
+      const composer = document.querySelector(".composer");
+      const composerToggle = document.getElementById("composer-toggle");
+      const composerSelectedCount = document.getElementById("composer-selected-count");
 
       const sheet = document.getElementById("preview-sheet");
       const overlay = document.getElementById("sheet-overlay");
@@ -672,25 +1838,39 @@ try {
       const sheetLayout = document.getElementById("sheet-layout");
       const sheetDescription = document.getElementById("sheet-description");
       const sheetSaveBtn = document.getElementById("sheet-save-btn");
-      const sheetCloseBtn = document.getElementById("sheet-close-btn");
+const sheetCloseBtn = document.getElementById("sheet-close-btn");
+const sheetMapBtn = document.getElementById("sheet-map-btn");
+      
+      const sheetMainImage = document.getElementById("sheet-main-image");
+const photoPrevBtn = document.getElementById("photo-prev");
+const photoNextBtn = document.getElementById("photo-next");
+const photoCount = document.getElementById("photo-count");
+
+let activeImages = [];
+let activeImageIndex = 0;
+
+      const shortlistSlug = document.body.dataset.shortlistSlug || "";
+      const isAddMode = Boolean(shortlistSlug);
 
       let activePreviewId = null;
 
-      function loadShortlist() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return [];
-        }
-      }
+      const existingShortlistMap = new Map();
+
+     function loadShortlist() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
       function saveShortlist(items) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
       }
 
-      let shortlist = loadShortlist();
+      let shortlist = isAddMode ? [] : loadShortlist();
 
       function hasId(id) {
         return shortlist.some((item) => String(item.id) === String(id));
@@ -700,113 +1880,526 @@ try {
         return {
           id: String(card.dataset.cardId || ""),
           repliers_listing_id: String(card.dataset.mls || ""),
-          address: card.dataset.address || "",
-          price_text: card.dataset.price || "",
-          image_url: card.dataset.image || "",
-          beds: card.dataset.beds || "",
-          baths: card.dataset.baths || "",
-          property_type: card.dataset.type || "",
-          sqft: card.dataset.sqft || "",
-          year_built: card.dataset.year || "",
-          description: card.dataset.description || ""
+          address: card.dataset.address || null,
+          price_text: card.dataset.price || null,
+          image_url: card.dataset.image || null,
+          images: JSON.parse(card.dataset.images || "[]"),
+          beds: card.dataset.beds || null,
+          baths: card.dataset.baths || null,
+          property_type: card.dataset.type || null,
+          sqft: card.dataset.sqft || null,
+          year_built: card.dataset.year || null,
+          description: card.dataset.description || null
         };
+      }
+
+      function getExistingEntry(cardOrId, mlsMaybe = "") {
+  let id = "";
+  let mls = "";
+
+  if (cardOrId instanceof HTMLElement) {
+    id = String(cardOrId.dataset.cardId || "").trim();
+    mls = String(cardOrId.dataset.mls || "").trim();
+  } else {
+    id = String(cardOrId || "").trim();
+    mls = String(mlsMaybe || "").trim();
+  }
+
+  return (
+  existingShortlistMap.get(id?.trim()) ||
+  existingShortlistMap.get(mls?.trim()) ||
+  null
+);
+}
+
+      function setCardExistingEntry(card, entry) {
+        if (!(card instanceof HTMLElement)) return;
+        card.dataset.shortlistItemId = entry?.shortlistItemId ? String(entry.shortlistItemId) : "";
+      }
+
+      function markButtonFlash(btn, text, fallback) {
+        if (!(btn instanceof HTMLButtonElement)) return;
+        btn.textContent = text;
+        window.setTimeout(() => {
+          btn.textContent = fallback;
+        }, 1200);
+      }
+
+      function applyButtonState(btn, state) {
+        if (!(btn instanceof HTMLButtonElement)) return;
+
+        btn.classList.remove("saved", "remove");
+        btn.disabled = false;
+
+        if (state === "save") {
+          btn.textContent = "Save";
+          return;
+        }
+
+        if (state === "saved") {
+          btn.textContent = "Saved";
+          btn.classList.add("saved");
+          return;
+        }
+
+        if (state === "remove") {
+          btn.textContent = "Remove";
+          btn.classList.add("remove");
+        }
       }
 
       function updateSheetSaveButton() {
         if (!sheetSaveBtn) return;
 
         if (!activePreviewId) {
-          sheetSaveBtn.textContent = "Save";
-          sheetSaveBtn.classList.remove("saved");
+          applyButtonState(sheetSaveBtn, "save");
+          return;
+        }
+
+        const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
+
+        if (isAddMode) {
+          const entry = card instanceof HTMLElement ? getExistingEntry(card) : null;
+          applyButtonState(sheetSaveBtn, entry ? "remove" : "save");
           return;
         }
 
         const saved = hasId(activePreviewId);
-        sheetSaveBtn.textContent = saved ? "Saved" : "Save";
-        sheetSaveBtn.classList.toggle("saved", saved);
+        applyButtonState(sheetSaveBtn, saved ? "saved" : "save");
+      }
+
+      function setComposerOpen(isOpen) {
+        if (!composer || !composerToggle || window.innerWidth >= 900) return;
+        composer.classList.toggle("open", isOpen);
+        composerToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
       }
 
       function updateUI() {
-        if (savedCountEl) {
-          savedCountEl.textContent = String(shortlist.length);
+        const count = isAddMode
+          ? new Set(
+              Array.from(existingShortlistMap.values()).map((entry) =>
+                String(entry.shortlistItemId || "")
+              )
+            ).size
+          : shortlist.length;
+
+      if (savedCountEl) {
+  savedCountEl.textContent = String(count);
+}
+
+if (visibleSavedCountEl && isAddMode) {
+  const visibleSavedCount = Array.from(document.querySelectorAll(".card.saved")).length;
+
+  visibleSavedCountEl.textContent =
+    count > visibleSavedCount
+      ? ` total · ${visibleSavedCount} visible on this page`
+      : "";
+}
+
+        if (composerSelectedCount) {
+          composerSelectedCount.textContent = String(count);
         }
 
         document.querySelectorAll(".save-btn").forEach((btn) => {
-          const id = String(btn.dataset.listingId || "");
           const card = btn.closest(".card");
+
+          if (isAddMode) {
+            const entry = card instanceof HTMLElement ? getExistingEntry(card) : null;
+            applyButtonState(btn, entry ? "remove" : "save");
+            card?.classList.toggle("saved", Boolean(entry));
+            if (card instanceof HTMLElement) {
+              setCardExistingEntry(card, entry);
+            }
+            return;
+          }
+
+          const id = String(btn.dataset.listingId || "");
           const saved = !!id && hasId(id);
 
-          btn.textContent = saved ? "Saved" : "Save";
-          btn.classList.toggle("saved", saved);
+          applyButtonState(btn, saved ? "saved" : "save");
           card?.classList.toggle("saved", saved);
         });
 
         if (createBtn) {
-          createBtn.disabled = shortlist.length === 0;
+          createBtn.disabled = isAddMode ? true : shortlist.length === 0;
+          createBtn.textContent = isAddMode ? "Editing existing shortlist" : "Create Shortlist";
         }
 
+        if (titleInput) titleInput.disabled = isAddMode;
+        if (clientNameInput) clientNameInput.disabled = isAddMode;
+        if (clientPhoneInput) clientPhoneInput.disabled = isAddMode;
+        if (agentNoteInput) agentNoteInput.disabled = isAddMode;
+
         if (statusEl) {
-          statusEl.textContent = shortlist.length
-            ? `${shortlist.length} listing${shortlist.length === 1 ? "" : "s"} ready`
-            : "No listings selected";
+          if (isAddMode) {
+            statusEl.textContent = "Save adds a home. Remove takes it back off this shortlist.";
+          } else {
+            statusEl.textContent = shortlist.length
+              ? `${shortlist.length} listing${shortlist.length === 1 ? "" : "s"} ready`
+              : "No listings selected";
+          }
         }
 
         updateSheetSaveButton();
+      }
+
+      async function fetchExistingShortlistItems() {
+        if (!isAddMode || !shortlistSlug) return;
+
+        try {
+          const res = await fetch(`/api/shortlists/items?slug=${encodeURIComponent(shortlistSlug)}`);
+          const json = await res.json();
+
+console.log("SHORTLIST SLUG:", shortlistSlug);
+console.log("SHORTLIST ITEMS API RESPONSE:", json);
+
+          if (!res.ok || !json?.ok || !Array.isArray(json?.items)) {
+            throw new Error(json?.error || "Could not load shortlist items");
+          }
+
+          existingShortlistMap.clear();
+
+        json.items.forEach((item) => {
+  const entry = {
+    shortlistItemId: String(
+      item.shortlistItemId ||
+        item.shortlist_item_id ||
+        item.id ||
+        ""
+    ),
+    listingId: String(
+      item.listingId ||
+        item.listing_id ||
+        ""
+    ),
+    repliersListingId: String(
+      item.repliersListingId ||
+        item.repliers_listing_id ||
+        item.mls ||
+        ""
+    )
+  };
+
+  const keys = [
+  entry.listingId,
+  entry.repliersListingId
+]
+  .map((k) => String(k || "").trim())
+  .filter((k) => k.length > 0);
+
+keys.forEach((key) => {
+  existingShortlistMap.set(key, entry);
+});
+});  
+        } catch (err) {
+          console.error("Failed loading existing shortlist items:", err);
+        }
+      }
+
+      async function addToExistingShortlist(card, btn) {
+        const snapshot = getCardSnapshot(card);
+        if (!snapshot.id || !shortlistSlug) return;
+
+        const existing = getExistingEntry(card);
+        if (existing) {
+          updateUI();
+          return;
+        }
+
+       const payload = {
+  slug: shortlistSlug,
+  listing: {
+    id: snapshot.id,
+    repliers_listing_id: snapshot.repliers_listing_id,
+    address: snapshot.address,
+    price_text: snapshot.price_text,
+    image_url: snapshot.image_url,
+    images: snapshot.images || [], // 🔥 THIS LINE FIXES EVERYTHING
+    beds: snapshot.beds,
+    baths: snapshot.baths,
+    sqft: snapshot.sqft,
+    property_type: snapshot.property_type,
+    year_built: snapshot.year_built,
+    description: snapshot.description
+  }
+};
+
+        const previousText = btn instanceof HTMLButtonElement ? btn.textContent : "Save";
+
+        if (btn instanceof HTMLButtonElement) {
+          btn.disabled = true;
+          btn.textContent = "Adding...";
+        }
+
+        try {
+          const res = await fetch("/api/shortlists/add-item", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const json = await res.json();
+
+          if (!res.ok || !json?.ok) {
+            throw new Error(json?.error || "Could not add to shortlist");
+          }
+
+          const entry = {
+            shortlistItemId: String(
+              json?.item?.id ||
+                json?.item?.shortlist_item_id ||
+                json?.shortlistItemId ||
+                json?.id ||
+                ""
+            ),
+            listingId: String(snapshot.id),
+            repliersListingId: String(snapshot.repliers_listing_id || "")
+          };
+
+          if (entry.listingId) existingShortlistMap.set(entry.listingId, entry);
+          if (entry.repliersListingId) existingShortlistMap.set(entry.repliersListingId, entry);
+
+          setCardExistingEntry(card, entry);
+          card.classList.add("saved");
+
+          if (btn instanceof HTMLButtonElement) {
+            markButtonFlash(btn, "Added ✓", "Remove");
+            btn.classList.remove("saved");
+            btn.classList.add("remove");
+            btn.disabled = false;
+          }
+
+          const pageBtn = card.querySelector(".save-btn");
+          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) {
+            pageBtn.textContent = "Remove";
+            pageBtn.classList.remove("saved");
+            pageBtn.classList.add("remove");
+            pageBtn.disabled = false;
+          }
+
+          updateUI();
+        } catch (err) {
+          if (btn instanceof HTMLButtonElement) {
+            btn.disabled = false;
+            btn.textContent = previousText || "Save";
+          }
+          alert(err instanceof Error ? err.message : "Could not add to shortlist");
+        }
+      }
+
+      async function removeFromExistingShortlist(card, btn) {
+        const entry = getExistingEntry(card);
+        const shortlistItemId = entry?.shortlistItemId || card.dataset.shortlistItemId || "";
+
+        if (!shortlistItemId) {
+          alert("Missing shortlist item id.");
+          return;
+        }
+
+        const previousText = btn instanceof HTMLButtonElement ? btn.textContent : "Remove";
+
+        if (btn instanceof HTMLButtonElement) {
+          btn.disabled = true;
+          btn.textContent = "Removing...";
+        }
+
+        try {
+          const res = await fetch("/api/shortlists/remove-item", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ id: shortlistItemId })
+          });
+
+          const json = await res.json();
+
+          if (!res.ok || !json?.ok) {
+            throw new Error(json?.error || "Could not remove from shortlist");
+          }
+
+          const id = String(card.dataset.cardId || "");
+          const mls = String(card.dataset.mls || "");
+
+          if (id) existingShortlistMap.delete(id);
+          if (mls) existingShortlistMap.delete(mls);
+
+          card.dataset.shortlistItemId = "";
+          card.classList.remove("saved");
+
+          if (btn instanceof HTMLButtonElement) {
+            markButtonFlash(btn, "Removed", "Save");
+            btn.classList.remove("remove", "saved");
+            btn.disabled = false;
+          }
+
+          const pageBtn = card.querySelector(".save-btn");
+          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) {
+            pageBtn.textContent = "Save";
+            pageBtn.classList.remove("remove", "saved");
+            pageBtn.disabled = false;
+          }
+
+          updateUI();
+        } catch (err) {
+          if (btn instanceof HTMLButtonElement) {
+            btn.disabled = false;
+            btn.textContent = previousText || "Remove";
+          }
+          alert(err instanceof Error ? err.message : "Could not remove from shortlist");
+        }
       }
 
       function toggleSaveFromCard(card) {
-        const snapshot = getCardSnapshot(card);
-        if (!snapshot.id) return;
+  const snapshot = getCardSnapshot(card);
+  if (!snapshot.id) return;
 
-        if (hasId(snapshot.id)) {
-          shortlist = shortlist.filter((item) => String(item.id) !== snapshot.id);
-        } else {
-          shortlist = [...shortlist, snapshot];
+  if (hasId(snapshot.id)) {
+    shortlist = shortlist.filter((item) => String(item.id) !== snapshot.id);
+  } else {
+    shortlist = [...shortlist, snapshot];
+  }
+
+  saveShortlist(shortlist);
+  updateUI();
+}
+
+      async function handleSave(card, btn) {
+        if (isAddMode) {
+          const existing = getExistingEntry(card);
+          if (existing) {
+            await removeFromExistingShortlist(card, btn);
+          } else {
+            await addToExistingShortlist(card, btn);
+          }
+          return;
         }
 
-        saveShortlist(shortlist);
-        updateUI();
+        toggleSaveFromCard(card);
       }
 
-      function openSheetFromCard(card) {
-        if (!card) return;
+      function normalizeGalleryImageUrl(url) {
+  const value = String(url || "").trim();
 
-        activePreviewId = String(card.dataset.cardId || "");
+  if (!value) return "";
 
-        const beds = card.dataset.beds || "-";
-        const baths = card.dataset.baths || "-";
-        const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
-        const type = card.dataset.type || "-";
-        const year = card.dataset.year || "-";
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
 
-        sheetImage.src = card.dataset.image || "https://placehold.co/800x600?text=Listing";
-        sheetImage.alt = card.dataset.address || "Listing preview";
-        sheetPrice.textContent = card.dataset.price || "Price unavailable";
-        sheetAddress.textContent = card.dataset.address || "Address unavailable";
-        sheetMeta.textContent = `${beds} bed • ${baths} bath`;
-        sheetType.textContent = type;
-        sheetSqft.textContent = sqft;
-        sheetYear.textContent = year;
-        sheetLayout.textContent = `${beds} bed / ${baths} bath`;
-        sheetDescription.textContent =
-          card.dataset.description || "No additional description available.";
+  if (value.startsWith("/")) {
+  return `https://cdn.repliers.io${value}`;
+}
 
-        updateSheetSaveButton();
+if (value.startsWith("vreb/")) {
+  return `https://cdn.repliers.io/${value}`;
+}
 
-        sheet.classList.add("open");
-        overlay.classList.add("open");
-        sheet.setAttribute("aria-hidden", "false");
+return value;
+}
+function preloadImage(src) {
+  if (!src) return;
 
-        if (window.innerWidth < 900) {
-          document.body.style.overflow = "hidden";
-        }
-      }
+  const img = new Image();
+  img.src = src;
+}
+function updateMainPhoto() {
+  if (!sheetMainImage) return;
 
+  const src =
+    normalizeGalleryImageUrl(activeImages[activeImageIndex]) ||
+    "https://placehold.co/800x600?text=Listing";
+
+  sheetMainImage.src = src;
+  preloadImage(activeImages[activeImageIndex + 1]);
+preloadImage(activeImages[activeImageIndex - 1]);
+
+  if (photoCount) {
+    photoCount.textContent = activeImages.length
+      ? `${activeImageIndex + 1} / ${activeImages.length}`
+      : "";
+  }
+
+  if (photoPrevBtn) photoPrevBtn.hidden = activeImages.length <= 1;
+  if (photoNextBtn) photoNextBtn.hidden = activeImages.length <= 1;
+}
+
+function openSheetFromCard(card) {
+  if (!card) return;
+
+  const miniMapEl = document.getElementById("sheet-mini-map");
+  if (miniMapEl) miniMapEl.hidden = true;
+
+  activePreviewId = String(card.dataset.cardId || "");
+
+  const beds = card.dataset.beds || "-";
+  const baths = card.dataset.baths || "-";
+  const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
+  const type = card.dataset.type || "-";
+  const year = card.dataset.year || "-";
+
+  let images = [];
+
+  try {
+    images = JSON.parse(card.dataset.images || "[]");
+  } catch {
+    images = [];
+  }
+
+images = images
+  .map((img) =>
+    normalizeGalleryImageUrl(
+      typeof img === "string"
+        ? img
+        : img?.highRes ||
+          img?.mediumRes ||
+          img?.lowRes ||
+          img?.url ||
+          ""
+    )
+  )
+  .filter(Boolean);
+
+  if (card.dataset.image) {
+    images = [normalizeGalleryImageUrl(card.dataset.image), ...images];
+  }
+  images = [...new Set(images)];
+
+  activeImages = [...new Set(images)];
+  activeImageIndex = 0;
+  updateMainPhoto();
+
+  sheetPrice.textContent = card.dataset.price || "Price unavailable";
+  sheetAddress.textContent = card.dataset.address || "Address unavailable";
+ if (sheetMeta) sheetMeta.textContent = `${beds} bed • ${baths} bath`;
+  if (sheetType) sheetType.textContent = type;
+  sheetSqft.textContent = sqft;
+  sheetYear.textContent = year;
+  sheetLayout.textContent = `${beds} bed / ${baths} bath`;
+  sheetDescription.textContent =
+    card.dataset.description || "No additional description available.";
+
+  updateSheetSaveButton();
+
+  sheet.classList.add("open");
+  overlay.classList.add("open");
+  sheet.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => {
+  sheet.scrollTop = 0;
+  document.querySelector(".sheet-content")?.scrollTo({ top: 0 });
+});
+
+ document.body.style.overflow = "hidden";
+document.documentElement.style.overflow = "hidden";
+}
       function closeSheet() {
         sheet.classList.remove("open");
         overlay.classList.remove("open");
         sheet.setAttribute("aria-hidden", "true");
-        document.body.style.overflow = "";
+      document.body.style.overflow = "";
+document.documentElement.style.overflow = "";
         activePreviewId = null;
         updateSheetSaveButton();
       }
@@ -824,27 +2417,82 @@ try {
           openSheetFromCard(card);
         });
 
-        saveBtn?.addEventListener("click", () => {
-          toggleSaveFromCard(card);
+        saveBtn?.addEventListener("click", async (event) => {
+          event.preventDefault();
+          await handleSave(card, event.currentTarget);
         });
       });
 
-      sheetSaveBtn?.addEventListener("click", (event) => {
+      composerToggle?.addEventListener("click", () => {
+        const isOpen = composer.classList.contains("open");
+        setComposerOpen(!isOpen);
+      });
+
+      sheetSaveBtn?.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
 
         if (!activePreviewId) return;
 
-        const card = document.querySelector(`[data-card-id="${activePreviewId}"]`);
-        if (card) toggleSaveFromCard(card);
-        closeSheet();
+        const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
+        if (card) {
+          await handleSave(card, event.currentTarget);
+        }
       });
 
       sheetCloseBtn?.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        closeSheet();
+  event.preventDefault();
+  event.stopPropagation();
+  closeSheet();
+});
+
+let sheetMiniMap = null;
+let sheetMiniMarker = null;
+
+sheetMapBtn?.addEventListener("click", () => {
+  if (!activePreviewId || typeof L === "undefined") return;
+
+  const mapEl = document.getElementById("sheet-mini-map");
+  const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
+
+  if (!mapEl || !card) return;
+
+  const lat = Number(card.dataset.lat || "");
+  const lng = Number(card.dataset.lng || "");
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
+    mapEl.hidden = false;
+    mapEl.innerHTML = "<p style='padding:14px;'>No map location available for this listing.</p>";
+    return;
+  }
+
+  mapEl.hidden = !mapEl.hidden;
+  if (mapEl.hidden) return;
+
+  setTimeout(() => {
+    if (!sheetMiniMap) {
+      sheetMiniMap = L.map(mapEl, {
+        zoomControl: false,
+        scrollWheelZoom: false
       });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(sheetMiniMap);
+    }
+
+    sheetMiniMap.setView([lat, lng], 15);
+
+    if (sheetMiniMarker) {
+      sheetMiniMarker.remove();
+    }
+
+    sheetMiniMarker = L.marker([lat, lng]).addTo(sheetMiniMap);
+
+    sheetMiniMap.invalidateSize();
+  }, 120);
+});
 
       overlay?.addEventListener("click", (event) => {
         event.preventDefault();
@@ -856,8 +2504,85 @@ try {
           closeSheet();
         }
       });
+function moneyToNumber(value) {
+  return Number(String(value || "").replace(/[^0-9]/g, "")) || 0;
+}
 
+function numberFromText(value) {
+  return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
+}
+
+function addShortlistInsights(items) {
+  const enriched = items.map((item) => {
+    const price = moneyToNumber(item.price_text);
+    const sqft = numberFromText(item.sqft);
+    const beds = numberFromText(item.beds);
+    const baths = numberFromText(item.baths);
+    const year = numberFromText(item.year_built);
+
+    return {
+      ...item,
+      __price: price,
+      __sqft: sqft,
+      __beds: beds,
+      __baths: baths,
+      __year: year,
+      __psf: price && sqft ? Math.round(price / sqft) : null
+    };
+  });
+
+  const validPsf = enriched.filter((i) => i.__psf);
+  const validSqft = enriched.filter((i) => i.__sqft);
+  const validPrice = enriched.filter((i) => i.__price);
+  const validBeds = enriched.filter((i) => i.__beds);
+  const validYear = enriched.filter((i) => i.__year);
+
+  const lowestPsf = validPsf.sort((a, b) => a.__psf - b.__psf)[0];
+  const largest = validSqft.sort((a, b) => b.__sqft - a.__sqft)[0];
+  const lowestPrice = validPrice.sort((a, b) => a.__price - b.__price)[0];
+  const mostBeds = validBeds.sort((a, b) => b.__beds - a.__beds)[0];
+  const newest = validYear.sort((a, b) => b.__year - a.__year)[0];
+
+  return enriched.map((item) => {
+    let insight = null;
+
+    if (lowestPsf && item.id === lowestPsf.id) {
+      insight = {
+        title: "Best value in this group",
+        detail: `$${item.__psf}/sq ft`
+      };
+    } else if (largest && item.id === largest.id) {
+      insight = {
+        title: "Largest home in your shortlist",
+        detail: `${item.__sqft.toLocaleString()} sq ft`
+      };
+    } else if (lowestPrice && item.id === lowestPrice.id) {
+      insight = {
+        title: "Lowest price in this group",
+        detail: item.price_text
+      };
+    } else if (mostBeds && item.id === mostBeds.id) {
+      insight = {
+        title: "Most bedrooms in this group",
+        detail: `${item.__beds} bed`
+      };
+    } else if (newest && item.id === newest.id) {
+      insight = {
+        title: "Newest home in this group",
+        detail: `Built ${item.__year}`
+      };
+    }
+
+    return {
+      ...item,
+      insight_title: insight?.title || null,
+      insight_detail: insight?.detail || null
+    };
+  });
+}
       createBtn?.addEventListener("click", async () => {
+        if (isAddMode) return;
+
         if (!shortlist.length) {
           if (statusEl) statusEl.textContent = "Select at least one listing first";
           return;
@@ -867,16 +2592,39 @@ try {
         createBtn.textContent = "Creating...";
         if (statusEl) statusEl.textContent = "Building shortlist...";
 
-        try {
+    try {
+const shortlistWithInsights = addShortlistInsights(shortlist);
+
+const listingSnapshots = shortlistWithInsights.map((item) => ({
+  id: item.id || null,
+  repliers_listing_id: item.repliers_listing_id || null,
+  address: item.address || null,
+  price_text: item.price_text || null,
+  image_url: item.image_url || null,
+  images: item.images || [],
+  beds: item.beds || null,
+  baths: item.baths || null,
+  property_type: item.property_type || null,
+  sqft: item.sqft || null,
+  year_built: item.year_built || null,
+  description: item.description || null,
+  insight_title: item.insight_title || null,
+  insight_detail: item.insight_detail || null
+}));
+
           const res = await fetch("/api/shortlists/create", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
-              listings: shortlist,
+              listingIds: listingSnapshots
+                .map((item) => item.id || item.repliers_listing_id)
+                .filter(Boolean),
+              listingSnapshots,
               title: titleInput?.value?.trim() || null,
               clientName: clientNameInput?.value?.trim() || null,
+              phone: clientPhoneInput?.value?.trim() || null,
               note: agentNoteInput?.value?.trim() || null
             })
           });
@@ -884,9 +2632,9 @@ try {
           const json = await res.json();
           console.log("CREATE SHORTLIST RESPONSE:", json);
 
-          if (json.ok && json.shortlistUrl) {
+          if (json.ok && json.slug) {
             localStorage.removeItem(STORAGE_KEY);
-            window.location.href = json.shortlistUrl;
+            window.location.href = `/shortlists/${json.slug}?agent=1`;
             return;
           }
 
@@ -900,9 +2648,204 @@ try {
           createBtn.textContent = "Create Shortlist";
         }
       });
+let resultsMap = null;
+let resultsMarkers = [];
 
-      closeSheet();
-      updateUI();
+function getListingLatLng(card) {
+  const lat = Number(card.dataset.lat || "");
+  const lng = Number(card.dataset.lng || "");
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat === 0 || lng === 0) return null;
+
+  return { lat, lng };
+}
+
+function initResultsMap() {
+  const mapEl = document.getElementById("results-map");
+  if (!mapEl || typeof L === "undefined") return;
+
+  const cards = Array.from(document.querySelectorAll(".card"));
+  const points = cards
+    .map((card) => ({ card, point: getListingLatLng(card) }))
+    .filter((item) => item.point);
+
+  if (!points.length) {
+    mapEl.innerHTML = "<p style='padding:16px;'>No map locations available for these results.</p>";
+    return;
+  }
+
+  if (!resultsMap) {
+    resultsMap = L.map(mapEl).setView([49.1659, -123.9401], 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(resultsMap);
+  }
+
+  resultsMarkers.forEach((marker) => marker.remove());
+  resultsMarkers = [];
+
+  const bounds = [];
+
+  points.forEach(({ card, point }) => {
+    const marker = L.marker([point.lat, point.lng]).addTo(resultsMap);
+
+    marker.bindPopup(`
+      <strong>${card.dataset.price || "Listing"}</strong><br>
+      ${card.dataset.address || ""}
+    `);
+
+    marker.on("click", () => {
+      openSheetFromCard(card);
+    });
+
+    resultsMarkers.push(marker);
+    bounds.push([point.lat, point.lng]);
+  });
+
+  resultsMap.fitBounds(bounds, { padding: [32, 32] });
+
+  setTimeout(() => {
+    resultsMap.invalidateSize();
+  }, 100);
+}
+photoPrevBtn?.addEventListener("click", () => {
+  if (!activeImages.length) return;
+  activeImageIndex =
+    (activeImageIndex - 1 + activeImages.length) % activeImages.length;
+  updateMainPhoto();
+});
+
+photoNextBtn?.addEventListener("click", () => {
+  if (!activeImages.length) return;
+  activeImageIndex = (activeImageIndex + 1) % activeImages.length;
+  updateMainPhoto();
+});
+const listViewBtn = document.getElementById("list-view-btn");
+const mapViewBtn = document.getElementById("map-view-btn");
+const resultsMapEl = document.getElementById("results-map");
+const resultsGrid = document.querySelector(".grid");
+
+listViewBtn?.addEventListener("click", () => {
+  resultsMapEl.hidden = true;
+  resultsGrid?.classList.remove("map-hidden");
+
+  listViewBtn.classList.add("active");
+  mapViewBtn?.classList.remove("active");
+});
+
+mapViewBtn?.addEventListener("click", () => {
+  resultsMapEl.hidden = false;
+  resultsGrid?.classList.add("map-hidden");
+
+  mapViewBtn.classList.add("active");
+  listViewBtn?.classList.remove("active");
+
+  initResultsMap();
+});
+      async function initPage() {
+        closeSheet();
+        await fetchExistingShortlistItems();
+        updateUI();
+      }
+
+      initPage();
+
+    const citySelect = document.querySelector('select[name="city"]');
+const areaSelect = document.getElementById("area-select");
+
+async function updateAreaOptions() {
+  if (!areaSelect) return;
+
+  const selectedCity = String(citySelect?.value || "").toLowerCase();
+  const selectedArea = areaSelect.dataset.selectedArea || areaSelect.value || "";
+
+  areaSelect.innerHTML = `<option value="">All areas</option>`;
+
+  if (!selectedCity) return;
+
+  // 🔥 HARD LOCK NANAIMO
+  if (selectedCity === "nanaimo") {
+    const MAIN_NANAIMO_AREAS = [
+      "Cedar",
+      "Central Nanaimo",
+      "Chase River",
+      "Departure Bay",
+      "Diver Lake",
+      "Hammond Bay",
+      "Lower Lantzville",
+      "North Jingle Pot",
+      "North Nanaimo",
+      "Old City",
+      "Pleasant Valley",
+      "South Jingle Pot",
+      "South Nanaimo",
+      "University District",
+      "Uplands",
+      "Upper Lantzville",
+      "Brechin Hill"
+    ];
+
+    MAIN_NANAIMO_AREAS.forEach((areaName) => {
+      const option = document.createElement("option");
+      option.value = areaName;
+      option.textContent = areaName;
+
+      if (areaName === selectedArea) {
+        option.selected = true;
+      }
+
+      areaSelect.appendChild(option);
+    });
+
+    return;
+  }
+
+  // fallback for other cities
+  try {
+    const res = await fetch(`/api/listing-areas?city=${encodeURIComponent(selectedCity)}`);
+    const json = await res.json();
+
+    const areas = Array.isArray(json?.areas) ? json.areas : [];
+
+    areas.forEach((areaName) => {
+      const option = document.createElement("option");
+      option.value = areaName;
+      option.textContent = areaName;
+
+      if (areaName === selectedArea) {
+        option.selected = true;
+      }
+
+      areaSelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Could not load areas:", err);
+  }
+}
+
+updateAreaOptions();
+
+// price shorthand: 800 → 800000
+document.querySelector(".filters")?.addEventListener("submit", () => {
+  ["minPrice", "maxPrice"].forEach((name) => {
+    const input = document.querySelector(`input[name="${name}"]`);
+    if (!input) return;
+
+    const value = String(input.value || "").trim();
+
+    if (/^\d{2,4}$/.test(value)) {
+      input.value = String(Number(value) * 1000);
+    }
+  });
+});
+
+citySelect?.addEventListener("change", () => {
+  if (areaSelect) areaSelect.dataset.selectedArea = "";
+  updateAreaOptions();
+});
     </script>
   </body>
 </html>
