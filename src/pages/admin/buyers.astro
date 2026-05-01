@@ -3,9 +3,10 @@
 
 <html>
   <head>
-    <title>Buyers</title>
+    <meta charset="UTF-8" />
+    <title>Buyer CRM</title>
 
-    <style>
+    <style is:global>
       body {
         margin: 0;
         font-family: system-ui;
@@ -22,6 +23,37 @@
       h1 {
         font-size: 42px;
         letter-spacing: -0.05em;
+        margin: 0 0 8px;
+      }
+
+      .lead {
+        max-width: 680px;
+        font-size: 16px;
+        line-height: 1.5;
+        color: rgba(24, 22, 20, 0.68);
+        margin: 0 0 20px;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .toolbar label {
+        font-size: 14px;
+        font-weight: 800;
+        color: rgba(24, 22, 20, 0.65);
+      }
+
+      .toolbar select {
+        border: 1px solid rgba(24, 22, 20, 0.16);
+        border-radius: 999px;
+        padding: 10px 14px;
+        background: #fffaf1;
+        color: #181614;
+        font-weight: 800;
       }
 
       .grid {
@@ -30,35 +62,89 @@
         margin-top: 24px;
       }
 
-      .card {
-        background: white;
-        border-radius: 20px;
-        padding: 18px;
-        border: 1px solid rgba(0,0,0,0.08);
+      .buyer-card {
+        cursor: pointer;
+        background: #fffaf1;
+        border: 1px solid rgba(24, 22, 20, 0.12);
+        border-radius: 22px;
+        padding: 20px;
+        box-shadow: 0 8px 24px rgba(24, 22, 20, 0.06);
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+      }
+
+      .buyer-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 38px rgba(24, 22, 20, 0.14);
+        border-color: rgba(24, 22, 20, 0.25);
       }
 
       .row {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
+        gap: 16px;
       }
 
       .name {
-        font-size: 20px;
-        font-weight: 800;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
       }
 
       .meta {
         font-size: 14px;
-        color: rgba(0,0,0,0.6);
+        color: rgba(24, 22, 20, 0.6);
         margin-top: 4px;
+      }
+
+      .looking-for {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(24, 22, 20, 0.06);
+        font-size: 14px;
+        font-weight: 850;
+        color: rgba(24, 22, 20, 0.82);
+      }
+
+      .mini-read {
+        margin-top: 10px;
+        font-size: 14px;
+        font-weight: 800;
+        color: rgba(24, 22, 20, 0.78);
+      }
+
+      .prompt {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        font-weight: 900;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .prompt.hot {
+        background: #ffe1b8;
+      }
+
+      .prompt.nudge {
+        background: #f3ecd9;
+      }
+
+      .prompt.good {
+        background: #e7f0df;
+      }
+
+      .prompt.quiet {
+        background: #eee;
       }
 
       .stats {
         display: flex;
-        gap: 16px;
-        margin-top: 12px;
-        font-weight: 700;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+        font-weight: 800;
       }
 
       .pill {
@@ -70,25 +156,445 @@
       .love { background: #fde7d9; }
       .maybe { background: #f3ecd9; }
       .pass { background: #eee; }
+      .hot-pill { background: #ffe1b8; }
+      .viewed { background: #e7f0df; }
+      .cold { background: #eee; }
+      .momentum-up { background: #e7f0df; }
+      .momentum-flat { background: #f3ecd9; }
+      .momentum-down { background: #eee; }
+      .missed { background: #ffd7bd; }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        padding: 9px 13px;
+        background: #181614;
+        color: #fffaf1;
+        font-size: 13px;
+        font-weight: 900;
+        text-decoration: none;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .action.secondary {
+        background: rgba(24, 22, 20, 0.08);
+        color: #181614;
+      }
+
+      .buyer-card::after {
+        content: "Click to view listing activity";
+        display: inline-flex;
+        margin-top: 14px;
+        font-size: 13px;
+        font-weight: 800;
+        color: rgba(24, 22, 20, 0.58);
+      }
+
+      .buyer-card:has(.detail)::after {
+        content: "Click to collapse";
+      }
+
+      .detail {
+        margin-top: 18px;
+        padding: 16px;
+        border-radius: 16px;
+        background: #f8f1e6;
+        border: 1px solid rgba(24, 22, 20, 0.1);
+      }
+
+      .detail-group + .detail-group {
+        margin-top: 18px;
+      }
+
+      .detail-title {
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(24, 22, 20, 0.62);
+        margin-bottom: 6px;
+      }
+
+      .detail-item {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(24, 22, 20, 0.08);
+        font-size: 14px;
+      }
+
+      .detail-item:last-child {
+        border-bottom: 0;
+      }
+
+      .contact-note {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(24, 22, 20, 0.06);
+        color: rgba(24, 22, 20, 0.78);
+      }
     </style>
   </head>
 
   <body>
     <main class="shell">
-      <h1>Buyers</h1>
+      <h1>Buyer CRM</h1>
+      <p class="lead">
+        One-page client radar. See who is active, what they are looking at, and who needs a follow-up.
+      </p>
+
+      <div class="toolbar">
+        <label for="sortBuyers">Sort by</label>
+        <select id="sortBuyers">
+          <option value="attention">Needs attention</option>
+          <option value="recent">Most recent activity</option>
+          <option value="hot">Hottest buyers</option>
+          <option value="loved">Most loved</option>
+          <option value="maybe">Most maybes</option>
+          <option value="shortlists">Most shortlists</option>
+        </select>
+      </div>
 
       <div id="grid" class="grid"></div>
     </main>
 
     <script>
       const grid = document.getElementById("grid");
+      const sortBuyersEl = document.getElementById("sortBuyers");
 
-      function formatDate(d) {
-        if (!d) return "No activity";
-        return new Date(d).toLocaleString();
+     let buyers = [];
+let currentSort = "attention";
+let pendingMatchesByBuyer = {};
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function dateMs(d) {
+        return d ? new Date(d).getTime() : 0;
+      }
+
+      function hoursSince(d) {
+        if (!d) return Infinity;
+        return Math.max(0, (Date.now() - dateMs(d)) / 36e5);
+      }
+
+      function formatAge(d) {
+        if (!d) return "Never";
+        const h = hoursSince(d);
+
+        if (h < 1) return "Less than 1 hour ago";
+        if (h < 24) return `${Math.floor(h)} hour${Math.floor(h) === 1 ? "" : "s"} ago`;
+
+        const days = Math.floor(h / 24);
+        return `${days} day${days === 1 ? "" : "s"} ago`;
+      }
+
+      function hasActivity(b) {
+        return (
+          b.stats.lastActivityAt ||
+          b.stats.lastViewed ||
+          (b.stats.loved || 0) > 0 ||
+          (b.stats.maybe || 0) > 0 ||
+          (b.stats.notForMe || 0) > 0
+        );
+      }
+
+      function lastContactAt(b) {
+        return b.stats.lastContactedAt || b.last_contacted_at || b.lastContactedAt || null;
+      }
+
+      function buyerStatus(b) {
+        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) {
+          return "🔥 Hot buyer";
+        }
+
+        if (hasActivity(b)) return "👀 Active";
+
+        return "💤 Not viewed yet";
+      }
+
+      function buyerStatusClass(b) {
+        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) {
+          return "hot-pill";
+        }
+
+        if (hasActivity(b)) return "viewed";
+
+        return "cold";
+      }
+
+      function momentum(b) {
+        const sinceActivity = hoursSince(b.stats.lastActivityAt || b.stats.lastViewed);
+        const loved = b.stats.loved || 0;
+        const maybe = b.stats.maybe || 0;
+
+        if (sinceActivity <= 24 && (loved > 0 || maybe > 0)) {
+          return { text: "↑ Heating up", className: "momentum-up" };
+        }
+
+        if (sinceActivity <= 72) {
+          return { text: "→ Active", className: "momentum-flat" };
+        }
+
+        if (hasActivity(b)) {
+          return { text: "↓ Cooling off", className: "momentum-down" };
+        }
+
+        return { text: "No activity yet", className: "cold" };
+      }
+
+      function lookingForSummary(b) {
+        const loved = b.stats.loved || 0;
+        const maybe = b.stats.maybe || 0;
+        const pass = b.stats.notForMe || 0;
+
+        if (loved > 0 && maybe > 0) {
+          return `Looking for: strong match signals - ${loved} loved, ${maybe} maybe. Ask what stood out.`;
+        }
+
+        if (loved > 0) {
+          return `Looking for: homes similar to the ${loved} they loved. Focus on showings.`;
+        }
+
+        if (maybe > 0) {
+          return `Looking for: close-but-not-perfect options. Help narrow the maybes.`;
+        }
+
+        if (pass > 0) {
+          return `Looking for: better fit needed - current shortlist is missing the mark.`;
+        }
+
+        return "Looking for: not enough signal yet. Send a fresh shortlist or ask what matters most.";
+      }
+
+      function buyerRead(b) {
+        const loved = b.stats.loved || 0;
+        const maybe = b.stats.maybe || 0;
+        const pass = b.stats.notForMe || 0;
+
+        if (loved > 0 && maybe > 0) {
+          return `Signal: liked ${loved}, considering ${maybe}. Worth a personal follow-up.`;
+        }
+
+        if (loved > 0) {
+          return `Signal: ${loved} loved property${loved === 1 ? "" : "ies"}. Ask about showings.`;
+        }
+
+        if (maybe > 0) {
+          return `Signal: ${maybe} maybe property${maybe === 1 ? "" : "ies"}. Help narrow the list.`;
+        }
+
+        if (pass > 0) {
+          return `Signal: mostly passing. Send better matches.`;
+        }
+
+        return "Signal: no clear preference yet.";
+      }
+
+      function followUpPrompt(b) {
+        const activityAt = b.stats.lastActivityAt || b.stats.lastViewed;
+        const contactAt = lastContactAt(b);
+
+        const sinceActivity = hoursSince(activityAt);
+        const sinceContact = hoursSince(contactAt);
+
+        if (sinceContact > 24 && sinceActivity <= 24) {
+          return {
+            text: "🔥 Next best action: text them while they are active.",
+            className: "hot",
+            score: 100,
+            sms: "I saw you had a look at the shortlist. Any of those homes worth talking about?"
+          };
+        }
+
+        if (sinceContact > 24 && (b.stats.loved || 0) > 0) {
+          return {
+            text: "❤️ Next best action: ask if they want to see the property they liked.",
+            className: "hot",
+            score: 90,
+            sms: "I saw you liked one of the homes. Want me to look into it or set up a showing?"
+          };
+        }
+
+        if (sinceContact > 24 && (b.stats.maybe || 0) > 0) {
+          return {
+            text: "🤔 Next best action: help them sort through the maybes.",
+            className: "nudge",
+            score: 75,
+            sms: "I saw a couple maybes in your shortlist. Want me to help narrow down which ones are actually worth seeing?"
+          };
+        }
+
+        if (sinceContact > 48 && hasActivity(b)) {
+          return {
+            text: "👋 Next best action: reconnect before they go fully cold.",
+            className: "nudge",
+            score: 60,
+            sms: "Just checking in. Want me to send a few better matches based on what you liked and passed on?"
+          };
+        }
+
+        if (!hasActivity(b)) {
+          return {
+            text: "💤 No activity yet - maybe send a fresher shortlist later.",
+            className: "quiet",
+            score: 10,
+            sms: "I can send over a few fresh options if you want to keep an eye on the market."
+          };
+        }
+
+        return {
+          text: "✅ You are in sync - no urgent follow-up needed.",
+          className: "good",
+          score: 30,
+          sms: "Just checking in - anything you want me to dig into from the shortlist?"
+        };
+      }
+
+      function missedOpportunity(b) {
+        return (b.stats.loved || 0) > 0 && hoursSince(lastContactAt(b)) > 24;
+      }
+
+      function hotScore(b) {
+        return (
+          (b.stats.loved || 0) * 3 +
+          (b.stats.maybe || 0) * 2 +
+          (b.stats.shortlists || 0) +
+          (b.stats.lastActivityAt ? 5 : 0)
+        );
+      }
+
+      function sortBuyers(list) {
+        return [...list].sort((a, b) => {
+          if (currentSort === "attention") {
+            return followUpPrompt(b).score - followUpPrompt(a).score;
+          }
+
+          if (currentSort === "recent") {
+            return dateMs(b.stats.lastActivityAt) - dateMs(a.stats.lastActivityAt);
+          }
+
+          if (currentSort === "hot") {
+            return hotScore(b) - hotScore(a);
+          }
+
+          if (currentSort === "loved") {
+            return (b.stats.loved || 0) - (a.stats.loved || 0);
+          }
+
+          if (currentSort === "maybe") {
+            return (b.stats.maybe || 0) - (a.stats.maybe || 0);
+          }
+
+          if (currentSort === "shortlists") {
+            return (b.stats.shortlists || 0) - (a.stats.shortlists || 0);
+          }
+
+          return 0;
+        });
+      }
+
+      function renderBuyers() {
+        grid.innerHTML = sortBuyers(buyers).map((b) => {
+          const prompt = followUpPrompt(b);
+          const move = momentum(b);
+          const name = b.name || "Unnamed buyer";
+          const safeName = escapeHtml(name);
+          const phone = b.phone || b.client_phone || b.stats.phone || "";
+          const textBody = `Hi ${name}, ${prompt.sms}`;
+          const note = b.stats.lastContactNote || "";
+
+          return `
+            <div class="buyer-card" data-name="${safeName}">
+              <div class="row">
+                <div>
+                  <div class="name">${safeName}</div>
+                  <div class="meta">Last activity: ${formatAge(b.stats.lastActivityAt)}</div>
+                  <div class="meta">Last contact: ${formatAge(lastContactAt(b))}</div>
+
+                  ${
+                    note
+                      ? `<div class="meta contact-note">
+                          <strong>Note:</strong> ${escapeHtml(note)}
+                        </div>`
+                      : ""
+                  }
+
+                  <div class="looking-for">${escapeHtml(lookingForSummary(b))}</div>
+           <div class="mini-read">${escapeHtml(buyerRead(b))}</div>
+
+${
+  b.stats.priceSignal
+    ? `<div class="looking-for" style="margin-top:10px;">
+        ${escapeHtml(b.stats.priceSignal)}
+      </div>`
+    : ""
+}
+                </div>
+
+                <div class="meta">
+                  ${b.stats.shortlists || 0} shortlist(s)
+                </div>
+              </div>
+
+              <div class="prompt ${prompt.className}">
+                ${prompt.text}
+              </div>
+
+              <div class="stats">
+                <div class="pill ${buyerStatusClass(b)}">${buyerStatus(b)}</div>
+                <div class="pill ${move.className}">${move.text}</div>
+                ${missedOpportunity(b) ? `<div class="pill missed">⚠ Missed follow-up</div>` : ""}
+                <div class="pill love">❤️ ${b.stats.loved || 0}</div>
+                <div class="pill maybe">🤔 ${b.stats.maybe || 0}</div>
+                <div class="pill pass">✕ ${b.stats.notForMe || 0}</div>
+              </div>
+
+              <div class="actions">
+                ${
+                  phone
+                    ? `<a class="action" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" onclick="event.stopPropagation()">Text next action</a>`
+                    : `<span class="action secondary">No phone saved</span>`
+                }
+
+                <button class="action secondary mark-contacted" type="button" data-name="${safeName}" data-note="${escapeHtml(note)}">
+                  Mark contacted
+                </button>
+
+                ${
+  b.stats.suggestedMaxPrice
+    ? `<button class="action better-matches" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" >
+        Send 3 better matches
+      </button>`
+    : ""
+}
+
+<span class="action secondary">View activity</span>
+              </div>
+            </div>
+          `;
+        }).join("");
       }
 
       async function load() {
+        grid.innerHTML = `<div class="meta">Loading buyers...</div>`;
+
         const res = await fetch("/api/buyers");
         const json = await res.json();
 
@@ -97,28 +603,250 @@
           return;
         }
 
-        grid.innerHTML = json.buyers.map(b => `
-          <div class="card">
-            <div class="row">
-              <div>
-                <div class="name">${b.name || "Unnamed buyer"}</div>
-                <div class="meta">
-                  Last viewed: ${formatDate(b.stats.lastViewed)}
-                </div>
-              </div>
-              <div class="meta">
-                ${b.stats.shortlists} shortlist(s)
-              </div>
-            </div>
-
-            <div class="stats">
-              <div class="pill love">❤️ ${b.stats.loved}</div>
-              <div class="pill maybe">🤔 ${b.stats.maybe}</div>
-              <div class="pill pass">✕ ${b.stats.notForMe}</div>
-            </div>
-          </div>
-        `).join("");
+        buyers = json.buyers || [];
+        renderBuyers();
       }
+
+      sortBuyersEl?.addEventListener("change", (event) => {
+        currentSort = event.target.value;
+        renderBuyers();
+      });
+grid.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".better-matches");
+  if (!btn) return;
+
+  event.stopPropagation();
+
+  const name = btn.dataset.name;
+  const phone = btn.dataset.phone;
+ 
+
+  if (!phone) {
+    btn.textContent = "No phone saved";
+    return;
+  }
+
+  btn.textContent = "Finding matches...";
+
+  const res = await fetch("/api/buyers/better-matches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+
+  const json = await res.json();
+
+ if (!json.ok) {
+  console.error("Better matches failed:", json.error);
+  btn.textContent = json.error || "Could not load";
+  return;
+}
+
+  const listings = json.listings || [];
+  pendingMatchesByBuyer[name] = listings;
+
+  if (!listings.length) {
+    btn.textContent = "No matches found";
+    return;
+  }
+
+  const lines = listings.map((listing, index) => {
+    const address = listing.address || listing.full_address || "Listing";
+    const price = listing.price_text || (listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable");
+    return `${index + 1}. ${address} - ${price}`;
+  });
+
+  const message = `Hi ${name}, I found 3 better matches closer to the price range you seem to prefer:\n\n${lines.join("\n")}\n\nWant me to send more info on any of these?`;
+
+
+
+  btn.textContent = "Send 3 better matches";
+});
+      grid.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".better-matches");
+  if (!btn) return;
+
+  event.stopPropagation();
+
+  const card = btn.closest(".buyer-card");
+  const name = btn.dataset.name;
+  const phone = btn.dataset.phone;
+
+  if (!phone) {
+    btn.textContent = "No phone saved";
+    return;
+  }
+
+  btn.textContent = "Finding matches...";
+
+  const res = await fetch("/api/buyers/better-matches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+
+  const json = await res.json();
+
+  if (!json.ok) {
+    btn.textContent = json.error || "Could not load";
+    return;
+  }
+
+  const listings = json.listings || [];
+
+  if (!listings.length) {
+    btn.textContent = "No matches found";
+    return;
+  }
+
+  const lines = listings.map((listing, index) => {
+    const address = listing.address || "Listing";
+    const price = listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable";
+    return `${index + 1}. ${address} - ${price}`;
+  });
+
+  const message = `Hi ${name}, I found a few homes closer to what you’ve been reacting to:\n\n${lines.join("\n")}\n\nWant me to line up a showing or dig into any of these?`;
+
+  const existing = card.querySelector(".match-preview");
+  if (existing) existing.remove();
+
+  const preview = document.createElement("div");
+  preview.className = "detail match-preview";
+  preview.innerHTML = `
+    <div class="detail-title">Suggested matches to send</div>
+
+    ${listings.map((listing, index) => `
+      <div class="detail-item">
+        <strong>${index + 1}. ${escapeHtml(listing.address || "Listing")}</strong>
+        <div>${listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable"}</div>
+      </div>
+    `).join("")}
+
+    <div class="actions">
+      <button class="action send-matches" type="button"
+        data-name="${escapeHtml(name)}"
+        data-phone="${escapeHtml(phone)}"
+        data-message="${escapeHtml(message)}">
+        Send via Twilio
+      </button>
+
+      <button class="action secondary cancel-preview" type="button">
+        Cancel
+      </button>
+    </div>
+  `;
+
+  card.appendChild(preview);
+  btn.textContent = "Refresh matches";
+});
+
+grid.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".send-matches");
+  if (!btn) return;
+
+  event.stopPropagation();
+
+  btn.textContent = "Sending...";
+
+  const name = btn.dataset.name;
+  const phone = btn.dataset.phone;
+  const message = btn.dataset.message;
+
+  const res = await fetch("/api/buyers/send-better-matches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+  name,
+  phone,
+  message,
+  note: "Sent 3 better matches",
+  listings: pendingMatchesByBuyer[name] || []
+})
+  });
+
+  const json = await res.json();
+
+  if (!json.ok) {
+    btn.textContent = json.error || "Could not send";
+    return;
+  }
+
+  btn.textContent = "Sent ✓";
+
+  const buyer = buyers.find((b) => (b.name || "Unnamed buyer") === name);
+  if (buyer) {
+    buyer.last_contacted_at = new Date().toISOString();
+    buyer.stats.lastContactedAt = buyer.last_contacted_at;
+    buyer.stats.lastContactNote = "Sent 3 better matches";
+  }
+
+  setTimeout(renderBuyers, 900);
+});
+
+grid.addEventListener("click", (event) => {
+  const btn = event.target.closest(".cancel-preview");
+  if (!btn) return;
+
+  event.stopPropagation();
+
+  const preview = btn.closest(".match-preview");
+  preview?.remove();
+});
+
+      grid.addEventListener("click", async (event) => {
+        const card = event.target.closest(".buyer-card");
+        if (!card) return;
+
+        const existing = card.querySelector(".detail");
+        if (existing) {
+          existing.remove();
+          return;
+        }
+
+        const name = card.dataset.name;
+        const res = await fetch(`/api/buyer-detail?name=${encodeURIComponent(name)}`);
+        const json = await res.json();
+
+        const detail = document.createElement("div");
+        detail.className = "detail";
+
+        const items = json.items || [];
+
+        const loved = items.filter((i) => i.is_favourite);
+        const maybe = items.filter((i) =>
+          String(i.decision || "").toLowerCase().includes("maybe")
+        );
+        const pass = items.filter((i) => {
+          const decision = String(i.decision || "").toLowerCase();
+          return decision.includes("pass") || decision.includes("not_for_me");
+        });
+
+        function renderGroup(title, arr) {
+          if (!arr.length) return "";
+
+          return `
+            <div class="detail-group">
+              <div class="detail-title">${title}</div>
+              ${arr.map((item) => `
+                <div class="detail-item">
+                  <strong>${escapeHtml(item.address || "Unknown listing")}</strong>
+                  <div>${escapeHtml(item.price_text || "Price unavailable")}</div>
+                </div>
+              `).join("")}
+            </div>
+          `;
+        }
+
+        detail.innerHTML = items.length
+          ? `
+            ${renderGroup("❤️ Loved", loved)}
+            ${renderGroup("🤔 Maybe", maybe)}
+            ${renderGroup("✕ Not for me", pass)}
+          `
+          : `<p>No listing activity found.</p>`;
+
+        card.appendChild(detail);
+      });
 
       load();
     </script>

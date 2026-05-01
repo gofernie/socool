@@ -315,11 +315,25 @@ const isSouthNanaimoTownhomeOverride =
   cleanWanted === "townhouse" &&
   southNanaimoTownhomeIds.includes(listingMlsForOverride);
 
+const isLantzvilleArea =
+  normalizedSelected === "upper lantzville" ||
+  normalizedSelected === "lower lantzville";
+
 const areaOk = area
   ? (
       isSouthNanaimoTownhomeOverride ||
-      combinedArea.includes(normalizedSelected) ||
-      normalizedSelected.includes(combinedArea)
+      (
+        isLantzvilleArea
+          ? (
+              rawArea === normalizedSelected ||
+              fallbackArea === normalizedSelected ||
+              combinedArea.split(" ").join(" ") === normalizedSelected
+            )
+          : (
+              combinedArea.includes(normalizedSelected) ||
+              normalizedSelected.includes(combinedArea)
+            )
+      )
     )
   : true;
 

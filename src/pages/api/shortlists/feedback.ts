@@ -53,7 +53,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: existingItem, error: existingError } = await supabaseAdmin
       .from("shortlist_items")
-      .select("id, liked_tags, is_favourite, decision")
+      .select("id, shortlist_send_id, liked_tags, is_favourite, decision")
       .eq("id", shortlistItemId)
       .single();
 
@@ -68,7 +68,7 @@ export const POST: APIRoute = async ({ request }) => {
         decision
       })
       .eq("id", shortlistItemId)
-      .select("id, liked_tags, is_favourite, decision")
+      .select("id, shortlist_send_id, liked_tags, is_favourite, decision")
       .single();
 
     console.log("UPDATED ITEM:", updatedItem);
@@ -82,6 +82,30 @@ export const POST: APIRoute = async ({ request }) => {
           headers: { "Content-Type": "application/json" }
         }
       );
+    }
+
+    const shortlistSendId =
+      updatedItem?.shortlist_send_id || existingItem?.shortlist_send_id;
+
+    if (shortlistSendId) {
+      const { error: sendUpdateError } = await supabaseAdmin
+        .from("shortlist_sends")
+        .update({
+          last_viewed_at: new Date().toISOString()
+        })
+        .eq("id", shortlistSendId);
+
+      console.log("SHORTLIST SEND ACTIVITY UPDATE ERROR:", sendUpdateError);
+
+      if (sendUpdateError) {
+        return new Response(
+          JSON.stringify({ ok: false, error: sendUpdateError.message }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
     }
 
     return new Response(

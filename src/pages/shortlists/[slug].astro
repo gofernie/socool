@@ -165,7 +165,7 @@ const savedListingIds = items
   .filter(Boolean)
   .map((id: any) => String(id).trim());
 
-if (savedListingIds.length) {
+if (false && savedListingIds.length) {
   try {
     const liveData = await fetchRepliersListings({
       limit: 100
@@ -3072,7 +3072,13 @@ data-featured={i === 0 ? "true" : "false"}>
         const body = document.body;
         const isAgentView = body?.dataset.agentView === "true";
 const pageSlug = body?.dataset.shortlistSlug || "";
-
+if (!isAgentView && pageSlug) {
+  fetch("/api/shortlists/track-view", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug: pageSlug })
+  }).catch(() => {});
+}
 const viewedKey = `shortlist_viewed_${pageSlug}`;
 
 function getViewedListings() {
@@ -3874,13 +3880,17 @@ wrap.querySelector(".card__new-badge")?.remove();
   }
 }
 
-        function getNextCard() {
-          const cards = getCards();
-          const currentIndex = currentCardIndex();
-          if (currentIndex === -1 || !cards.length) return null;
-          if (currentIndex >= cards.length - 1) return null;
-          return cards[currentIndex + 1] || null;
-        }
+      function getNextCard() {
+  const cards = getCards();
+
+  if (!activeCard || !cards.length) return null;
+
+  const currentIndex = cards.indexOf(activeCard);
+
+  if (currentIndex === -1) return null;
+
+  return cards[currentIndex + 1] || null;
+}
 
         function resetDecisionUI() {
           [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
@@ -3929,6 +3939,8 @@ wrap.querySelector(".card__new-badge")?.remove();
 
          activeCard = card;
 markListingViewed(card);
+
+// do not reorder while the sheet is open
 
 activeItemId = String(card.dataset.itemId || "").trim();
 activeTags = parseTags(card.dataset.likedTags || "[]");
@@ -3981,8 +3993,7 @@ wrap?.querySelector(".card__new-badge")?.remove();
             activeFavourite = savedFav;
             activeDecision = savedDecision;
 
-        refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
-sortCardsByReview();
+       refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
 updateDecisionButtons();
 shouldRefreshOnClose = true;
 

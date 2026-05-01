@@ -17,8 +17,10 @@ function normalizeClientName(name: string) {
 }
 
 function isUuid(value: unknown) {
-  return typeof value === "string"
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
 
 export const GET: APIRoute = async () => {
@@ -43,10 +45,11 @@ export const POST: APIRoute = async ({ request }) => {
     const listingSnapshots = Array.isArray(body?.listingSnapshots)
       ? body.listingSnapshots
       : [];
+
     const clientName =
       typeof body?.clientName === "string" ? body.clientName.trim() : "";
-    const phone =
-      typeof body?.phone === "string" ? body.phone.trim() : "";
+
+    const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
     const note = typeof body?.note === "string" ? body.note.trim() : "";
 
     if (!listingIds.length && !listingSnapshots.length) {
@@ -60,6 +63,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     let clientId: string | null = null;
+    let buyerId: string | null = null;
 
     if (clientName) {
       const normalizedName = normalizeClientName(clientName);
@@ -139,6 +143,82 @@ export const POST: APIRoute = async ({ request }) => {
 
         clientId = newClient.id;
       }
+
+      const { data: existingBuyerRows, error: buyerLookupError } =
+        await supabaseAdmin
+          .from("buyers")
+          .select("id, name, phone")
+          .eq("name", clientName)
+          .limit(1);
+
+      console.log("BUYER LOOKUP:", existingBuyerRows, buyerLookupError);
+
+      if (buyerLookupError) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: `Buyer lookup failed: ${buyerLookupError.message}`
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
+
+      const existingBuyer = existingBuyerRows?.[0];
+
+      if (existingBuyer?.id) {
+        buyerId = existingBuyer.id;
+
+        if (phone && phone !== existingBuyer.phone) {
+          const { error: buyerUpdateError } = await supabaseAdmin
+            .from("buyers")
+            .update({ phone })
+            .eq("id", existingBuyer.id);
+
+          console.log("BUYER PHONE UPDATE:", existingBuyer.id, buyerUpdateError);
+
+          if (buyerUpdateError) {
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error: `Buyer phone update failed: ${buyerUpdateError.message}`
+              }),
+              {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+              }
+            );
+          }
+        }
+      } else {
+        const { data: newBuyer, error: buyerCreateError } = await supabaseAdmin
+          .from("buyers")
+          .insert({
+            name: clientName,
+            phone: phone || null
+          })
+          .select("id")
+          .single();
+
+        console.log("BUYER CREATE:", newBuyer, buyerCreateError);
+
+        if (buyerCreateError) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Buyer create failed: ${buyerCreateError.message}`
+            }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" }
+            }
+          );
+        }
+
+        buyerId = newBuyer.id;
+      }
     }
 
     const shortlistSlug = generateSlug();
@@ -147,14 +227,15 @@ export const POST: APIRoute = async ({ request }) => {
     const { data: shortlist, error: shortlistError } = await supabaseAdmin
       .from("shortlist_sends")
       .insert({
-  shortlist_slug: shortlistSlug,
-  shortlist_url: shortlistUrl,
-  client_name: clientName || null,
-  client_id: clientId,
-  client_phone: phone || null,
-  note: note || null,
-  status: "draft"
-})
+        shortlist_slug: shortlistSlug,
+        shortlist_url: shortlistUrl,
+        client_name: clientName || null,
+        client_id: clientId,
+        buyer_id: buyerId,
+        client_phone: phone || null,
+        note: note || null,
+        status: "draft"
+      })
       .select("id, shortlist_slug, shortlist_url")
       .single();
 
@@ -189,8 +270,8 @@ export const POST: APIRoute = async ({ request }) => {
         address: listing?.address || null,
         price_text: listing?.price_text || null,
         image_url: listing?.image_url || null,
-images: listing?.images || [],
-beds: listing?.beds || null,
+        images: listing?.images || [],
+        beds: listing?.beds || null,
         baths: listing?.baths || null,
         property_type: listing?.property_type || null,
         sqft: listing?.sqft || null,
@@ -226,7 +307,8 @@ beds: listing?.beds || null,
         shortlistId: shortlist.id,
         slug: shortlist.shortlist_slug,
         shortlistUrl,
-        clientId
+        clientId,
+        buyerId
       }),
       {
         status: 200,
