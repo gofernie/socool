@@ -10,8 +10,8 @@
       body {
         margin: 0;
         font-family: system-ui;
-        background: #f4efe7;
-        color: #181614;
+        background: #181614;
+        color: #fffaf1;
       }
 
       .shell {
@@ -30,7 +30,7 @@
         max-width: 680px;
         font-size: 16px;
         line-height: 1.5;
-        color: rgba(24, 22, 20, 0.68);
+        color: rgba(255, 250, 241, 0.68);
         margin: 0 0 20px;
       }
 
@@ -44,11 +44,11 @@
       .toolbar label {
         font-size: 14px;
         font-weight: 800;
-        color: rgba(24, 22, 20, 0.65);
+        color: rgba(255, 250, 241, 0.65);
       }
 
       .toolbar select {
-        border: 1px solid rgba(24, 22, 20, 0.16);
+        border: 1px solid rgba(255, 250, 241, 0.16);
         border-radius: 999px;
         padding: 10px 14px;
         background: #fffaf1;
@@ -63,19 +63,13 @@
       }
 
       .buyer-card {
-        cursor: pointer;
+        cursor: default;
         background: #fffaf1;
-        border: 1px solid rgba(24, 22, 20, 0.12);
+        color: #181614;
+        border: 1px solid rgba(255, 250, 241, 0.12);
         border-radius: 22px;
         padding: 20px;
-        box-shadow: 0 8px 24px rgba(24, 22, 20, 0.06);
-        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-      }
-
-      .buyer-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 38px rgba(24, 22, 20, 0.14);
-        border-color: rgba(24, 22, 20, 0.25);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
       }
 
       .row {
@@ -123,21 +117,10 @@
         line-height: 1.35;
       }
 
-      .prompt.hot {
-        background: #ffe1b8;
-      }
-
-      .prompt.nudge {
-        background: #f3ecd9;
-      }
-
-      .prompt.good {
-        background: #e7f0df;
-      }
-
-      .prompt.quiet {
-        background: #eee;
-      }
+      .prompt.hot { background: #ffe1b8; }
+      .prompt.nudge { background: #f3ecd9; }
+      .prompt.good { background: #e7f0df; }
+      .prompt.quiet { background: #eee; }
 
       .stats {
         display: flex;
@@ -192,19 +175,6 @@
         color: #181614;
       }
 
-      .buyer-card::after {
-        content: "Click to view listing activity";
-        display: inline-flex;
-        margin-top: 14px;
-        font-size: 13px;
-        font-weight: 800;
-        color: rgba(24, 22, 20, 0.58);
-      }
-
-      .buyer-card:has(.detail)::after {
-        content: "Click to collapse";
-      }
-
       .detail {
         margin-top: 18px;
         padding: 16px;
@@ -236,6 +206,14 @@
         border-bottom: 0;
       }
 
+      .activity-listing {
+        cursor: pointer;
+      }
+
+      .activity-listing:hover strong {
+        text-decoration: underline;
+      }
+
       .contact-note {
         margin-top: 8px;
         padding: 8px 10px;
@@ -243,6 +221,113 @@
         background: rgba(24, 22, 20, 0.06);
         color: rgba(24, 22, 20, 0.78);
       }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.72);
+      }
+
+      .modal-card {
+        width: min(760px, 100%);
+        max-height: 88vh;
+        overflow: auto;
+        border-radius: 24px;
+        background: #fffaf1;
+        color: #181614;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      }
+
+      .listing-modal-card {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .modal-hero-img,
+      .modal-hero-placeholder {
+        width: 100%;
+        height: 360px;
+        display: block;
+        object-fit: cover;
+        background: rgba(24, 22, 20, 0.08);
+      }
+
+      .modal-hero-placeholder {
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        color: rgba(24, 22, 20, 0.5);
+      }
+
+      .listing-modal-card .modal-close {
+        position: sticky;
+        top: 14px;
+        float: right;
+        margin: 14px;
+        z-index: 2;
+      }
+
+      .listing-modal-card .detail-title,
+      .listing-modal-card h2,
+      .listing-modal-card .modal-price,
+      .listing-modal-card .modal-facts,
+      .listing-modal-card .modal-description {
+        margin-left: 22px;
+        margin-right: 22px;
+      }
+
+      .listing-modal-card h2 {
+        margin-top: 8px;
+        margin-bottom: 6px;
+        font-size: 30px;
+        letter-spacing: -0.04em;
+      }
+
+      .modal-price {
+        font-size: 18px;
+      }
+
+      .modal-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .modal-facts span {
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(24, 22, 20, 0.08);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .modal-description {
+        padding-bottom: 24px;
+        line-height: 1.55;
+        color: rgba(24, 22, 20, 0.76);
+      }
+
+      .modal-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 250, 241, 0.94);
+  backdrop-filter: blur(10px);
+}
+
+.listing-modal-card .detail-title {
+  margin-top: 24px;
+}
     </style>
   </head>
 
@@ -266,15 +351,17 @@
       </div>
 
       <div id="grid" class="grid"></div>
+      <div id="listingModal"></div>
+      <div id="activityModal"></div>
     </main>
 
     <script>
       const grid = document.getElementById("grid");
       const sortBuyersEl = document.getElementById("sortBuyers");
 
-     let buyers = [];
-let currentSort = "attention";
-let pendingMatchesByBuyer = {};
+      let buyers = [];
+      let currentSort = "attention";
+      let pendingMatchesByBuyer = {};
 
       function escapeHtml(value) {
         return String(value || "")
@@ -320,22 +407,14 @@ let pendingMatchesByBuyer = {};
       }
 
       function buyerStatus(b) {
-        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) {
-          return "🔥 Hot buyer";
-        }
-
+        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) return "🔥 Hot buyer";
         if (hasActivity(b)) return "👀 Active";
-
         return "💤 Not viewed yet";
       }
 
       function buyerStatusClass(b) {
-        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) {
-          return "hot-pill";
-        }
-
+        if ((b.stats.loved || 0) >= 1 || (b.stats.maybe || 0) >= 3) return "hot-pill";
         if (hasActivity(b)) return "viewed";
-
         return "cold";
       }
 
@@ -482,30 +561,12 @@ let pendingMatchesByBuyer = {};
 
       function sortBuyers(list) {
         return [...list].sort((a, b) => {
-          if (currentSort === "attention") {
-            return followUpPrompt(b).score - followUpPrompt(a).score;
-          }
-
-          if (currentSort === "recent") {
-            return dateMs(b.stats.lastActivityAt) - dateMs(a.stats.lastActivityAt);
-          }
-
-          if (currentSort === "hot") {
-            return hotScore(b) - hotScore(a);
-          }
-
-          if (currentSort === "loved") {
-            return (b.stats.loved || 0) - (a.stats.loved || 0);
-          }
-
-          if (currentSort === "maybe") {
-            return (b.stats.maybe || 0) - (a.stats.maybe || 0);
-          }
-
-          if (currentSort === "shortlists") {
-            return (b.stats.shortlists || 0) - (a.stats.shortlists || 0);
-          }
-
+          if (currentSort === "attention") return followUpPrompt(b).score - followUpPrompt(a).score;
+          if (currentSort === "recent") return dateMs(b.stats.lastActivityAt) - dateMs(a.stats.lastActivityAt);
+          if (currentSort === "hot") return hotScore(b) - hotScore(a);
+          if (currentSort === "loved") return (b.stats.loved || 0) - (a.stats.loved || 0);
+          if (currentSort === "maybe") return (b.stats.maybe || 0) - (a.stats.maybe || 0);
+          if (currentSort === "shortlists") return (b.stats.shortlists || 0) - (a.stats.shortlists || 0);
           return 0;
         });
       }
@@ -530,32 +591,24 @@ let pendingMatchesByBuyer = {};
 
                   ${
                     note
-                      ? `<div class="meta contact-note">
-                          <strong>Note:</strong> ${escapeHtml(note)}
-                        </div>`
+                      ? `<div class="meta contact-note"><strong>Note:</strong> ${escapeHtml(note)}</div>`
                       : ""
                   }
 
                   <div class="looking-for">${escapeHtml(lookingForSummary(b))}</div>
-           <div class="mini-read">${escapeHtml(buyerRead(b))}</div>
+                  <div class="mini-read">${escapeHtml(buyerRead(b))}</div>
 
-${
-  b.stats.priceSignal
-    ? `<div class="looking-for" style="margin-top:10px;">
-        ${escapeHtml(b.stats.priceSignal)}
-      </div>`
-    : ""
-}
+                  ${
+                    b.stats.priceSignal
+                      ? `<div class="looking-for" style="margin-top:10px;">${escapeHtml(b.stats.priceSignal)}</div>`
+                      : ""
+                  }
                 </div>
 
-                <div class="meta">
-                  ${b.stats.shortlists || 0} shortlist(s)
-                </div>
+                <div class="meta">${b.stats.shortlists || 0} shortlist(s)</div>
               </div>
 
-              <div class="prompt ${prompt.className}">
-                ${prompt.text}
-              </div>
+              <div class="prompt ${prompt.className}">${prompt.text}</div>
 
               <div class="stats">
                 <div class="pill ${buyerStatusClass(b)}">${buyerStatus(b)}</div>
@@ -569,23 +622,17 @@ ${
               <div class="actions">
                 ${
                   phone
-                    ? `<a class="action" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" onclick="event.stopPropagation()">Text next action</a>`
+                    ? `<a class="action" href="sms:${phone}?&body=${encodeURIComponent(textBody)}">Text next action</a>`
                     : `<span class="action secondary">No phone saved</span>`
                 }
 
-                <button class="action secondary mark-contacted" type="button" data-name="${safeName}" data-note="${escapeHtml(note)}">
-                  Mark contacted
-                </button>
-
                 ${
-  b.stats.suggestedMaxPrice
-    ? `<button class="action better-matches" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" >
-        Send 3 better matches
-      </button>`
-    : ""
-}
+                 true
+  ? `<button class="action better-matches" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}">Send 3 better matches</button>`
+  : ""
+                }
 
-<span class="action secondary">View activity</span>
+                <button class="action secondary view-activity" type="button">View activity</button>
               </div>
             </div>
           `;
@@ -611,193 +658,145 @@ ${
         currentSort = event.target.value;
         renderBuyers();
       });
-grid.addEventListener("click", async (event) => {
-  const btn = event.target.closest(".better-matches");
-  if (!btn) return;
-
-  event.stopPropagation();
-
-  const name = btn.dataset.name;
-  const phone = btn.dataset.phone;
- 
-
-  if (!phone) {
-    btn.textContent = "No phone saved";
-    return;
-  }
-
-  btn.textContent = "Finding matches...";
-
-  const res = await fetch("/api/buyers/better-matches", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name })
-  });
-
-  const json = await res.json();
-
- if (!json.ok) {
-  console.error("Better matches failed:", json.error);
-  btn.textContent = json.error || "Could not load";
-  return;
-}
-
-  const listings = json.listings || [];
-  pendingMatchesByBuyer[name] = listings;
-
-  if (!listings.length) {
-    btn.textContent = "No matches found";
-    return;
-  }
-
-  const lines = listings.map((listing, index) => {
-    const address = listing.address || listing.full_address || "Listing";
-    const price = listing.price_text || (listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable");
-    return `${index + 1}. ${address} - ${price}`;
-  });
-
-  const message = `Hi ${name}, I found 3 better matches closer to the price range you seem to prefer:\n\n${lines.join("\n")}\n\nWant me to send more info on any of these?`;
-
-
-
-  btn.textContent = "Send 3 better matches";
-});
-      grid.addEventListener("click", async (event) => {
-  const btn = event.target.closest(".better-matches");
-  if (!btn) return;
-
-  event.stopPropagation();
-
-  const card = btn.closest(".buyer-card");
-  const name = btn.dataset.name;
-  const phone = btn.dataset.phone;
-
-  if (!phone) {
-    btn.textContent = "No phone saved";
-    return;
-  }
-
-  btn.textContent = "Finding matches...";
-
-  const res = await fetch("/api/buyers/better-matches", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name })
-  });
-
-  const json = await res.json();
-
-  if (!json.ok) {
-    btn.textContent = json.error || "Could not load";
-    return;
-  }
-
-  const listings = json.listings || [];
-
-  if (!listings.length) {
-    btn.textContent = "No matches found";
-    return;
-  }
-
-  const lines = listings.map((listing, index) => {
-    const address = listing.address || "Listing";
-    const price = listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable";
-    return `${index + 1}. ${address} - ${price}`;
-  });
-
-  const message = `Hi ${name}, I found a few homes closer to what you’ve been reacting to:\n\n${lines.join("\n")}\n\nWant me to line up a showing or dig into any of these?`;
-
-  const existing = card.querySelector(".match-preview");
-  if (existing) existing.remove();
-
-  const preview = document.createElement("div");
-  preview.className = "detail match-preview";
-  preview.innerHTML = `
-    <div class="detail-title">Suggested matches to send</div>
-
-    ${listings.map((listing, index) => `
-      <div class="detail-item">
-        <strong>${index + 1}. ${escapeHtml(listing.address || "Listing")}</strong>
-        <div>${listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable"}</div>
-      </div>
-    `).join("")}
-
-    <div class="actions">
-      <button class="action send-matches" type="button"
-        data-name="${escapeHtml(name)}"
-        data-phone="${escapeHtml(phone)}"
-        data-message="${escapeHtml(message)}">
-        Send via Twilio
-      </button>
-
-      <button class="action secondary cancel-preview" type="button">
-        Cancel
-      </button>
-    </div>
-  `;
-
-  card.appendChild(preview);
-  btn.textContent = "Refresh matches";
-});
-
-grid.addEventListener("click", async (event) => {
-  const btn = event.target.closest(".send-matches");
-  if (!btn) return;
-
-  event.stopPropagation();
-
-  btn.textContent = "Sending...";
-
-  const name = btn.dataset.name;
-  const phone = btn.dataset.phone;
-  const message = btn.dataset.message;
-
-  const res = await fetch("/api/buyers/send-better-matches", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-  name,
-  phone,
-  message,
-  note: "Sent 3 better matches",
-  listings: pendingMatchesByBuyer[name] || []
-})
-  });
-
-  const json = await res.json();
-
-  if (!json.ok) {
-    btn.textContent = json.error || "Could not send";
-    return;
-  }
-
-  btn.textContent = "Sent ✓";
-
-  const buyer = buyers.find((b) => (b.name || "Unnamed buyer") === name);
-  if (buyer) {
-    buyer.last_contacted_at = new Date().toISOString();
-    buyer.stats.lastContactedAt = buyer.last_contacted_at;
-    buyer.stats.lastContactNote = "Sent 3 better matches";
-  }
-
-  setTimeout(renderBuyers, 900);
-});
-
-grid.addEventListener("click", (event) => {
-  const btn = event.target.closest(".cancel-preview");
-  if (!btn) return;
-
-  event.stopPropagation();
-
-  const preview = btn.closest(".match-preview");
-  preview?.remove();
-});
 
       grid.addEventListener("click", async (event) => {
-        const card = event.target.closest(".buyer-card");
+        const btn = event.target.closest(".better-matches");
+        if (!btn) return;
+
+        event.stopPropagation();
+
+        const card = btn.closest(".buyer-card");
+        const name = btn.dataset.name;
+        const phone = btn.dataset.phone;
+
+        if (!phone) {
+          btn.textContent = "No phone saved";
+          return;
+        }
+
+        btn.textContent = "Finding matches...";
+
+        const res = await fetch("/api/buyers/better-matches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name })
+        });
+
+        const json = await res.json();
+
+        if (!json.ok) {
+          console.error("Better matches failed:", json.error);
+          btn.textContent = json.error || "Could not load";
+          return;
+        }
+
+        const listings = json.listings || [];
+        pendingMatchesByBuyer[name] = listings;
+
+        if (!listings.length) {
+          btn.textContent = "No matches found";
+          return;
+        }
+
+        const lines = listings.map((listing, index) => {
+          const address = listing.address || listing.full_address || "Listing";
+          const price = listing.price_text || (listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable");
+          return `${index + 1}. ${address} - ${price}`;
+        });
+
+        const message = `Hi ${name}, I found a few homes closer to what you’ve been reacting to:\n\n${lines.join("\n")}\n\nWant me to line up a showing or dig into any of these?`;
+
+        const existing = card.querySelector(".match-preview");
+        if (existing) existing.remove();
+
+        const preview = document.createElement("div");
+        preview.className = "detail match-preview";
+        preview.innerHTML = `
+          <div class="detail-title">Suggested matches to send</div>
+
+          ${listings.map((listing, index) => `
+            <div class="detail-item">
+              <strong>${index + 1}. ${escapeHtml(listing.address || listing.full_address || "Listing")}</strong>
+              <div>${listing.price_text || (listing.price ? `$${Number(listing.price).toLocaleString()}` : "Price unavailable")}</div>
+            </div>
+          `).join("")}
+
+          <div class="actions">
+            <button class="action send-matches" type="button"
+              data-name="${escapeHtml(name)}"
+              data-phone="${escapeHtml(phone)}"
+              data-message="${escapeHtml(message)}">
+              Send via Twilio
+            </button>
+
+            <button class="action secondary cancel-preview" type="button">Cancel</button>
+          </div>
+        `;
+
+        card.appendChild(preview);
+        btn.textContent = "Refresh matches";
+      });
+
+      grid.addEventListener("click", async (event) => {
+        const btn = event.target.closest(".send-matches");
+        if (!btn) return;
+
+        event.stopPropagation();
+        btn.textContent = "Sending...";
+
+        const name = btn.dataset.name;
+        const phone = btn.dataset.phone;
+        const message = btn.dataset.message;
+
+        const res = await fetch("/api/buyers/send-better-matches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            phone,
+            message,
+            note: "Sent 3 better matches",
+            listings: pendingMatchesByBuyer[name] || []
+          })
+        });
+
+        const json = await res.json();
+
+        if (!json.ok) {
+          btn.textContent = json.error || "Could not send";
+          return;
+        }
+
+        btn.textContent = "Sent ✓";
+
+        const buyer = buyers.find((b) => (b.name || "Unnamed buyer") === name);
+        if (buyer) {
+          buyer.last_contacted_at = new Date().toISOString();
+          buyer.stats.lastContactedAt = buyer.last_contacted_at;
+          buyer.stats.lastContactNote = "Sent 3 better matches";
+        }
+
+        setTimeout(renderBuyers, 900);
+      });
+
+      grid.addEventListener("click", (event) => {
+        const btn = event.target.closest(".cancel-preview");
+        if (!btn) return;
+
+        event.stopPropagation();
+        btn.closest(".match-preview")?.remove();
+      });
+
+      grid.addEventListener("click", async (event) => {
+        const btn = event.target.closest(".view-activity");
+        if (!btn) return;
+
+        event.stopPropagation();
+
+        const card = btn.closest(".buyer-card");
         if (!card) return;
 
-        const existing = card.querySelector(".detail");
+        const existing = card.querySelector(".detail:not(.match-preview)");
         if (existing) {
           existing.remove();
           return;
@@ -828,7 +827,27 @@ grid.addEventListener("click", (event) => {
             <div class="detail-group">
               <div class="detail-title">${title}</div>
               ${arr.map((item) => `
-                <div class="detail-item">
+                <div
+                  class="detail-item activity-listing"
+                  data-address="${escapeHtml(item.address || "Unknown listing")}"
+                  data-price="${escapeHtml(item.price_text || "Price unavailable")}"
+                  data-decision="${escapeHtml(title)}"
+data-image="${escapeHtml(
+  item.image_url ||
+  item.photo_url ||
+  item.thumbnail_url ||
+  item.image ||
+  item.img ||
+  item.main_image_url ||
+  item.first_image_url ||
+  ""
+)}"
+                  data-beds="${escapeHtml(item.beds || "")}"
+                  data-baths="${escapeHtml(item.baths || "")}"
+                  data-type="${escapeHtml(item.property_type || "")}"
+                  data-sqft="${escapeHtml(item.sqft || "")}"
+                  data-description="${escapeHtml(item.description || "")}"
+                >
                   <strong>${escapeHtml(item.address || "Unknown listing")}</strong>
                   <div>${escapeHtml(item.price_text || "Price unavailable")}</div>
                 </div>
@@ -848,6 +867,141 @@ grid.addEventListener("click", (event) => {
         card.appendChild(detail);
       });
 
+      grid.addEventListener("click", (event) => {
+        const item = event.target.closest(".activity-listing");
+        if (!item) return;
+
+        event.stopPropagation();
+
+        const modal = document.getElementById("listingModal");
+        const image = item.dataset.image || "";
+
+        modal.innerHTML = `
+          <div class="modal">
+            <div class="modal-card listing-modal-card">
+              <button class="action secondary modal-close" type="button">Close</button>
+
+              ${
+                image
+                  ? `<img
+  class="modal-hero-img"
+  src="${escapeHtml(image)}"
+  alt="${escapeHtml(item.dataset.address || "Listing")}"
+  onerror="this.replaceWith(Object.assign(document.createElement('div'), { className: 'modal-hero-placeholder', textContent: 'No image available' }))"
+/>`
+                  : `<div class="modal-hero-placeholder">No image available</div>`
+              }
+
+              <div class="detail-title">${escapeHtml(item.dataset.decision || "Listing activity")}</div>
+              <h2>${escapeHtml(item.dataset.address || "Unknown listing")}</h2>
+              <p class="modal-price"><strong>${escapeHtml(item.dataset.price || "Price unavailable")}</strong></p>
+
+              <div class="modal-facts">
+                ${item.dataset.beds ? `<span>${escapeHtml(item.dataset.beds)} Bed</span>` : ""}
+                ${item.dataset.baths ? `<span>${escapeHtml(item.dataset.baths)} Bath</span>` : ""}
+                ${item.dataset.sqft ? `<span>${Number(item.dataset.sqft).toLocaleString()} Sq. Ft.</span>` : ""}
+                ${item.dataset.type ? `<span>${escapeHtml(item.dataset.type)}</span>` : ""}
+              </div>
+
+              <p class="modal-description">
+                ${escapeHtml(item.dataset.description || "No description saved for this listing yet.")}
+              </p>
+            </div>
+          </div>
+        `;
+      });
+
+      document.addEventListener("click", (event) => {
+        const close = event.target.closest(".modal-close");
+        if (!close) return;
+
+        document.getElementById("listingModal").innerHTML = "";
+      });
+let activityItems = [];
+let activityIndex = 0;
+
+function openActivityModal(index) {
+  activityIndex = index;
+  const item = activityItems[activityIndex];
+  const modal = document.getElementById("activityModal");
+
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-card listing-modal-card">
+      <div class="modal-topbar">
+  <span class="pill cold">${activityIndex + 1} of ${activityItems.length}</span>
+
+  <button class="action secondary activity-prev" type="button">← Prev</button>
+  <button class="action secondary activity-next" type="button">Next →</button>
+  <button class="action secondary activity-close" type="button">Close</button>
+</div>
+
+        ${
+          item.image
+            ? `<img class="modal-hero-img" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.address)}" />`
+            : `<div class="modal-hero-placeholder">No image available</div>`
+        }
+
+        <div class="detail-title">${escapeHtml(item.decision)}</div>
+        <h2>${escapeHtml(item.address)}</h2>
+        <p class="modal-price"><strong>${escapeHtml(item.price)}</strong></p>
+
+        <div class="modal-facts">
+          ${item.beds ? `<span>${escapeHtml(item.beds)} Bed</span>` : ""}
+          ${item.baths ? `<span>${escapeHtml(item.baths)} Bath</span>` : ""}
+          ${item.sqft ? `<span>${Number(item.sqft).toLocaleString()} Sq. Ft.</span>` : ""}
+          ${item.type ? `<span>${escapeHtml(item.type)}</span>` : ""}
+        </div>
+
+        <p class="modal-description">
+          ${escapeHtml(item.description || "No description saved for this listing yet.")}
+        </p>
+
+       
+      </div>
+    </div>
+  `;
+}
+
+grid.addEventListener("click", (event) => {
+  const item = event.target.closest(".activity-listing");
+  if (!item) return;
+
+  event.stopPropagation();
+
+  activityItems = [...document.querySelectorAll(".activity-listing")].map((el) => ({
+    address: el.dataset.address || "Unknown listing",
+    price: el.dataset.price || "Price unavailable",
+    decision: el.dataset.decision || "Listing activity",
+    image: el.dataset.image || "",
+    beds: el.dataset.beds || "",
+    baths: el.dataset.baths || "",
+    type: el.dataset.type || "",
+    sqft: el.dataset.sqft || "",
+    description: el.dataset.description || ""
+  }));
+
+  activityIndex = activityItems.findIndex((x) => x.address === item.dataset.address);
+  openActivityModal(Math.max(0, activityIndex));
+});
+
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".activity-close")) {
+    document.getElementById("activityModal").innerHTML = "";
+    return;
+  }
+
+  if (event.target.closest(".activity-prev")) {
+    activityIndex = (activityIndex - 1 + activityItems.length) % activityItems.length;
+    openActivityModal(activityIndex);
+    return;
+  }
+
+  if (event.target.closest(".activity-next")) {
+    activityIndex = (activityIndex + 1) % activityItems.length;
+    openActivityModal(activityIndex);
+  }
+});
       load();
     </script>
   </body>

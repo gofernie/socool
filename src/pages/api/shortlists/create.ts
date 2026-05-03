@@ -49,8 +49,32 @@ export const POST: APIRoute = async ({ request }) => {
     const clientName =
       typeof body?.clientName === "string" ? body.clientName.trim() : "";
 
-    const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
+        const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
     const note = typeof body?.note === "string" ? body.note.trim() : "";
+
+    const searchCity = typeof body?.city === "string" ? body.city.trim() : "";
+    const searchArea = typeof body?.area === "string" ? body.area.trim() : "";
+    const searchType = typeof body?.type === "string" ? body.type.trim() : "";
+
+    const searchMinPrice =
+      Number.isFinite(Number(body?.minPrice)) && body?.minPrice !== ""
+        ? Number(body.minPrice)
+        : null;
+
+    const searchMaxPrice =
+      Number.isFinite(Number(body?.maxPrice)) && body?.maxPrice !== ""
+        ? Number(body.maxPrice)
+        : null;
+
+    const searchBeds =
+      Number.isFinite(Number(body?.beds)) && body?.beds !== ""
+        ? Number(body.beds)
+        : null;
+
+    const searchBaths =
+      Number.isFinite(Number(body?.baths)) && body?.baths !== ""
+        ? Number(body.baths)
+        : null;
 
     if (!listingIds.length && !listingSnapshots.length) {
       return new Response(
@@ -232,9 +256,17 @@ export const POST: APIRoute = async ({ request }) => {
         client_name: clientName || null,
         client_id: clientId,
         buyer_id: buyerId,
-        client_phone: phone || null,
+                client_phone: phone || null,
         note: note || null,
-        status: "draft"
+        status: "draft",
+
+        search_city: searchCity || null,
+        search_area: searchArea || null,
+        search_type: searchType || null,
+        search_min_price: searchMinPrice,
+        search_max_price: searchMaxPrice,
+        search_beds: searchBeds,
+        search_baths: searchBaths
       })
       .select("id, shortlist_slug, shortlist_url")
       .single();

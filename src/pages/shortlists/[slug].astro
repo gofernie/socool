@@ -18,6 +18,7 @@ export const prerender = false;
 
 const { slug } = Astro.params;
 const isAgentView = Astro.url.searchParams.get("agent") === "1";
+const isExpandedReview = Astro.url.searchParams.has("expanded");
 const clientLink = `/shortlists/${slug}`;
 const sendId = Astro.url.searchParams.get("s");
 function normalizeImageUrl(url: any) {
@@ -33,7 +34,7 @@ function normalizeImageUrl(url: any) {
     return `https://cdn.repliers.io${value}`;
   }
 
-  return value;
+  return `https://cdn.repliers.io/${value}`;
 }
 function getListingLat(listing: any) {
   return (
@@ -215,33 +216,45 @@ if (listing.decision === "pass") score -= 500;
 
   return score;
 }
-const listings = [...items]
-  .map((item: any) => {
-    const id = String(item.repliers_listing_id || item.listing_id || "").trim();
-    const live = liveListingsById.get(id);
-    return normalizeLiveListing(live, item);
-  })
-.sort((a, b) => {
- const rank = (item) => {
-  const isNew = !item?.is_favourite && !item?.decision;
+const normalizedListings = [...items].map((item: any) => {
+  const id = String(item.repliers_listing_id || item.listing_id || "").trim();
+  const live = liveListingsById.get(id);
+  return normalizeLiveListing(live, item);
+});
 
-  if (isNew) return 0;
-  if (item?.is_favourite) return 1;
-  if (item?.decision === "maybe") return 2;
-  if (item?.decision === "pass") return 4;
+const newestSortOrders = new Set(
+  normalizedListings
+    .map((item: any) => Number(item?.sort_order ?? 999999))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => b - a)
+    .slice(0, 3)
+);
 
-  return 3;
+const priceNumber = (item: any) =>
+  Number(String(item?.price_text || item?.price || "").replace(/[^0-9]/g, "")) || 0;
+
+const batchNumber = (item: any) => {
+  const order = Number(item?.sort_order ?? 999999);
+
+  // sort_order is usually 1-based:
+  // 1,2,3 = batch 0
+  // 4,5,6 = batch 1
+  // 7,8,9 = batch 2
+  return Math.floor((order - 1) / 3);
 };
 
-  const aRank = rank(a);
-  const bRank = rank(b);
+const listings = normalizedListings.sort((a, b) => {
+  const aBatch = batchNumber(a);
+  const bBatch = batchNumber(b);
 
-  if (aRank !== bRank) return aRank - bRank;
+  if (aBatch !== bBatch) return aBatch - bBatch;
 
-  const aOrder = Number(a?.sort_order ?? 999999);
-  const bOrder = Number(b?.sort_order ?? 999999);
+  const aPrice = priceNumber(a);
+  const bPrice = priceNumber(b);
 
-  return aOrder - bOrder;
+  if (aPrice !== bPrice) return aPrice - bPrice;
+
+  return Number(a?.sort_order ?? 999999) - Number(b?.sort_order ?? 999999);
 });
 
 const clientDisplayName =
@@ -1393,6 +1406,49 @@ body.edit-mode .card__preview-image-btn {
     font-size: 0.9rem;
   }
 
+  .panel__detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.panel__detail-row span + span::before {
+  content: "•";
+  margin-right: 14px;
+  color: var(--text-muted);
+}
+
+.panel__highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.panel__highlight-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: #6f4f1f;
+  border: 1px solid rgba(192,155,100,0.38);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.panel__nav-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
  .decision-wrap {
     text-align: center;
     margin-top: 14px;
@@ -2132,30 +2188,51 @@ body.edit-mode .note-editor {
       grid-template-columns: 1fr;
     }
 
-    .review-send-prompt {
-  margin-top: 24px;
-  padding: 20px;
-  border-radius: 14px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-subtle);
+   .review-send-prompt {
+  margin: 4px 0 4px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #fffaf0;
+  border: 1px solid rgba(192, 155, 100, 0.34);
 }
 
 .review-send-copy h3 {
   margin: 0 0 6px;
   font-size: 18px;
+  line-height: 1.25;
 }
 
 .review-send-copy p {
   margin: 0 0 14px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 14px;
+  line-height: 1.55;
 }
 
 .review-send-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-send-actions .summary__btn {
+  min-height: 42px;
 }
   }
+
+  .review-send-prompt .summary__btn {
+  appearance: none;
+  border: 1px solid var(--text-primary);
+  background: var(--text-primary);
+  color: #fff;
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
 
   @media (max-width: 640px) {
     .masthead__inner {
@@ -2740,7 +2817,11 @@ body.edit-mode .note-editor {
             const likedTags = Array.isArray(listing.liked_tags) ? listing.liked_tags : [];
             const isFavourite = Boolean(listing.is_favourite);
             const decision = listing.decision || "";
-const isNew = !isFavourite && !decision;
+const isNew =
+  isExpandedReview &&
+  newestSortOrders.has(Number(listing?.sort_order ?? 999999)) &&
+  !listing?.is_favourite &&
+  !listing?.decision;
 const num = String(i + 1).padStart(2, "0");
 
             return (
@@ -2760,11 +2841,12 @@ data-lot-size={String(listing.lot_size || listing.lotSize || listing.lot_sqft ||
 data-year={String(yearBuilt)}
                 data-image={image}
 data-images={JSON.stringify(listing.images || listing.photo_urls || [])}
-data-description={description}
+data-description={String(description).replace(/"/g, "&quot;")}
                 data-liked-tags={JSON.stringify(likedTags)}
                 data-is-favourite={isFavourite ? "true" : "false"}
                data-decision={decision}
 data-is-new={isNew ? "true" : "false"}
+data-sort-order={String(listing?.sort_order ?? i)}
 data-featured={i === 0 ? "true" : "false"}>
                 {isAgentView && (
                   <button
@@ -2819,7 +2901,7 @@ data-featured={i === 0 ? "true" : "false"}>
                     {sqft ? ` · ${sqft} sqft` : ""}
                     {yearBuilt ? ` · Built ${yearBuilt}` : ""}
                   </p>
-                  <p class="card__desc">{description}</p>
+                  <p class="card__desc">{String(description || "").replace(/\s+/g, " ").trim()}</p>
                   <button type="button" class="card__action preview-btn">View property →</button>
                 </div>
               </article>
@@ -2896,6 +2978,7 @@ data-featured={i === 0 ? "true" : "false"}>
 
           <div class="panel__header-actions">
             <button class="panel__map-btn" id="sheet-map-btn" type="button">Map</button>
+<button class="panel__top-btn" id="sheet-prev-top-btn" type="button">← Previous</button>
 <button class="panel__top-btn" id="sheet-next-top-btn" type="button">Next →</button>
           </div>
 
@@ -2910,9 +2993,9 @@ data-featured={i === 0 ? "true" : "false"}>
   <div class="review-complete__header">
     <div class="eyebrow">Shortlist reviewed</div>
 
-    <h2 class="review-complete__title">
-      You’ve reviewed all the homes — nice work.
-    </h2>
+   <h2 class="review-complete__title" id="review-complete-title">
+  You’ve reviewed all the homes — nice work.
+</h2>
 
     <p class="review-complete__sub">
       Most buyers don’t make it this far — this really helps narrow things down.
@@ -2921,6 +3004,8 @@ data-featured={i === 0 ? "true" : "false"}>
   </div>
 
   <div class="review-complete__faves" id="summary-fave-strip"></div>
+
+<div class="review-send-prompt" id="summary-insight" hidden></div>
 
 <!-- Stats -->
 <div class="review-complete__stats">
@@ -3006,8 +3091,12 @@ data-featured={i === 0 ? "true" : "false"}>
 </div>
 <div id="sheet-mini-map" class="panel__mini-map" hidden></div>
 <div class="panel__intelligence" id="sheet-intelligence">
-              Strongest match based on your criteria
-            </div>
+  Strongest match based on your criteria
+</div>
+
+<div class="panel__detail-row" id="sheet-detail-row"></div>
+
+<div class="panel__highlights" id="sheet-highlights"></div>
 
             
 
@@ -3060,8 +3149,11 @@ data-featured={i === 0 ? "true" : "false"}>
             </div>
 
             <div class="panel__footer">
-              <button class="panel__next-btn" id="sheet-next-btn" type="button">Next listing →</button>
-            </div>
+  <div class="panel__nav-row">
+    <button class="panel__next-btn" id="sheet-prev-btn" type="button">← Previous</button>
+    <button class="panel__next-btn" id="sheet-next-btn" type="button">Next listing →</button>
+  </div>
+</div>
           </div>
         </section>
       </div>
@@ -3072,6 +3164,7 @@ data-featured={i === 0 ? "true" : "false"}>
         const body = document.body;
         const isAgentView = body?.dataset.agentView === "true";
 const pageSlug = body?.dataset.shortlistSlug || "";
+const isExpandedReview = new URLSearchParams(window.location.search).has("expanded");
 if (!isAgentView && pageSlug) {
   fetch("/api/shortlists/track-view", {
     method: "POST",
@@ -3114,7 +3207,11 @@ function markListingViewed(card) {
 const descToggle = document.getElementById("sheet-desc-toggle");
 const sheetCloseBtn = document.getElementById("sheet-close-btn");
         const sheetNextBtn = document.getElementById("sheet-next-btn");
-        const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
+const sheetPrevBtn = document.getElementById("sheet-prev-btn");
+const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
+const sheetPrevTopBtn = document.getElementById("sheet-prev-top-btn");
+const sheetDetailRow = document.getElementById("sheet-detail-row");
+const sheetHighlights = document.getElementById("sheet-highlights");
         const sheetProgressBar = document.getElementById("sheet-progress-bar");
         const sheetPosition = document.getElementById("sheet-position");
         const sheetFeedback = document.getElementById("sheet-feedback");
@@ -3192,9 +3289,16 @@ let hasAutoSentReviewSummary = false;
         let isAnimatingGesture = false;
         let dragCloseY = 0;
 
-        function getCards() {
-          return Array.from(document.querySelectorAll(".card"));
-        }
+    let reviewCards = null;
+
+function getCards() {
+  if (reviewCards) return reviewCards;
+
+  const allCards = Array.from(document.querySelectorAll(".card"));
+
+  reviewCards = allCards;
+  return reviewCards;
+}
 
         function currentCardIndex() {
           const cards = getCards();
@@ -3268,104 +3372,128 @@ let hasAutoSentReviewSummary = false;
           const opacity = minOpacity + (maxOpacity - minOpacity) * clamped;
           overlay.style.opacity = String(opacity);
         }
+function pickNote(seed, options) {
+  const text = String(seed || "");
+  const total = text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return options[total % options.length];
+}
 
-    function buildIntelligenceLabel(index, card) {
-  const cards = getCards();
-
-  const toNumber = (value) =>
-    parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
-
-  const price = toNumber(card.dataset.price);
-  const beds = toNumber(card.dataset.beds);
-  const baths = toNumber(card.dataset.baths);
-  const sqft = toNumber(card.dataset.sqft);
-  const type = String(card.dataset.type || "").toLowerCase();
+function buildHighlightChips(card) {
   const desc = String(card.dataset.description || "").toLowerCase();
-  const address = String(card.dataset.address || "").toLowerCase();
-  const text = `${address} ${desc}`;
+  const type = String(card.dataset.type || "").toLowerCase();
+  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const beds = Number(card.dataset.beds || 0);
 
-  const similar = cards.filter((c) => {
-    const cPrice = toNumber(c.dataset.price);
-    const cType = String(c.dataset.type || "").toLowerCase();
+  const isCondo = type.includes("condo") || type.includes("apartment");
+  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
+  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
 
-    if (!price || !cPrice || !type || !cType) return false;
+  const hasView =
+    /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc) &&
+    !/viewing|preview|virtual tour|view today|viewing appointment/.test(desc);
 
-    return (
-      cType === type &&
-      Math.abs(cPrice - price) <= price * 0.15
-    );
-  });
+  const hasSuite = /suite|mortgage helper|income|secondary suite|legal suite/.test(desc);
+  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+  const quiet = /cul-de-sac|quiet street|private|privacy/.test(desc);
+  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
 
-  const insights = [];
+  const highlights = [];
 
-  if (index === 0) {
-    insights.push("Best overall match in this group");
+  if (isCondo) {
+    if (hasView) highlights.push("Open outlook");
+    if (amenities) highlights.push("Building amenities");
+    if (hasParking) highlights.push("Parking included");
+    if (outdoor) highlights.push("Outdoor space");
+    if (isUpdated) highlights.push("Updated interior");
+    if (sqft >= 900) highlights.push("Larger layout");
+    if (!highlights.length) highlights.push("Low-maintenance living");
+  } else if (isTownhouse) {
+    if (beds >= 3) highlights.push("Family-friendly layout");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Private outdoor space");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quieter setting");
+    if (sqft >= 1600) highlights.push("Generous townhome space");
+    highlights.push("Lock-and-leave option");
+  } else if (isHouse) {
+    if (sqft >= 2500) highlights.push("Generous floor plan");
+    if (beds >= 4) highlights.push("Family-sized");
+    if (hasView) highlights.push("View potential");
+    if (hasSuite) highlights.push("Suite potential");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quiet setting");
+    if (hasParking) highlights.push("Good parking");
+  } else {
+    if (hasView) highlights.push("View setting");
+    if (isUpdated) highlights.push("Updated features");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Outdoor space");
   }
 
-  
+  return Array.from(new Set(highlights)).slice(0, 3);
+}
+    function buildIntelligenceLabel(index, card) {
+  const desc = String(card.dataset.description || "").toLowerCase();
+  const type = String(card.dataset.type || "").toLowerCase();
 
-  if (similar.length >= 3) {
-    const prices = similar
-      .map((c) => toNumber(c.dataset.price))
-      .filter(Boolean)
-      .sort((a, b) => a - b);
+  const beds = Number(card.dataset.beds || 0);
+  const baths = Number(card.dataset.baths || 0);
+  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const year = Number(card.dataset.year || 0);
 
-    const medianPrice = prices[Math.floor(prices.length / 2)];
+  const isCondo = type.includes("condo") || type.includes("apartment");
+  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
+  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
 
-    if (price && medianPrice && price < medianPrice * 0.95) {
-      insights.push("Priced below most similar homes");
+  const hasView = /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc);
+  const hasSuite = isHouse && /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
+  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+
+  if (isCondo) {
+    if (sqft >= 900 && outdoor) return "Feels bigger than most condos";
+    if (isUpdated) {
+      return pickNote(card.dataset.cardId || card.dataset.address, [
+        "Move-in ready condo option",
+        "Clean, easy condo choice",
+        "A simpler option to step into",
+        "Low-effort condo living"
+      ]);
     }
-
-    const avgBeds =
-      similar.reduce((sum, c) => sum + toNumber(c.dataset.beds), 0) /
-      similar.length;
-
-    if (beds && beds > avgBeds + 0.5) {
-      insights.push("More bedrooms than typical in this group");
-    }
-
-    const avgBaths =
-      similar.reduce((sum, c) => sum + toNumber(c.dataset.baths), 0) /
-      similar.length;
-
-    if (baths && baths > avgBaths + 0.5) {
-      insights.push("More bathrooms than most comparable homes");
-    }
-
-    const sqftValues = similar
-      .map((c) => toNumber(c.dataset.sqft))
-      .filter(Boolean);
-
-    const largestSqft = sqftValues.length ? Math.max(...sqftValues) : 0;
-
-    if (sqft && largestSqft && sqft === largestSqft) {
-      insights.push("Largest home in this shortlist");
-    }
+    if (sqft >= 900) return "More room than the typical condo";
+    if (amenities) return "Easy living with building perks";
+    if (hasParking) return "Convenient everyday setup";
+    return "Simple, low-maintenance living";
   }
 
-  const hasView = /\b(ocean view|mountain view|lake view|river view|city view|water view|panoramic view)\b/i.test(text);
-  const hasGarage = /\b(garage|double garage|attached garage)\b/i.test(text);
-  const hasYard = /\b(yard|backyard|garden|fully fenced|fenced)\b/i.test(text);
-
-  const quiet = /\b(cul[- ]de[- ]sac|dead end|quiet street)\b/i.test(text);
-
-  if (hasView) insights.push("View is a standout feature");
-  if (quiet) insights.push("Quiet street setting");
-
-  if (hasGarage) insights.push("Garage adds everyday function");
-  if (hasYard) insights.push("Outdoor space is a plus");
-
-  if (price && price < 600000) {
-    insights.push("Entry-level pricing usually draws attention");
-  } else if (price >= 600000 && price <= 900000) {
-    insights.push("Popular mid-market price range");
+  if (isTownhouse) {
+    if (beds >= 3 && outdoor) return "Great layout for everyday living";
+    if (hasParking) return "Practical townhome setup";
+    if (isUpdated) return "Updated townhome option";
+    return "Balanced space with low upkeep";
   }
 
-  if (beds && baths) {
-    insights.push(`${beds} bed / ${baths} bath option`);
+  if (isHouse) {
+    const isFamilySized = beds >= 4 && baths >= 3;
+    const isLarge = sqft >= 2500;
+    const isNewer = year >= 2015;
+
+    if (hasView && hasSuite) return "Strong upside with income potential";
+    if (isNewer && isFamilySized && isLarge) return "Checks the boxes for a growing family";
+    if (isUpdated && isLarge) return "Updated home with real space";
+    if (hasSuite) return "Flexible layout with income potential";
+    if (hasView) return "Nice outlook from main living areas";
+    return index === 0 ? "Best overall match in this group" : "Solid detached option to consider";
   }
 
-return insights[0] || "Solid fundamentals compared with the rest";
+  if (hasView) return "Open outlook worth noting";
+  if (isUpdated) return "Updated features stand out";
+
+  return index === 0 ? "Best overall match in this group" : "Worth a closer look";
 }
         function updateDecisionButtons() {
           [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
@@ -3573,11 +3701,105 @@ renderActivePhoto();
 
           if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
          if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
-          
+          if (sheetDetailRow) {
+  const details = [
+    card.dataset.type || "",
+    card.dataset.year ? `Built ${card.dataset.year}` : "",
+    card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""
+  ].filter(Boolean);
+
+  sheetDetailRow.innerHTML = details.map((item) => `<span>${item}</span>`).join("");
+}
+
+if (sheetHighlights) {
+  const highlights = buildHighlightChips(card);
+
+  sheetHighlights.innerHTML = highlights
+    .map((item) => `<span class="panel__highlight-chip">${item}</span>`)
+    .join("");
+}
 
           updateHeaderProgress();
           updateDecisionButtons();
+          const cards = getCards();
+const currentIndex = cards.indexOf(card);
+const isFirst = currentIndex <= 0;
+const isLast = currentIndex >= cards.length - 1;
+
+if (sheetPrevBtn) sheetPrevBtn.disabled = isFirst;
+if (sheetPrevTopBtn) sheetPrevTopBtn.disabled = isFirst;
+
+if (sheetNextBtn) sheetNextBtn.textContent = isLast ? "Finish review →" : "Next listing →";
+if (sheetNextTopBtn) sheetNextTopBtn.textContent = isLast ? "Finish →" : "Next →";
         }
+
+function appendExpandedListings(listings) {
+  if (!shortlistGrid || !Array.isArray(listings) || !listings.length) return;
+
+  reviewCards = null;
+
+  listings.forEach((listing) => {
+    const article = document.createElement("article");
+
+    const itemId = String(listing.shortlist_item_id || listing.id || "");
+    const listingId = String(listing.repliers_listing_id || listing.listing_id || listing.id || "");
+    const price = listing.price_text || "Price unavailable";
+    const address = listing.address || "Address unavailable";
+    const image = listing.image_url || "https://placehold.co/800x600?text=Listing";
+const safeDescription = String(listing.description || "").replace(/\s+/g, " ").trim();
+
+    article.className = "card";
+    article.dataset.itemId = itemId;
+    article.dataset.cardId = listingId;
+    article.dataset.price = price;
+    article.dataset.address = address;
+    article.dataset.beds = String(listing.beds || "-");
+    article.dataset.baths = String(listing.baths || "-");
+    article.dataset.sqft = String(listing.sqft || "");
+    article.dataset.type = listing.property_type || "Home";
+    article.dataset.year = String(listing.year_built || "");
+    article.dataset.image = image;
+    article.dataset.images = JSON.stringify(listing.images || []);
+    article.dataset.description = listing.description || "";
+    article.dataset.likedTags = "[]";
+    article.dataset.isFavourite = "false";
+    article.dataset.decision = "";
+    article.dataset.isNew = "true";
+    article.dataset.featured = "false";
+    article.dataset.originalOrder = String(-Date.now());
+
+    article.innerHTML = `
+      <div class="card__image-wrap">
+        <div class="card__new-badge">
+          <span>✨</span>
+          <span>New</span>
+        </div>
+
+        <img src="${image}" alt="${address}" loading="lazy" />
+        <span class="card__index">New</span>
+      </div>
+
+      <div class="card__body">
+        <p class="card__price">${price}</p>
+        <p class="card__address">${address}</p>
+        <p class="card__meta">
+          ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+          ${listing.sqft ? ` · ${listing.sqft} sqft` : ""}
+          ${listing.year_built ? ` · Built ${listing.year_built}` : ""}
+        </p>
+    <p class="card__desc">${safeDescription}</p>
+        <button type="button" class="card__action preview-btn">View property →</button>
+      </div>
+    `;
+
+    shortlistGrid.appendChild(article);
+    bindCardEvents(article);
+  });
+
+  reviewCards = null;
+  sortCardsByReview();
+  updateCounts();
+}
 
         function showSummary() {
           isShowingSummary = true;
@@ -3585,10 +3807,128 @@ renderActivePhoto();
           activeItemId = "";
 
           const cards = getCards();
-          const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
+
+const summaryTitle = document.getElementById("review-complete-title");
+if (summaryTitle && isExpandedReview) {
+  summaryTitle.textContent = "You’ve seen the new homes.";
+}
+
+const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
           const maybeCount = cards.filter((card) => card.dataset.decision === "maybe").length;
           const passCount = cards.filter((card) => card.dataset.decision === "pass").length;
 const faveStrip = document.getElementById("summary-fave-strip");
+const insightEl = document.getElementById("summary-insight");
+
+function parseSummaryPrice(value) {
+  return parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
+}
+
+const prices = cards
+  .map((card) => parseSummaryPrice(card.dataset.price))
+  .filter(Boolean);
+
+const lovedCards = cards.filter((card) => card.dataset.isFavourite === "true");
+
+const lovedPrices = lovedCards
+  .map((card) => parseSummaryPrice(card.dataset.price))
+  .filter(Boolean);
+
+const avgLovedPrice =
+  lovedPrices.reduce((sum, price) => sum + price, 0) /
+  Math.max(lovedPrices.length, 1);
+
+const maxSearchPrice = Math.max(...prices, 0);
+const minSearchPrice = Math.min(...prices, maxSearchPrice || 0);
+
+const topBudgetLine = maxSearchPrice * 0.88;
+const lowerBudgetLine = minSearchPrice + (maxSearchPrice - minSearchPrice) * 0.38;
+
+let insightType = "neutral";
+
+if (lovedCards.length >= 2 && avgLovedPrice && maxSearchPrice) {
+  if (avgLovedPrice >= topBudgetLine) {
+    insightType = "high";
+  } else if (avgLovedPrice <= lowerBudgetLine) {
+    insightType = "low";
+  }
+}
+
+if (insightEl) {
+  insightEl.hidden = false;
+
+  const heading =
+    insightType === "high"
+      ? "You seem to be drawn to the higher-end homes in this search."
+      : insightType === "low"
+        ? "Want to compare these against the next few higher-priced homes?"
+        : "Want to keep going and see the next few higher-priced options?";
+
+  const copy =
+    insightType === "high"
+      ? "Most of your favourites were closer to the top of the range. The natural next step is to look just above this search."
+      : insightType === "low"
+        ? "Even if these felt like better value, it can be useful to see what opens up just above this range."
+        : "You do not have to love anything first. Sometimes the next few above the range are what help clarify the search.";
+
+  insightEl.innerHTML = `
+    <div class="review-send-copy">
+      <h3>${heading}</h3>
+      <p>${copy}</p>
+    </div>
+
+    <div class="review-send-actions">
+      <button class="summary__btn summary__btn--primary" type="button" id="summary-above-budget-btn">
+        Show the next few higher-priced homes →
+      </button>
+    </div>
+  `;
+
+  insightEl.querySelector("button")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const status = document.getElementById("summary-comment-status");
+
+    const originalText = btn.textContent || "Show more";
+
+    btn.disabled = true;
+    btn.textContent = "Finding homes...";
+
+    try {
+      const res = await fetch("/api/shortlists/expand-search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          slug: pageSlug,
+          mode: "above_budget"
+        })
+      });
+
+      const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+  throw new Error(data?.error || "Could not find more homes.");
+}
+
+if (!Array.isArray(data.listings) || data.listings.length === 0) {
+  throw new Error(data?.error || "No new homes were returned.");
+}
+
+     window.location.href = `/shortlists/${pageSlug}?expanded=1&openNew=1`;
+return;
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+
+      if (status) {
+        status.textContent =
+          err instanceof Error
+            ? err.message
+            : "Could not create revised shortlist.";
+      }
+    }
+  });
+}
 
 if (faveStrip) {
   const faveCards = cards
@@ -3707,7 +4047,17 @@ sheetMapBtn?.addEventListener("click", async () => {
   }
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
-    mapEl.innerHTML = "<p style='padding:14px;'>No map location available for this listing.</p>";
+    const mapAddress = `${activeCard.dataset.address || ""}, British Columbia, Canada`;
+const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`;
+
+mapEl.innerHTML = `
+  <div style="padding:18px; line-height:1.5;">
+    <p>No embedded map location available for this listing.</p>
+    <a href="${googleMapUrl}" target="_blank" rel="noopener" style="font-weight:800;">
+      Open address in Google Maps →
+    </a>
+  </div>
+`;
     return;
   }
 
@@ -3808,38 +4158,18 @@ function sortCardsByReview() {
 
   const cards = getCards();
 
-  cards
-    .sort((a, b) => {
-   const score = (card) => {
-  if (card.dataset.isNew === "true") return 0;
-  if (card.dataset.isFavourite === "true") return 1;
-  if (card.dataset.decision === "maybe") return 2;
-  if (card.dataset.decision === "pass") return 4;
+  // Keep the server-rendered order.
+  // The Astro side already sorted by batch + price.
+  cards.forEach((card, index) => {
+    shortlistGrid.appendChild(card);
 
-  return 3;
-};
+    const indexEl = card.querySelector(".card__index");
+    if (indexEl) {
+      indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
+    }
 
-      const aScore = score(a);
-      const bScore = score(b);
-
-      if (aScore !== bScore) return aScore - bScore;
-
-      const aOrder = Number(a.dataset.originalOrder || "999999");
-      const bOrder = Number(b.dataset.originalOrder || "999999");
-
-      return aOrder - bOrder;
-    })
-    .forEach((card, index) => {
-      shortlistGrid.appendChild(card);
-
-      const indexEl = card.querySelector(".card__index");
-      if (indexEl) {
-        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
-      }
-
-      card.dataset.featured =
-        index === 0 && card.dataset.isFavourite === "true" ? "true" : "false";
-    });
+    card.dataset.featured = index === 0 ? "true" : "false";
+  });
 }
         function refreshCardUI(card, tags, isFav, decision) {
   if (!card) return;
@@ -3879,7 +4209,17 @@ wrap.querySelector(".card__new-badge")?.remove();
     wrap.appendChild(badge);
   }
 }
+function getPrevCard() {
+  const cards = getCards();
 
+  if (!activeCard || !cards.length) return null;
+
+  const currentIndex = cards.indexOf(activeCard);
+
+  if (currentIndex <= 0) return null;
+
+  return cards[currentIndex - 1] || null;
+}
       function getNextCard() {
   const cards = getCards();
 
@@ -4091,6 +4431,22 @@ return true;
           }
         }
 
+        function goToPrevCard(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  if (isShowingSummary) return;
+
+  const prevCard = getPrevCard();
+
+  if (prevCard) {
+    openSheetFromCard(prevCard);
+    resetPanelScroll();
+  }
+}
+
         function closeSheet(skipReload = false) {
           sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
 
@@ -4113,7 +4469,12 @@ return true;
             resetSheetTransform();
           }
 
-          const needsRefresh = shouldRefreshOnClose && !skipReload;
+       const needsRefresh = shouldRefreshOnClose && !skipReload;
+
+if (needsRefresh) {
+  window.location.reload();
+  return;
+}
 
           activeCard = null;
           activeItemId = "";
@@ -4146,7 +4507,7 @@ return true;
           if (sheetProgressBar) sheetProgressBar.style.width = "0%";
 
           sheet.scrollTop = 0;
-          if (needsRefresh) window.location.reload();
+          
         }
 
         async function removeShortlistItem(card) {
@@ -4546,7 +4907,7 @@ setTimeout(() => {
         const viewedListings = getViewedListings();
 
 getCards().forEach((card, index) => {
-  card.dataset.originalOrder = String(index);
+card.dataset.originalOrder = String(index);
 
   const id = card.dataset.itemId || card.dataset.cardId || "";
 
@@ -4560,6 +4921,41 @@ getCards().forEach((card, index) => {
 });
 
 sortCardsByReview();
+
+const autoOpenParams = new URLSearchParams(window.location.search);
+
+if (autoOpenParams.has("openNew")) {
+  autoOpenParams.delete("openNew");
+
+  const cleanUrl =
+    window.location.pathname +
+    (autoOpenParams.toString() ? `?${autoOpenParams.toString()}` : "");
+
+  window.history.replaceState({}, "", cleanUrl);
+
+ requestAnimationFrame(() => {
+  reviewCards = null;
+
+  const cards = getCards();
+
+  console.log(
+    "AUTO OPEN DEBUG",
+    cards.map((card, index) => ({
+      visualNumber: index + 1,
+      sortOrder: card.dataset.sortOrder,
+      price: card.dataset.price,
+      address: card.dataset.address
+    }))
+  );
+
+  const batchStartIndex = Math.max(0, cards.length - 3);
+  const firstNewCard = cards[batchStartIndex] || cards[0];
+
+  if (firstNewCard) {
+    openSheetFromCard(firstNewCard);
+  }
+});
+}
 
 presetImageButtons.forEach((btn) => {
   btn.addEventListener("click", async (e) => {
@@ -4647,6 +5043,7 @@ descToggle?.addEventListener("click", () => {
   descToggle.textContent = isCollapsed ? "Show less" : "Read more";
 });
 
+sheetPrevBtn?.addEventListener("click", goToPrevCard);
 sheetNextBtn?.addEventListener("click", goToNextCard);
         
 
@@ -4695,12 +5092,14 @@ sheetNextBtn?.addEventListener("click", goToNextCard);
          const ok = await sendReviewComplete("comment", comment);
 
           btn.textContent = ok ? "Sent ✓" : originalText;
+if (status) {
+  status.textContent =
+    err instanceof Error
+      ? err.message
+      : "Could not create revised shortlist.";
+}
 
-          if (status) {
-            status.textContent = ok
-              ? "Thanks - your note was sent."
-              : "Could not send that note.";
-          }
+btn.style.display = "none";
 
           setTimeout(() => {
             btn.disabled = false;
@@ -5047,7 +5446,6 @@ saveResourceVendorsBtn?.addEventListener("click", async (e) => {
 
 syncEditModeUI();
 updateCounts();
-closeSheet(true);
       }
 
       if (document.readyState === "loading") {

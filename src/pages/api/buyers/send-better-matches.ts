@@ -13,24 +13,44 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    if (!Array.isArray(listings) || !listings.length) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "No listings to send" }),
+        { status: 400 }
+      );
+    }
+
     const supabase = createClient(
       import.meta.env.PUBLIC_SUPABASE_URL,
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    let finalMessage = message;
-    let shortlistUrl: string | null = null;
+    const siteUrl =
+  import.meta.env.PUBLIC_SITE_URL ||
+  "https://crump1.netlify.app";
 
-    if (Array.isArray(listings) && listings.length) {
+const cleanBase = String(siteUrl).replace(/\/$/, "");
+
+    // 1. Find the buyer's latest existing shortlist
+    let { data: existingSend, error: existingError } = await supabase
+      .from("shortlist_sends")
+      .select("id, shortlist_slug, shortlist_url")
+      .ilike("client_name", name)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    // 2. If no existing shortlist exists, create one as a fallback
+    if (!existingSend) {
       const slug = `${String(name)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")}-${Date.now().toString(36)}`;
 
-      const siteUrl = import.meta.env.PUBLIC_SITE_URL || "http://localhost:4321";
-      shortlistUrl = `${siteUrl}/shortlists/${slug}`;
-
-      const { data: send, error: sendError } = await supabase
+const shortlistUrl = `${cleanBase}/shortlists/${slug}`;
+      const { data: newSend, error: newSendError } = await supabase
         .from("shortlist_sends")
         .insert({
           client_name: name,
@@ -41,37 +61,59 @@ export const POST: APIRoute = async ({ request }) => {
           status: "sent",
           sent_at: new Date().toISOString()
         })
-        .select("id")
+        .select("id, shortlist_slug, shortlist_url")
         .single();
 
-      if (sendError) throw sendError;
+      if (newSendError) throw newSendError;
 
-      const items = listings.map((listing: any, index: number) => ({
-        shortlist_send_id: send.id,
+      existingSend = newSend;
+    }
+
+    const shortlistUrl = `${cleanBase}/shortlists/${existingSend.shortlist_slug}`;
+
+    // 3. Find the current highest sort_order so new matches appear after existing ones
+    const { data: existingItems, error: sortError } = await supabase
+      .from("shortlist_items")
+      .select("sort_order")
+      .eq("shortlist_send_id", existingSend.id)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+
+    if (sortError) throw sortError;
+
+    const startSort = existingItems?.[0]?.sort_order || 0;
+
+    // 4. Add the better matches as NEW unreviewed items
+    const items = listings.map((listing: any, index: number) => {
+      const rawImage =
+        listing.image ||
+        listing.images?.[0] ||
+        listing.photo_urls?.[0] ||
+        null;
+
+      let imageUrl = null;
+
+      if (rawImage) {
+        const url = String(rawImage).trim();
+
+        imageUrl =
+          url.startsWith("http://") || url.startsWith("https://")
+            ? url
+            : `https://cdn.repliers.io/${url.replace(/^\/+/, "")}`;
+      }
+
+      return {
+        shortlist_send_id: existingSend.id,
         repliers_listing_id: listing.id || listing.mls || null,
-        sort_order: index + 1,
-        address: listing.address || "Listing",
+        sort_order: startSort + index + 1,
+
+        address: listing.address || listing.full_address || "Listing",
         price_text:
           listing.priceText ||
+          listing.price_text ||
           (listing.price ? `$${Number(listing.price).toLocaleString()}` : null),
 
-   image_url: (() => {
-  const rawImage =
-    listing.image ||
-    listing.images?.[0] ||
-    listing.photo_urls?.[0] ||
-    null;
-
-  if (!rawImage) return null;
-
-  const url = String(rawImage).trim();
-
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-
-  return `https://cdn.repliers.io/${url.replace(/^\/+/, "")}`;
-})(),
+        image_url: imageUrl,
 
         beds: listing.beds || null,
         baths: listing.baths || null,
@@ -85,17 +127,21 @@ export const POST: APIRoute = async ({ request }) => {
           "I found this as a closer match based on what you’ve been reacting to.",
 
         is_favourite: false,
+        decision: null,
         liked_tags: []
-      }));
+      };
+    });
 
-      const { error: itemsError } = await supabase.from("shortlist_items").insert(items);
-      if (itemsError) throw itemsError;
+    const { error: itemsError } = await supabase
+      .from("shortlist_items")
+      .insert(items);
 
-      finalMessage = `${message}
+    if (itemsError) throw itemsError;
 
-View them here:
+    const finalMessage = `${message}
+
+I added them to your shortlist here:
 ${shortlistUrl}`;
-    }
 
     const client = twilio(
       import.meta.env.TWILIO_ACCOUNT_SID,
@@ -117,16 +163,25 @@ ${shortlistUrl}`;
       .from("shortlist_sends")
       .update({
         last_contacted_at: now,
-        last_contact_note: note || "Sent 3 better matches"
+        last_contact_note: note || "Added and sent 3 better matches"
       })
-      .ilike("client_name", name);
+      .eq("id", existingSend.id);
 
-    return new Response(JSON.stringify({ ok: true, sent_at: now, shortlistUrl }), {
-      status: 200
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        sent_at: now,
+        shortlistUrl,
+        addedToExistingShortlist: true
+      }),
+      { status: 200 }
+    );
   } catch (error: any) {
     return new Response(
-      JSON.stringify({ ok: false, error: error?.message || "Could not send matches" }),
+      JSON.stringify({
+        ok: false,
+        error: error?.message || "Could not send matches"
+      }),
       { status: 500 }
     );
   }

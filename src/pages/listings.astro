@@ -2631,16 +2631,25 @@ const listingSnapshots = shortlistWithInsights.map((item) => ({
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-              listingIds: listingSnapshots
-                .map((item) => item.id || item.repliers_listing_id)
-                .filter(Boolean),
-              listingSnapshots,
-              title: titleInput?.value?.trim() || null,
-              clientName: clientNameInput?.value?.trim() || null,
-              phone: clientPhoneInput?.value?.trim() || null,
-              note: agentNoteInput?.value?.trim() || null
-            })
+          body: JSON.stringify({
+  listingIds: listingSnapshots
+    .map((item) => item.id || item.repliers_listing_id)
+    .filter(Boolean),
+  listingSnapshots,
+  title: titleInput?.value?.trim() || null,
+  clientName: clientNameInput?.value?.trim() || null,
+  phone: clientPhoneInput?.value?.trim() || null,
+  note: agentNoteInput?.value?.trim() || null,
+
+  // 👇 NEW — pass search context
+  city: document.querySelector('[name="city"]')?.value || null,
+  area: document.querySelector('[name="area"]')?.value || null,
+  type: document.querySelector('[name="type"]')?.value || null,
+  beds: document.querySelector('[name="beds"]')?.value || null,
+  baths: document.querySelector('[name="baths"]')?.value || null,
+  minPrice: document.querySelector('[name="minPrice"]')?.value || null,
+  maxPrice: document.querySelector('[name="maxPrice"]')?.value || null
+})
           });
 
           const json = await res.json();
