@@ -308,7 +308,22 @@ export const POST: APIRoute = async ({ request }) => {
         property_type: listing?.property_type || null,
         sqft: listing?.sqft || null,
         year_built: listing?.year_built || null,
-        description: listing?.description || null
+        description: listing?.description || null,
+
+lat:
+  listing?.lat ||
+  listing?.latitude ||
+  listing?.map?.lat ||
+  listing?.address?.lat ||
+  null,
+
+lng:
+  listing?.lng ||
+  listing?.lon ||
+  listing?.longitude ||
+  listing?.map?.lng ||
+  listing?.address?.lng ||
+  null
       };
     });
 

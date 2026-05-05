@@ -134,371 +134,88 @@ function normalizeArea(value: string) {
 
 if (hasListingFilters) {
   try {
-  const searchKey = mls ? "nanaimo" : city ? city.toLowerCase() : "nanaimo";
+    let query = supabase
+  .from("listing_rows")
+  .select("*");
 
-const { data: snapshot, error: dbError } = await supabase
-  .from("listing_snapshots")
-  .select("listings")
-  .eq("search_key", searchKey)
-  .single();
+query = query.eq("status", "A");
+
+if (city) {
+      query = query.eq("normalized_city", city.toLowerCase());
+    } else {
+      query = query.eq("normalized_city", "nanaimo");
+    }
+
+    if (area) {
+      query = query.eq("normalized_area", area.toLowerCase());
+    }
+
+    if (type) {
+      const typeMap: Record<string, string> = {
+        detached: "house",
+        condo: "condo",
+        townhouse: "townhouse",
+        land: "land",
+        mobile: "mobile"
+      };
+
+      query = query.eq("normalized_type", typeMap[type] || type);
+    }
+
+    if (beds) {
+      query = query.gte("beds", Number(beds));
+    }
+
+    if (baths) {
+      query = query.gte("baths", Number(baths));
+    }
+
+    if (minPrice) {
+      query = query.gte("price", Number(minPrice));
+    }
+
+    if (maxPrice) {
+      query = query.lte("price", Number(maxPrice));
+    }
+
+    if (mls) {
+      query = query.eq("repliers_listing_id", mls.replace(/[^0-9]/g, ""));
+    }
+
+    if (sort === "price-desc") {
+      query = query.order("price", { ascending: false });
+    } else {
+      query = query.order("price", { ascending: true });
+    }
+
+    const { data, error: dbError } = await query.limit(500);
 
     if (dbError) {
       throw new Error(dbError.message);
     }
 
-    const rawListings = snapshot?.listings || [];
-    console.log("SOUTH RTWN CHECK:", rawListings
-  .filter((l) => {
-    const id = String(
-      l?.id ||
-      l?.repliers_listing_id ||
-      l?.raw?.id ||
-      l?.raw?.mlsNumber ||
-      ""
-    );
+    listings = data || [];
 
-    return [
-      "1033060",
-      "1028779",
-      "1026458",
-      "1026381",
-      "1022543",
-      "1020180",
-      "1019391",
-      "1026067"
-    ].includes(id);
-  })
-  .map((l) => ({
-    id: l?.id || l?.repliers_listing_id || l?.raw?.id || l?.raw?.mlsNumber,
-    address: l?.address || l?.raw?.address?.addressKey,
-    area: l?.area || l?.raw?.details?.subArea,
-    type: l?.type,
-    normalized_type: l?.normalized_type,
-    raw_type: l?.raw_type,
-    s_type: l?.s_type || l?.raw?.s_type || l?.raw?.details?.sType
-  }))
-);
+    const { data: areaRows } = await supabase
+      .from("listing_rows")
+      .select("normalized_area")
+      .eq("normalized_city", city ? city.toLowerCase() : "nanaimo")
+      .not("normalized_area", "is", null);
 
-   const MAIN_NANAIMO_AREAS = [
-  "Cedar",
-  "Central Nanaimo",
-  "Chase River",
-  "Departure Bay",
-  "Diver Lake",
-  "Hammond Bay",
-  "Lower Lantzville",
-  "North Jingle Pot",
-  "North Nanaimo",
-  "Old City",
-  "Pleasant Valley",
-  "South Jingle Pot",
-  "South Nanaimo",
-  "University District",
-  "Uplands",
-  "Upper Lantzville",
-  "Brechin Hill"
-];
-
-areaOptions =
-  city?.toLowerCase() === "nanaimo"
-    ? MAIN_NANAIMO_AREAS
-    : Array.from(
-        new Set(
-          rawListings
-            .map((listing) => getListingAreaName(listing))
-            .filter(Boolean)
-        )
-      ).sort((a, b) => a.localeCompare(b));
-
-    listings = rawListings.filter((listing) => {
-      const listingBeds = Number(listing?.beds || getListingBeds(listing) || 0);
-      const listingBaths = Number(listing?.baths || getListingBaths(listing) || 0);
-
-      const priceNumber = Number(
-        listing?.price ||
-          String(getListingPrice(listing) || "").replace(/[^0-9]/g, "")
-      );
-
-      const selectedCity = city.toLowerCase();
-
-      const listingCity = String(
-        listing?.city ||
-          listing?.address?.city ||
-          listing?.raw?.address?.city ||
-          ""
-      ).toLowerCase();
-
-      const listingMarketCity = String(listing?.market_city || "").toLowerCase();
-
-      const addressText = String(getListingAddress(listing) || "").toLowerCase();
-
-const cityOk = selectedCity
-  ? (
-      listingMarketCity.includes(selectedCity) ||
-      listingCity.includes(selectedCity) ||
-      addressText.includes(selectedCity)
-    )
-  : true;
-
-
-
-const selectedMls = String(mls || "").replace(/[^0-9]/g, "");
-
-let mlsOk = true;
-
-if (selectedMls) {
-  const listingMls = String(
-    listing?.id ||
-      listing?.repliers_listing_id ||
-      listing?.raw?.id ||
-      listing?.raw?.mlsNumber ||
-      listing?.raw?.ml_num ||
-      listing?.mlsNumber ||
-      listing?.ml_num ||
-      ""
-  ).replace(/[^0-9]/g, "");
-
-  mlsOk = listingMls === selectedMls;
-}
-
-const listingArea = getListingAreaName(listing);
-const safeArea = listingArea || "unknown";
-
-const rawAreaText = String(
-  listing?.area ||
-    listing?.raw?.details?.subArea ||
-    listing?.details?.subArea ||
-    listing?.raw?.details?.area ||
-    listing?.details?.area ||
-    ""
-);
-
-const normalizedSelected = normalizeArea(area);
-const cleanWanted = type.toLowerCase();
-// get BOTH sources
-const rawArea = normalizeArea(rawAreaText);
-const fallbackArea = normalizeArea(getListingAreaName(listing));
-
-// decide best available
-// combine BOTH sources
-const combinedArea = [rawArea, fallbackArea]
-  .filter(Boolean)
-  .join(" ")
-  .replace(/^na\s+/i, "")   // remove "na "
-  .replace(/district of/g, "")
-  .replace(/area/g, "")
-  .trim();
-
-// flexible match
-const addressArea = normalizeArea(getListingAddress(listing));
-
-const southNanaimoTownhomeIds = [
-  "1033060",
-  "1028779",
-  "1026458",
-  "1026381",
-  "1022543",
-  "1020180",
-  "1019391"
-];
-
-const listingMlsForOverride = String(
-  listing?.id ||
-    listing?.repliers_listing_id ||
-    listing?.raw?.id ||
-    listing?.raw?.mlsNumber ||
-    ""
-).replace(/[^0-9]/g, "");
-
-const isSouthNanaimoTownhomeOverride =
-  normalizedSelected === "south nanaimo" &&
-  cleanWanted === "townhouse" &&
-  southNanaimoTownhomeIds.includes(listingMlsForOverride);
-
-const isLantzvilleArea =
-  normalizedSelected === "upper lantzville" ||
-  normalizedSelected === "lower lantzville";
-
-const areaOk = area
-  ? (
-      isSouthNanaimoTownhomeOverride ||
-      (
-        isLantzvilleArea
-          ? (
-              rawArea === normalizedSelected ||
-              fallbackArea === normalizedSelected ||
-              combinedArea.split(" ").join(" ") === normalizedSelected
-            )
-          : (
-              combinedArea.includes(normalizedSelected) ||
-              normalizedSelected.includes(combinedArea)
-            )
+    areaOptions = Array.from(
+      new Set(
+        (areaRows || [])
+          .map((row) => String(row.normalized_area || "").trim())
+          .filter(Boolean)
       )
     )
-  : true;
-
-
-
-  const normalizedType = String(listing?.type || "").toLowerCase();
-  const rawType = String(listing?.raw_type || "").toLowerCase();
-
-  const matrixType = String(
-    listing?.s_type ||
-      listing?.sType ||
-      listing?.raw?.s_type ||
-      listing?.raw?.sType ||
-      listing?.raw?.details?.sType ||
-      listing?.raw?.details?.["S Type"] ||
-      ""
-  ).toLowerCase();
-
- 
-
-
-
-// beds
-const bedsOk = beds
-  ? listingBeds >= Number(beds)
-  : true;
-
-// baths
-const bathsOk = baths
-  ? listingBaths >= Number(baths)
-  : true;
-
-// price
-const minPriceOk = minPrice
-  ? priceNumber >= Number(minPrice)
-  : true;
-
-const maxPriceOk = maxPrice
-  ? priceNumber <= Number(maxPrice)
-  : true;
-
-// TYPE LOGIC
-let typeOk = true;
-
-
-
-const cleanNormalizedType = String(
-  listing?.normalized_type ||
-    listing?.type ||
-    ""
-).toLowerCase();
-
-const blob = [
-  cleanNormalizedType,
-  listing?.raw_type,
-  listing?.raw?.details?.propertyType,
-  listing?.raw?.details?.style,
-  listing?.raw?.details?.type,
-  listing?.raw?.details?.propertySubType,
-  listing?.raw?.details?.buildingType,
-  listing?.raw?.details?.ownershipType,
-  listing?.raw?.s_type,
-  listing?.raw?.sType
-]
-  .filter(Boolean)
-  .join(" ")
-  .toLowerCase();
-
-
-
-if (cleanWanted) {
-if (cleanWanted === "condo") {
-  const isTownhouseLike =
-    blob.includes("townhouse") ||
-    blob.includes("townhome") ||
-    blob.includes("row") ||
-    blob.includes("patio home");
-
-  typeOk =
-    !isTownhouseLike &&
-    (
-      blob.includes("condo apartment") ||
-      blob.includes("apartment") ||
-      blob.includes("apt") ||
-      matrixType === "con"
-    );
-}
-
-else if (cleanWanted === "townhouse") {
-  typeOk =
-    isSouthNanaimoTownhomeOverride ||
-    cleanNormalizedType === "townhouse" ||
-    cleanNormalizedType === "townhome" ||
-    matrixType === "rtwn" ||
-    matrixType === "row" ||
-    blob.includes("townhouse") ||
-    blob.includes("townhome") ||
-    blob.includes("row") ||
-    blob.includes("patio home");
-}
-
-  else if (cleanWanted === "detached") {
-    typeOk =
-      cleanNormalizedType === "detached" ||
-      matrixType === "det" ||
-      blob.includes("detached") ||
-      blob.includes("single family") ||
-      blob.includes("house") ||
-      blob.includes("sfd");
-  }
-
-  else if (cleanWanted === "mobile") {
-    typeOk =
-      cleanNormalizedType === "mobile" ||
-      matrixType === "manu" ||
-      blob.includes("mobile") ||
-      blob.includes("manufactured") ||
-      blob.includes("modular") ||
-      blob.includes("park model");
-  }
-
-  else if (cleanWanted === "land") {
-    typeOk =
-      cleanNormalizedType === "land" ||
-      matrixType === "lnd" ||
-      blob.includes("land") ||
-      blob.includes("lot");
-  }
-}
-
-const locationOk = area ? areaOk : cityOk;
-
-
-
-const pass =
-  cityOk &&
-  areaOk &&
-  bedsOk &&
-  bathsOk &&
-  minPriceOk &&
-  maxPriceOk &&
-  typeOk &&
-  mlsOk;
-
-
-
-
-
-
-
-
-
-
-return pass;
-    });
-
-    listings = listings.sort((a, b) => {
-      const priceA = Number(a?.price || String(getListingPrice(a) || "").replace(/[^0-9]/g, ""));
-      const priceB = Number(b?.price || String(getListingPrice(b) || "").replace(/[^0-9]/g, ""));
-
-      if (sort === "price-asc") return priceA - priceB;
-      if (sort === "price-desc") return priceB - priceA;
-
-      return 0;
-    });
+      .map((value) =>
+        value
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ")
+      )
+      .sort((a, b) => a.localeCompare(b));
   } catch (err) {
     console.error("Failed to load listings:", err);
     error = err instanceof Error ? err.message : "Failed to load listings";
@@ -515,878 +232,865 @@ return pass;
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 />
-    <style>
-      :root {
-        --bg: #181614;
-        --card: #ffffff;
-        --text: #1f1f1f;
-        --muted: #6b6b6b;
-        --line: #dddddd;
-        --accent: #111111;
-        --success: #1f7a45;
-        --danger: #8b1e1e;
-        --danger-bg: #fff6f6;
-        --radius: 16px;
-      }
+   <style>
+  :root {
+    --bg: #f4efe7;
+    --card: #ffffff;
+    --text: #1f1f1f;
+    --muted: #6b6b6b;
+    --line: #dddddd;
+    --accent: #111111;
+    --success: #1f7a45;
+    --danger: #8b1e1e;
+    --danger-bg: #fff6f6;
+    --radius: 16px;
+  }
 
-      * {
-        box-sizing: border-box;
-      }
+  * {
+    box-sizing: border-box;
+  }
 
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-      }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
 
-      html {
-        scrollbar-gutter: stable;
-      }
+  html {
+    scrollbar-gutter: stable;
+  }
 
-      body {
-        font-family: system-ui, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-      }
+  body {
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
 
-      .page {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 24px;
-        padding-bottom: 280px;
-      }
-
-      .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: end;
-        gap: 16px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: 2rem;
-        line-height: 1.1;
-      }
-
-      .subtle {
-        margin: 6px 0 0;
-        color: var(--muted);
-      }
-
-      .saved-pill {
-        border: 1px solid var(--line);
-        background: var(--card);
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-size: 0.95rem;
-        white-space: nowrap;
-      }
-
-.filters {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 22px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-  gap: 10px;
-  align-items: end;
-  width: 100%;
-  overflow: hidden;
-}
-
-.filters label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.82rem;
-  color: var(--muted);
-  min-width: 0;
-}
-
-.filters input,
-.filters select {
-  width: 100%;
-  min-width: 0;
-  min-height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 9px 10px;
-  font: inherit;
-  background: white;
-  color: var(--text);
-}
-
-.filter-actions {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-}
-
-.filter-clear {
-  text-decoration: none;
-  border: 1px solid var(--line);
-  background: #fafafa;
-  color: var(--text);
-  padding: 10px 14px;
-  border-radius: 10px;
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@media (max-width: 900px) {
   .page {
-    padding: 20px;
-    padding-bottom: 110px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    padding-bottom: 280px;
   }
 
   .topbar {
-    align-items: flex-start;
-    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+
+  .subtle {
+    margin: 6px 0 0;
+    color: var(--muted);
   }
 
   .saved-pill {
-    padding: 9px 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    white-space: nowrap;
   }
 
-   .filters {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 12px;
+  .filters {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
   }
 
-  .filters label {
+  .filter-group {
+    display: contents;
+  }
+
+  .filter-group-title {
+    display: none;
+  }
+
+  .filters label,
+  .filter-group label {
+    position: relative;
+    flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    padding-left: 2px;
   }
 
-   .filters label:first-child {
-    grid-column: 1 / -1;
-  }
+  .filters label:has(input[name="minPrice"]),
+.filters label:has(input[name="maxPrice"]) {
+  flex: 0 0 95px;
+}
+
+.filters label:has(select[name="sort"]) {
+  flex: 0 0 165px;
+}
 
   .filters input,
   .filters select {
     width: 100%;
     min-width: 0;
+    min-height: 40px;
+    border: 0;
+    border-radius: 10px;
+    padding: 8px 34px 8px 12px;
+    font: inherit;
+    background-color: #f7f7f7;
+    color: var(--text);
   }
 
-    .filter-actions {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .filters select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23111111' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 8px;
   }
 
-    .filter-actions button,
-  .filter-actions a {
-    width: 100%;
+  .filters input:focus,
+  .filters select:focus {
+    outline: none;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(17,17,17,0.12);
   }
-}
 
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
-      }
+  .filter-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+  }
 
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        overflow: hidden;
-        padding: 12px;
-        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-        display: flex;
-        flex-direction: column;
-      }
+  .filter-actions .primary-btn,
+  .filter-actions .filter-clear {
+    min-height: 40px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
 
-      .card.saved {
-        border-color: var(--success);
-        box-shadow: 0 0 0 1px rgba(31, 122, 69, 0.12);
-      }
+  .filter-clear {
+    text-decoration: none;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-      .card:hover {
-        transform: translateY(-2px);
-      }
-
-      .image-wrap {
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        border-radius: 12px;
-        overflow: hidden;
-        background: #ececec;
-        margin-bottom: 12px;
-        cursor: pointer;
-      }
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-
-      .price {
-        margin: 0 0 6px;
-        font-size: 1.25rem;
-        font-weight: 700;
-      }
-
-      .address {
-        margin: 0 0 8px;
-        color: var(--text);
-      }
-
-      .meta {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-
-      .card-actions {
-        margin-top: 14px;
-        display: flex;
-        gap: 8px;
-      }
-
-      button {
-        appearance: none;
-        border: 1px solid var(--line);
-        background: white;
-        color: var(--text);
-        padding: 10px 14px;
-        border-radius: 10px;
-        cursor: pointer;
-        font: inherit;
-      }
-
-      button:hover {
-  background: #fafafa;
-}
-.page-logo {
-  display: block;
-  width: 220px;
-  max-width: 70vw;
-  height: auto;
-}
-
-.brand-head {
+.selection-bar {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.primary-btn:hover {
-  background: #242424;
-  color: #fff;
-  border-color: #242424;
-}
-
-      button:disabled {
-        cursor: default;
-        opacity: 1;
-        background: #fff;
-      }
-
-      .save-btn.saved,
-      .sheet-save.saved {
-        border-color: var(--success);
-        color: var(--success);
-        font-weight: 600;
-      }
-
-      .save-btn.remove,
-      .sheet-save.remove {
-        border-color: rgba(139, 30, 30, 0.28);
-        color: var(--danger);
-        background: var(--danger-bg);
-        font-weight: 600;
-      }
-
-      .preview-btn,
-      .sheet-close {
-        background: #fafafa;
-      }
-
-      .empty {
-        background: #fff;
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 20px;
-      }
-
-      .error {
-        margin-top: 14px;
-        color: #8b1e1e;
-      }
-
-.composer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(245, 242, 236, 0.98);
-  border-top: 1px solid #d7d1c7;
-  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(14px);
-  z-index: 10000;
-}
-
-      .composer-inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 14px 24px 18px;
-      }
-
-      .composer-inner--edit {
-        display: block;
-      }
-
-    .composer-fields {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1.5fr auto;
-  gap: 16px;
-  align-items: start;
-  padding: 28px 0 32px;
-}
-
-      .composer-toggle {
-        display: none;
-      }
-
-      .composer-toggle-row {
-        display: none;
-      }
-
-      .composer-handle {
-        display: none;
-      }
-
-      .composer-toggle-left {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 3px;
-      }
-
-      .composer-toggle-kicker {
-        font-size: 0.78rem;
-        color: var(--muted);
-        letter-spacing: 0.02em;
-      }
-
-      .composer-toggle-title {
-        font-size: 0.98rem;
-        font-weight: 600;
-        color: var(--text);
-      }
-
-      .composer-toggle-meta {
-        font-size: 0.88rem;
-        color: var(--muted);
-      }
-
-      .composer-chev {
-        font-size: 1.1rem;
-        color: var(--muted);
-        transition: transform 0.18s ease;
-      }
-
-      .edit-shortlist-bar {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 14px 24px 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-
-      .edit-shortlist-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .edit-shortlist-copy strong {
-        font-size: 0.98rem;
-      }
-
-      .edit-shortlist-copy span {
-        color: var(--muted);
-        font-size: 0.92rem;
-      }
-
-      .edit-back-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        padding: 10px 16px;
-      }
-
-     .field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  align-self: start;
-}
-
-      .field label {
-  font-size: 0.85rem;
-  color: var(--muted);
-  min-height: 20px;
-  display: flex;
+  justify-content: flex-end;
   align-items: center;
+  gap: 12px;
+  padding: 0;
+  margin: -6px 0 18px;
 }
 
-.composer-fields .field:last-child {
-  padding-top: 26px;
-}
-
-     .field input,
-.field textarea {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font: inherit;
-  background: white;
-}
-
-      .field textarea {
-  min-height: 90px;
-  max-height: 180px;
-  resize: vertical;
-}
-
-     .primary-btn {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-  min-height: 44px;
-}
-
-      .primary-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .status {
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 0.92rem;
-      }
-
-     .sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-  z-index: 20000;
-}
-
-      .sheet-overlay.open {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      .sheet {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 20001;
-        background: #fff;
-        border-radius: 22px 22px 0 0;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
-        max-height: 88vh;
-        overflow: hidden;
-        padding: 12px 12px 18px;
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-        transform: translateY(102%);
-        transition:
-          transform 0.22s ease,
-          opacity 0.18s ease,
-          visibility 0s linear 0.22s;
-      }
-
-      
-
-      .sheet.open {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transform: translateY(0);
-        transition:
-          transform 0.22s ease,
-          opacity 0.18s ease,
-          visibility 0s linear 0s;
-      }
-
-      .sheet-handle {
-        width: 44px;
-        height: 5px;
-        background: #d4d4d4;
-        border-radius: 999px;
-        margin: 4px auto 14px;
-        pointer-events: none;
-      }
-
-    .sheet-content {
-  position: relative;
-  z-index: 1;
-  height: calc(88vh - 24px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 6px;
-}
-
-      .sheet-image {
-        width: 100%;
-        aspect-ratio: 4 / 3;
-        object-fit: cover;
-        border-radius: 16px;
-        display: block;
-        background: #ececec;
-        position: relative;
-        z-index: 1;
-      }
-
-      .sheet-body {
-        padding: 14px 2px 0;
-        position: relative;
-        z-index: 3;
-      }
-
-      .sheet-price {
-        margin: 0 0 8px;
-        font-size: 2rem;
-        line-height: 1;
-        letter-spacing: -0.03em;
-      }
-
-      .sheet-address {
-  margin: 0 0 8px;
-  font-size: 1.45rem;
-  line-height: 1.2;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-      .sheet-meta {
-        margin: 0 0 12px;
-        color: var(--muted);
-        line-height: 1.4;
-      }
-
-      .sheet-desc {
-        margin: 0 0 18px;
-        color: #222;
-        line-height: 1.6;
-      }
-
-      .sheet-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.sheet-stat-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 16px;
-  color: var(--muted);
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.sheet-stat-strip span:nth-child(odd) {
+.selection-count {
   color: var(--text);
-  font-weight: 600;
-}
-    .stat {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #fcfcfc;
-}
-
-      .stat-label {
-  font-size: 0.72rem;
-  color: var(--muted);
-  opacity: 0.75;
-  margin-bottom: 2px;
-}
-
-      .stat-value {
   font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.2;
 }
 
-      .sheet-actions {
-        display: flex;
-        gap: 10px;
-        position: sticky;
-        bottom: 0;
-        background: linear-gradient(to top, #fff 70%, rgba(255, 255, 255, 0.7));
-        padding-top: 8px;
-        z-index: 5;
-      }
-
-      .sheet-actions button {
-        flex: 1;
-        min-height: 46px;
-        position: relative;
-        z-index: 6;
-      }
-
-      .view-toggle {
-  display: flex;
-  gap: 8px;
-  margin: -6px 0 16px;
+#visible-saved-count {
+  color: var(--muted);
 }
 
-.view-btn.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.results-map {
-  height: 70vh;
-  min-height: 420px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 22px;
-  background: #e8e8e8;
-}
-
-.sheet-mini-map {
-  height: 340px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  overflow: hidden;
-  margin: 0 0 18px;
-  background: #e8e8e8;
-}
-
-.sheet-mini-map[hidden] {
-  display: none;
-}
-
-.grid.map-hidden {
-  display: none;
-}
-.sheet-photo-wrap {
-    position: relative;
-  width: 100%;
-  height: 400px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #ececec;
-}
-
-.sheet-main-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.photo-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid var(--line);
-  font-size: 1.6rem;
-  line-height: 1;
-}
-
-.photo-prev {
-  left: 10px;
-}
-
-.photo-next {
-  right: 10px;
-}
-
-.photo-count {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  background: rgba(0,0,0,0.68);
-  color: white;
-  border-radius: 999px;
-  padding: 5px 9px;
-  font-size: 0.78rem;
-}
-
-.sheet-head {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: start;
-  gap: 18px;
-  margin: 14px 0 16px;
-}
-
-.sheet-save-top {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  min-width: 92px;
-}
-
-.sheet-head-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.sheet-save-top,
-.sheet-map-btn,
-.sheet-close-top {
-  min-width: 84px;
+.filter-select-all {
   min-height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  white-space: nowrap;
 }
 
-.sheet-map-btn {
-  background: #fafafa;
-}
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
 
-.sheet-close-top {
-  background: #fafafa;
-}
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 12px;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+  }
 
-      @media (max-width: 900px) {
-        .page {
-          padding-bottom: 92px;
-        }
+  .card.saved {
+    border-color: var(--success);
+    box-shadow: 0 0 0 1px rgba(31, 122, 69, 0.12);
+  }
 
-        .composer {
-          border-top-left-radius: 18px;
-          border-top-right-radius: 18px;
-          box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
-          overflow: hidden;
-        }
+  .card:hover {
+    transform: translateY(-2px);
+  }
 
-        .composer-inner {
-          padding: 0;
-        }
+  .image-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ececec;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
 
-        .composer-toggle {
-          display: block;
-          width: 100%;
-          appearance: none;
-          border: 0;
-          background: transparent;
-          padding: 10px 16px 12px;
-          cursor: pointer;
-          font: inherit;
-        }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
 
-        .composer-toggle-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
+  .price {
+    margin: 0 0 6px;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
 
-        .composer-handle {
-          display: block;
-          width: 42px;
-          height: 5px;
-          border-radius: 999px;
-          background: #d7d7d7;
-          margin: 8px auto 4px;
-        }
+  .address {
+    margin: 0 0 8px;
+    color: var(--text);
+  }
 
-        .composer-fields {
-          grid-template-columns: 1fr;
-          gap: 12px;
-          max-height: 0;
-          overflow: hidden;
-          opacity: 0;
-          padding: 0 16px;
-          transition:
-            max-height 0.24s ease,
-            opacity 0.18s ease,
-            padding 0.18s ease;
-        }
+  .meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
 
-        .composer.open .composer-fields {
-          max-height: 70vh;
-          overflow: auto;
-          opacity: 1;
-          padding: 0 16px 16px;
-        }
+  .card-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+  }
 
-        .composer.open .composer-chev {
-          transform: rotate(180deg);
-        }
+  button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: inherit;
+  }
 
-        .edit-shortlist-bar {
-          padding: 14px 16px 18px;
-          align-items: stretch;
-        }
+  button:hover {
+    background: #fafafa;
+  }
 
-        .edit-back-btn {
-          width: 100%;
-        }
-      }
+  .page-logo {
+    display: block;
+    width: 220px;
+    max-width: 70vw;
+    height: auto;
+  }
 
-      @media (min-width: 900px) {
+  .brand-head {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .primary-btn {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    min-height: 44px;
+  }
+
+  .primary-btn:hover {
+    background: #242424;
+    color: #fff;
+    border-color: #242424;
+  }
+
+  button:disabled {
+    cursor: default;
+    opacity: 1;
+    background: #fff;
+  }
+
+  .save-btn.saved,
+  .sheet-save.saved {
+    border-color: var(--success);
+    color: var(--success);
+    font-weight: 600;
+  }
+
+  .save-btn.remove,
+  .sheet-save.remove {
+    border-color: rgba(139, 30, 30, 0.28);
+    color: var(--danger);
+    background: var(--danger-bg);
+    font-weight: 600;
+  }
+
+  .preview-btn,
+  .sheet-close {
+    background: #fafafa;
+  }
+
+  .empty {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .error {
+    margin-top: 14px;
+    color: #8b1e1e;
+  }
+
+  .composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(245, 242, 236, 0.98);
+    border-top: 1px solid #d7d1c7;
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(14px);
+    z-index: 10000;
+  }
+
+  .composer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px 18px;
+  }
+
+  .composer-inner--edit {
+    display: block;
+  }
+
+  .composer-fields {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1.5fr auto;
+    gap: 16px;
+    align-items: start;
+    padding: 28px 0 32px;
+  }
+
+  .composer-toggle,
+  .composer-toggle-row,
+  .composer-handle {
+    display: none;
+  }
+
+  .composer-toggle-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .composer-toggle-kicker {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .composer-toggle-title {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .composer-toggle-meta {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  .composer-chev {
+    font-size: 1.1rem;
+    color: var(--muted);
+    transition: transform 0.18s ease;
+  }
+
+  .edit-shortlist-bar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .edit-shortlist-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .edit-shortlist-copy strong {
+    font-size: 0.98rem;
+  }
+
+  .edit-shortlist-copy span {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .edit-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: 10px 16px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    align-self: start;
+  }
+
+  .field label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  .composer-fields .field:last-child {
+    padding-top: 26px;
+  }
+
+  .field input,
+  .field textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font: inherit;
+    background: white;
+  }
+
+  .field textarea {
+    min-height: 90px;
+    max-height: 180px;
+    resize: vertical;
+  }
+
+  .status {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 20000;
+  }
+
+  .sheet-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .sheet {
-    left: 50%;
-    top: 50%;
-    right: auto;
-    bottom: auto;
-    width: min(860px, calc(100vw - 48px));
-    max-height: min(760px, calc(100vh - 48px));
-    border-radius: 22px;
-    padding: 14px 14px 20px;
-    transform: translate(-50%, -50%) scale(0.98);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20001;
+    background: #fff;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
+    max-height: 88vh;
+    overflow: hidden;
+    padding: 12px 12px 18px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(102%);
+    transition:
+      transform 0.22s ease,
+      opacity 0.18s ease,
+      visibility 0s linear 0.22s;
   }
 
   .sheet.open {
-    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    width: 44px;
+    height: 5px;
+    background: #d4d4d4;
+    border-radius: 999px;
+    margin: 4px auto 14px;
+    pointer-events: none;
   }
 
   .sheet-content {
-  display: block;
-  height: calc(min(760px, calc(100vh - 48px)) - 34px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 6px;
-}
+    position: relative;
+    z-index: 1;
+    height: calc(88vh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+  }
 
   .sheet-body {
-  padding: 10px 2px 0;
-}
-
-.sheet-actions {
-    position: static;
-    background: transparent;
-    padding-top: 0;
+    padding: 14px 2px 0;
+    position: relative;
+    z-index: 3;
   }
-}
-    </style>
+
+  .sheet-price {
+    margin: 0 0 8px;
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .sheet-address {
+    margin: 0 0 8px;
+    font-size: 1.45rem;
+    line-height: 1.2;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+  }
+
+  .sheet-desc {
+    margin: 0 0 18px;
+    color: #222;
+    line-height: 1.6;
+  }
+
+  .sheet-stat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .sheet-stat-strip span:nth-child(odd) {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    gap: 0;
+    margin: -4px 0 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .view-toggle button {
+    border: 0;
+    border-radius: 0;
+    min-height: 38px;
+    padding: 8px 14px;
+    background: #fff;
+  }
+
+  .view-toggle button + button {
+    border-left: 1px solid var(--line);
+  }
+
+  .view-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .results-map {
+    height: 70vh;
+    min-height: 420px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 22px;
+    background: #e8e8e8;
+  }
+
+  .sheet-mini-map {
+    height: 340px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 0 0 18px;
+    background: #e8e8e8;
+  }
+
+  .sheet-mini-map[hidden],
+  .grid.map-hidden {
+    display: none;
+  }
+
+  .sheet-photo-wrap {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ececec;
+  }
+
+  .sheet-main-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--line);
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  .photo-prev {
+    left: 10px;
+  }
+
+  .photo-next {
+    right: 10px;
+  }
+
+  .photo-count {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    background: rgba(0, 0, 0, 0.68);
+    color: white;
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 0.78rem;
+  }
+
+  .sheet-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 18px;
+    margin: 14px 0 16px;
+  }
+
+  .sheet-head-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .sheet-save-top {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    min-width: 92px;
+  }
+
+  .sheet-save-top,
+  .sheet-map-btn,
+  .sheet-close-top {
+    min-width: 84px;
+    min-height: 40px;
+  }
+
+  .sheet-map-btn,
+  .sheet-close-top {
+    background: #fafafa;
+  }
+
+  @media (max-width: 900px) {
+    .page {
+      padding: 20px;
+      padding-bottom: 92px;
+    }
+
+    .topbar {
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .saved-pill {
+      padding: 9px 14px;
+    }
+
+    .filters {
+      border-radius: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 10px;
+      gap: 8px;
+    }
+
+    .filter-actions {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .filter-actions button,
+    .filter-actions a {
+      width: 100%;
+    }
+
+    .composer {
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .composer-inner {
+      padding: 0;
+    }
+
+    .composer-toggle {
+      display: block;
+      width: 100%;
+      appearance: none;
+      border: 0;
+      background: transparent;
+      padding: 10px 16px 12px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .composer-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .composer-handle {
+      display: block;
+      width: 42px;
+      height: 5px;
+      border-radius: 999px;
+      background: #d7d7d7;
+      margin: 8px auto 4px;
+    }
+
+    .composer-fields {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      padding: 0 16px;
+      transition:
+        max-height 0.24s ease,
+        opacity 0.18s ease,
+        padding 0.18s ease;
+    }
+
+    .composer.open .composer-fields {
+      max-height: 70vh;
+      overflow: auto;
+      opacity: 1;
+      padding: 0 16px 16px;
+    }
+
+    .composer.open .composer-chev {
+      transform: rotate(180deg);
+    }
+
+    .edit-shortlist-bar {
+      padding: 14px 16px 18px;
+      align-items: stretch;
+    }
+
+    .edit-back-btn {
+      width: 100%;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .sheet {
+      left: 50%;
+      top: 50%;
+      right: auto;
+      bottom: auto;
+      width: min(860px, calc(100vw - 48px));
+      max-height: min(760px, calc(100vh - 48px));
+      border-radius: 22px;
+      padding: 14px 14px 20px;
+      transform: translate(-50%, -50%) scale(0.98);
+    }
+
+    .sheet.open {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .sheet-content {
+      display: block;
+      height: calc(min(760px, calc(100vh - 48px)) - 34px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding-right: 6px;
+    }
+
+    .sheet-body {
+      padding: 10px 2px 0;
+    }
+
+    .sheet-actions {
+      position: static;
+      background: transparent;
+      padding-top: 0;
+    }
+  }
+</style>
   </head>
 
   <body data-shortlist-slug={shortlistSlug}>
@@ -1394,7 +1098,7 @@ return pass;
       <div class="topbar">
         <div class="brand-head">
   <img
-    src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/74000c47-a1d2-424c-2f16-3d2ebc30e300/card"
+    src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
     alt="Logo"
     class="page-logo"
   />
@@ -1407,111 +1111,127 @@ return pass;
 
         
 
-       <div class="saved-pill">
-  <span id="saved-count">0</span> selected
-  <span id="visible-saved-count" style="color:#6b6b6b;"></span>
-</div>
+      
       </div>
 
 <form class="filters" method="get" action="/listings">
   {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
 
- <label>
-  City
-  <select name="city">
-    <option value="" selected={city === ""}>Any city</option>
-    <option value="Nanaimo" selected={city.toLowerCase() === "nanaimo"}>Nanaimo</option>
-    <option value="Lantzville" selected={city.toLowerCase() === "lantzville"}>Lantzville</option>
-    <option value="Parksville" selected={city.toLowerCase() === "parksville"}>Parksville</option>
-    <option value="Qualicum Beach" selected={city.toLowerCase() === "qualicum beach"}>Qualicum Beach</option>
-    <option value="Duncan" selected={city.toLowerCase() === "duncan"}>Duncan</option>
-    <option value="Ladysmith" selected={city.toLowerCase() === "ladysmith"}>Ladysmith</option>
-    <option value="Port Alberni" selected={city.toLowerCase() === "port alberni"}>Port Alberni</option>
-    <option value="Campbell River" selected={city.toLowerCase() === "campbell river"}>Campbell River</option>
-    <option value="Courtenay" selected={city.toLowerCase() === "courtenay"}>Courtenay</option>
-    <option value="Comox" selected={city.toLowerCase() === "comox"}>Comox</option>
-    <option value="Victoria" selected={city.toLowerCase() === "victoria"}>Victoria</option>
-    <option value="Saanich" selected={city.toLowerCase() === "saanich"}>Saanich</option>
-    <option value="Langford" selected={city.toLowerCase() === "langford"}>Langford</option>
-    <option value="Colwood" selected={city.toLowerCase() === "colwood"}>Colwood</option>
-    <option value="Sooke" selected={city.toLowerCase() === "sooke"}>Sooke</option>
-  </select>
-</label>
+  <!-- SECTION 1: LOCATION -->
+  <div class="filter-group">
+    <div class="filter-group-title">Location</div>
 
-<label>
-  Sub Area
-  <select name="area" id="area-select" data-selected-area={area}>
-    <option value="">All areas</option>
-  </select>
-</label>
+    <label>
+      City
+      <select name="city">
+        <option value="">Any city</option>
+        <option value="Nanaimo" selected={city === "" || city.toLowerCase() === "nanaimo"}>Nanaimo</option>
+        <option value="Lantzville" selected={city.toLowerCase() === "lantzville"}>Lantzville</option>
+        <option value="Parksville" selected={city.toLowerCase() === "parksville"}>Parksville</option>
+        <option value="Qualicum Beach" selected={city.toLowerCase() === "qualicum beach"}>Qualicum Beach</option>
+      </select>
+    </label>
 
-  <label>
-    Beds
-    <select name="beds">
-      <option value="" selected={beds === ""}>Any</option>
-      <option value="1" selected={beds === "1"}>1+</option>
-      <option value="2" selected={beds === "2"}>2+</option>
-      <option value="3" selected={beds === "3"}>3+</option>
-      <option value="4" selected={beds === "4"}>4+</option>
-      <option value="5" selected={beds === "5"}>5+</option>
-    </select>
-  </label>
+    <label>
+      Sub Area
+      <select name="area" id="area-select" data-selected-area={area}>
+        <option value="">All areas</option>
+      </select>
+    </label>
+  </div>
 
-  <label>
-    Baths
-    <select name="baths">
-      <option value="" selected={baths === ""}>Any</option>
-      <option value="1" selected={baths === "1"}>1+</option>
-      <option value="2" selected={baths === "2"}>2+</option>
-      <option value="3" selected={baths === "3"}>3+</option>
-      <option value="4" selected={baths === "4"}>4+</option>
-    </select>
-  </label>
+  <!-- SECTION 2: PROPERTY -->
+  <div class="filter-group">
+    <div class="filter-group-title">Property</div>
 
-  <label>
-    Type
-    <select name="type">
-      <option value="" selected={type === ""}>Any</option>
-<option value="detached" selected={type === "detached"}>Detached</option>
-<option value="condo" selected={type === "condo"}>Condo</option>
-<option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
-<option value="land" selected={type === "land"}>Land</option>
-<option value="mobile" selected={type === "mobile"}>Mobile / park model</option>
-    </select>
-  </label>
+    <label>
+      Type
+      <select name="type">
+        <option value="" selected={type === ""}>Any</option>
+        <option value="detached" selected={type === "detached"}>Detached</option>
+        <option value="condo" selected={type === "condo"}>Condo</option>
+        <option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
+        <option value="land" selected={type === "land"}>Land</option>
+        <option value="mobile" selected={type === "mobile"}>Mobile</option>
+      </select>
+    </label>
 
-  <label>
-    Min price (000s)
-    <input name="minPrice" value={minPrice} inputmode="numeric" />
-  </label>
+    <label>
+      Beds
+      <select name="beds">
+        <option value="" selected={beds === ""}>Any</option>
+        <option value="1" selected={beds === "1"}>1+</option>
+        <option value="2" selected={beds === "2"}>2+</option>
+        <option value="3" selected={beds === "3"}>3+</option>
+        <option value="4" selected={beds === "4"}>4+</option>
+      </select>
+    </label>
 
-  <label>
-  Max price (000s)
-  <input name="maxPrice" value={maxPrice} inputmode="numeric"  />
-</label>
-<label>
-  MLS #
-  <input name="mls" value={mls} placeholder="1033342" />
-</label>
-<label>
-  Sort
-  <select name="sort">
-    <option value="" selected={sort === ""}>Default</option>
-    <option value="price-asc" selected={sort === "price-asc"}>Price low to high</option>
-    <option value="price-desc" selected={sort === "price-desc"}>Price high to low</option>
-  </select>
-</label>
+    <label>
+      Baths
+      <select name="baths">
+        <option value="" selected={baths === ""}>Any</option>
+        <option value="1" selected={baths === "1"}>1+</option>
+        <option value="2" selected={baths === "2"}>2+</option>
+        <option value="3" selected={baths === "3"}>3+</option>
+      </select>
+    </label>
+  </div>
 
+  <!-- SECTION 3: PRICE + SORT -->
+  <div class="filter-group">
+    <div class="filter-group-title">Price + Sort</div>
+
+    <label>
+      Min price (000s)
+      <input name="minPrice" value={minPrice} inputmode="numeric" />
+    </label>
+
+    <label>
+      Max price (000s)
+      <input name="maxPrice" value={maxPrice} inputmode="numeric" />
+    </label>
+
+    <label>
+      Sort
+      <select name="sort">
+        <option value="price-asc" selected={sort === "" || sort === "price-asc"}>
+          Price low to high
+        </option>
+        <option value="price-desc" selected={sort === "price-desc"}>
+          Price high to low
+        </option>
+      </select>
+    </label>
+  </div>
+
+  <!-- ACTIONS -->
   <div class="filter-actions">
     <button type="submit" class="primary-btn">Filter</button>
-    <a
-      class="filter-clear"
-      href={shortlistSlug ? `/listings?shortlist=${shortlistSlug}` : "/listings"}
-    >
-      Clear
-    </a>
+   <a
+  class="filter-clear"
+  href={shortlistSlug ? `/listings?shortlist=${shortlistSlug}` : "/listings"}
+>
+  Clear
+</a>
+
+
   </div>
 </form>
+{hasListingFilters && listings.length > 0 && (
+  <div class="selection-bar">
+    <div class="selection-count">
+      <span id="saved-count">0</span> selected
+      <span id="visible-saved-count"></span>
+    </div>
+
+    {!shortlistSlug && (
+      <button type="button" id="select-all-btn" class="filter-select-all">
+        Select all visible
+      </button>
+    )}
+  </div>
+)}
 {hasListingFilters && listings.length > 0 && (
   <div class="view-toggle">
     <button type="button" id="list-view-btn" class="view-btn active">List</button>
@@ -1542,7 +1262,14 @@ const price = listing?.price
   ? `$${Number(listing.price).toLocaleString()}`
   : getListingPrice(raw) || "Price unavailable";
 
-const address = listing?.address || getListingAddress(raw) || "Address unavailable";
+const address =
+  typeof listing?.address === "string"
+    ? listing.address
+    : listing?.address?.addressKey ||
+      listing?.address?.streetAddress ||
+      listing?.address?.full ||
+      getListingAddress(raw) ||
+      "Address unavailable";
 
 const beds = listing?.beds || getListingBeds(raw) || "-";
 const baths = listing?.baths || getListingBaths(raw) || "-";
@@ -1581,6 +1308,7 @@ normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
   "https://placehold.co/800x600?text=Listing";
   
               const description =
+  listing?.description ||
   getListingDescription(raw) ||
   listing?.raw?.description ||
   listing?.raw?.details?.description ||
@@ -1829,6 +1557,7 @@ normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
 
       const savedCountEl = document.getElementById("saved-count");
 const visibleSavedCountEl = document.getElementById("visible-saved-count");
+const selectAllBtn = document.getElementById("select-all-btn");
       const createBtn = document.getElementById("create-shortlist-btn");
       const statusEl = document.getElementById("status");
       const titleInput = document.getElementById("shortlist-title");
@@ -2013,6 +1742,21 @@ if (visibleSavedCountEl && isAddMode) {
         if (composerSelectedCount) {
           composerSelectedCount.textContent = String(count);
         }
+
+        if (selectAllBtn && !isAddMode) {
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  const allVisibleSaved =
+    cards.length > 0 &&
+    cards.every((card) => {
+      const id = String(card.dataset.cardId || "");
+      return id && hasId(id);
+    });
+
+  selectAllBtn.textContent = allVisibleSaved
+    ? "Unselect all visible"
+    : "Select all visible";
+}
 
         document.querySelectorAll(".save-btn").forEach((btn) => {
           const card = btn.closest(".card");
@@ -2594,6 +2338,35 @@ function addShortlistInsights(items) {
     };
   });
 }
+
+selectAllBtn?.addEventListener("click", () => {
+  if (isAddMode) return;
+
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  const allVisibleSaved = cards.every((card) => {
+    const id = String(card.dataset.cardId || "");
+    return id && hasId(id);
+  });
+
+  if (allVisibleSaved) {
+    shortlist = shortlist.filter((item) => {
+      return !cards.some((card) => String(card.dataset.cardId || "") === String(item.id));
+    });
+  } else {
+    const existingIds = new Set(shortlist.map((item) => String(item.id)));
+
+    const newItems = cards
+      .map((card) => getCardSnapshot(card))
+      .filter((item) => item.id && !existingIds.has(String(item.id)));
+
+    shortlist = [...shortlist, ...newItems];
+  }
+
+  saveShortlist(shortlist);
+  updateUI();
+});
+
       createBtn?.addEventListener("click", async () => {
         if (isAddMode) return;
 

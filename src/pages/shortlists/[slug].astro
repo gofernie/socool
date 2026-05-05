@@ -21,6 +21,7 @@ const isAgentView = Astro.url.searchParams.get("agent") === "1";
 const isExpandedReview = Astro.url.searchParams.has("expanded");
 const clientLink = `/shortlists/${slug}`;
 const sendId = Astro.url.searchParams.get("s");
+const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 function normalizeImageUrl(url: any) {
   const value = String(url || "").trim();
 
@@ -41,11 +42,19 @@ function getListingLat(listing: any) {
     listing?.lat ||
     listing?.latitude ||
     listing?.map?.lat ||
+    listing?.map?.latitude ||
     listing?.address?.lat ||
+    listing?.address?.latitude ||
     listing?.raw?.lat ||
     listing?.raw?.latitude ||
-    listing?.raw?.address?.lat ||
     listing?.raw?.map?.lat ||
+    listing?.raw?.map?.latitude ||
+    listing?.raw?.address?.lat ||
+    listing?.raw?.address?.latitude ||
+    listing?.coordinates?.lat ||
+    listing?.coordinates?.latitude ||
+    listing?.raw?.coordinates?.lat ||
+    listing?.raw?.coordinates?.latitude ||
     ""
   );
 }
@@ -56,12 +65,26 @@ function getListingLng(listing: any) {
     listing?.lon ||
     listing?.longitude ||
     listing?.map?.lng ||
+    listing?.map?.lon ||
+    listing?.map?.longitude ||
     listing?.address?.lng ||
+    listing?.address?.lon ||
+    listing?.address?.longitude ||
     listing?.raw?.lng ||
     listing?.raw?.lon ||
     listing?.raw?.longitude ||
-    listing?.raw?.address?.lng ||
     listing?.raw?.map?.lng ||
+    listing?.raw?.map?.lon ||
+    listing?.raw?.map?.longitude ||
+    listing?.raw?.address?.lng ||
+    listing?.raw?.address?.lon ||
+    listing?.raw?.address?.longitude ||
+    listing?.coordinates?.lng ||
+    listing?.coordinates?.lon ||
+    listing?.coordinates?.longitude ||
+    listing?.raw?.coordinates?.lng ||
+    listing?.raw?.coordinates?.lon ||
+    listing?.raw?.coordinates?.longitude ||
     ""
   );
 }
@@ -91,9 +114,13 @@ lng: live ? getListingLng(live) : getListingLng(saved),
       "https://placehold.co/800x600?text=Listing",
 
 description:
-  live
-    ? getListingDescription(live)
-    : saved?.description || "A quick preview of this property."
+  getListingDescription(live) ||
+  saved?.description ||
+  live?.description ||
+  live?.details?.description ||
+  live?.raw?.description ||
+  live?.raw?.details?.description ||
+  "A quick preview of this property."
   };
 }
 const { data: shortlist } = await supabase
@@ -166,7 +193,7 @@ const savedListingIds = items
   .filter(Boolean)
   .map((id: any) => String(id).trim());
 
-if (false && savedListingIds.length) {
+if (savedListingIds.length) {
   try {
     const liveData = await fetchRepliersListings({
       limit: 100
@@ -339,7 +366,8 @@ const previewImageUrl =
       rel="stylesheet"
     />
 
-    <link
+ 
+<link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
 />
@@ -386,6 +414,7 @@ const previewImageUrl =
     --r-lg: 12px;
     --r-xl: 16px;
     --r-2xl: 22px;
+--hero-height: 442px;
   }
 
   *,
@@ -535,16 +564,16 @@ const previewImageUrl =
     color: var(--text-on-dark);
     padding: 0 32px;
   }
-
-  .masthead__inner {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 72px 0 64px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 64px;
-    align-items: end;
-  }
+.masthead__inner {
+  max-width: 1280px;
+  height: var(--hero-height);
+  margin: 0 auto;
+  padding: 72px 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+}
 
   .masthead__eyebrow {
     font-size: 0.65rem;
@@ -689,6 +718,266 @@ const previewImageUrl =
     text-transform: uppercase;
     color: var(--text-muted);
   }
+
+  .section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.map-view-btn {
+  appearance: none;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map-view-btn:hover {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: #fff;
+}
+
+.map-view-btn.is-active {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: #fff;
+}
+
+.masthead-map-wrap {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: none;
+  width: 100%;
+  position: relative;
+}
+
+.masthead-map-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background:
+    linear-gradient(to bottom, rgba(24, 22, 20, 0.18), transparent 34%),
+    linear-gradient(to top, rgba(24, 22, 20, 0.22), transparent 42%),
+    linear-gradient(to right, rgba(24, 22, 20, 0.16), transparent 34%);
+}
+.shortlist-page-map {
+  position: relative;
+  z-index: 1;
+}
+.shortlist-page-map .leaflet-tooltip-pane {
+  z-index: 700 !important;
+}
+
+.shortlist-page-map .leaflet-marker-pane {
+  z-index: 650 !important;
+}
+
+
+
+.shortlist-page-map .leaflet-marker-pane {
+  z-index: 650 !important;
+}
+
+.shortlist-page-map .leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+.masthead-map-wrap[hidden] {
+  display: none;
+}
+
+.masthead.map-mode {
+  height: var(--hero-height);
+  max-height: var(--hero-height);
+  overflow: hidden;
+}
+
+.masthead.map-mode .masthead__inner {
+  max-width: none;
+  width: 100%;
+  height: var(--hero-height);
+  max-height: var(--hero-height);
+  padding: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.masthead.map-mode .masthead-map-wrap {
+  height: var(--hero-height);
+  max-height: var(--hero-height);
+  overflow: hidden;
+}
+
+.masthead.map-mode .shortlist-page-map {
+  height: var(--hero-height);
+  min-height: var(--hero-height);
+  max-height: var(--hero-height);
+  display: block;
+}
+
+.shortlist-page-map {
+  height: 442px;
+  min-height: 442px;
+  width: 100%;
+  background: #e8e8e8;
+  display: block;
+}
+
+.shortlist-page-map .leaflet-container,
+.shortlist-page-map .leaflet-pane,
+.shortlist-page-map .leaflet-map-pane,
+.shortlist-page-map .leaflet-tile-pane {
+  width: 100%;
+  height: 100%;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 0.8rem;
+  color: #6b645a;
+  border-bottom: 1px solid var(--border);
+  background: #faf8f4;
+}
+
+.map-header strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.map-header--dark {
+  background: #f7f6f3;
+}
+
+
+.shortlist-map-pin {
+  width: 24px !important;
+  height: 24px !important;
+  display: block !important;
+  border: 0;
+  background: red !important;
+  border-radius: 999px;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  z-index: 9999;
+}
+
+.shortlist-map-pin__dot {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px 999px 999px 4px;
+  background: #181614;
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+  transform: rotate(-45deg);
+}
+
+.shortlist-map-pin__dot::after {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fff;
+  margin: 5px;
+}
+
+.shortlist-map-pin__label {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  background: #fff;
+  color: #181614;
+  border: 1px solid rgba(24,22,20,0.18);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.shortlist-map-pin__label strong,
+.shortlist-map-pin__label span {
+  display: block;
+  line-height: 1.2;
+}
+
+.shortlist-map-pin__label span {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.shortlist-map-pin:hover .shortlist-map-pin__label,
+.shortlist-map-pin.is-active .shortlist-map-pin__label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (min-width: 900px) {
+.masthead.map-mode {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0;
+  padding-bottom: 0;
+  height: var(--hero-height);
+  overflow: hidden;
+}
+
+  .masthead.map-mode .masthead__inner {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  display: block;
+  height: var(--hero-height);
+}
+
+  .masthead.map-mode .masthead__left,
+  .masthead.map-mode .masthead__right {
+    display: none;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    margin-top: 0px;
+  }
+
+.masthead.map-mode .shortlist-page-map {
+  height: var(--hero-height);
+  min-height: var(--hero-height);
+  transform: none !important;
+  display: block;
+}
+
+.shortlist-page-map canvas {
+  image-rendering: auto !important;
+}
+}
 
   .edit-banner {
     display: none;
@@ -1596,6 +1885,33 @@ body.edit-mode .card__preview-image-btn {
   }
 }
 
+.love-heart-pop {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.18));
+  animation: loveHeartFloat 1200ms ease-out forwards;
+}
+
+@keyframes loveHeartFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.45) rotate(-8deg);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -70%) scale(1.15) rotate(4deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--heart-x)), -150px) scale(1.65) rotate(var(--heart-rotate));
+  }
+}
+
   .decision-btn--maybe.is-selected {
     background: #f5f3ef;
     border-color: var(--border-strong);
@@ -1765,7 +2081,7 @@ body.edit-mode .card__preview-image-btn {
 }
 
   .panel.is-pass-fade .panel__content {
-    animation: passFade 0.45s ease;
+    animation: none;
   }
 
 @keyframes loveWarmGlow {
@@ -2538,12 +2854,82 @@ body.edit-mode .note-editor {
 .panel__mini-map[hidden] {
   display: none;
 }
+
+.shortlist-map-tooltip {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.shortlist-map-tooltip::before {
+  display: none;
+}
+
+.shortlist-map-label {
+  background: #fff;
+  color: #181614;
+  border: 1px solid rgba(24,22,20,0.18);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+}
+
+.shortlist-map-label strong,
+.shortlist-map-label span {
+  display: block;
+  line-height: 1.2;
+}
+
+.shortlist-map-label span {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+@media (max-width: 899px) {
+  .masthead.map-mode {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .masthead.map-mode .masthead__inner {
+    height: auto;
+    max-height: none;
+    padding: 44px 0 40px;
+    display: grid;
+    overflow: visible;
+  }
+
+  .masthead.map-mode .masthead__left,
+  .masthead.map-mode .masthead__right {
+    display: block;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    position: relative;
+    height: 260px;
+    max-height: 260px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    height: 260px;
+    min-height: 260px;
+    max-height: 260px;
+  }
+}
 </style>
   </head>
 
   <body
   data-agent-view={isAgentView ? "true" : "false"}
   data-shortlist-slug={slug}
+  data-google-maps-api-key={googleMapsApiKey}
 >
     {isAgentView && (
       <div class="agent-bar">
@@ -2609,7 +2995,9 @@ body.edit-mode .note-editor {
 <h1 class="masthead__heading">
   {clientDisplayName ? (
     <>
-      {clientDisplayName.split(" ")[0]}'s<br /><em>shortlist.</em>
+      {clientDisplayName.split(" ")[0].endsWith("s")
+  ? `${clientDisplayName.split(" ")[0]}'`
+  : `${clientDisplayName.split(" ")[0]}'s`}<br /><em>shortlist.</em>
     </>
   ) : (
     <>
@@ -2645,6 +3033,14 @@ body.edit-mode .note-editor {
             <span class="masthead__hint">Move quickly through the shortlist</span>
           </div>
         </div>
+
+<div class="masthead-map-wrap" id="shortlist-page-map-wrap" hidden>
+  <div
+    id="shortlist-page-map"
+    class="shortlist-page-map"
+    data-deferred-map
+  ></div>
+</div>
       </div>
     </header>
 
@@ -2793,10 +3189,18 @@ body.edit-mode .note-editor {
 
       <div class="section-header">
         <h2 class="section-title">Selected properties</h2>
-        <span class="section-meta" id="section-meta-count">
-          {listings.length} {listings.length === 1 ? "home" : "homes"} chosen for review
-        </span>
+       <div class="section-actions">
+  <button type="button" class="map-view-btn" id="page-map-btn">
+    Map view
+  </button>
+
+  <span class="section-meta" id="section-meta-count">
+    {listings.length} {listings.length === 1 ? "home" : "homes"} chosen for review
+  </span>
+</div>
       </div>
+
+
 
       {listings.length > 0 ? (
         <div class="grid" id="shortlist-grid">
@@ -2825,12 +3229,14 @@ const isNew =
 const num = String(i + 1).padStart(2, "0");
 
             return (
-             <article
+            <article
   class="card"
   data-item-id={String(itemId)}
   data-card-id={String(listingId)}
+  data-listing-id={String(listing?.repliers_listing_id || listing?.listing_id || listing?.id || listingId || "")}
 data-lat={listing?.lat || ""}
 data-lng={listing?.lng || ""}
+data-city={listing?.normalized_city || listing?.city || ""}
                 data-price={price}
                 data-address={address}
                 data-beds={String(beds)}
@@ -3158,9 +3564,46 @@ data-featured={i === 0 ? "true" : "false"}>
         </section>
       </div>
     </aside>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
     <script is:inline>
       function initShortlistPage() {
+        function coordsLookWrong(lat, lng, card) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+  if (lat === 0 || lng === 0) return true;
+
+  const city = String(card?.dataset?.city || "").toLowerCase();
+
+  const cityBounds = {
+    nanaimo: { minLat: 49.0, maxLat: 49.35, minLng: -124.15, maxLng: -123.75 },
+    lantzville: { minLat: 49.2, maxLat: 49.35, minLng: -124.15, maxLng: -123.9 },
+    parksville: { minLat: 49.25, maxLat: 49.4, minLng: -124.45, maxLng: -124.2 }
+  };
+
+  const bounds = cityBounds[city];
+
+  if (!bounds) {
+    return lat < 48.2 || lat > 50.7 || lng < -128.5 || lng > -122.9;
+  }
+
+  return (
+    lat < bounds.minLat ||
+    lat > bounds.maxLat ||
+    lng < bounds.minLng ||
+    lng > bounds.maxLng
+  );
+}
+
+function getGeocodeAddress(card) {
+  const address = card.dataset.address || "";
+  const city = card.dataset.city || "";
+
+  return city
+    ? `${address}, ${city}, BC, Canada`
+    : `${address}, British Columbia, Canada`;
+}
         const body = document.body;
         const isAgentView = body?.dataset.agentView === "true";
 const pageSlug = body?.dataset.shortlistSlug || "";
@@ -4029,8 +4472,8 @@ sheetMapBtn?.addEventListener("click", async () => {
   let lat = Number(activeCard.dataset.lat || "");
   let lng = Number(activeCard.dataset.lng || "");
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
-    const address = `${activeCard.dataset.address || ""}, British Columbia, Canada`;
+ if (coordsLookWrong(lat, lng, activeCard)) {
+    const address = getGeocodeAddress(activeCard);
 
     try {
       const res = await fetch(
@@ -4046,8 +4489,8 @@ sheetMapBtn?.addEventListener("click", async () => {
     }
   }
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
-    const mapAddress = `${activeCard.dataset.address || ""}, British Columbia, Canada`;
+ if (coordsLookWrong(lat, lng, activeCard)) {
+    const mapAddress = getGeocodeAddress(activeCard);
 const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`;
 
 mapEl.innerHTML = `
@@ -4156,20 +4599,41 @@ async function autoSendReviewComplete(reason = "completed") {
 function sortCardsByReview() {
   if (!shortlistGrid) return;
 
-  const cards = getCards();
+  reviewCards = null;
 
-  // Keep the server-rendered order.
-  // The Astro side already sorted by batch + price.
-  cards.forEach((card, index) => {
-    shortlistGrid.appendChild(card);
+  const cards = Array.from(document.querySelectorAll(".card"));
 
-    const indexEl = card.querySelector(".card__index");
-    if (indexEl) {
-      indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
-    }
+  const scoreCard = (card) => {
+  // HARD RULE: "Not for me" always last
+  if (card.dataset.decision === "pass") return 99;
 
-    card.dataset.featured = index === 0 ? "true" : "false";
-  });
+  // Then order the rest
+  if (card.dataset.isFavourite === "true") return 0;
+  if (card.dataset.decision === "maybe") return 1;
+
+  // undecided
+  return 2;
+};
+
+  cards
+    .sort((a, b) => {
+      const scoreDiff = scoreCard(a) - scoreCard(b);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      return Number(a.dataset.originalOrder || 999999) - Number(b.dataset.originalOrder || 999999);
+    })
+    .forEach((card, index) => {
+      shortlistGrid.appendChild(card);
+
+      const indexEl = card.querySelector(".card__index");
+      if (indexEl) {
+        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
+      }
+
+      card.dataset.featured = index === 0 ? "true" : "false";
+    });
+
+  reviewCards = null;
 }
         function refreshCardUI(card, tags, isFav, decision) {
   if (!card) return;
@@ -4210,22 +4674,28 @@ wrap.querySelector(".card__new-badge")?.remove();
   }
 }
 function getPrevCard() {
-  const cards = getCards();
+  const cards = Array.from(document.querySelectorAll(".card"));
 
   if (!activeCard || !cards.length) return null;
 
-  const currentIndex = cards.indexOf(activeCard);
+  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
+  const currentIndex = cards.findIndex((card) => {
+    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
+  });
 
   if (currentIndex <= 0) return null;
 
   return cards[currentIndex - 1] || null;
 }
       function getNextCard() {
-  const cards = getCards();
+  const cards = Array.from(document.querySelectorAll(".card"));
 
   if (!activeCard || !cards.length) return null;
 
-  const currentIndex = cards.indexOf(activeCard);
+  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
+  const currentIndex = cards.findIndex((card) => {
+    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
+  });
 
   if (currentIndex === -1) return null;
 
@@ -4349,6 +4819,56 @@ return true;
           }
         }
 
+     function popDecisionEmojisFromButton(button, emojiList = ["❤️"], count = 12) {
+  if (!button) return;
+
+  const rect = button.getBoundingClientRect();
+  const startX = rect.left + rect.width / 2;
+  const startY = rect.top + rect.height / 2;
+
+  for (let i = 0; i < count; i++) {
+    const emoji = document.createElement("span");
+
+    emoji.textContent = emojiList[i % emojiList.length];
+
+    emoji.style.position = "fixed";
+    emoji.style.left = `${startX}px`;
+    emoji.style.top = `${startY}px`;
+    emoji.style.zIndex = "2147483647";
+    emoji.style.pointerEvents = "none";
+    emoji.style.fontSize = i === 0 ? "36px" : "28px";
+    emoji.style.lineHeight = "1";
+    emoji.style.transform = "translate(-50%, -50%) scale(0.6)";
+    emoji.style.opacity = "1";
+    emoji.style.filter = "drop-shadow(0 6px 10px rgba(0,0,0,0.22))";
+
+    document.body.appendChild(emoji);
+
+    const driftX = (Math.random() - 0.5) * 160;
+    const driftY = -90 - Math.random() * 80;
+    const rotate = (Math.random() - 0.5) * 45;
+
+    emoji.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0 },
+        { transform: "translate(-50%, -70%) scale(1.15)", opacity: 1, offset: 0.18 },
+        {
+          transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(1.55) rotate(${rotate}deg)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 1200,
+        delay: i * 35,
+        easing: "ease-out",
+        fill: "forwards"
+      }
+    );
+
+    window.setTimeout(() => emoji.remove(), 1600);
+  }
+}
+
         async function handleDecision(kind) {
           if (!activeCard) return;
 
@@ -4357,6 +4877,7 @@ return true;
           }
 
           if (kind === "love") {
+            popDecisionEmojisFromButton(decisionLoveBtn, ["❤️", "🧡", "💛", "💚", "💙", "💜"], 14);
             activeFavourite = true;
             activeDecision = "";
             sheet.classList.remove("is-pass-fade");
@@ -4368,8 +4889,9 @@ return true;
             }
           }
 
-          if (kind === "maybe") {
-            activeFavourite = false;
+         if (kind === "maybe") {
+  popDecisionEmojisFromButton(decisionMaybeBtn, ["❓"], 9);
+  activeFavourite = false;
             activeDecision = "maybe";
             sheet.classList.remove("is-love-pulse", "is-pass-fade");
             if (sheetFeedback) {
@@ -4380,6 +4902,7 @@ return true;
           }
 
           if (kind === "pass") {
+  popDecisionEmojisFromButton(decisionPassBtn, ["💩"], 9);
             activeFavourite = false;
             activeDecision = "pass";
             sheet.classList.remove("is-love-pulse");
@@ -5044,9 +5567,203 @@ descToggle?.addEventListener("click", () => {
 });
 
 sheetPrevBtn?.addEventListener("click", goToPrevCard);
-sheetNextBtn?.addEventListener("click", goToNextCard);
-        
+sheetPrevTopBtn?.addEventListener("click", goToPrevCard);
 
+sheetNextBtn?.addEventListener("click", goToNextCard);
+
+const mapBtn = document.getElementById("page-map-btn");
+const masthead = document.querySelector(".masthead");
+
+let googleShortlistMap = null;
+
+function loadGoogleMapsScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps?.Map) {
+      resolve();
+      return;
+    }
+
+    const key = document.body.dataset.googleMapsApiKey || "";
+
+    if (!key) {
+      reject(new Error("Missing Google Maps API key"));
+      return;
+    }
+
+    const existing = document.querySelector("script[data-google-maps-script]");
+
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+
+      setTimeout(() => {
+        if (window.google?.maps?.Map) resolve();
+        else reject(new Error("Google Maps script exists but did not finish loading."));
+      }, 5000);
+
+      return;
+    }
+
+    window.__initShortlistGoogleMap = () => {
+      resolve();
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__initShortlistGoogleMap&v=weekly`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMapsScript = "true";
+    script.onerror = () => reject(new Error("Google Maps script failed to load."));
+
+    document.head.appendChild(script);
+
+    setTimeout(() => {
+      if (!window.google?.maps?.Map) {
+        reject(new Error("Google Maps timed out. Check billing, API key, or referrer restrictions."));
+      }
+    }, 6000);
+  });
+}
+
+async function renderPageMap() {
+  const mapEl = document.querySelector("[data-deferred-map]");
+  if (!mapEl) return;
+
+mapEl.style.height = "100%";
+mapEl.style.minHeight = "100%";
+mapEl.style.width = "100%";
+
+    mapEl.innerHTML = `<div style="padding:18px;">Loading Google map...</div>`;
+
+  try {
+    await loadGoogleMapsScript();
+  } catch (err) {
+    console.error("Google Maps load failed:", err);
+
+    mapEl.innerHTML = `
+      <div style="padding:18px; line-height:1.5;">
+        <strong>Google Maps could not load.</strong><br>
+        ${err instanceof Error ? err.message : "Check your API key, billing, and referrer restrictions."}
+      </div>
+    `;
+    return;
+  }
+  const geocoder = new google.maps.Geocoder();
+
+  const cards = getCards();
+
+  const points = [];
+
+  for (const card of cards) {
+    let lat = Number(card.dataset.lat || "");
+    let lng = Number(card.dataset.lng || "");
+
+    if (coordsLookWrong(lat, lng, card)) {
+      const address = getGeocodeAddress(card);
+
+      try {
+        const result = await geocoder.geocode({ address });
+        const location = result?.results?.[0]?.geometry?.location;
+
+        if (location) {
+          lat = location.lat();
+          lng = location.lng();
+        }
+      } catch (err) {
+        console.warn("Google geocode failed:", card.dataset.address, err);
+      }
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      points.push({ card, lat, lng });
+    }
+  }
+
+  if (!points.length) {
+    mapEl.innerHTML = `<div style="padding:18px;">No usable coordinates or addresses found.</div>`;
+    return;
+  }
+  mapEl.innerHTML = "";
+
+  googleShortlistMap = new google.maps.Map(mapEl, {
+    center: { lat: points[0].lat, lng: points[0].lng },
+    zoom: 13,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true
+  });
+
+  const bounds = new google.maps.LatLngBounds();
+  const info = new google.maps.InfoWindow();
+
+  points.forEach(({ card, lat, lng }, index) => {
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: googleShortlistMap,
+      label: String(index + 1),
+      title: card.dataset.address || "Listing"
+    });
+
+  marker.addListener("click", () => {
+  openSheetFromCard(card);
+});
+
+    bounds.extend({ lat, lng });
+  });
+
+  if (points.length > 1) {
+    googleShortlistMap.fitBounds(bounds);
+  } else {
+    googleShortlistMap.setZoom(15);
+  }
+
+  setTimeout(() => {
+  google.maps.event.trigger(googleShortlistMap, "resize");
+  googleShortlistMap.fitBounds(bounds);
+}, 250);
+
+setTimeout(() => {
+  google.maps.event.trigger(googleShortlistMap, "resize");
+  googleShortlistMap.fitBounds(bounds);
+}, 700);
+
+window.addEventListener("resize", () => {
+  if (!googleShortlistMap) return;
+
+  const cards = getCards();
+  const bounds = new google.maps.LatLngBounds();
+
+  cards.forEach((card) => {
+    const lat = Number(card.dataset.lat || "");
+    const lng = Number(card.dataset.lng || "");
+
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      bounds.extend({ lat, lng });
+    }
+  });
+
+  if (!bounds.isEmpty()) {
+    google.maps.event.trigger(googleShortlistMap, "resize");
+    googleShortlistMap.fitBounds(bounds);
+  }
+});
+}
+
+mapBtn?.addEventListener("click", () => {
+  const mapWrap = document.getElementById("shortlist-page-map-wrap");
+  if (!mapWrap) return;
+
+  const isOpening = mapWrap.hidden;
+
+  mapWrap.hidden = !mapWrap.hidden;
+  mapBtn.classList.toggle("is-active", isOpening);
+  masthead?.classList.toggle("map-mode", isOpening);
+
+  if (isOpening) {
+    masthead?.scrollIntoView({ behavior: "auto", block: "start" });
+    renderPageMap();
+  }
+});
         sheetNextTopBtn?.addEventListener("click", (e) => {
           if (isShowingSummary) {
             e.preventDefault();
