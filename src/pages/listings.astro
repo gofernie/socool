@@ -37,7 +37,6 @@ const mls = url.searchParams.get("mls") || "";
 const shortlistSlug = url.searchParams.get("shortlist") || "";
 
 let listings: any[] = [];
-let areaOptions: string[] = [];
 let error: string | null = null;
 
 const hasListingFilters = Boolean(city || area || beds || baths || type || minPrice || maxPrice || mls);
@@ -196,26 +195,7 @@ if (city) {
 
     listings = data || [];
 
-    const { data: areaRows } = await supabase
-      .from("listing_rows")
-      .select("normalized_area")
-      .eq("normalized_city", city ? city.toLowerCase() : "nanaimo")
-      .not("normalized_area", "is", null);
-
-    areaOptions = Array.from(
-      new Set(
-        (areaRows || [])
-          .map((row) => String(row.normalized_area || "").trim())
-          .filter(Boolean)
-      )
-    )
-      .map((value) =>
-        value
-          .split(" ")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ")
-      )
-      .sort((a, b) => a.localeCompare(b));
+    
   } catch (err) {
     console.error("Failed to load listings:", err);
     error = err instanceof Error ? err.message : "Failed to load listings";
@@ -1123,13 +1103,9 @@ if (city) {
 
     <label>
       City
-      <select name="city">
-        <option value="">Any city</option>
-        <option value="Nanaimo" selected={city === "" || city.toLowerCase() === "nanaimo"}>Nanaimo</option>
-        <option value="Lantzville" selected={city.toLowerCase() === "lantzville"}>Lantzville</option>
-        <option value="Parksville" selected={city.toLowerCase() === "parksville"}>Parksville</option>
-        <option value="Qualicum Beach" selected={city.toLowerCase() === "qualicum beach"}>Qualicum Beach</option>
-      </select>
+     <select name="city" id="city-select" data-selected-city={city || "nanaimo"}>
+  <option value="">Loading cities...</option>
+</select>
     </label>
 
     <label>
@@ -2552,77 +2528,136 @@ mapViewBtn?.addEventListener("click", () => {
     const citySelect = document.querySelector('select[name="city"]');
 const areaSelect = document.getElementById("area-select");
 
+function normalizeFilterValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function labelize(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getOptionValue(item) {
+  if (!item) return "";
+
+  if (typeof item === "object") {
+    return normalizeFilterValue(
+      item.value ||
+        item.normalized_area ||
+        item.normalized_city ||
+        item.normalized_type ||
+        item.name ||
+        item.label ||
+        ""
+    );
+  }
+
+  return normalizeFilterValue(item);
+}
+
+function getOptionLabel(item) {
+  if (!item) return "";
+
+  if (typeof item === "object") {
+    return (
+      item.label ||
+      item.display_name ||
+      labelize(
+        item.value ||
+          item.normalized_area ||
+          item.normalized_city ||
+          item.normalized_type ||
+          item.name ||
+          ""
+      )
+    );
+  }
+
+  return labelize(item);
+}
+
 async function updateAreaOptions() {
   if (!areaSelect) return;
 
-  const selectedCity = String(citySelect?.value || "").toLowerCase();
-  const selectedArea = areaSelect.dataset.selectedArea || areaSelect.value || "";
+  const selectedCity = normalizeFilterValue(citySelect?.value || "nanaimo");
+  const selectedArea = normalizeFilterValue(
+    areaSelect.dataset.selectedArea || areaSelect.value || ""
+  );
 
   areaSelect.innerHTML = `<option value="">All areas</option>`;
 
   if (!selectedCity) return;
 
-  // 🔥 HARD LOCK NANAIMO
-  if (selectedCity === "nanaimo") {
-    const MAIN_NANAIMO_AREAS = [
-      "Cedar",
-      "Central Nanaimo",
-      "Chase River",
-      "Departure Bay",
-      "Diver Lake",
-      "Hammond Bay",
-      "Lower Lantzville",
-      "North Jingle Pot",
-      "North Nanaimo",
-      "Old City",
-      "Pleasant Valley",
-      "South Jingle Pot",
-      "South Nanaimo",
-      "University District",
-      "Uplands",
-      "Upper Lantzville",
-      "Brechin Hill"
-    ];
-
-    MAIN_NANAIMO_AREAS.forEach((areaName) => {
-      const option = document.createElement("option");
-      option.value = areaName;
-      option.textContent = areaName;
-
-      if (areaName === selectedArea) {
-        option.selected = true;
-      }
-
-      areaSelect.appendChild(option);
-    });
-
-    return;
-  }
-
-  // fallback for other cities
   try {
-    const res = await fetch(`/api/listing-areas?city=${encodeURIComponent(selectedCity)}`);
+    const res = await fetch("/api/listing-filters");
     const json = await res.json();
 
-    const areas = Array.isArray(json?.areas) ? json.areas : [];
+    const areasByCity = json?.areasByCity || {};
+    const areas = Object.entries(areasByCity).find(
+  ([key]) => normalizeFilterValue(key) === selectedCity
+)?.[1] || [];
 
-    areas.forEach((areaName) => {
+    areas.forEach((areaItem) => {
+      const value = getOptionValue(areaItem);
+      const label = getOptionLabel(areaItem);
+
+      if (!value) return;
+
       const option = document.createElement("option");
-      option.value = areaName;
-      option.textContent = areaName;
+      option.value = value;
+      option.textContent = label;
 
-      if (areaName === selectedArea) {
+      if (value === selectedArea) {
         option.selected = true;
       }
 
       areaSelect.appendChild(option);
     });
   } catch (err) {
-    console.error("Could not load areas:", err);
+    console.error("Could not load dynamic areas:", err);
   }
 }
 
-updateAreaOptions();
+async function updateCityOptions() {
+  if (!citySelect) return;
+
+  const selectedCity = normalizeFilterValue(
+    citySelect.dataset.selectedCity || citySelect.value || "nanaimo"
+  );
+
+  citySelect.innerHTML = `<option value="">Any city</option>`;
+
+  try {
+    const res = await fetch("/api/listing-filters");
+    const json = await res.json();
+
+    const cities = Array.isArray(json?.cities) ? json.cities : [];
+
+    cities.forEach((cityItem) => {
+      const value = normalizeFilterValue(cityItem?.value || "");
+      const label = cityItem?.label || labelize(value);
+
+      if (!value) return;
+
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+
+      if (value === selectedCity) {
+        option.selected = true;
+      }
+
+      citySelect.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Could not load dynamic cities:", err);
+  }
+}
+
+updateCityOptions().then(updateAreaOptions);
 
 // price shorthand: 800 → 800000
 document.querySelector(".filters")?.addEventListener("submit", () => {

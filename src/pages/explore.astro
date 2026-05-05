@@ -261,6 +261,7 @@ const getListingLotSize = (listing: any) =>
   "";
 
 const getListingArea = (listing: any) =>
+  listing.normalized_area ||
   listing.area ||
   listing.neighborhood ||
   listing.addressObj?.neighborhood ||
@@ -301,9 +302,10 @@ let errorMessage = "";
 
 try {
   let query = supabase
-    .from("listing_rows")
-    .select("*")
-    .limit(48);
+  .from("listing_rows")
+  .select("*")
+  .eq("status", "A")
+  .limit(48);
 
 if (city) {
   query = query.eq("normalized_city", clean(city));
@@ -313,7 +315,7 @@ if (type) {
  if (type === "condo") {
   query = query.eq("normalized_type", "condo");
 } else if (type === "house") {
-    query = query.eq("normalized_type", "detached");
+  query = query.eq("normalized_type", "house");
   } else if (type === "townhouse") {
     query = query.eq("normalized_type", "townhouse");
   } else if (type === "land") {

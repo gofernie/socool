@@ -414,10 +414,26 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
     "upper lantzville": "upper lantzville"
   },
 
-  lantzville: {
+    lantzville: {
     "lantzville": "lantzville",
     "upper lantzville": "upper lantzville",
     "lower lantzville": "lower lantzville"
+  },
+
+  parksville: {
+    "parksville": "parksville",
+    "pa parksville": "parksville",
+    "errington/coombs/hilliers": "errington coombs hilliers",
+    "errington coombs hilliers": "errington coombs hilliers",
+    "french creek": "french creek",
+    "qualicum beach": "qualicum beach",
+    "qb qualicum beach": "qualicum beach",
+        "nanoose": "nanoose bay",
+    "nanoose bay": "nanoose bay",
+    "pa nanoose": "nanoose bay",
+    "pa nanoose bay": "nanoose bay",
+    "pa errington coombs hilliers": "errington coombs hilliers",
+    "pa french creek": "french creek"
   }
 };
 
@@ -442,6 +458,7 @@ const normalizeArea = (listing: any, city: string) => {
   const haystack = clean(
     [
       rawArea,
+      getNormalizedAddress(listing),
       listing?.address,
       listing?.fullAddress,
       listing?.description,
@@ -449,24 +466,40 @@ const normalizeArea = (listing: any, city: string) => {
       listing?.publicRemarks,
       listing?.details?.description,
       listing?.raw?.description
-    ].filter(Boolean).join(" ")
+    ]
+      .filter(Boolean)
+      .join(" ")
   );
 
-  if (BUILDING_ALIASES[rawArea]) {
-    return BUILDING_ALIASES[rawArea];
+  // 1. Building aliases first
+  for (const [building, normalized] of Object.entries(BUILDING_ALIASES)) {
+  if (rawArea === building) {
+    return normalized;
   }
+}
 
+  // 2. City area aliases second
   const aliases = AREA_ALIASES[normalizedCity] || {};
 
   for (const [needle, normalized] of Object.entries(aliases)) {
-    if (rawArea === needle || haystack.includes(needle)) {
-      return normalized;
-    }
+  if (rawArea === needle) {
+    return normalized;
+  }
+}
+
+  // 3. Kill garbage areas
+  if (
+    !rawArea ||
+    rawArea === normalizedCity ||
+    rawArea.includes("regional district") ||
+    rawArea.includes("city of") ||
+    rawArea.includes(",")
+  ) {
+    return "unknown";
   }
 
-  if (rawArea) return rawArea;
-
-  return "other";
+  // 4. Only allow unknown areas if they look like a real named area
+  return rawArea;
 };
 
 const normalizeImages = (listing: any) => {
@@ -540,14 +573,18 @@ const getListedAt = (listing: any, snapshot: any) =>
 const run = async () => {
   console.log("Fetching snapshots...");
 
-  const TARGET_CITY = "Nanaimo";
+   const TARGET_CITY = process.argv[2]?.trim() || "";
 
-  const { data: snapshots, error } = await supabase
+  let snapshotsQuery = supabase
     .from("listing_snapshots")
-    .select("id, city, created_at, listings")
-    .ilike("city", `%${TARGET_CITY}%`)
-    .order("created_at", { ascending: false })
-    .limit(3);
+    .select("id, city, search_key, created_at, listings")
+    .order("created_at", { ascending: false });
+
+  if (TARGET_CITY) {
+    snapshotsQuery = snapshotsQuery.ilike("city", `%${TARGET_CITY}%`);
+  }
+
+  const { data: snapshots, error } = await snapshotsQuery.limit(20);
 
   if (error) {
     console.error("Snapshot fetch failed:", error);
@@ -587,17 +624,17 @@ const run = async () => {
       // Keep first version only because snapshots are newest-first.
       if (rowMap.has(id)) continue;
 
-            const city = getCity(listing, snapshot);
+      const snapshotCity = text(snapshot?.city || snapshot?.search_key || "");
+      const city = snapshotCity || getCity(listing, snapshot);
       const normalized_city = clean(city);
       const normalized_type = normalizeType(listing);
-
       // Skip commercial completely
       if (
   normalized_type === "commercial" ||
   normalized_type === "business"
 ) continue;
 
-      const normalized_area = normalizeArea(listing, city);
+            const normalized_area = normalizeArea(listing, normalized_city);
       const images = normalizeImages(listing);
 
       const freshLat = getLat(listing);

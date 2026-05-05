@@ -236,40 +236,24 @@ const slug = "chris-crump";
               <div class="grid-2">
                 <div>
                   <label>City</label>
-                  <select name={`group${num}City`} class="group-city-select">
+                  <select name={`group${num}City`} class="city-select group-city-select">
                     <option value="">Loading cities...</option>
                   </select>
                 </div>
 
                 <div>
                   <label>Area / neighbourhood</label>
-                  <input
-                    name={`group${num}Area`}
-                    list={`group${num}AreaList`}
-                    placeholder="Example: Departure Bay"
-                  />
-                  <datalist id={`group${num}AreaList`}>
-                    <option value="Departure Bay"></option>
-                    <option value="North Nanaimo"></option>
-                    <option value="South Nanaimo"></option>
-                    <option value="Central Nanaimo"></option>
-                    <option value="Old City"></option>
-                    <option value="Hammond Bay"></option>
-                    <option value="Lantzville"></option>
-                  </datalist>
+                  <select name={`group${num}Area`} class="area-select">
+                    <option value="">Choose city first</option>
+                  </select>
                 </div>
               </div>
 
               <div class="grid-2">
                 <div>
                   <label>Type</label>
-                  <select name={`group${num}Type`}>
-                    <option value="">Any type</option>
-                    <option value="condo">Condos</option>
-                    <option value="house">Single-family homes</option>
-                    <option value="townhouse">Townhomes</option>
-                    <option value="land">Land</option>
-                    <option value="mobile">Mobile / manufactured</option>
+                  <select name={`group${num}Type`} class="type-select">
+                    <option value="">Loading types...</option>
                   </select>
                 </div>
 
@@ -302,8 +286,7 @@ const slug = "chris-crump";
         <div class="card">
           <h2>Live listings section</h2>
           <p class="hint">
-            Default is the 6 newest Nanaimo listings. Change the city, area, property type, price,
-            sort, or limit to show a different live listing group.
+            Change the city, area, property type, price, sort, or limit to show a different live listing group.
           </p>
 
           <label>Section title</label>
@@ -315,27 +298,24 @@ const slug = "chris-crump";
           <div class="grid-2">
             <div>
               <label>Listing city</label>
-              <select name="newListingsCity" id="newListingsCitySelect">
+              <select name="newListingsCity" id="newListingsCitySelect" class="city-select">
                 <option value="">Loading cities...</option>
               </select>
             </div>
 
             <div>
               <label>Area / neighbourhood</label>
-              <input name="newListingsArea" placeholder="Example: Departure Bay" />
+              <select name="newListingsArea" id="newListingsAreaSelect" class="area-select">
+                <option value="">Choose city first</option>
+              </select>
             </div>
           </div>
 
           <div class="grid-2">
             <div>
               <label>Property type</label>
-              <select name="newListingsType">
-                <option value="">Any type</option>
-                <option value="condo">Condos</option>
-                <option value="house">Single-family homes</option>
-                <option value="townhouse">Townhomes</option>
-                <option value="land">Land</option>
-                <option value="mobile">Mobile / manufactured</option>
+              <select name="newListingsType" class="type-select">
+                <option value="">Loading types...</option>
               </select>
             </div>
 
@@ -395,16 +375,22 @@ const slug = "chris-crump";
       const form = document.getElementById("agentForm");
       const status = document.getElementById("status");
 
+      let filterOptions = {
+        cities: [],
+        areasByCity: {},
+        types: []
+      };
+
       const defaults = {
         agentName: "Chris Crump",
         agentTitle: "Real Estate Advisor",
         phone: "250.619.0390",
         email: "chris@example.com",
-        city: "Nanaimo",
+        city: "",
         heroEyebrow: "Curated by Chris Crump",
-        heroHeading: "Nanaimo homes.",
+        heroHeading: "Homes worth watching.",
         heroIntro:
-          "A simple, curated place to explore homes in Nanaimo - organized by property type, price point, and what buyers are watching right now.",
+          "A simple, curated place to explore homes - organized by property type, price point, and what buyers are watching right now.",
         agentPickTitle: "Not a giant listing portal.",
         agentPickText:
           "Just the homes and categories buyers actually ask about most.",
@@ -421,16 +407,14 @@ const slug = "chris-crump";
         socialFeedUrl: "",
         socialFeedEmbed: "",
 
-        cityIntro:
-          "Nanaimo has a mix of established neighbourhoods, newer subdivisions, condo options, waterfront pockets, and family-friendly areas.",
-        cityNotes:
-          "Add neighbourhood notes, buyer tips, local context, and links to popular searches here.",
+        cityIntro: "",
+        cityNotes: "",
         agentBio:
           "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
 
         newListingsTitle: "New listings.",
         newListingsIntro: "The latest homes to hit the market.",
-        newListingsCity: "Nanaimo",
+        newListingsCity: "",
         newListingsArea: "",
         newListingsType: "",
         newListingsMinPrice: "",
@@ -440,68 +424,256 @@ const slug = "chris-crump";
 
         groups: [
           {
-            title: "Condos in Nanaimo",
+            title: "Condos",
             kicker: "Low-maintenance living",
-            text: "Explore condos close to shops, trails, the waterfront, and everyday amenities.",
-            city: "Nanaimo",
+            text: "Explore condo options from the latest listing data.",
+            city: "",
             area: "",
             type: "condo",
             minPrice: "",
             maxPrice: "",
             sort: "newest",
-            href: "/explore?city=Nanaimo&type=condo&sort=newest"
+            href: "/explore?type=condo&sort=newest"
           },
           {
             title: "Single-family homes",
             kicker: "Room to grow",
-            text: "Detached homes across popular Nanaimo neighbourhoods and family-friendly pockets.",
-            city: "Nanaimo",
+            text: "Detached homes from the latest listing data.",
+            city: "",
             area: "",
             type: "house",
             minPrice: "",
             maxPrice: "",
             sort: "newest",
-            href: "/explore?city=Nanaimo&type=house&sort=newest"
+            href: "/explore?type=house&sort=newest"
           },
           {
             title: "Popular under $800k",
             kicker: "Buyer sweet spot",
             text: "Homes in one of the most watched price ranges for active buyers.",
-            city: "Nanaimo",
+            city: "",
             area: "",
             type: "",
             minPrice: "",
             maxPrice: "800",
             sort: "newest",
-            href: "/explore?city=Nanaimo&maxPrice=800&sort=newest"
+            href: "/explore?maxPrice=800&sort=newest"
           },
           {
             title: "New listings",
             kicker: "Fresh to market",
             text: "Recently listed homes worth watching before they get buried.",
-            city: "Nanaimo",
+            city: "",
             area: "",
             type: "",
             minPrice: "",
             maxPrice: "",
             sort: "newest",
-            href: "/explore?city=Nanaimo&sort=newest"
+            href: "/explore?sort=newest"
           }
         ]
       };
 
+      function normalizeFilterValue(value) {
+        return String(value || "").trim().toLowerCase();
+      }
+
+      function titleCase(value) {
+        return String(value || "")
+          .trim()
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+
+      function optionValue(item) {
+  if (!item) return "";
+
+  if (typeof item === "object") {
+    return normalizeFilterValue(
+      item.value ||
+      item.normalized_value ||
+      item.normalized_area ||
+      item.normalized_city ||
+      item.normalized_type ||
+      item.name ||
+      item.label ||
+      ""
+    );
+  }
+
+  return normalizeFilterValue(item);
+}
+
+function optionLabel(item) {
+  if (!item) return "";
+
+  if (typeof item === "object") {
+    return titleCase(
+      item.label ||
+      item.display_name ||
+      item.name ||
+      item.value ||
+      item.normalized_value ||
+      item.normalized_area ||
+      item.normalized_city ||
+      item.normalized_type ||
+      ""
+    );
+  }
+
+  return titleCase(item);
+}
+
+function uniqueOptions(items) {
+  const seen = new Set();
+
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const value = optionValue(item);
+
+      return {
+        value,
+        label: optionLabel(item) || titleCase(value)
+      };
+    })
+    .filter((item) => {
+      if (!item.value || seen.has(item.value)) return false;
+      seen.add(item.value);
+      return true;
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+      function getPrimaryCity() {
+        const savedCity =
+          normalizeFilterValue(form.elements.newListingsCity?.value) ||
+          normalizeFilterValue(form.elements.city?.value) ||
+          normalizeFilterValue(filterOptions.cities?.[0]?.value);
+
+        return savedCity;
+      }
+
       function buildExploreHref(group) {
         const params = new URLSearchParams();
 
-        if (group.city) params.set("city", group.city);
-        if (group.area) params.set("area", group.area);
-        if (group.type) params.set("type", group.type);
-        if (group.minPrice) params.set("minPrice", group.minPrice);
-        if (group.maxPrice) params.set("maxPrice", group.maxPrice);
+        const city = normalizeFilterValue(group.city);
+        const area = normalizeFilterValue(group.area);
+        const type = normalizeFilterValue(group.type);
+
+        if (city) params.set("city", city);
+        if (area) params.set("area", area);
+        if (type) params.set("type", type);
+      if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
+if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
         if (group.sort) params.set("sort", group.sort);
 
         const query = params.toString();
         return query ? `/explore?${query}` : "/explore";
+      }
+
+      async function fetchJsonSafe(url) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          return await res.json();
+        } catch (error) {
+          return null;
+        }
+      }
+
+      async function loadFilterOptions() {
+        status.textContent = "Loading listing filters...";
+
+        const filtersJson = await fetchJsonSafe("/api/listing-filters");
+
+        if (filtersJson) {
+          filterOptions.cities = uniqueOptions(filtersJson.cities || []);
+          filterOptions.types = uniqueOptions(filtersJson.types || filtersJson.propertyTypes || []);
+
+          const areasByCity = filtersJson.areasByCity || {};
+          filterOptions.areasByCity = Object.fromEntries(
+            Object.entries(areasByCity).map(([city, areas]) => [
+              normalizeFilterValue(city),
+              uniqueOptions(areas)
+            ])
+          );
+
+          status.textContent = "";
+          return;
+        }
+
+        filterOptions.cities = [];
+        filterOptions.types = [];
+        filterOptions.areasByCity = {};
+
+        status.textContent = "Could not load listing filters.";
+      }
+
+      function populateCitySelects() {
+        const citySelects = Array.from(document.querySelectorAll(".city-select"));
+
+        citySelects.forEach((select) => {
+          const current = normalizeFilterValue(select.value);
+          const selectedCity = current || getPrimaryCity();
+
+          select.innerHTML = [
+            `<option value="">Any city</option>`,
+            ...filterOptions.cities.map((city) => {
+              const selected = city.value === selectedCity ? "selected" : "";
+              return `<option value="${city.value}" ${selected}>${city.label}</option>`;
+            })
+          ].join("");
+        });
+      }
+
+      function populateTypeSelects() {
+        const typeSelects = Array.from(document.querySelectorAll(".type-select"));
+
+        typeSelects.forEach((select) => {
+          const current = normalizeFilterValue(select.value);
+
+          select.innerHTML = [
+            `<option value="">Any type</option>`,
+            ...filterOptions.types.map((type) => {
+              const selected = type.value === current ? "selected" : "";
+              return `<option value="${type.value}" ${selected}>${type.label}</option>`;
+            })
+          ].join("");
+        });
+      }
+
+      function getCityForAreaSelect(areaSelect) {
+        if (areaSelect.name === "newListingsArea") {
+          return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
+        }
+
+        const groupNum = areaSelect.name.match(/\d+/)?.[0];
+        return normalizeFilterValue(form.elements[`group${groupNum}City`]?.value || getPrimaryCity());
+      }
+
+      function populateAreaSelects() {
+        const areaSelects = Array.from(document.querySelectorAll(".area-select"));
+
+        areaSelects.forEach((select) => {
+          const current = normalizeFilterValue(select.value);
+          const city = getCityForAreaSelect(select);
+          const areas = filterOptions.areasByCity[city] || [];
+
+          select.innerHTML = [
+            `<option value="">Any area</option>`,
+            ...areas.map((area) => {
+              const selected = area.value === current ? "selected" : "";
+              return `<option value="${area.value}" ${selected}>${area.label}</option>`;
+            })
+          ].join("");
+        });
+      }
+
+      function populateDropdowns() {
+        populateCitySelects();
+        populateTypeSelects();
+        populateAreaSelects();
       }
 
       function fillForm(data) {
@@ -535,7 +707,19 @@ const slug = "chris-crump";
           if (key === "groups") return;
 
           const field = form.elements[key];
-          if (field) field.value = value || "";
+          if (!field) return;
+
+          if (
+            key === "city" ||
+            key === "newListingsCity" ||
+            key === "newListingsArea" ||
+            key === "newListingsType"
+          ) {
+            field.value = normalizeFilterValue(value);
+            return;
+          }
+
+          field.value = value || "";
         });
 
         [1, 2, 3, 4].forEach((num) => {
@@ -544,44 +728,22 @@ const slug = "chris-crump";
           form.elements[`group${num}Kicker`].value = group.kicker || "";
           form.elements[`group${num}Title`].value = group.title || "";
           form.elements[`group${num}Text`].value = group.text || "";
-          form.elements[`group${num}City`].value = group.city || "";
-          form.elements[`group${num}Area`].value = group.area || "";
-          form.elements[`group${num}Type`].value = group.type || "";
+          form.elements[`group${num}City`].value = normalizeFilterValue(group.city);
+          form.elements[`group${num}Area`].value = normalizeFilterValue(group.area);
+          form.elements[`group${num}Type`].value = normalizeFilterValue(group.type);
           form.elements[`group${num}Sort`].value = group.sort || "newest";
           form.elements[`group${num}MinPrice`].value = group.minPrice || "";
           form.elements[`group${num}MaxPrice`].value = group.maxPrice || "";
         });
       }
 
-      async function loadCityOptions(selectedCity = "") {
-        const citySelects = [
-          form.elements.newListingsCity,
-          ...Array.from(document.querySelectorAll(".group-city-select"))
-        ].filter(Boolean);
+      function normalizeSavedData(data) {
+        data.city = normalizeFilterValue(data.city);
+        data.newListingsCity = normalizeFilterValue(data.newListingsCity);
+        data.newListingsArea = normalizeFilterValue(data.newListingsArea);
+        data.newListingsType = normalizeFilterValue(data.newListingsType);
 
-        try {
-          const res = await fetch("/api/listing-cities");
-          const json = await res.json();
-
-          const cities = Array.isArray(json?.cities) ? json.cities : [];
-
-          citySelects.forEach((citySelect) => {
-            const currentValue = citySelect.value || selectedCity || "";
-
-            citySelect.innerHTML = [
-              `<option value="">Any city</option>`,
-              ...cities.map((city) => {
-                const selected = city === currentValue ? "selected" : "";
-                return `<option value="${city}" ${selected}>${city}</option>`;
-              })
-            ].join("");
-          });
-        } catch (error) {
-          citySelects.forEach((citySelect) => {
-            const fallback = citySelect.value || selectedCity || "Nanaimo";
-            citySelect.innerHTML = `<option value="${fallback}">${fallback}</option>`;
-          });
-        }
+        return data;
       }
 
       async function loadPage() {
@@ -591,9 +753,17 @@ const slug = "chris-crump";
         const data = json?.data || defaults;
 
         fillForm(data);
-        await loadCityOptions(data.newListingsCity || defaults.newListingsCity);
+        await loadFilterOptions();
+        populateDropdowns();
         fillForm(data);
+        populateDropdowns();
       }
+
+      form.addEventListener("change", (event) => {
+        if (event.target?.classList?.contains("city-select")) {
+          populateAreaSelects();
+        }
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -601,7 +771,7 @@ const slug = "chris-crump";
         status.textContent = "Saving...";
 
         const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+        const data = normalizeSavedData(Object.fromEntries(formData.entries()));
 
         data.groups = [1, 2, 3, 4]
           .map((num) => {
@@ -609,9 +779,9 @@ const slug = "chris-crump";
               kicker: data[`group${num}Kicker`] || "",
               title: data[`group${num}Title`] || "",
               text: data[`group${num}Text`] || "",
-              city: data[`group${num}City`] || "",
-              area: data[`group${num}Area`] || "",
-              type: data[`group${num}Type`] || "",
+              city: normalizeFilterValue(data[`group${num}City`]),
+              area: normalizeFilterValue(data[`group${num}Area`]),
+              type: normalizeFilterValue(data[`group${num}Type`]),
               minPrice: data[`group${num}MinPrice`] || "",
               maxPrice: data[`group${num}MaxPrice`] || "",
               sort: data[`group${num}Sort`] || "newest"
@@ -637,7 +807,6 @@ const slug = "chris-crump";
         });
 
         data.newListingsLimit = data.newListingsLimit || "6";
-        data.newListingsArea = data.newListingsArea || "";
         data.newListingsMinPrice = data.newListingsMinPrice || "";
         data.newListingsMaxPrice = data.newListingsMaxPrice || "";
         data.newListingsSort = data.newListingsSort || "newest";
