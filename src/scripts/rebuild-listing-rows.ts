@@ -346,13 +346,18 @@ const getBuildingName = (listing: any) => {
       listing?.neighborhood ||
       listing?.community ||
       listing?.district ||
-      listing?.address?.area ||
       listing?.address?.neighborhood ||
+      listing?.address?.area ||
       listing?.details?.area ||
       listing?.details?.subArea ||
       listing?.raw?.area ||
       listing?.raw?.subArea
   );
+
+  const cleanedArea = rawArea
+  .replace(/^na\s+/i, "")
+  .replace(/^nanaimo\s+/i, "")
+  .trim();
 
   return BUILDING_ALIASES[rawArea] ? rawArea : null;
 };
@@ -410,6 +415,102 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
     "na uplands": "uplands",
     "uplands": "uplands",
 
+        // Cleanup aliases
+    "northridge": "north nanaimo",
+    "rutherford heights": "north nanaimo",
+    "brechin": "brechin hill",
+    "cilaire": "departure bay",
+    "newcastle": "brechin hill",
+    "dufferin heights": "central nanaimo",
+    "hawthorne": "old city",
+    "prospect": "old city",
+    "coal town way": "old city",
+    "vanderneuk": "south nanaimo",
+
+    // Building / complex cleanup
+    "lakeview terrace": "diver lake",
+    "lakeside estates": "diver lake",
+    "lakeside terrace": "diver lake",
+    "cathers lake": "diver lake",
+
+    "seascape manor": "departure bay",
+    "oceanview terrace": "departure bay",
+    "pacific view terrace": "departure bay",
+
+    "rockwood heights": "old city",
+    "the seven": "old city",
+    "the beacon": "old city",
+    "seven sails": "old city",
+    "cavan place": "old city",
+    "seafield place": "old city",
+
+    "long lake heights estates": "uplands",
+    "uplands estates": "uplands",
+    "wellington view": "uplands",
+
+    "peartree meadows": "pleasant valley",
+    "madrona village": "pleasant valley",
+
+    "millstream court": "south nanaimo",
+    "floral woods": "south nanaimo",
+
+    "bare land strata on strata plan": "unknown",
+    "duplex": "unknown",
+
+    // Final small-complex cleanup
+    "tulsa views": "central nanaimo",
+    "sherwood manor": "central nanaimo",
+    "bradley manor": "central nanaimo",
+    "delray place": "central nanaimo",
+    "mallard place": "central nanaimo",
+
+    "barrington": "hammond bay",
+    "barrington heights": "hammond bay",
+    "barrington rd": "hammond bay",
+    "old victoria rd": "south nanaimo",
+
+    "seabird mobile home park": "south nanaimo",
+    "sherman mobile park": "south nanaimo",
+    "willow mobile home park": "south nanaimo",
+    "mountain view manufactured home parl": "south nanaimo",
+
+    "lakeside villa": "diver lake",
+    "parkridge place": "diver lake",
+    "lakewood village estates": "diver lake",
+
+    "park place": "old city",
+    "ross cromarty manor": "old city",
+    "malaspina estates": "old city",
+    "harbour heights": "old city",
+
+    "the willows": "pleasant valley",
+    "emerald woods": "pleasant valley",
+
+    "carmanah mews": "north nanaimo",
+    "eaglepoint": "north nanaimo",
+    "anderson ridge": "north nanaimo",
+    "rockridge estates": "north nanaimo",
+    "oceanside estates": "north nanaimo",
+    "arbutus rock": "north nanaimo",
+
+    "harbour ridge manor": "departure bay",
+    "york place": "departure bay",
+    "highlands": "departure bay",
+
+    "amblewood village": "uplands",
+    "prideaux gardens": "old city",
+    "maveric place": "central nanaimo",
+    "vivo": "old city",
+    "inn of the sea": "cedar",
+    "arcropolis": "old city",
+    "maple tree village": "south nanaimo",
+
+    // Remaining one-offs
+    "aurora heights": "north nanaimo",
+    "sherwood forest": "north jingle pot",
+    "millstone pointe": "old city",
+    "cedar grove villas": "cedar",
+    "oakwood": "central nanaimo",
     "na upper lantzville": "upper lantzville",
     "upper lantzville": "upper lantzville"
   },
@@ -442,64 +543,74 @@ const normalizeArea = (listing: any, city: string) => {
 
   const rawArea = clean(
     listing?.normalized_area ||
+      listing?.address?.neighborhood ||
+      listing?.address?.area ||
       listing?.area ||
       listing?.subArea ||
       listing?.neighborhood ||
       listing?.community ||
       listing?.district ||
-      listing?.address?.area ||
-      listing?.address?.neighborhood ||
       listing?.details?.area ||
       listing?.details?.subArea ||
       listing?.raw?.area ||
       listing?.raw?.subArea
   );
 
-  const haystack = clean(
-    [
-      rawArea,
-      getNormalizedAddress(listing),
-      listing?.address,
-      listing?.fullAddress,
-      listing?.description,
-      listing?.remarks,
-      listing?.publicRemarks,
-      listing?.details?.description,
-      listing?.raw?.description
-    ]
-      .filter(Boolean)
-      .join(" ")
-  );
+  const cleanedArea = rawArea
+    .replace(/^na\s+/i, "")
+    .replace(/^nanaimo\s+/i, "")
+    .trim();
 
   // 1. Building aliases first
   for (const [building, normalized] of Object.entries(BUILDING_ALIASES)) {
-  if (rawArea === building) {
-    return normalized;
+    if (cleanedArea === building || rawArea === building) {
+      return normalized;
+    }
   }
-}
 
   // 2. City area aliases second
   const aliases = AREA_ALIASES[normalizedCity] || {};
 
-  for (const [needle, normalized] of Object.entries(aliases)) {
-  if (rawArea === needle) {
+for (const [needle, normalized] of Object.entries(aliases)) {
+  if (cleanedArea === needle || rawArea === needle) {
     return normalized;
   }
 }
+const addressText = clean(
+  [
+    getNormalizedAddress(listing),
+    listing?.address?.street,
+    listing?.address?.streetName,
+    listing?.address?.full,
+    listing?.address?.fullAddress,
+    listing?.address,
+    listing?.fullAddress
+  ]
+    .filter(Boolean)
+    .join(" ")
+);
 
+  // Street-level Nanaimo fallbacks
+  if (addressText.includes("barrington rd")) {
+    return "hammond bay";
+  }
+
+  if (addressText.includes("old victoria rd")) {
+    return "south nanaimo";
+  }
   // 3. Kill garbage areas
   if (
-    !rawArea ||
-    rawArea === normalizedCity ||
-    rawArea.includes("regional district") ||
-    rawArea.includes("city of") ||
-    rawArea.includes(",")
+    !cleanedArea ||
+    cleanedArea === normalizedCity ||
+    cleanedArea.includes("regional district") ||
+    cleanedArea.includes("city of") ||
+    cleanedArea.includes(",")
   ) {
     return "unknown";
   }
 
-  // 4. Only allow unknown areas if they look like a real named area
-  return rawArea;
+  // 4. Return cleaned Matrix-style area
+  return cleanedArea;
 };
 
 const normalizeImages = (listing: any) => {
@@ -628,13 +739,47 @@ const run = async () => {
       const city = snapshotCity || getCity(listing, snapshot);
       const normalized_city = clean(city);
       const normalized_type = normalizeType(listing);
-      // Skip commercial completely
-      if (
+     // Skip commercial completely
+if (
   normalized_type === "commercial" ||
   normalized_type === "business"
 ) continue;
 
-            const normalized_area = normalizeArea(listing, normalized_city);
+// TEMP DEBUG - remove after checking output
+if (normalized_city === "nanaimo") {
+  console.log("AREA DEBUG", {
+    id,
+    address: getNormalizedAddress(listing),
+    area: listing?.area,
+    subArea: listing?.subArea,
+    neighborhood: listing?.neighborhood,
+    community: listing?.community,
+    district: listing?.district,
+    addressArea: listing?.address?.area,
+    addressNeighborhood: listing?.address?.neighborhood,
+    detailsArea: listing?.details?.area,
+    detailsSubArea: listing?.details?.subArea,
+    rawArea: listing?.raw?.area,
+    rawSubArea: listing?.raw?.subArea,
+    rawKeys: Object.keys(listing || {}),
+    detailsKeys: Object.keys(listing?.details || {}),
+    rawKeysNested: Object.keys(listing?.raw || {})
+  });
+}
+
+let normalized_area = normalizeArea(listing, normalized_city);
+
+const rowAddress = clean(getNormalizedAddress(listing));
+
+if (normalized_city === "nanaimo") {
+  if (rowAddress === "3365 barrington rd") {
+    normalized_area = "hammond bay";
+  }
+
+  if (rowAddress === "917 old victoria rd") {
+    normalized_area = "south nanaimo";
+  }
+}
       const images = normalizeImages(listing);
 
       const freshLat = getLat(listing);
