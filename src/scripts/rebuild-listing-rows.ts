@@ -772,6 +772,7 @@ let normalized_area = normalizeArea(listing, normalized_city);
 const rowAddress = clean(getNormalizedAddress(listing));
 
 if (normalized_city === "nanaimo") {
+  // Exact address overrides - Nanaimo cleanup
   if (rowAddress === "3365 barrington rd") {
     normalized_area = "hammond bay";
   }
@@ -779,6 +780,67 @@ if (normalized_city === "nanaimo") {
   if (rowAddress === "917 old victoria rd") {
     normalized_area = "south nanaimo";
   }
+
+  if (rowAddress.includes("fuller st")) {
+  normalized_area = "central nanaimo";
+}
+
+if (rowAddress.includes("highview terr")) {
+  normalized_area = "south nanaimo";
+}
+
+if (rowAddress.includes("mcgirr rd")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("aurora way")) {
+  normalized_area = "university district";
+}
+
+if (rowAddress.includes("promenade dr")) {
+  normalized_area = "old city";
+}
+
+if (rowAddress.includes("cedar grove dr")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("york cres")) {
+  normalized_area = "diver lake";
+}
+
+  if (rowAddress.includes("clematis pl")) {
+  normalized_area = "hammond bay";
+}
+
+if (rowAddress.includes("vanderneuk rd")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("metral dr")) {
+  normalized_area = "pleasant valley";
+}
+
+if (rowAddress.includes("doumont rd")) {
+  normalized_area = "pleasant valley";
+}
+
+ if (rowAddress.includes("1633 dufferin cres")) {
+  normalized_area = "central nanaimo";
+}
+
+  // Building/street-level Nanaimo overrides
+if (rowAddress.includes("barons rd")) {
+  normalized_area = "uplands";
+}
+
+ if (rowAddress.includes("375 newcastle ave")) {
+  normalized_area = "brechin hill";
+}
+
+if (rowAddress.includes("4474 wellington rd")) {
+  normalized_area = "north nanaimo";
+}
 }
       const images = normalizeImages(listing);
 
