@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 
 export const prerender = false;
 
@@ -36,8 +37,14 @@ export const GET: APIRoute = async () => {
   );
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+
+    const supabaseAuth = createSupabaseServerClient(cookies);
+
+    const {
+      data: { user }
+    } = await supabaseAuth.auth.getUser();
     const body = await request.json();
     console.log("SHORTLIST CREATE BODY:", body);
 
@@ -52,10 +59,33 @@ export const POST: APIRoute = async ({ request }) => {
         const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
     const note = typeof body?.note === "string" ? body.note.trim() : "";
 
-    const searchCity = typeof body?.city === "string" ? body.city.trim() : "";
-    const searchArea = typeof body?.area === "string" ? body.area.trim() : "";
-    const searchType = typeof body?.type === "string" ? body.type.trim() : "";
+  const searchCity = typeof body?.city === "string" ? body.city.trim() : "";
 
+// Auto-detect area from the selected homes instead of using the filter
+const searchArea = (() => {
+  if (listingSnapshots.length > 0) {
+    // Get the most common area from the selected listings
+    const areas = listingSnapshots
+      .map((listing: any) => listing?.area || listing?.normalized_area || "")
+      .filter(Boolean);
+    
+    if (areas.length > 0) {
+      // Return the most common area
+      const areaCounts = areas.reduce((acc: any, area: string) => {
+        acc[area] = (acc[area] || 0) + 1;
+        return acc;
+      }, {});
+      
+      return Object.entries(areaCounts)
+        .sort((a: any, b: any) => b[1] - a[1])[0][0];
+    }
+  }
+  
+  // Fallback to the filter value if no homes selected
+  return typeof body?.area === "string" ? body.area.trim() : "";
+})();
+
+const searchType = typeof body?.type === "string" ? body.type.trim() : "";
     const searchMinPrice =
       Number.isFinite(Number(body?.minPrice)) && body?.minPrice !== ""
         ? Number(body.minPrice)
@@ -251,7 +281,8 @@ export const POST: APIRoute = async ({ request }) => {
     const { data: shortlist, error: shortlistError } = await supabaseAdmin
       .from("shortlist_sends")
       .insert({
-        shortlist_slug: shortlistSlug,
+  agent_id: user?.id || null,
+  shortlist_slug: shortlistSlug,
         shortlist_url: shortlistUrl,
         client_name: clientName || null,
         client_id: clientId,

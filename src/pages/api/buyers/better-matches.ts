@@ -49,6 +49,56 @@ export const POST: APIRoute = async ({ request }) => {
       return `https://cdn.repliers.io/${url.replace(/^\/+/, "")}`;
     };
 
+    const extractSignals = (row: any) => {
+      const text = [
+        row.address,
+        row.description,
+        row.normalized_type,
+        row.normalized_city
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const signals: string[] = [];
+
+      if (text.includes("updated") || text.includes("renovated") || text.includes("modern")) {
+        signals.push("updated");
+      }
+
+      if (text.includes("bright") || text.includes("natural light") || text.includes("open concept")) {
+        signals.push("bright");
+      }
+
+      if (text.includes("view") || text.includes("ocean") || text.includes("mountain")) {
+        signals.push("view");
+      }
+
+      if (text.includes("patio") || text.includes("deck") || text.includes("yard") || text.includes("balcony")) {
+        signals.push("outdoor");
+      }
+
+      if (text.includes("garage") || text.includes("parking")) {
+        signals.push("parking");
+      }
+
+      if (Number(row.sqft || 0) >= 900) {
+        signals.push("large");
+      }
+
+      return signals;
+    };
+
+    const signalLabel = (signal: string) => {
+      if (signal === "updated") return "Similar updated feel";
+      if (signal === "bright") return "Bright/open layout";
+      if (signal === "view") return "View/outlook";
+      if (signal === "outdoor") return "Outdoor space";
+      if (signal === "parking") return "Parking/garage";
+      if (signal === "large") return "Larger layout";
+      return signal;
+    };
+
     const { data: sends, error: sendsError } = await supabase
       .from("shortlist_sends")
       .select("id, client_name")
@@ -71,9 +121,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: items, error: itemsError } = await supabase
       .from("shortlist_items")
-      .select(
-        "id, shortlist_send_id, address, price_text, beds, decision, is_favourite"
-      )
+      .select("id, shortlist_send_id, address, price_text, beds, decision, is_favourite, liked_tags")
       .in("shortlist_send_id", sendIds)
       .limit(100);
 
@@ -82,7 +130,8 @@ export const POST: APIRoute = async ({ request }) => {
     const sentItems = items || [];
 
     const likedItems = sentItems.filter((item: any) => {
-      return item.is_favourite === true || item.decision === "maybe";
+      const decision = clean(item.decision);
+      return item.is_favourite === true || decision.includes("maybe");
     });
 
     const sourceItems = likedItems.length ? likedItems : sentItems;
@@ -108,7 +157,7 @@ export const POST: APIRoute = async ({ request }) => {
       const { data: matchedRows, error: matchedRowsError } = await supabase
         .from("listing_rows")
         .select(
-          "id, address, city, normalized_city, normalized_type, price, beds, baths, sqft, image_url, description"
+          "id, address, city, normalized_city, normalized_type, price, beds, baths, sqft, image_url, images, description"
         )
         .in("address", sentAddresses)
         .limit(100);
@@ -134,37 +183,46 @@ export const POST: APIRoute = async ({ request }) => {
       ) || 1;
 
     const sentPrices = knownRows
-  .map((row: any) => parsePrice(row.price))
-  .filter(Boolean);
+      .map((row: any) => parsePrice(row.price))
+      .filter(Boolean);
 
-const likedPrices = sourceRows
-  .map((row: any) => parsePrice(row.price))
-  .filter(Boolean);
+    const likedPrices = sourceRows
+      .map((row: any) => parsePrice(row.price))
+      .filter(Boolean);
 
-const likedPrice = avg(likedPrices.length ? likedPrices : sentPrices);
+    const likedPrice = avg(likedPrices.length ? likedPrices : sentPrices);
 
-const originalMinPrice = sentPrices.length ? Math.min(...sentPrices) : 0;
-const originalMaxPrice = sentPrices.length ? Math.max(...sentPrices) : 0;
-const likedMaxPrice = likedPrices.length ? Math.max(...likedPrices) : likedPrice;
+    const originalMinPrice = sentPrices.length ? Math.min(...sentPrices) : 0;
+    const originalMaxPrice = sentPrices.length ? Math.max(...sentPrices) : 0;
+    const likedMaxPrice = likedPrices.length ? Math.max(...likedPrices) : likedPrice;
 
-const likedNearCeiling =
-  originalMaxPrice &&
-  likedMaxPrice &&
-  likedMaxPrice >= originalMaxPrice * 0.9;
+    const likedNearCeiling =
+      originalMaxPrice &&
+      likedMaxPrice &&
+      likedMaxPrice >= originalMaxPrice * 0.9;
 
-const lowPrice = likedNearCeiling
-  ? Math.round(originalMaxPrice)
-  : likedPrice
-    ? Math.round(likedPrice * 0.975)
-    : 0;
+    const lowPrice = likedNearCeiling
+      ? Math.round(originalMaxPrice)
+      : likedPrice
+        ? Math.round(likedPrice * 0.975)
+        : 0;
 
-const highPrice = likedNearCeiling
-  ? Math.round(originalMaxPrice * 1.15)
-  : likedPrice
-    ? Math.round(likedPrice * 1.035)
-    : 99999999;
+    const highPrice = likedNearCeiling
+      ? Math.round(originalMaxPrice * 1.15)
+      : likedPrice
+        ? Math.round(likedPrice * 1.035)
+        : 99999999;
 
-const matchMode = likedNearCeiling ? "stretch_above_original_ceiling" : "around_liked_price";
+    const matchMode = likedNearCeiling
+      ? "stretch_above_original_ceiling"
+      : "around_liked_price";
+
+    const likedSignals = sourceRows.flatMap(extractSignals);
+
+    const signalCounts = likedSignals.reduce((acc: Record<string, number>, signal: string) => {
+      acc[signal] = (acc[signal] || 0) + 1;
+      return acc;
+    }, {});
 
     async function queryCandidates(options: {
       useCity: boolean;
@@ -175,9 +233,8 @@ const matchMode = likedNearCeiling ? "stretch_above_original_ceiling" : "around_
       let query = supabase
         .from("listing_rows")
         .select(
-          "id, address, city, normalized_city, normalized_type, price, beds, baths, sqft, image_url, description"
-        )
-        .limit(60);
+"id, address, city, normalized_city, normalized_type, price, beds, baths, sqft, image_url, images, description"        )
+        .limit(80);
 
       if (options.useCity && likedCity) {
         query = query.eq("normalized_city", likedCity);
@@ -202,12 +259,13 @@ const matchMode = likedNearCeiling ? "stretch_above_original_ceiling" : "around_
       return data || [];
     }
 
-const attempts = [
-  { useCity: true, useType: true, useBeds: true, usePrice: true },
-  { useCity: true, useType: true, useBeds: false, usePrice: true },
-  { useCity: true, useType: false, useBeds: false, usePrice: true },
-  { useCity: true, useType: true, useBeds: true, usePrice: false }
-];
+    const attempts = [
+      { useCity: true, useType: true, useBeds: true, usePrice: true },
+      { useCity: true, useType: true, useBeds: false, usePrice: true },
+      { useCity: true, useType: false, useBeds: false, usePrice: true },
+      { useCity: true, useType: true, useBeds: true, usePrice: false },
+      { useCity: true, useType: false, useBeds: false, usePrice: false }
+    ];
 
     let rows: any[] = [];
     let usedAttempt: any = null;
@@ -236,25 +294,54 @@ const attempts = [
     const scoreRow = (row: any) => {
       let score = 0;
 
-      if (likedCity && clean(row.normalized_city) === likedCity) score += 100;
-      if (likedType && clean(row.normalized_type) === likedType) score += 80;
+      const signals = extractSignals(row);
 
-      const beds = Number(row.beds || 0);
-      if (beds >= likedBeds) score += 40;
-
-      const price = parsePrice(row.price);
-      if (likedPrice && price) {
-        score -= Math.abs(price - likedPrice) / 1000;
+      if (likedCity && clean(row.normalized_city) === likedCity) {
+        score += 50;
       }
 
-      return score;
+      if (likedType && clean(row.normalized_type) === likedType) {
+        score += 40;
+      }
+
+      const beds = Number(row.beds || 0);
+
+      if (beds >= likedBeds) {
+        score += 20;
+      }
+
+      const price = parsePrice(row.price);
+
+      if (likedPrice && price) {
+        score -= Math.abs(price - likedPrice) / 4000;
+      }
+
+      for (const signal of signals) {
+        if (signalCounts[signal]) {
+          score += signalCounts[signal] * 25;
+        }
+      }
+
+      return Math.round(score);
     };
 
     const matches = rows
       .sort((a: any, b: any) => scoreRow(b) - scoreRow(a))
       .slice(0, 3)
       .map((row: any) => {
-        const image = normalizeImageUrl(row.image_url);
+const image = normalizeImageUrl(row.image_url);
+
+const images = Array.isArray(row.images)
+  ? row.images.map(normalizeImageUrl).filter(Boolean)
+  : image
+    ? [image]
+    : [];
+        const signals = extractSignals(row);
+
+        const matchedReasons = signals
+          .filter((signal) => signalCounts[signal])
+          .slice(0, 3)
+          .map(signalLabel);
 
         return {
           id: row.id,
@@ -269,9 +356,11 @@ const attempts = [
           sqft: row.sqft || null,
           type: row.normalized_type || null,
           city: row.city || row.normalized_city || null,
-          image,
-          images: image ? [image] : [],
-          description: row.description || ""
+        image,
+images,
+          description: row.description || "",
+          reasons: matchedReasons,
+          score: scoreRow(row)
         };
       });
 
@@ -289,13 +378,14 @@ const attempts = [
         likedType,
         likedBeds,
         likedPrice,
-originalMinPrice,
-originalMaxPrice,
-likedMaxPrice,
-likedNearCeiling,
-lowPrice,
-highPrice,
-matchMode,
+        originalMinPrice,
+        originalMaxPrice,
+        likedMaxPrice,
+        likedNearCeiling,
+        lowPrice,
+        highPrice,
+        matchMode,
+        signalCounts,
         pool: rows.length,
         matched: matches.length,
         usedAttempt

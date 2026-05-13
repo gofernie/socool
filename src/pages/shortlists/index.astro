@@ -1,4 +1,17 @@
 ---
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
+
+const supabaseAuth = createSupabaseServerClient(Astro.cookies);
+
+const {
+  data: { user },
+} = await supabaseAuth.auth.getUser();
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const agentId = user.id;
 import { createClient } from "@supabase/supabase-js";
 
 export const prerender = false;
@@ -29,6 +42,7 @@ let shortlistQuery = supabaseAdmin
     `,
     { count: "exact" }
   )
+   .eq("agent_id", agentId)
   .order("created_at", { ascending: false });
 
 if (searchQuery) {
@@ -128,8 +142,8 @@ function buildPageHref(page: number) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
-      :root {
-        --bg: #f7f7f5;
+   :root {
+  --bg: #797975;
         --card: #ffffff;
         --text: #1f1f1f;
         --muted: #6b6b6b;
@@ -155,36 +169,55 @@ function buildPageHref(page: number) {
       }
 
       .page {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 24px;
-      }
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0;
+}
 
-      .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: end;
-        gap: 16px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
+ .topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+}
 
-      h1 {
-        margin: 0;
-        font-size: 2rem;
-        line-height: 1.1;
-      }
+.topbar > div:first-child {
+  display: grid;
+  gap: 12px;
+}
 
-      .subtle {
-        margin: 6px 0 0;
-        color: var(--muted);
-      }
+h1 {
+  font-size: 42px;
+  letter-spacing: -0.055em;
+  margin: 0;
+  line-height: 0.95;
+  color: #fffaf1;
+}
+
+   .subtle {
+  max-width: 680px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 250, 241, 0.72);
+  margin: 2px 0 0;
+}
 
       .top-actions {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
       }
+
+      .logout-form {
+  margin: 0;
+}
+
+.logout-btn {
+  background: #fff;
+  color: var(--text);
+}
 
       .btn {
         appearance: none;
@@ -212,14 +245,18 @@ function buildPageHref(page: number) {
         border-color: var(--accent);
       }
 
-      .toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: end;
-        gap: 16px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-      }
+    .toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  margin-top: 0;
+}
 
       .search-wrap {
         flex: 1 1 360px;
@@ -473,6 +510,34 @@ function buildPageHref(page: number) {
           white-space: normal;
         }
       }
+
+    .admin-nav {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 6px;
+  width: fit-content;
+  border: 1px solid rgba(24, 22, 20, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 250, 241, 0.75);
+}
+
+.admin-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: #5f574f;
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.admin-nav a.active {
+  background: #181614;
+  color: #fffaf1;
+}
     </style>
   </head>
 
@@ -480,13 +545,27 @@ function buildPageHref(page: number) {
     <main class="page">
       <div class="topbar">
         <div>
-          <h1>Shortlists</h1>
-          <p class="subtle">Recent client shortlists created by the agent workflow.</p>
+       <h1>Shortlists</h1>
+
+<nav class="admin-nav">
+  <a href="/admin/buyers" class={Astro.url.pathname.startsWith("/admin/buyers") ? "active" : ""}>
+    Buyers
+  </a>
+  <a href="/shortlists" class={Astro.url.pathname.startsWith("/shortlists") ? "active" : ""}>
+    Shortlists
+  </a>
+</nav>
+
+<p class="subtle">Recent client shortlists created by the agent workflow.</p>
         </div>
 
         <div class="top-actions">
-          <a class="btn primary" href="/listings">New shortlist</a>
-        </div>
+  <a class="btn primary" href="/listings">New shortlist</a>
+
+  <form method="post" action="/api/auth/logout" class="logout-form">
+    <button type="submit" class="btn logout-btn">Log out</button>
+  </form>
+</div>
       </div>
 
       {

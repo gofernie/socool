@@ -1,7 +1,6 @@
 ---
-import { supabase } from "../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import {
-  fetchRepliersListings,
   getListingAddress,
   getListingBaths,
   getListingBeds,
@@ -12,7 +11,13 @@ import {
   getListingSqft,
   getListingType,
   getListingYear
-} from "../../lib/repliers"; 
+} from "../../lib/repliers";
+import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const prerender = false;
 
@@ -88,6 +93,42 @@ function getListingLng(listing: any) {
     ""
   );
 }
+function getListingSqftFromDescription(listing: any) {
+  const text = String(listing?.description || "").toLowerCase();
+
+  const match = text.match(/(?:~|approx\.?|approximately)?\s*([\d,]+)\s*(?:sq\.?\s*ft\.?|sqft|square feet)/i);
+
+  return match?.[1] ? match[1].replace(/,/g, "") : "";
+}
+function getListingDom(listing: any) {
+  const direct =
+    listing?.days_on_market ||
+    listing?.daysOnMarket ||
+    listing?.dom ||
+    listing?.details?.daysOnMarket ||
+    listing?.details?.dom ||
+    listing?.raw?.daysOnMarket ||
+    listing?.raw?.dom ||
+    listing?.raw?.details?.daysOnMarket ||
+    listing?.raw?.details?.dom;
+
+  if (direct) return direct;
+
+  const listedRaw =
+    listing?.listed_at ||
+    listing?.list_date ||
+    listing?.listDate ||
+    listing?.created_at ||
+    listing?.raw?.listDate ||
+    listing?.raw?.timestamps?.listingUpdated;
+
+  const listedTime = new Date(listedRaw).getTime();
+  if (!listedTime) return "";
+
+  return Math.max(0, Math.floor((Date.now() - listedTime) / 86400000));
+}
+
+
 function normalizeLiveListing(live: any, saved: any) {
   return {
     ...saved,
@@ -98,20 +139,38 @@ function normalizeLiveListing(live: any, saved: any) {
       saved?.listing_id ||
       saved?.id ||
       "",
-price_text: live ? getListingPrice(live) : saved?.price_text || "Price unavailable",
-   address: live ? getListingAddress(live) : saved?.address || "Address unavailable",
-beds: live ? getListingBeds(live) : saved?.beds || "-",
-baths: live ? getListingBaths(live) : saved?.baths || "-",
-sqft: live ? getListingSqft(live) : saved?.sqft || "",
-property_type: live ? getListingType(live) : saved?.property_type || "Home",
-year_built: live ? getListingYear(live) : saved?.year_built || "",
-lat: live ? getListingLat(live) : getListingLat(saved),
-lng: live ? getListingLng(live) : getListingLng(saved),
-   image_url:
-  live
-    ? normalizeImageUrl(getListingImage(live))
-    : normalizeImageUrl(saved?.image_url) ||
-      "https://placehold.co/800x600?text=Listing",
+price_text: saved?.price_text || getListingPrice(live) || "Price unavailable",
+address: saved?.address || getListingAddress(live) || "Address unavailable",
+beds: saved?.beds || getListingBeds(live) || "-",
+baths: saved?.baths || getListingBaths(live) || "-",
+sqft:  saved?.sqft ||
+  getListingSqft(saved) ||
+  getListingSqft(live) ||
+  "",
+
+property_type:
+  saved?.property_type ||
+  getListingType(live) ||
+  "Home",
+
+year_built:
+  saved?.year_built ||
+  getListingYear(live) ||
+  "",
+
+days_on_market:
+  saved?.days_on_market ||
+  saved?.daysOnMarket ||
+  saved?.dom ||
+  getListingDom(saved) ||
+  getListingDom(live) ||
+  "",
+lat: getListingLat(saved) || getListingLat(live),
+lng: getListingLng(saved) || getListingLng(live),
+image_url:
+  normalizeImageUrl(saved?.image_url) ||
+  normalizeImageUrl(getListingImage(live)) ||
+  "https://placehold.co/800x600?text=Listing",
 
 description:
   getListingDescription(live) ||
@@ -186,33 +245,37 @@ if (vendorIds.length) {
 }
 }
 
-let liveListingsById = new Map();
+let listingRowsById = new Map();
 
-const savedListingIds = items
-  .map((item: any) => item.repliers_listing_id || item.listing_id)
-  .filter(Boolean)
-  .map((id: any) => String(id).trim());
+const cleanListingRowId = (value: any) =>
+  String(value || "").replace(/[^0-9]/g, "").trim();
 
-if (savedListingIds.length) {
-  try {
-    const liveData = await fetchRepliersListings({
-      limit: 100
-    });
+const normalizeAddressKey = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-    const liveListings = liveData?.listings || [];
+const rowsRes = await supabase
+  .from("listing_rows")
+  .select("*")
+  .eq("normalized_city", "nanaimo")
+  .limit(5000);
 
-    liveListingsById = new Map(
-      liveListings
-        .map((listing: any) => {
-          const id = String(getListingId(listing) || "").trim();
-          return [id, listing];
-        })
-        .filter(([id]) => Boolean(id))
-    );
-  } catch (err) {
-    console.error("Failed to refresh shortlist listings from Repliers:", err);
-  }
+if (rowsRes.error) {
+  console.error("LISTING_ROWS LOAD ERROR", rowsRes.error);
 }
+
+console.log("LISTING_ROWS LOADED", rowsRes.data?.length || 0);
+
+listingRowsById = new Map(
+  (rowsRes.data || []).flatMap((row: any) => [
+    [cleanListingRowId(row.id), row],
+    [cleanListingRowId(row.mls_number), row],
+    [normalizeAddressKey(row.address), row]
+  ])
+);
 function getListingSortScore(listing: any) {
   const toNumber = (value: any) =>
     parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
@@ -244,9 +307,31 @@ if (listing.decision === "pass") score -= 500;
   return score;
 }
 const normalizedListings = [...items].map((item: any) => {
-  const id = String(item.repliers_listing_id || item.listing_id || "").trim();
-  const live = liveListingsById.get(id);
-  return normalizeLiveListing(live, item);
+  const id = item.repliers_listing_id || item.listing_id || item.mls_number || "";
+  const rowId = cleanListingRowId(id);
+  const addressKey = normalizeAddressKey(item.address);
+
+  const live = null;
+  const row =
+    listingRowsById.get(rowId) ||
+    listingRowsById.get(addressKey) ||
+    {};
+
+  const saved = {
+    ...item,
+    ...row,
+    price_text: row.price ? `$${Number(row.price).toLocaleString()}` : item.price_text,
+    image_url: row.image_url || item.image_url,
+ sqft: row.sqft || getListingSqft(row) || item.sqft || getListingSqft(item),
+days_on_market: getListingDom(row) || getListingDom(item),
+    shortlist_item_id: item.shortlist_item_id || item.id,
+    is_favourite: item.is_favourite,
+    decision: item.decision,
+    liked_tags: item.liked_tags,
+    sort_order: item.sort_order
+  };
+
+  return normalizeLiveListing(live, saved);
 });
 
 const newestSortOrders = new Set(
@@ -260,27 +345,8 @@ const newestSortOrders = new Set(
 const priceNumber = (item: any) =>
   Number(String(item?.price_text || item?.price || "").replace(/[^0-9]/g, "")) || 0;
 
-const batchNumber = (item: any) => {
-  const order = Number(item?.sort_order ?? 999999);
-
-  // sort_order is usually 1-based:
-  // 1,2,3 = batch 0
-  // 4,5,6 = batch 1
-  // 7,8,9 = batch 2
-  return Math.floor((order - 1) / 3);
-};
-
+// Simple sort by sort_order - keeps items in the order they were added/reviewed
 const listings = normalizedListings.sort((a, b) => {
-  const aBatch = batchNumber(a);
-  const bBatch = batchNumber(b);
-
-  if (aBatch !== bBatch) return aBatch - bBatch;
-
-  const aPrice = priceNumber(a);
-  const bPrice = priceNumber(b);
-
-  if (aPrice !== bPrice) return aPrice - bPrice;
-
   return Number(a?.sort_order ?? 999999) - Number(b?.sort_order ?? 999999);
 });
 
@@ -313,6 +379,11 @@ const defaultIntroMessage =
 
 const heroMessage = shortlist?.note?.trim() || defaultIntroMessage;
 const smsImageUrl = shortlist?.sms_image_url || "";
+const { data: uploadedSmsImages } = await supabase
+  .from("shortlist_sms_images")
+  .select("*")
+  .eq("shortlist_slug", slug)
+  .order("created_at", { ascending: false });
 const presetSmsImages = [
   {
     label: "New homes added",
@@ -367,11 +438,8 @@ const previewImageUrl =
     />
 
  
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-<style>
+
+<style is:global>
   :root {
     --bg: #f7f6f3;
     --bg-card: #ffffff;
@@ -639,6 +707,14 @@ const previewImageUrl =
     gap: 24px;
   }
 
+  .masthead__logo {
+  width: min(100%, 560px);
+  max-height: 50px;
+  object-fit: contain;
+  object-position: right center;
+  opacity: 0.92;
+}
+
   .masthead__stat-block {
     text-align: right;
   }
@@ -841,10 +917,7 @@ const previewImageUrl =
   display: block;
 }
 
-.shortlist-page-map .leaflet-container,
-.shortlist-page-map .leaflet-pane,
-.shortlist-page-map .leaflet-map-pane,
-.shortlist-page-map .leaflet-tile-pane {
+.shortlist-page-map > div {
   width: 100%;
   height: 100%;
 }
@@ -1274,1159 +1347,71 @@ body.edit-mode .card__preview-image-btn {
     color: var(--text-muted);
   }
 
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 8, 5, 0.55);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
-    z-index: 800;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-
-  .overlay.open {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .panel {
-    position: fixed;
-    left: 50%;
-    top: 0;
-    width: min(860px, calc(100vw - 32px));
-    max-height: 100vh;
-    background: #fff;
-    z-index: 900;
-    overflow: hidden;
-    transform: translate(-50%, -106%);
-    transition: transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border);
-    border-top: 0;
-    border-radius: 0 0 var(--r-2xl) var(--r-2xl);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
-  }
-
-  .panel.open {
-    transform: translate(-50%, 0);
-  }
-
-  .panel.dragging {
-    transition: none !important;
-  }
-
-  .panel.closing-down {
-    pointer-events: none;
-  }
-
-  .panel__grab {
-    display: none;
-  }
-
-  .panel__progress-wrap {
-    position: sticky;
-    top: 0;
-    z-index: 8;
-    background: #fff;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  }
-
-  .panel__progress-track {
-    height: 5px;
-    width: 100%;
-    background: #ece8e2;
-    overflow: hidden;
-  }
-
-  .panel__progress-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-mid));
-    transition: width 0.32s ease;
-  }
-
-  .panel__header {
-    padding: 14px 18px;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 10px;
-    background: #fff;
-  }
-
-  .panel__position {
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-  }
-
-  .panel__header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .panel__top-btn,
-  .panel__close {
-    appearance: none;
-    height: 36px;
-    padding: 0 14px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: #fff;
-    color: var(--text-primary);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.14s, border-color 0.14s, color 0.14s, opacity 0.14s;
-  }
-
-  .panel__top-btn:hover,
-  .panel__close:hover {
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-    color: #fff;
-  }
-
-  .panel__close {
-    width: 36px;
-    padding: 0;
-    color: var(--text-secondary);
-  }
-
-  .panel__view {
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  .panel__summary {
-    display: none;
-    padding: 34px 32px 38px;
-  }
-
-  .panel__summary.open {
-    display: block;
-  }
-
-  .summary__eyebrow {
-    font-size: 0.68rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  .summary__title {
-    font-family: var(--f-display);
-    font-size: clamp(2rem, 4.2vw, 3.3rem);
-    line-height: 1.02;
-    letter-spacing: -0.03em;
-    margin-bottom: 16px;
-  }
-
-  .summary__copy {
-    color: var(--text-secondary);
-    max-width: 560px;
-    font-size: 0.98rem;
-    line-height: 1.8;
-    margin-bottom: 26px;
-  }
-
-  .summary__stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-bottom: 26px;
-  }
-
-  .summary__stat {
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    background: var(--bg);
-    padding: 18px 16px;
-  }
-
-  .summary__num {
-    display: block;
-    font-family: var(--f-display);
-    font-size: 2rem;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .summary__label {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-  }
-
-    .summary__comment-box {
-    border-top: 1px solid var(--border);
-    padding-top: 22px;
-  }
-
-  .summary__comment-title {
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .summary__comment-copy {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-  }
-
-  .summary__comment-input {
-    width: 100%;
-    min-height: 100px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 14px;
-    font: inherit;
-    resize: vertical;
-    margin-bottom: 12px;
-  }
-
-  .summary__quick-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-
-  .summary__comment-status {
-    min-height: 20px;
-    margin-top: 10px;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-  }
-
-  .summary__actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .summary__btn {
-    appearance: none;
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    background: #fff;
-    color: var(--text-primary);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.84rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-  }
-
-  .summary__btn--primary {
-    background: var(--text-primary);
-    color: #fff;
-    border-color: var(--text-primary);
-  }
-
-  .panel__content {
-    display: none;
-  }
-
-  .panel__content.open {
-    display: block;
-  }
-
-  .panel__image-stage {
-    position: relative;
-    background: var(--bg-overlay);
-  }
-
-  .panel__image {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    display: block;
-  }
-
-  .panel__photo-count {
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    z-index: 2;
-    background: rgba(17, 14, 9, 0.58);
-    color: rgba(255, 255, 255, 0.94);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-  }
-
-  .photo-nav {
-  position: absolute;
-  top: 50%;
-  z-index: 3;
-  transform: translateY(-50%);
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.75);
-  background: rgba(17,14,9,0.48);
-  color: #fff;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.photo-nav--prev { left: 14px; }
-.photo-nav--next { right: 14px; }
-
-.photo-nav:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
- .panel__body {
-  padding: 30px 32px 30px;
-}
-
-.panel__price {
-    font-family: var(--f-display);
-    font-size: clamp(2.1rem, 4.2vw, 3rem);
-    font-weight: 400;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    color: var(--text-primary);
-    margin-bottom: 6px;
-  }
-
-  .panel__address {
-    font-size: 1.35rem;
-    color: var(--text-secondary);
-    line-height: 1.42;
-    margin-bottom: 10px;
-  }
-
- .panel__headline {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: start;
-  gap: 18px;
-  margin-bottom: 16px;
-}
-
-  .panel__headline > div {
-    min-width: 0;
-  }
-
- .panel__meta {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-.panel__meta-item {
-  display: inline-flex !important;
-  align-items: baseline;
-  gap: 4px;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: #fff;
-  text-align: center;
-}
-
-.panel__meta-item + .panel__meta-item {
-  border-left: 1px solid var(--border);
-}
-
-.panel__meta-label {
-  display: inline !important;
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  line-height: 1;
-  margin-bottom: 0;
-  font-weight: 600;
-}
-
-.panel__meta-item strong {
-  display: inline !important;
-  color: var(--text-primary);
-  font-size: 0.86rem;
-  line-height: 1;
-  font-weight: 700;
-}
-
-
-
-  .panel__intelligence {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 34px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: var(--accent-light);
-    border: 1px solid var(--accent-border);
-    color: var(--accent);
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin-bottom: 15px;
-  }
-
-  .panel__intelligence::before {
-    content: "✦";
-    font-size: 0.9rem;
-  }
-
-  .panel__detail-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin: 0 0 18px;
-  color: var(--text-secondary);
-  font-size: 0.86rem;
-  font-weight: 600;
-}
-
-.panel__detail-row span + span::before {
-  content: "•";
-  margin-right: 14px;
-  color: var(--text-muted);
-}
-
-.panel__highlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 18px;
-}
-
-.panel__highlight-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 6px 11px;
-  border-radius: 999px;
-  background: var(--gold-soft);
-  color: #6f4f1f;
-  border: 1px solid rgba(192,155,100,0.38);
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.panel__nav-row {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
- .decision-wrap {
-    text-align: center;
-    margin-top: 14px;
-    margin-bottom: 14px;
-  }
-
-  .decision-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 14px;
-  }
-
-  .decision-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }.masthead__logo {
-  display: block;
-  width: 220px;
-  max-width: 70vw;
-  height: auto;
-  margin-bottom: 28px;
-}
-
-  .decision-btn {
-    appearance: none;
-    min-height: 46px;
-    opacity: 0.94;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    background: #fff;
-    cursor: pointer;
-    font: inherit;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0 14px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    transition:
-      transform 0.16s ease,
-      border-color 0.16s ease,
-      box-shadow 0.16s ease,
-      background 0.16s ease,
-      color 0.16s ease,
-      opacity 0.16s ease;
-  }
-
-.review-complete__faves {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  width: 100%;
-  margin: 12px 0 16px;
-}
-
-.review-complete__fave-card {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #eee;
-}
-
-.review-complete__fave-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.review-complete__faves img {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.review-complete__faves img:hover {
-  transform: scale(1.03);
-  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-}
-
-.review-complete__faves button {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.review-complete__faves button:hover {
-  transform: scale(1.03);
-  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-}
-
-  @media (hover: hover) and (pointer: fine) {
-    .decision-btn:hover {
-      transform: translateY(-1px);
-      border-color: var(--border-strong);
-      box-shadow: var(--shadow-card);
-    }
-
-    .decision-btn--love:hover {
-      background: var(--gold-bg);
-      border-color: var(--gold-border);
-      color: var(--gold);
-    }
-
-    .decision-btn--maybe:hover {
-      background: #f5f3ef;
-      border-color: var(--border-strong);
-    }
-
-    .decision-btn--pass:hover {
-      background: var(--pass-bg);
-      border-color: var(--pass-border);
-      color: var(--pass);
-    }
-  }
-
-.decision-btn--love.is-selected {
-  background: var(--gold-bg);
-  border-color: var(--gold-border);
-  color: var(--gold);
-  animation: loveButtonGlow 0.9s ease-out, loveFade 0.4s ease-out;
-}
-
-@keyframes loveFade {
-  0% { opacity: 0.85; }
-  100% { opacity: 1; }
-}
-
-@keyframes loveButtonGlow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(176, 125, 42, 0);
-  }
-
-  45% {
-    box-shadow: 0 0 0 6px rgba(176, 125, 42, 0.14);
-  }
-
-  100% {
-    box-shadow: 0 0 0 14px rgba(176, 125, 42, 0);
-  }
-}
-
-.love-heart-pop {
-  position: fixed;
-  z-index: 99999;
-  pointer-events: none;
-  font-size: 24px;
-  line-height: 1;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.18));
-  animation: loveHeartFloat 1200ms ease-out forwards;
-}
-
-@keyframes loveHeartFloat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.45) rotate(-8deg);
-  }
-
-  15% {
-    opacity: 1;
-    transform: translate(-50%, -70%) scale(1.15) rotate(4deg);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(calc(-50% + var(--heart-x)), -150px) scale(1.65) rotate(var(--heart-rotate));
-  }
-}
-
-  .decision-btn--maybe.is-selected {
-    background: #f5f3ef;
-    border-color: var(--border-strong);
-  }
-
-  .decision-btn--pass.is-selected {
-    background: var(--pass-bg);
-    border-color: var(--pass-border);
-    color: var(--pass);
-  }
-
-  .panel__feedback {
-    min-height: 22px;
-    text-align: center;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin-bottom: 0px;
-  }
-
-  .panel__feedback.is-love {
-    color: var(--gold);
-  }
-
-  .panel__feedback.is-pass {
-    color: var(--pass);
-  }
-
-  .panel__feedback.is-maybe {
-    color: var(--text-secondary);
-  }
-
-  .panel__micro {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .panel__micro-badge {
-    display: inline-flex;
-    align-items: center;
-    height: 24px;
-    padding: 0 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
-    font-size: 0.66rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-
-  .panel__micro-badge--love {
-    background: var(--gold-bg);
-    border-color: var(--gold-border);
-    color: var(--gold);
-  }
-
-  .panel__micro-badge--maybe {
-    background: #f5f3ef;
-    color: var(--text-secondary);
-  }
-
-  .panel__micro-badge--pass {
-    background: var(--pass-bg);
-    border-color: var(--pass-border);
-    color: var(--pass);
-  }
-
-  .panel__desc {
-    font-size: 0.86rem;
-    line-height: 1.8;
-    color: var(--text-secondary);
-    margin: 0 0 18px;
-  }
-
-  .panel__desc.is-collapsed {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-.panel__secondary {
-    border-top: 0;
-    padding-top: 4px;
-    margin-top: 4px;
-  }
-
-  .panel__secondary-title {
-    font-size: 0.68rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-  }
-
-  .chip-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
-
-  .chip {
-    appearance: none;
-    background: var(--bg);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    padding: 8px 12px;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    transition: all 0.13s;
-  }
-
-  .chip:hover {
-    border-color: var(--text-primary);
-    background: #fff;
-  }
-
-  .chip.active {
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-    color: #fff;
-  }
-
-  .panel__footer {
-    display: flex;
-    justify-content: center;
-    padding-top: 4px;
-  }
-
-  .panel__next-btn {
-    appearance: none;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 10px 16px;
-    border-radius: 999px;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    transition: opacity 0.14s ease, background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
-  }
-
-  .panel__next-btn:hover {
-    background: var(--text-primary);
-    border-color: var(--text-primary);
-    color: #fff;
-  }
-
-  .panel__next-btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
-
-.panel.is-love-pulse .panel__image-stage::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  animation: loveWarmGlow 0.9s ease;
-}
-
-  .panel.is-pass-fade .panel__content {
-    animation: none;
-  }
-
-@keyframes loveWarmGlow {
-  0% {
-    box-shadow: inset 0 0 0 0 rgba(176, 125, 42, 0);
-  }
-
-  35% {
-    box-shadow:
-      inset 0 0 0 10px rgba(176, 125, 42, 0.1),
-      0 0 28px rgba(176, 125, 42, 0.18);
-  }
-
-  65% {
-    box-shadow:
-      inset 0 0 0 6px rgba(176, 125, 42, 0.08),
-      0 0 18px rgba(176, 125, 42, 0.12);
-  }
-
-  100% {
-    box-shadow: inset 0 0 0 0 rgba(176, 125, 42, 0);
-  }
-}
-
-  @keyframes passFade {
-    0% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-    50% {
-      opacity: 0.78;
-      transform: translateX(-8px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-.card[data-is-favourite="true"] {
-  border-color: rgba(201, 155, 100, 0.62);
-  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.08);
-}
-
-.card[data-is-favourite="true"]:hover {
-  border-color: rgba(201, 155, 100, 0.82);
-}
-
-.card[data-decision="maybe"] {
-  border-color: rgba(122, 111, 102, 0.38);
-  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.06);
-}
-
-.card[data-decision="maybe"]:hover {
-  border-color: rgba(122, 111, 102, 0.58);
-}
-.card[data-is-new="true"] {
-  border-color: rgba(45, 80, 22, 0.34);
-  box-shadow: 0 10px 24px rgba(45, 80, 22, 0.06);
-}
-
-.card[data-is-new="true"]:hover {
-  border-color: rgba(45, 80, 22, 0.52);
-}
-.card[data-featured="true"]:not([data-is-favourite="true"]):not([data-decision="maybe"]):not([data-decision="pass"]) {
-  border-color: var(--accent-border);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-}
-
-.card[data-featured="true"][data-is-favourite="true"] .card__index::after {
-  content: "  •  Top pick";
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-}
-.resource-picker {
-  display: none;
-  margin: 0 0 20px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: #fff;
-}
-
-body.edit-mode .resource-picker {
-  display: block;
-}
-
-.resource-picker__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.resource-picker__head h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.resource-vendor-list {
-  display: grid;
-  gap: 8px;
-}
-
-.resource-vendor-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg);
-  cursor: pointer;
-}
-
-.resource-vendor-row strong {
-  display: block;
-  font-size: 0.88rem;
-}
-
-.resource-vendor-row small {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 0.76rem;
-}
-
-  .resource-section {
-    margin-top: 44px;
-  }
-
-  .resource-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-  .resource-card {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 20px;
-  }
-
-  .resource-card__type {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-
-  .resource-card h3 {
-    font-size: 1.05rem;
-    margin-bottom: 8px;
-  }
-
-  .resource-card p {
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-  }
-
-  .resource-card__links {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 12px;
-  }
-
-  .cta {
-    margin-top: 40px;
-    padding: 28px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    text-align: center;
-  }
-
-  .cta strong {
-    display: block;
-    font-size: 1rem;
-    margin-bottom: 10px;
-  }
-
-  .cta p {
-    color: var(--text-secondary);
-    margin-bottom: 14px;
-  }
-
-  .cta-btn {
-    display: inline-block;
-    background: var(--text-primary);
-    color: #fff;
-    padding: 12px 18px;
-    border-radius: var(--r);
-    text-decoration: none;
-    font-size: 0.9rem;
-  }
-
-.agent-edit-grid {
-  display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.agent-edit-grid .edit-banner {
-  grid-column: 1 / -1;
-}
-
-.review-complete {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-.review-complete__title {
-  font-size: 32px;
-  line-height: 1.2;
-  font-weight: 600;
-}
-
-.review-complete__sub {
-  color: #6b6b6b;
-  max-width: 520px;
-}
-
-.review-complete__stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.stat {
-  border-radius: 14px;
-  padding: 18px;
-  background: #f8f8f8;
-  text-align: center;
-}
-
-.stat__num {
-  font-size: 36px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.stat__label {
-  font-size: 14px;
-  color: #666;
-}
-
-/* subtle tone differences */
-.stat--love {
-  background: #f6f3ea;
-}
-
-.stat--maybe {
-  background: #f4f4f4;
-}
-
-.stat--pass {
-  background: #f7f7f7;
-}
-
-.review-complete__cta .btn-primary {
-  width: 100%;
-  padding: 14px;
-  font-size: 16px;
-  border-radius: 999px;
-}
-
-.review-complete__note textarea {
-  width: 100%;
-  min-height: 100px;
-  border-radius: 12px;
-  padding: 12px;
-  margin-top: 10px;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.quick-actions button {
-  border-radius: 999px;
-  padding: 8px 14px;
-  background: #f3f3f3;
-}
-
-@media (max-width: 760px) {
   .agent-edit-grid {
-    grid-template-columns: 1fr;
-  }
+  display: grid;
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
-  .note-editor {
-  display: none;
-  margin: 0 0 20px;
-  padding: 16px;
+.note-editor,
+.resource-picker {
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.note-editor__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.note-editor__input {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px;
+  font: inherit;
+  color: var(--text-primary);
   background: #fff;
+  margin-bottom: 12px;
 }
 
 .preset-image-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
 .preset-image-btn {
-  appearance: none;
   border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
   background: #fff;
-  border-radius: 14px;
-  padding: 8px;
   cursor: pointer;
   text-align: left;
-  font: inherit;
 }
 
 .preset-image-btn img {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 90px;
   object-fit: cover;
-  border-radius: 10px;
   display: block;
-  margin-bottom: 7px;
-  background: var(--bg-overlay);
 }
 
 .preset-image-btn span {
   display: block;
-  font-size: 0.74rem;
+  padding: 8px 10px;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-primary);
-}
-
-.preset-image-btn:hover {
-  border-color: var(--text-primary);
 }
 
 .preset-image-btn.is-selected {
@@ -2434,501 +1419,318 @@ body.edit-mode .resource-picker {
   box-shadow: 0 0 0 2px var(--accent-light);
 }
 
-.preset-image-btn.is-selected::after {
-  content: "Selected";
-  display: inline-flex;
-  margin-top: 7px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-}
-
-body.edit-mode .agent-edit-grid {
+.preset-image-wrap {
   display: grid;
+  gap: 6px;
 }
 
-body.edit-mode .note-editor {
-  display: block;
-}
-
-.note-editor__label {
-  display: block;
+.preset-image-delete {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: var(--r);
+  padding: 7px 10px;
+  font: inherit;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 10px;
-}
-
-.note-editor__input {
-  width: 100%;
-  min-height: 110px;
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font: inherit;
-  resize: vertical;
-}
-
-
-
-  @media (max-width: 960px) {
-    .masthead {
-      padding: 0 24px;
-    }
-
-    .masthead__inner {
-      padding: 56px 0 48px;
-      gap: 40px;
-    }
-
-    .body-wrap {
-      padding: 36px 24px 80px;
-    }
-
-    .agent-bar {
-      padding: 0 24px;
-    }
-
-    .grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .summary__stats {
-      grid-template-columns: 1fr;
-    }
-
-   .review-send-prompt {
-  margin: 4px 0 4px;
-  padding: 18px;
-  border-radius: 16px;
-  background: #fffaf0;
-  border: 1px solid rgba(192, 155, 100, 0.34);
-}
-
-.review-send-copy h3 {
-  margin: 0 0 6px;
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.review-send-copy p {
-  margin: 0 0 14px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.review-send-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.review-send-actions .summary__btn {
-  min-height: 42px;
-}
-  }
-
-  .review-send-prompt .summary__btn {
-  appearance: none;
-  border: 1px solid var(--text-primary);
-  background: var(--text-primary);
-  color: #fff;
-  border-radius: 999px;
-  min-height: 44px;
-  padding: 0 16px;
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
   cursor: pointer;
+  color: var(--danger);
 }
 
-  @media (max-width: 640px) {
-    .masthead__inner {
-      grid-template-columns: 1fr;
-      gap: 0;
-      padding: 44px 0 40px;
-    }
-
-    .masthead__right {
-      display: none;
-    }
-
-    .masthead__heading {
-      font-size: 3rem;
-    }
-
-    .grid {
-      grid-template-columns: 1fr;
-      justify-items: center;
-      gap: 14px;
-    }
-
-    .card {
-      width: min(100%, 420px);
-    }
-
-    .body-wrap {
-      padding: 28px 16px 60px;
-    }
-
-    .agent-bar {
-      padding: 0 16px;
-    }
-
-    .agent-bar__badge,
-    .agent-bar__date,
-    .agent-bar__sep {
-      display: none;
-    }
-
-    .agent-bar__inner {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .agent-bar__left {
-      width: 100%;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .agent-bar__name {
-  font-size: 0.78rem;
+.preset-image-delete:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
-    .agent-bar__actions {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
 
-    .ab-btn {
-      width: 100%;
-      justify-content: center;
-      text-align: center;
-      height: 38px;
-      padding: 0 10px;
-      font-size: 0.8rem;
-    }
-
-    .panel {
-      left: 0;
-      right: 0;
-      top: 0;
-      width: 100%;
-      max-height: 100svh;
-      border-radius: 0 0 var(--r-xl) var(--r-xl);
-      transform: translateY(-106%);
-      touch-action: pan-y;
-      will-change: transform;
-    }
-
-    .panel.open {
-      transform: translateY(0);
-    }
-
-    .panel.closing-down {
-      transition: transform 0.22s ease !important;
-      transform: translateY(100svh) !important;
-    }
-
-    .panel__grab {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 10px 0 2px;
-      background: #fff;
-      position: sticky;
-      top: 0;
-      z-index: 9;
-    }
-
-    .panel__grab::before {
-      content: "";
-      width: 42px;
-      height: 4px;
-      border-radius: 999px;
-      background: #d4cfc7;
-    }
-
-    .panel__header {
-      padding: 12px 14px;
-      grid-template-columns: 1fr auto auto;
-    }
-
-    .panel__top-btn,
-    .panel__close {
-      height: 34px;
-      font-size: 0.76rem;
-    }
-
-    .panel__body {
-      padding: 20px 20px 24px;
-    }
-
-    .decision-actions {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .decision-btn {
-      min-height: 48px;
-      padding: 0 6px;
-      font-size: 0.74rem;
-      gap: 4px;
-      border-radius: 14px;
-    }
-
-    .summary__actions {
-      flex-direction: column;
-    }
-
-    .panel__headline {
-  display: block;
+.resource-picker__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
   margin-bottom: 16px;
 }
 
-.panel__headline > div {
-  min-width: 0;
-}
-
-.panel__meta {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-start;
+.resource-vendor-list {
+  display: grid;
   gap: 10px;
-  margin-top: 8px;
-  white-space: nowrap;
 }
 
-.panel__meta-item {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 13px;
+.resource-vendor-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--r);
+  background: #faf8f4;
+}
+
+.resource-vendor-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.resource-vendor-row small {
+  color: var(--text-muted);
+}
+
+.resource-section {
+  margin-top: 48px;
+}
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.resource-card {
   background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.resource-card__type {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.resource-card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+
+.resource-card p {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.resource-card__links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.resource-card__links a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cta {
+  margin-top: 56px;
+  padding: 32px;
+  border-radius: var(--r-xl);
+  background: var(--bg-dark);
+  color: #fff;
   text-align: center;
 }
 
-.panel__meta-item + .panel__meta-item {
-  border-left: 1px solid var(--border);
-}
-
-.panel__meta-label {
-  display: inline !important;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  line-height: 1;
-  margin-bottom: 0;
-  font-weight: 600;
-}
-
-.panel__meta-item strong {
-  display: inline !important;
-  color: var(--text-primary);
-  font-size: 1.02rem;
-  line-height: 1;
-  font-weight: 800;
-    letter-spacing: -0.01em;
-
-}
-    .summary__btn {
-      width: 100%;
-    }
-  }
-
-  .decision-btn:focus,
-  .decision-btn:focus-visible,
-  .chip:focus,
-  .chip:focus-visible {
-    outline: none;
-    box-shadow: none;
-  }
-
-  .decision-btn,
-  .chip {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .decision-btn:active,
-  .chip:active {
-    transform: none;
-  }
-
-  .masthead__logo {
+.cta strong {
   display: block;
-  width: 240px;
-  max-width: 34vw;
-  height: auto;
-  margin-bottom: 12px;
-  opacity: 0.95;
-}
-  .panel__top-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
-    pointer-events: none;
-    background: #eee;
-    color: #999;
-    border-color: #ddd;
-  }
-.panel__desc-wrap {
-  margin-top: 0px;
-  margin-bottom: 18px;
+  font-family: var(--f-display);
+  font-size: 1.7rem;
+  font-weight: 400;
+  margin-bottom: 6px;
 }
 
-.panel__desc {
-  font-size: 0.9rem;
-  line-height: 1.8;
-  color: var(--text-secondary);
+.cta p {
+  color: rgba(255,255,255,0.55);
 }
 
-.panel__desc.is-collapsed {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.cta-btn {
+  display: inline-flex;
+  margin-top: 18px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
 }
-
-.panel__desc-toggle {
-  margin-top: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.panel__desc-toggle:hover {
-  color: var(--text-primary);
-}
-.masthead__eyebrow {
-  color: #c09b64;
-}
-
-.masthead__eyebrow::before {
-  background: #c09b64;
-}
-
 @media (max-width: 700px) {
-  .resource-grid {
+  .masthead {
+    padding: 0 22px;
+  }
+
+ .masthead__inner {
+  height: auto;
+  min-height: 360px;
+  padding: 50px 0 48px;
+  display: block;
+}
+
+.masthead {
+  margin-bottom: 28px;
+}
+
+  .masthead__heading {
+    font-size: 2.6rem;
+    line-height: 0.96;
+    max-width: 280px;
+    margin-bottom: 18px;
+  }
+
+  .masthead__client,
+  .masthead__logo,
+  .masthead__hints {
+    display: none;
+  }
+
+  .masthead__message {
+    max-width: 300px;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-top: 0;
+  }
+
+  .masthead__right {
+    display: block;
+    margin-top: 20px;
+  }
+
+  .masthead__stat-block {
+    text-align: left;
+  }
+
+  .masthead__count-num {
+    font-size: 3.2rem;
+    color: rgba(255, 255, 255, 0.18);
+  }
+
+  .masthead__count-label {
+    color: rgba(255, 255, 255, 0.32);
+  }
+
+ .body-wrap {
+  padding: 34px 16px 80px;
+}
+
+  .grid {
     grid-template-columns: 1fr;
   }
-}
 
-.panel__map-btn {
-  appearance: none;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--text-primary);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.panel__mini-map {
-  height: 340px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
-  margin: 0 0 18px;
-  background: #e8e8e8;
-}
-
-.panel__mini-map[hidden] {
-  display: none;
-}
-
-.shortlist-map-tooltip {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  padding: 0;
-}
-
-.shortlist-map-tooltip::before {
-  display: none;
-}
-
-.shortlist-map-label {
-  background: #fff;
-  color: #181614;
-  border: 1px solid rgba(24,22,20,0.18);
-  border-radius: 12px;
-  padding: 8px 10px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.2);
-}
-
-.shortlist-map-label strong,
-.shortlist-map-label span {
-  display: block;
-  line-height: 1.2;
-}
-
-.shortlist-map-label span {
-  font-weight: 500;
-  opacity: 0.75;
-}
-
-@media (max-width: 899px) {
-  .masthead.map-mode {
-    height: auto;
-    max-height: none;
-    overflow: visible;
+    .card {
+    width: 100%;
   }
 
-  .masthead.map-mode .masthead__inner {
-    height: auto;
-    max-height: none;
-    padding: 44px 0 40px;
-    display: grid;
-    overflow: visible;
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
-  .masthead.map-mode .masthead__left,
-  .masthead.map-mode .masthead__right {
-    display: block;
+  .agent-bar {
+    padding: 0 14px;
+  }
+
+  .agent-bar__inner {
+    width: 100%;
+  }
+
+  .agent-bar__actions {
+    justify-content: flex-start;
+  }
+
+  .body-wrap {
+    width: 100%;
+    max-width: 100%;
+    padding: 34px 14px 80px;
+    overflow-x: hidden;
+  }
+
+  .agent-edit-grid,
+  .note-editor,
+  .resource-picker {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .note-editor {
+    padding: 16px;
+  }
+
+   .note-editor__input {
+    max-width: 100%;
+  }
+
+  .note-editor__input {
+    max-width: 100%;
+  }
+
+ .masthead.map-mode {
+    padding: 0 !important;
+    overflow: hidden !important;
+    margin-bottom: 0 !important;
+    height: 360px !important;
+    min-height: 360px !important;
+    max-height: 360px !important;
   }
 
   .masthead.map-mode .masthead-map-wrap {
-    position: relative;
-    height: 260px;
-    max-height: 260px;
-    margin-top: 20px;
-    overflow: hidden;
+    height: 360px !important;
+    max-height: 360px !important;
   }
 
   .masthead.map-mode .shortlist-page-map {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
+    height: 360px !important;
+    min-height: 360px !important;
+    max-height: 360px !important;
   }
+
+  .masthead.map-mode .masthead__inner {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    min-height: 0 !important;
+    height: auto !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+
+  .masthead.map-mode .masthead__left,
+  .masthead.map-mode .masthead__right,
+  .masthead.map-mode .masthead__heading,
+  .masthead.map-mode .masthead__message,
+  .masthead.map-mode .masthead__eyebrow {
+    display: none !important;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    width: 100vw !important;
+    margin: 0 !important;
+    left: 0 !important;
+    position: relative !important;
+    height: 420px !important;
+    max-height: 420px !important;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    width: 100vw !important;
+    height: 420px !important;
+    min-height: 420px !important;
+    max-height: 420px !important;
+  }
+
 }
+
 </style>
   </head>
 
   <body
   data-agent-view={isAgentView ? "true" : "false"}
   data-shortlist-slug={slug}
+  data-shortlist-send-id={shortlist?.id || ""}
   data-google-maps-api-key={googleMapsApiKey}
 >
     {isAgentView && (
@@ -3010,7 +1812,12 @@ body.edit-mode .note-editor {
   Curated by <strong>{agentName}</strong>
 </p>
 
-         <p class="masthead__message" id="masthead-message">{heroMessage}</p>
+         <p
+  class="masthead__message"
+  id="masthead-message"
+  data-mobile-count={`${listings.length} selected homes`}>
+  {heroMessage}
+</p>
 
        
         </div>
@@ -3034,8 +1841,7 @@ body.edit-mode .note-editor {
           </div>
         </div>
 
-<div class="masthead-map-wrap" id="shortlist-page-map-wrap" hidden>
-  <div
+<div class="masthead-map-wrap" id="shortlist-page-map-wrap" hidden>  <div
     id="shortlist-page-map"
     class="shortlist-page-map"
     data-deferred-map
@@ -3093,8 +1899,28 @@ body.edit-mode .note-editor {
               Text preview image
             </label>
 
-            <div class="preset-image-grid">
-              {presetSmsImages.map((preset) => (
+           <div class="preset-image-grid">
+           {(uploadedSmsImages || []).map((image: any) => (
+  <div class="preset-image-wrap">
+    <button
+      type="button"
+      class={`preset-image-btn ${smsImageUrl === image.image_url ? "is-selected" : ""}`}
+      data-preset-image-url={image.image_url}>
+      <img src={image.image_url} alt={image.label || "Uploaded image"} loading="lazy" />
+      <span>{image.label || "Uploaded image"}</span>
+    </button>
+
+    <button
+      type="button"
+      class="preset-image-delete"
+      data-delete-sms-image-id={image.id}>
+      Delete
+    </button>
+  </div>
+))}
+ 
+
+  {presetSmsImages.map((preset) => (
                 <button
                   type="button"
                   class={`preset-image-btn ${smsImageUrl === preset.url ? "is-selected" : ""}`}
@@ -3105,16 +1931,31 @@ body.edit-mode .note-editor {
               ))}
             </div>
 
-            <input
-              id="sms-image-url-input"
-              class="note-editor__input"
-              style="min-height:44px;"
-              value={smsImageUrl}
-              placeholder="Paste image URL, or choose one from the homes below"
-            />
+       <input
+  id="sms-image-url-input"
+  type="hidden"
+  value={smsImageUrl}
+/>
+
+<label class="note-editor__label" for="sms-image-file-input" style="margin-top:10px;">
+  Or upload custom image
+</label>
+
+<input
+  id="sms-image-file-input"
+  class="note-editor__input"
+  type="file"
+  accept="image/*"
+  style="min-height:44px;"
+/>
+
+<p
+  id="sms-image-upload-status"
+  style="font-size:0.78rem; color:var(--text-muted); margin:-4px 0 12px;"
+></p>
 
             <button type="button" class="ab-btn ab-btn--primary" id="save-sms-image-btn">
-              Save image URL
+              Save image
             </button>
           </div>
 <div class="note-editor" id="resource-add-editor">
@@ -3122,13 +1963,32 @@ body.edit-mode .note-editor {
     Add buyer resource
   </label>
 
-  <select id="resource-type-input" class="note-editor__input" style="min-height:44px;">
-    <option value="mortgage_broker">Mortgage broker</option>
-    <option value="home_inspector">Home inspector</option>
-    <option value="lawyer">Lawyer</option>
-    <option value="insurance">Insurance</option>
-    <option value="other">Other</option>
-  </select>
+ <select id="resource-type-input" class="note-editor__input" style="min-height:44px;">
+  <option value="mortgage_broker">Mortgage broker</option>
+  <option value="home_inspector">Home inspector</option>
+  <option value="lawyer">Lawyer</option>
+  <option value="insurance">Insurance</option>
+  <option value="home_cleaner">Home cleaner</option>
+  <option value="moving_company">Moving company</option>
+  <option value="contractor">Contractor</option>
+  <option value="other">Other</option>
+</select>
+
+<button
+  type="button"
+  class="resource-save-btn"
+  id="show-add-resource-btn"
+  style="margin-bottom:10px;"
+>
+  + Add new
+</button>
+
+<input
+  id="resource-custom-type-input"
+  class="note-editor__input"
+  style="min-height:44px;"
+  placeholder="Service provider type, e.g. Home cleaner"
+/>
 
   <input id="resource-name-input" class="note-editor__input" style="min-height:44px;" placeholder="Name" />
   <input id="resource-phone-input" class="note-editor__input" style="min-height:44px;" placeholder="Phone" />
@@ -3211,10 +2071,16 @@ body.edit-mode .note-editor {
             const address = listing.address || "Address unavailable";
             const beds = listing.beds || "-";
             const baths = listing.baths || "-";
-            const sqft = listing.sqft || "";
+         const sqft = listing.sqft || getListingSqft(listing) || "";
             const propertyType = listing.property_type || "Home";
             const yearBuilt = listing.year_built || "";
-            const image =
+const daysOnMarket =
+  listing.days_on_market ||
+  listing.daysOnMarket ||
+  listing.dom ||
+  getListingDom(listing) ||
+  "";
+const image =
   normalizeImageUrl(listing.image_url) ||
   "https://placehold.co/800x600?text=Listing";
             const description = listing.description || "A quick preview of this property.";
@@ -3234,9 +2100,11 @@ const num = String(i + 1).padStart(2, "0");
   data-item-id={String(itemId)}
   data-card-id={String(listingId)}
   data-listing-id={String(listing?.repliers_listing_id || listing?.listing_id || listing?.id || listingId || "")}
+  data-mls={String(listing?.mls_number || listing?.mls || listing?.repliers_listing_id || listingId || "")}
 data-lat={listing?.lat || ""}
 data-lng={listing?.lng || ""}
 data-city={listing?.normalized_city || listing?.city || ""}
+data-area={listing?.normalized_area || listing?.area || listing?.neighborhood || ""}
                 data-price={price}
                 data-address={address}
                 data-beds={String(beds)}
@@ -3245,6 +2113,7 @@ data-city={listing?.normalized_city || listing?.city || ""}
 data-type={propertyType}
 data-lot-size={String(listing.lot_size || listing.lotSize || listing.lot_sqft || listing.lotSqft || "")}
 data-year={String(yearBuilt)}
+data-dom={String(daysOnMarket)}
                 data-image={image}
 data-images={JSON.stringify(listing.images || listing.photo_urls || [])}
 data-description={String(description).replace(/"/g, "&quot;")}
@@ -3304,8 +2173,9 @@ data-featured={i === 0 ? "true" : "false"}>
                   <p class="card__address">{address}</p>
                   <p class="card__meta">
                     {beds} bed · {baths} bath
-                    {sqft ? ` · ${sqft} sqft` : ""}
-                    {yearBuilt ? ` · Built ${yearBuilt}` : ""}
+                   {sqft ? ` · ${sqft} sqft` : ""}
+{yearBuilt ? ` · Built ${yearBuilt}` : ""}
+{daysOnMarket ? ` · ${daysOnMarket} DOM` : ""}
                   </p>
                   <p class="card__desc">{String(description || "").replace(/\s+/g, " ").trim()}</p>
                   <button type="button" class="card__action preview-btn">View property →</button>
@@ -3328,9 +2198,11 @@ data-featured={i === 0 ? "true" : "false"}>
           <div class="resource-grid">
             {resources.map((resource: any) => (
              <article class="resource-card">
-  <p class="resource-card__type">
-    {resource.type === "mortgage_broker" ? "Mortgage broker" : resource.type}
-  </p>
+<p class="resource-card__type">
+  {String(resource.type || "Other")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())}
+</p>
 
   {resource.name ? (
     <h3>{resource.name}</h3>
@@ -3369,849 +2241,194 @@ data-featured={i === 0 ? "true" : "false"}>
       </div>
     </main>
 
-    <div class="overlay" id="sheet-overlay"></div>
-
-    <aside class="panel" id="preview-sheet" aria-hidden="true">
-      <div class="panel__grab" id="sheet-grab-handle" aria-hidden="true"></div>
-
-      <div class="panel__progress-wrap">
-        <div class="panel__progress-track">
-          <div class="panel__progress-bar" id="sheet-progress-bar"></div>
-        </div>
-
-        <div class="panel__header">
-          <div class="panel__position" id="sheet-position">1 of 1</div>
-
-          <div class="panel__header-actions">
-            <button class="panel__map-btn" id="sheet-map-btn" type="button">Map</button>
-<button class="panel__top-btn" id="sheet-prev-top-btn" type="button">← Previous</button>
-<button class="panel__top-btn" id="sheet-next-top-btn" type="button">Next →</button>
-          </div>
-
-          <button class="panel__close" id="sheet-close-btn" type="button" aria-label="Close">✕</button>
-        </div>
-      </div>
-<div class="panel__view">
-        <section class="panel__summary" id="sheet-summary">
-          <div class="review-complete">
-
-  <!-- Header -->
-  <div class="review-complete__header">
-    <div class="eyebrow">Shortlist reviewed</div>
-
-   <h2 class="review-complete__title" id="review-complete-title">
-  You’ve reviewed all the homes — nice work.
-</h2>
-
-    <p class="review-complete__sub">
-      Most buyers don’t make it this far — this really helps narrow things down.
-      Your top picks are ready for a closer look.
-    </p>
-  </div>
-
-  <div class="review-complete__faves" id="summary-fave-strip"></div>
-
-<div class="review-send-prompt" id="summary-insight" hidden></div>
-
-<!-- Stats -->
-<div class="review-complete__stats">
-    <div class="stat stat--love">
-   <div class="stat__num" id="summary-love-count">0</div>
-      <div class="stat__label">❤️ You loved</div>
-    </div>
-
-    <div class="stat stat--maybe">
-      <div class="stat__num" id="summary-maybe-count">0</div>
-      <div class="stat__label">🤔 Worth a second look</div>
-    </div>
-
-    <div class="stat stat--pass">
-      <div class="stat__num" id="summary-pass-count">0</div>
-      <div class="stat__label">✕ Not your fit</div>
-    </div>
-  </div>
-
-  <!-- Primary CTA -->
-  <div class="review-complete__cta">
-   <button class="btn-primary" id="summary-send-comment-btn" type="button">
-  Send a quick note to your agent
-</button>
-  </div>
-
-  <!-- Optional prompt -->
-  <div class="review-complete__note">
-    <h4>What would you like to do next?</h4>
-
-   <textarea
-  id="summary-comment-input"
-  placeholder="We’d like to see the first two — the rest aren’t quite right."
-></textarea>
-
-<div class="summary__comment-status" id="summary-comment-status"></div>
-
-   <div class="quick-actions">
-  <button type="button" data-summary-comment="We’d like to set up showings for the homes we loved.">
-    👍 Set up showings
-  </button>
-
-  <button type="button" data-summary-comment="Can you help narrow the search based on what we liked?">
-    🎯 Narrow the search
-  </button>
-
-  <button type="button" data-summary-comment="These aren’t quite right. Can we look at some better options?">
-    🙅 Not quite right
-  </button>
-</div>
-  </div>
-
-</div>
-        </section>
-
-         
-        
-
-        <section class="panel__content" id="sheet-content">
-          <div class="panel__image-stage">
-           <img
-  id="sheet-image"
-  class="panel__image"
-  src="https://placehold.co/800x600?text=Loading"
-  alt=""
-  loading="eager"
-  decoding="async"
-  fetchpriority="high"
-/>
-            <button type="button" class="photo-nav photo-nav--prev" id="photo-prev-btn">‹</button>
-<button type="button" class="photo-nav photo-nav--next" id="photo-next-btn">›</button>
-<div class="panel__photo-count" id="sheet-photo-count">1 / 1 photos</div>
-          </div>
-
-          <div class="panel__body">
-            <div class="panel__headline">
-  <div>
-    <h2 class="panel__price" id="sheet-price">—</h2>
-    <p class="panel__address" id="sheet-address">Address</p>
-  </div>
-
-  <div class="panel__meta" id="sheet-meta">—</div>
-</div>
-<div id="sheet-mini-map" class="panel__mini-map" hidden></div>
-<div class="panel__intelligence" id="sheet-intelligence">
-  Strongest match based on your criteria
-</div>
-
-<div class="panel__detail-row" id="sheet-detail-row"></div>
-
-<div class="panel__highlights" id="sheet-highlights"></div>
-
-            
-
-            <div class="panel__feedback" id="sheet-feedback"></div>
-
-         <div class="panel__desc-wrap">
-  <p class="panel__desc is-collapsed" id="sheet-description"></p>
-
-  <button
-    type="button"
-    class="panel__desc-toggle"
-    id="sheet-desc-toggle">
-    Read more
-  </button>
-</div>
-
-<div class="decision-wrap">
-              <p class="decision-title">How does this one feel?</p>
-
-              <div class="decision-actions">
-                <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">
-                  <span>❤️</span>
-                  <span>Love this</span>
-                </button>
-
-                <button class="decision-btn decision-btn--maybe" type="button" id="decision-maybe-btn">
-                  <span>🤔</span>
-                  <span>Not sure</span>
-                </button>
-
-                <button class="decision-btn decision-btn--pass" type="button" id="decision-pass-btn">
-                  <span>✕</span>
-                  <span>Not for me</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="panel__secondary">
-              <p class="panel__secondary-title">What stood out</p>
-              <div class="chip-group" id="feedback-chips">
-                <button class="chip" data-tag="view">View</button>
-                <button class="chip" data-tag="layout">Layout</button>
-                <button class="chip" data-tag="price">Price</button>
-                <button class="chip" data-tag="location">Location</button>
-                <button class="chip" data-tag="finishes">Finishes</button>
-                <button class="chip" data-tag="size">Size</button>
-                <button class="chip" data-tag="yard">Yard</button>
-                <button class="chip" data-tag="needs-work">Needs work</button>
-              </div>
-            </div>
-
-            <div class="panel__footer">
-  <div class="panel__nav-row">
-    <button class="panel__next-btn" id="sheet-prev-btn" type="button">← Previous</button>
-    <button class="panel__next-btn" id="sheet-next-btn" type="button">Next listing →</button>
-  </div>
-</div>
-          </div>
-        </section>
-      </div>
-    </aside>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <ShortlistReviewModal />
 
 
-    <script is:inline>
-      function initShortlistPage() {
-        function coordsLookWrong(lat, lng, card) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
-  if (lat === 0 || lng === 0) return true;
+<script>
+  import { createClient } from "@supabase/supabase-js";
 
-  const city = String(card?.dataset?.city || "").toLowerCase();
-
-  const cityBounds = {
-    nanaimo: { minLat: 49.0, maxLat: 49.35, minLng: -124.15, maxLng: -123.75 },
-    lantzville: { minLat: 49.2, maxLat: 49.35, minLng: -124.15, maxLng: -123.9 },
-    parksville: { minLat: 49.25, maxLat: 49.4, minLng: -124.45, maxLng: -124.2 }
-  };
-
-  const bounds = cityBounds[city];
-
-  if (!bounds) {
-    return lat < 48.2 || lat > 50.7 || lng < -128.5 || lng > -122.9;
-  }
-
-  return (
-    lat < bounds.minLat ||
-    lat > bounds.maxLat ||
-    lng < bounds.minLng ||
-    lng > bounds.maxLng
+  const supabase = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL,
+    import.meta.env.PUBLIC_SUPABASE_ANON_KEY
   );
-}
 
-function getGeocodeAddress(card) {
-  const address = card.dataset.address || "";
-  const city = card.dataset.city || "";
+  const fileInput = document.getElementById("sms-image-file-input") as HTMLInputElement | null;
+  const urlInput = document.getElementById("sms-image-url-input") as HTMLInputElement | null;
+  const statusEl = document.getElementById("sms-image-upload-status");
 
-  return city
-    ? `${address}, ${city}, BC, Canada`
-    : `${address}, British Columbia, Canada`;
-}
-        const body = document.body;
-        const isAgentView = body?.dataset.agentView === "true";
-const pageSlug = body?.dataset.shortlistSlug || "";
-const isExpandedReview = new URLSearchParams(window.location.search).has("expanded");
-if (!isAgentView && pageSlug) {
-  fetch("/api/shortlists/track-view", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slug: pageSlug })
-  }).catch(() => {});
-}
-const viewedKey = `shortlist_viewed_${pageSlug}`;
+  fileInput?.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file || !urlInput) return;
 
-function getViewedListings() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(viewedKey) || "[]"));
-  } catch {
-    return new Set();
-  }
-}
+    if (statusEl) statusEl.textContent = "Uploading image...";
 
-function markListingViewed(card) {
-  if (!card) return;
+    const safeName = file.name
+      .toLowerCase()
+      .replace(/[^a-z0-9.]+/g, "-");
 
-  const id = card.dataset.itemId || card.dataset.cardId || "";
-  if (!id) return;
+    const path = `shortlist-sms/${crypto.randomUUID()}-${safeName}`;
 
-  const viewed = getViewedListings();
-  viewed.add(id);
-  localStorage.setItem(viewedKey, JSON.stringify([...viewed]));
+    const { error } = await supabase.storage
+      .from("public-images")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false
+      });
 
-  card.dataset.viewed = "true";
-  card.dataset.isNew = "false";
-  card.querySelector(".card__new-badge")?.remove();
-}
-
-        const sheet = document.getElementById("preview-sheet");
-        const overlay = document.getElementById("sheet-overlay");
-        const sheetImage = document.getElementById("sheet-image");
-        const sheetPrice = document.getElementById("sheet-price");
-        const sheetAddress = document.getElementById("sheet-address");
-        const sheetMeta = document.getElementById("sheet-meta");
-        const sheetDescription = document.getElementById("sheet-description");
-const descToggle = document.getElementById("sheet-desc-toggle");
-const sheetCloseBtn = document.getElementById("sheet-close-btn");
-        const sheetNextBtn = document.getElementById("sheet-next-btn");
-const sheetPrevBtn = document.getElementById("sheet-prev-btn");
-const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
-const sheetPrevTopBtn = document.getElementById("sheet-prev-top-btn");
-const sheetDetailRow = document.getElementById("sheet-detail-row");
-const sheetHighlights = document.getElementById("sheet-highlights");
-        const sheetProgressBar = document.getElementById("sheet-progress-bar");
-        const sheetPosition = document.getElementById("sheet-position");
-        const sheetFeedback = document.getElementById("sheet-feedback");
-        const sheetIntelligence = document.getElementById("sheet-intelligence");
-       const sheetPhotoCount = document.getElementById("sheet-photo-count");
-const photoPrevBtn = document.getElementById("photo-prev-btn");
-const photoNextBtn = document.getElementById("photo-next-btn");
-const sheetMapBtn = document.getElementById("sheet-map-btn");
-let activePhotoUrls = [];
-let activePhotoIndex = 0;
-let photoTouchStartX = 0;
-let photoTouchEndX = 0;
-
-const sheetContent = document.getElementById("sheet-content");
-const sheetSummary = document.getElementById("sheet-summary");
-        const summaryLoveCount = document.getElementById("summary-love-count");
-        const summaryMaybeCount = document.getElementById("summary-maybe-count");
-        const summaryPassCount = document.getElementById("summary-pass-count");
-        const summaryRestartBtn = document.getElementById("summary-restart-btn");
-        const editToggleBtn = document.getElementById("edit-shortlist-toggle");
-        const editBanner = document.getElementById("edit-banner");
-        const homesCountNum = document.getElementById("homes-count-num");
-        const sectionMetaCount = document.getElementById("section-meta-count");
-        const shortlistGrid = document.getElementById("shortlist-grid");
-        const emptyState = document.getElementById("empty-state");
-       const navSendTextBtn = document.getElementById("nav-send-text-btn");
-       const navCopyLinkBtn = document.getElementById("nav-copy-link-btn");
-const saveNoteBtn = document.getElementById("save-note-btn");
-const noteInput = document.getElementById("shortlist-note-input");
-const smsMessageInput = document.getElementById("sms-message-input");
-const saveSmsMessageBtn = document.getElementById("save-sms-message-btn");
-const mastheadMessage = document.getElementById("masthead-message");
-const sendTextButtons = Array.from(document.querySelectorAll("[data-send-text]"));
-const saveSmsImageBtn = document.getElementById("save-sms-image-btn");
-const smsImageInput = document.getElementById("sms-image-url-input");
-const presetImageButtons = Array.from(document.querySelectorAll("[data-preset-image-url]"));
-const showResourcesToggle = document.getElementById("show-resources-toggle");
-const saveResourceVisibilityBtn = document.getElementById("save-resource-visibility-btn");
-const addResourceBtn = document.getElementById("add-resource-btn");
-const resourceTypeInput = document.getElementById("resource-type-input");
-const resourceNameInput = document.getElementById("resource-name-input");
-const resourcePhoneInput = document.getElementById("resource-phone-input");
-const resourceEmailInput = document.getElementById("resource-email-input");
-const resourceWebsiteInput = document.getElementById("resource-website-input");
-const resourceDescriptionInput = document.getElementById("resource-description-input");
-const resourceVendorList = document.getElementById("resource-vendor-list");
-const saveResourceVendorsBtn = document.getElementById("save-resource-vendors-btn");       
-const decisionLoveBtn = document.getElementById("decision-love-btn");
-        const decisionMaybeBtn = document.getElementById("decision-maybe-btn");
-        const decisionPassBtn = document.getElementById("decision-pass-btn");
-        const feedbackChips = Array.from(document.querySelectorAll(".chip[data-tag]"));
-
-        if (!sheet || !overlay) return;
-        if (sheet.dataset.initialized === "true") return;
-        sheet.dataset.initialized = "true";
-
-        let activeCard = null;
-        let activeItemId = "";
-        let activeTags = [];
-        let activeFavourite = false;
-        let activeDecision = "";
-        let isSaving = false;
-        let shouldRefreshOnClose = false;
-        let editMode = false;
-        let isShowingSummary = false;
-let hasAutoSentReviewSummary = false;
-
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchCurrentX = 0;
-        let touchCurrentY = 0;
-        let isDraggingSheet = false;
-        let dragMode = "";
-        let touchStartedOnInteractive = false;
-        let isAnimatingGesture = false;
-        let dragCloseY = 0;
-
-    let reviewCards = null;
-
-function getCards() {
-  if (reviewCards) return reviewCards;
-
-  const allCards = Array.from(document.querySelectorAll(".card"));
-
-  reviewCards = allCards;
-  return reviewCards;
-}
-
-        function currentCardIndex() {
-          const cards = getCards();
-          if (!activeCard) return -1;
-          return cards.indexOf(activeCard);
-        }
-
-        function updateCounts() {
-          const count = getCards().length;
-
-          if (homesCountNum) {
-            homesCountNum.textContent = String(count).padStart(2, "0");
-          }
-
-          if (sectionMetaCount) {
-            sectionMetaCount.textContent = `${count} ${count === 1 ? "home" : "homes"} chosen for review`;
-          }
-
-          if (shortlistGrid && emptyState) {
-            if (count === 0) {
-              shortlistGrid.style.display = "none";
-              emptyState.style.display = "block";
-            } else {
-              shortlistGrid.style.display = "";
-              emptyState.style.display = "none";
-            }
-          }
-        }
-
-        function syncEditModeUI() {
-          body.classList.toggle("edit-mode", editMode);
-
-          if (editToggleBtn) {
-            editToggleBtn.textContent = editMode ? "Done editing" : "Edit shortlist";
-            editToggleBtn.setAttribute("data-editing", editMode ? "true" : "false");
-          }
-
-          if (editBanner) {
-            editBanner.classList.toggle("show", editMode);
-          }
-        }
-
-        function isMobileSheet() {
-          return window.innerWidth <= 640;
-        }
-
-        function parseTags(v) {
-          try {
-            const p = JSON.parse(v || "[]");
-            return Array.isArray(p) ? p : [];
-          } catch {
-            return [];
-          }
-        }
-
-        function setSheetTransform(value) {
-          if (!isMobileSheet()) return;
-          sheet.style.transform = value;
-        }
-
-        function resetSheetTransform() {
-          sheet.style.transform = "";
-          sheet.style.opacity = "";
-          overlay.style.opacity = "";
-        }
-
-        function setOverlayOpacityByProgress(progress) {
-          const minOpacity = 0.12;
-          const maxOpacity = 1;
-          const clamped = Math.max(0, Math.min(1, progress));
-          const opacity = minOpacity + (maxOpacity - minOpacity) * clamped;
-          overlay.style.opacity = String(opacity);
-        }
-function pickNote(seed, options) {
-  const text = String(seed || "");
-  const total = text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return options[total % options.length];
-}
-
-function buildHighlightChips(card) {
-  const desc = String(card.dataset.description || "").toLowerCase();
-  const type = String(card.dataset.type || "").toLowerCase();
-  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
-  const beds = Number(card.dataset.beds || 0);
-
-  const isCondo = type.includes("condo") || type.includes("apartment");
-  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
-  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
-
-  const hasView =
-    /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc) &&
-    !/viewing|preview|virtual tour|view today|viewing appointment/.test(desc);
-
-  const hasSuite = /suite|mortgage helper|income|secondary suite|legal suite/.test(desc);
-  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
-  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
-  const quiet = /cul-de-sac|quiet street|private|privacy/.test(desc);
-  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
-  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
-
-  const highlights = [];
-
-  if (isCondo) {
-    if (hasView) highlights.push("Open outlook");
-    if (amenities) highlights.push("Building amenities");
-    if (hasParking) highlights.push("Parking included");
-    if (outdoor) highlights.push("Outdoor space");
-    if (isUpdated) highlights.push("Updated interior");
-    if (sqft >= 900) highlights.push("Larger layout");
-    if (!highlights.length) highlights.push("Low-maintenance living");
-  } else if (isTownhouse) {
-    if (beds >= 3) highlights.push("Family-friendly layout");
-    if (hasParking) highlights.push("Good parking");
-    if (outdoor) highlights.push("Private outdoor space");
-    if (isUpdated) highlights.push("Updated features");
-    if (quiet) highlights.push("Quieter setting");
-    if (sqft >= 1600) highlights.push("Generous townhome space");
-    highlights.push("Lock-and-leave option");
-  } else if (isHouse) {
-    if (sqft >= 2500) highlights.push("Generous floor plan");
-    if (beds >= 4) highlights.push("Family-sized");
-    if (hasView) highlights.push("View potential");
-    if (hasSuite) highlights.push("Suite potential");
-    if (isUpdated) highlights.push("Updated features");
-    if (quiet) highlights.push("Quiet setting");
-    if (hasParking) highlights.push("Good parking");
-  } else {
-    if (hasView) highlights.push("View setting");
-    if (isUpdated) highlights.push("Updated features");
-    if (hasParking) highlights.push("Good parking");
-    if (outdoor) highlights.push("Outdoor space");
-  }
-
-  return Array.from(new Set(highlights)).slice(0, 3);
-}
-    function buildIntelligenceLabel(index, card) {
-  const desc = String(card.dataset.description || "").toLowerCase();
-  const type = String(card.dataset.type || "").toLowerCase();
-
-  const beds = Number(card.dataset.beds || 0);
-  const baths = Number(card.dataset.baths || 0);
-  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
-  const year = Number(card.dataset.year || 0);
-
-  const isCondo = type.includes("condo") || type.includes("apartment");
-  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
-  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
-
-  const hasView = /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc);
-  const hasSuite = isHouse && /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
-  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
-  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
-  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
-  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
-
-  if (isCondo) {
-    if (sqft >= 900 && outdoor) return "Feels bigger than most condos";
-    if (isUpdated) {
-      return pickNote(card.dataset.cardId || card.dataset.address, [
-        "Move-in ready condo option",
-        "Clean, easy condo choice",
-        "A simpler option to step into",
-        "Low-effort condo living"
-      ]);
+    if (error) {
+      console.error(error);
+      if (statusEl) statusEl.textContent = "Upload failed.";
+      return;
     }
-    if (sqft >= 900) return "More room than the typical condo";
-    if (amenities) return "Easy living with building perks";
-    if (hasParking) return "Convenient everyday setup";
-    return "Simple, low-maintenance living";
-  }
 
-  if (isTownhouse) {
-    if (beds >= 3 && outdoor) return "Great layout for everyday living";
-    if (hasParking) return "Practical townhome setup";
-    if (isUpdated) return "Updated townhome option";
-    return "Balanced space with low upkeep";
-  }
+    const { data } = supabase.storage
+      .from("public-images")
+      .getPublicUrl(path);
 
-  if (isHouse) {
-    const isFamilySized = beds >= 4 && baths >= 3;
-    const isLarge = sqft >= 2500;
-    const isNewer = year >= 2015;
+   urlInput.value = data.publicUrl;
 
-    if (hasView && hasSuite) return "Strong upside with income potential";
-    if (isNewer && isFamilySized && isLarge) return "Checks the boxes for a growing family";
-    if (isUpdated && isLarge) return "Updated home with real space";
-    if (hasSuite) return "Flexible layout with income potential";
-    if (hasView) return "Nice outlook from main living areas";
-    return index === 0 ? "Best overall match in this group" : "Solid detached option to consider";
-  }
-
-  if (hasView) return "Open outlook worth noting";
-  if (isUpdated) return "Updated features stand out";
-
-  return index === 0 ? "Best overall match in this group" : "Worth a closer look";
-}
-        function updateDecisionButtons() {
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            btn?.classList.remove("is-selected");
-          });
-
-          if (activeFavourite && decisionLoveBtn) {
-            decisionLoveBtn.classList.add("is-selected");
-          }
-
-          if (activeDecision === "maybe" && decisionMaybeBtn) {
-            decisionMaybeBtn.classList.add("is-selected");
-          }
-
-          if (activeDecision === "pass" && decisionPassBtn) {
-            decisionPassBtn.classList.add("is-selected");
-          }
-
-          feedbackChips.forEach((c) => {
-            c.classList.toggle("active", activeTags.includes(c.dataset.tag || ""));
-          });
-        }
-
-        function updateHeaderProgress() {
-          const cards = getCards();
-          const total = cards.length;
-          const index = currentCardIndex();
-          const mapEl = document.getElementById("sheet-mini-map");
-
-if (mapEl) {
-  mapEl.hidden = true;
-  mapEl.innerHTML = "";
-}
-
-if (sheetMiniMap) {
-  sheetMiniMap.remove();
-  sheetMiniMap = null;
-  sheetMiniMarker = null;
-}
-
-          if (!sheetPosition || !sheetProgressBar) return;
-
-          if (isShowingSummary) {
-            sheetPosition.textContent = `${total} of ${total}`;
-            sheetProgressBar.style.width = "100%";
-            return;
-          }
-
-          const displayIndex = index >= 0 ? index + 1 : 1;
-          sheetPosition.textContent = `${displayIndex} of ${Math.max(total, 1)}`;
-
-          const progress = total > 0 ? (displayIndex / total) * 100 : 0;
-          sheetProgressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-        }
-function preloadImage(src) {
-  if (!src) return;
-
-  const img = new Image();
-  img.src = src;
-}
-
-function renderActivePhoto() {
-  if (!sheetImage || !activePhotoUrls.length) return;
-
-  sheetImage.src = activePhotoUrls[activePhotoIndex];
-  sheetImage.alt = activeCard?.dataset.address || "";
-
-  preloadImage(activePhotoUrls[activePhotoIndex + 1]);
-  preloadImage(activePhotoUrls[activePhotoIndex - 1]);
-
-  if (sheetPhotoCount) {
-    sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-  }
-
-  if (photoPrevBtn) {
-    photoPrevBtn.disabled = activePhotoIndex === 0;
-  }
-
-  if (photoNextBtn) {
-    photoNextBtn.disabled = activePhotoIndex === activePhotoUrls.length - 1;
-  }
-}
-
-function showPrevPhoto() {
-  if (activePhotoIndex <= 0) return;
-  activePhotoIndex -= 1;
-  renderActivePhoto();
-}
-
-function showNextPhoto() {
-  if (activePhotoIndex >= activePhotoUrls.length - 1) return;
-  activePhotoIndex += 1;
-  renderActivePhoto();
-}
-
-photoPrevBtn?.addEventListener("click", showPrevPhoto);
-photoNextBtn?.addEventListener("click", showNextPhoto);
-
-sheetImage?.addEventListener(
-  "touchstart",
-  (event) => {
-    event.stopPropagation();
-    photoTouchStartX = event.changedTouches[0].screenX;
-  },
-  { passive: true }
-);
-
-sheetImage?.addEventListener(
-  "touchmove",
-  (event) => {
-    event.stopPropagation();
-  },
-  { passive: true }
-);
-
-sheetImage?.addEventListener(
-  "touchend",
-  (event) => {
-    event.stopPropagation();
-
-    photoTouchEndX = event.changedTouches[0].screenX;
-
-    const swipeDistance = photoTouchEndX - photoTouchStartX;
-
-    if (Math.abs(swipeDistance) < 50) return;
-
-    if (swipeDistance < 0) {
-      showNextPhoto();
-    } else {
-      showPrevPhoto();
-    }
-  },
-  { passive: true }
-);
-
-
-        function renderCardStateToPanel(card) {
-          if (!card) return;
-
-          const beds = card.dataset.beds || "—";
-          const baths = card.dataset.baths || "—";
-          const sqft = card.dataset.sqft ? ` · ${card.dataset.sqft} sqft` : "";
-          const index = currentCardIndex();
-
-          if (sheetImage) {
-const rawImages = JSON.parse(card.dataset.images || "[]");
-
-const normalizePhotoUrl = (url) => {
-  const value = String(url || "").trim();
-
-  if (!value) return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
-
-  return `https://cdn.repliers.io/${value}`;
-};
-
-const photoUrls = rawImages
-  .map((img) => {
-    if (typeof img === "string") return normalizePhotoUrl(img);
-
-    return normalizePhotoUrl(
-      img.highRes ||
-      img.mediumRes ||
-      img.lowRes ||
-      img.url ||
-      ""
-    );
+const { data: insertedImage, error: insertError } = await supabase
+  .from("shortlist_sms_images")
+  .insert({
+    shortlist_slug: document.body.dataset.shortlistSlug,
+    image_url: data.publicUrl,
+    label: "Uploaded image"
   })
-  .filter(Boolean);
+  .select()
+  .single();
 
-  if (!photoUrls.length) {
-    photoUrls.push(card.dataset.image || "https://placehold.co/800x600?text=Listing");
+if (insertError) {
+  console.error(insertError);
+  if (statusEl) statusEl.textContent = "Image uploaded, but could not save to image library.";
+  return;
+}
+
+const presetGrid = document.querySelector(".preset-image-grid");
+
+if (presetGrid) {
+  const wrap = document.createElement("div");
+  wrap.className = "preset-image-wrap";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "preset-image-btn is-selected";
+  btn.dataset.presetImageUrl = data.publicUrl;
+
+  btn.innerHTML = `
+    <img src="${data.publicUrl}" alt="Uploaded custom image" loading="lazy" />
+    <span>Uploaded image</span>
+  `;
+
+ const deleteBtn = document.createElement("button");
+deleteBtn.type = "button";
+deleteBtn.className = "preset-image-delete";
+deleteBtn.dataset.deleteSmsImageId = insertedImage.id;
+deleteBtn.textContent = "Delete";
+
+  wrap.appendChild(btn);
+  wrap.appendChild(deleteBtn);
+
+  presetGrid
+    .querySelectorAll(".preset-image-btn")
+    .forEach((item) => item.classList.remove("is-selected"));
+
+  presetGrid.prepend(wrap);
+
+  btn.addEventListener("click", () => {
+    presetGrid
+      .querySelectorAll(".preset-image-btn")
+      .forEach((item) => item.classList.remove("is-selected"));
+
+    btn.classList.add("is-selected");
+    urlInput.value = data.publicUrl;
+  });
+
+  deleteBtn.addEventListener("click", async () => {
+    const confirmed = confirm("Delete this uploaded image?");
+    if (!confirmed) return;
+
+    await supabase
+      .from("shortlist_sms_images")
+      .delete()
+      .eq("image_url", data.publicUrl);
+
+    wrap.remove();
+  });
+}
+
+if (statusEl) {
+  statusEl.textContent = "Uploaded image added above. Click Save image URL.";
+}
+  });
+document.querySelectorAll("[data-delete-sms-image-id]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const id = btn.dataset.deleteSmsImageId;
+    if (!id) return;
+
+    const confirmed = confirm("Delete this uploaded image?");
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("shortlist_sms_images")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      alert("Could not delete image.");
+      return;
+    }
+
+    btn.closest(".preset-image-wrap")?.remove();
+  });
+});
+function appendNextHigherListings(items) {
+  const grid = document.getElementById("shortlist-grid");
+
+  if (!grid) {
+    alert("Could not find shortlist grid.");
+    return;
   }
 
-  activePhotoUrls = photoUrls;
-activePhotoIndex = 0;
-renderActivePhoto();
+  const startIndex = grid.querySelectorAll(".card").length;
 
- 
-}
-          if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
-          if (sheetAddress) sheetAddress.textContent = card.dataset.address || "—";
+  items.forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "card";
 
-                    if (sheetMeta) {
-            sheetMeta.innerHTML = `
-              <div class="panel__meta-item">
-              <span class="panel__meta-label">beds</span>
-                <strong>${beds}</strong>
-              </div>
+    card.dataset.itemId = String(item.id || item.shortlist_item_id || "");
+    card.dataset.cardId = String(item.repliers_listing_id || item.listing_id || item.id || "");
+    card.dataset.listingId = String(item.repliers_listing_id || item.listing_id || item.id || "");
+    card.dataset.mls = String(item.mls_number || item.mls || "");
+    card.dataset.price = item.price_text || item.price || "Price unavailable";
+    card.dataset.address = item.address || "Address unavailable";
+    card.dataset.beds = String(item.beds || "-");
+    card.dataset.baths = String(item.baths || "-");
+    card.dataset.sqft = String(item.sqft || "");
+    card.dataset.type = item.property_type || "Home";
+    card.dataset.year = String(item.year_built || "");
+    card.dataset.dom = String(item.days_on_market || "");
+    card.dataset.image = item.image_url || "https://placehold.co/800x600?text=Listing";
+    card.dataset.images = JSON.stringify(item.images || item.photo_urls || []);
+    card.dataset.description = item.description || "A quick preview of this property.";
+    card.dataset.likedTags = JSON.stringify([]);
+    card.dataset.isFavourite = "false";
+    card.dataset.decision = "";
+    card.dataset.isNew = "true";
+   card.dataset.sortOrder = String(item.sort_order || startIndex + index + 1);
 
-              <div class="panel__meta-item">
-                <span class="panel__meta-label">bath</span>
-                <strong>${baths}</strong>
-              </div>
+    const num = String(startIndex + index + 1).padStart(2, "0");
+    const image = item.image_url || "https://placehold.co/800x600?text=Listing";
+    const price = item.price_text || item.price || "Price unavailable";
+    const address = item.address || "Address unavailable";
+    const beds = item.beds || "-";
+    const baths = item.baths || "-";
+    const sqft = item.sqft ? ` · ${item.sqft} sqft` : "";
+    const description = String(item.description || "A quick preview of this property.")
+      .replace(/\s+/g, " ")
+      .trim();
 
-              ${card.dataset.sqft ? `
-                <div class="panel__meta-item">
-                  <span class="panel__meta-label">sqft</span>
-                  <strong>${card.dataset.sqft}</strong>
-                </div>
-              ` : ""}
-            `;
-          }
-
-          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
-         if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
-          if (sheetDetailRow) {
-  const details = [
-    card.dataset.type || "",
-    card.dataset.year ? `Built ${card.dataset.year}` : "",
-    card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""
-  ].filter(Boolean);
-
-  sheetDetailRow.innerHTML = details.map((item) => `<span>${item}</span>`).join("");
-}
-
-if (sheetHighlights) {
-  const highlights = buildHighlightChips(card);
-
-  sheetHighlights.innerHTML = highlights
-    .map((item) => `<span class="panel__highlight-chip">${item}</span>`)
-    .join("");
-}
-
-          updateHeaderProgress();
-          updateDecisionButtons();
-          const cards = getCards();
-const currentIndex = cards.indexOf(card);
-const isFirst = currentIndex <= 0;
-const isLast = currentIndex >= cards.length - 1;
-
-if (sheetPrevBtn) sheetPrevBtn.disabled = isFirst;
-if (sheetPrevTopBtn) sheetPrevTopBtn.disabled = isFirst;
-
-if (sheetNextBtn) sheetNextBtn.textContent = isLast ? "Finish review →" : "Next listing →";
-if (sheetNextTopBtn) sheetNextTopBtn.textContent = isLast ? "Finish →" : "Next →";
-        }
-
-function appendExpandedListings(listings) {
-  if (!shortlistGrid || !Array.isArray(listings) || !listings.length) return;
-
-  reviewCards = null;
-
-  listings.forEach((listing) => {
-    const article = document.createElement("article");
-
-    const itemId = String(listing.shortlist_item_id || listing.id || "");
-    const listingId = String(listing.repliers_listing_id || listing.listing_id || listing.id || "");
-    const price = listing.price_text || "Price unavailable";
-    const address = listing.address || "Address unavailable";
-    const image = listing.image_url || "https://placehold.co/800x600?text=Listing";
-const safeDescription = String(listing.description || "").replace(/\s+/g, " ").trim();
-
-    article.className = "card";
-    article.dataset.itemId = itemId;
-    article.dataset.cardId = listingId;
-    article.dataset.price = price;
-    article.dataset.address = address;
-    article.dataset.beds = String(listing.beds || "-");
-    article.dataset.baths = String(listing.baths || "-");
-    article.dataset.sqft = String(listing.sqft || "");
-    article.dataset.type = listing.property_type || "Home";
-    article.dataset.year = String(listing.year_built || "");
-    article.dataset.image = image;
-    article.dataset.images = JSON.stringify(listing.images || []);
-    article.dataset.description = listing.description || "";
-    article.dataset.likedTags = "[]";
-    article.dataset.isFavourite = "false";
-    article.dataset.decision = "";
-    article.dataset.isNew = "true";
-    article.dataset.featured = "false";
-    article.dataset.originalOrder = String(-Date.now());
-
-    article.innerHTML = `
+    card.innerHTML = `
       <div class="card__image-wrap">
         <div class="card__new-badge">
           <span>✨</span>
@@ -4219,1959 +2436,38 @@ const safeDescription = String(listing.description || "").replace(/\s+/g, " ").t
         </div>
 
         <img src="${image}" alt="${address}" loading="lazy" />
-        <span class="card__index">New</span>
+        <span class="card__index">No. ${num}</span>
       </div>
 
       <div class="card__body">
         <p class="card__price">${price}</p>
         <p class="card__address">${address}</p>
-        <p class="card__meta">
-          ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
-          ${listing.sqft ? ` · ${listing.sqft} sqft` : ""}
-          ${listing.year_built ? ` · Built ${listing.year_built}` : ""}
-        </p>
-    <p class="card__desc">${safeDescription}</p>
+        <p class="card__meta">${beds} bed · ${baths} bath${sqft}</p>
+        <p class="card__desc">${description}</p>
         <button type="button" class="card__action preview-btn">View property →</button>
       </div>
     `;
 
-    shortlistGrid.appendChild(article);
-    bindCardEvents(article);
+    grid.appendChild(card);
+    card.querySelector(".preview-btn")?.addEventListener("click", () => {
+  card.click();
+});
+
+card.addEventListener("click", () => {
+  const event = new CustomEvent("open-shortlist-card", {
+    detail: { card }
   });
 
-  reviewCards = null;
-  sortCardsByReview();
-  updateCounts();
-}
-
-        function showSummary() {
-          isShowingSummary = true;
-          activeCard = null;
-          activeItemId = "";
-
-          const cards = getCards();
-
-const summaryTitle = document.getElementById("review-complete-title");
-if (summaryTitle && isExpandedReview) {
-  summaryTitle.textContent = "You’ve seen the new homes.";
-}
-
-const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
-          const maybeCount = cards.filter((card) => card.dataset.decision === "maybe").length;
-          const passCount = cards.filter((card) => card.dataset.decision === "pass").length;
-const faveStrip = document.getElementById("summary-fave-strip");
-const insightEl = document.getElementById("summary-insight");
-
-function parseSummaryPrice(value) {
-  return parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
-}
-
-const prices = cards
-  .map((card) => parseSummaryPrice(card.dataset.price))
-  .filter(Boolean);
-
-const lovedCards = cards.filter((card) => card.dataset.isFavourite === "true");
-
-const lovedPrices = lovedCards
-  .map((card) => parseSummaryPrice(card.dataset.price))
-  .filter(Boolean);
-
-const avgLovedPrice =
-  lovedPrices.reduce((sum, price) => sum + price, 0) /
-  Math.max(lovedPrices.length, 1);
-
-const maxSearchPrice = Math.max(...prices, 0);
-const minSearchPrice = Math.min(...prices, maxSearchPrice || 0);
-
-const topBudgetLine = maxSearchPrice * 0.88;
-const lowerBudgetLine = minSearchPrice + (maxSearchPrice - minSearchPrice) * 0.38;
-
-let insightType = "neutral";
-
-if (lovedCards.length >= 2 && avgLovedPrice && maxSearchPrice) {
-  if (avgLovedPrice >= topBudgetLine) {
-    insightType = "high";
-  } else if (avgLovedPrice <= lowerBudgetLine) {
-    insightType = "low";
-  }
-}
-
-if (insightEl) {
-  insightEl.hidden = false;
-
-  const heading =
-    insightType === "high"
-      ? "You seem to be drawn to the higher-end homes in this search."
-      : insightType === "low"
-        ? "Want to compare these against the next few higher-priced homes?"
-        : "Want to keep going and see the next few higher-priced options?";
-
-  const copy =
-    insightType === "high"
-      ? "Most of your favourites were closer to the top of the range. The natural next step is to look just above this search."
-      : insightType === "low"
-        ? "Even if these felt like better value, it can be useful to see what opens up just above this range."
-        : "You do not have to love anything first. Sometimes the next few above the range are what help clarify the search.";
-
-  insightEl.innerHTML = `
-    <div class="review-send-copy">
-      <h3>${heading}</h3>
-      <p>${copy}</p>
-    </div>
-
-    <div class="review-send-actions">
-      <button class="summary__btn summary__btn--primary" type="button" id="summary-above-budget-btn">
-        Show the next few higher-priced homes →
-      </button>
-    </div>
-  `;
-
-  insightEl.querySelector("button")?.addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-    const status = document.getElementById("summary-comment-status");
-
-    const originalText = btn.textContent || "Show more";
-
-    btn.disabled = true;
-    btn.textContent = "Finding homes...";
-
-    try {
-      const res = await fetch("/api/shortlists/expand-search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          slug: pageSlug,
-          mode: "above_budget"
-        })
-      });
-
-      const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-  throw new Error(data?.error || "Could not find more homes.");
-}
-
-if (!Array.isArray(data.listings) || data.listings.length === 0) {
-  throw new Error(data?.error || "No new homes were returned.");
-}
-
-     window.location.href = `/shortlists/${pageSlug}?expanded=1&openNew=1`;
-return;
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = originalText;
-
-      if (status) {
-        status.textContent =
-          err instanceof Error
-            ? err.message
-            : "Could not create revised shortlist.";
-      }
-    }
-  });
-}
-
-if (faveStrip) {
-  const faveCards = cards
-    .filter((card) => card.dataset.isFavourite === "true")
-    .slice(0, 4);
-
-  faveStrip.style.display = faveCards.length ? "grid" : "none";
-  faveStrip.style.gridTemplateColumns = `repeat(${Math.max(faveCards.length, 1)}, minmax(0, 1fr))`;
-  faveStrip.style.gap = "12px";
-  faveStrip.style.width = "100%";
-  faveStrip.style.margin = "12px 0 18px";
-
-  faveStrip.innerHTML = faveCards
-    .map((card) => {
-      const img = card.dataset.image || "";
-      const address = card.dataset.address || "Favourite home";
-      if (!img) return "";
-
-      return `
-  <button
-    type="button"
-    data-summary-fave-card-id="${card.dataset.cardId || ""}"
-    style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;transition:transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;border-radius:14px;"
-  >
-    <img
-      src="${img}"
-      alt="${address}"
-      style="width:100%;height:150px;max-height:150px;object-fit:cover;border-radius:14px;display:block;"
-    >
-  </button>
-`;
-    })
-        .join("");
-
-faveStrip.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
-  btn.addEventListener("mouseenter", () => {
-  btn.style.transform = "translateY(-2px)";
-  btn.style.boxShadow = "0 8px 18px rgba(0,0,0,0.08)";
-  btn.style.opacity = "0.96";
+  window.dispatchEvent(event);
 });
-
-btn.addEventListener("mouseleave", () => {
-  btn.style.transform = "";
-  btn.style.boxShadow = "";
-  btn.style.opacity = "";
-});
-
-  btn.addEventListener("click", () => {
-      const cardId = btn.getAttribute("data-summary-fave-card-id");
-      const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
-
-      if (card) {
-        openSheetFromCard(card);
-      }
-    });
-  });
-}
-      if (summaryLoveCount) {
-  summaryLoveCount.textContent = String(loveCount);
-  summaryLoveCount.setAttribute("data-count", "favourites");
-}
-
-if (summaryMaybeCount) {
-  summaryMaybeCount.textContent = String(maybeCount);
-  summaryMaybeCount.setAttribute("data-count", "maybes");
-}
-
-if (summaryPassCount) {
-  summaryPassCount.textContent = String(passCount);
-  summaryPassCount.setAttribute("data-count", "not");
-}
-
-          sheetContent?.classList.remove("open");
-          sheetSummary?.classList.add("open");
-          updateHeaderProgress();
-
-          if (sheetNextBtn) sheetNextBtn.disabled = true;
-
-       if (sheetNextTopBtn) {
-  sheetNextTopBtn.disabled = false;
-  sheetNextTopBtn.textContent = "Review again →";
-}
-
-autoSendReviewComplete();
-        }
-let sheetMiniMap = null;
-let sheetMiniMarker = null;
-
-sheetMapBtn?.addEventListener("click", async () => {
-  if (!activeCard || typeof L === "undefined") return;
-
-  const mapEl = document.getElementById("sheet-mini-map");
-  if (!mapEl) return;
-
-  mapEl.hidden = !mapEl.hidden;
-  if (mapEl.hidden) return;
-
-  let lat = Number(activeCard.dataset.lat || "");
-  let lng = Number(activeCard.dataset.lng || "");
-
- if (coordsLookWrong(lat, lng, activeCard)) {
-    const address = getGeocodeAddress(activeCard);
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
-      );
-
-      const data = await res.json();
-
-      lat = Number(data?.[0]?.lat || "");
-      lng = Number(data?.[0]?.lon || "");
-    } catch (err) {
-      console.warn("Map geocode failed", err);
-    }
-  }
-
- if (coordsLookWrong(lat, lng, activeCard)) {
-    const mapAddress = getGeocodeAddress(activeCard);
-const googleMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`;
-
-mapEl.innerHTML = `
-  <div style="padding:18px; line-height:1.5;">
-    <p>No embedded map location available for this listing.</p>
-    <a href="${googleMapUrl}" target="_blank" rel="noopener" style="font-weight:800;">
-      Open address in Google Maps →
-    </a>
-  </div>
-`;
-    return;
-  }
-
-  mapEl.innerHTML = "";
-
-  setTimeout(() => {
-    if (sheetMiniMap) {
-      sheetMiniMap.remove();
-      sheetMiniMap = null;
-      sheetMiniMarker = null;
-    }
-
-    sheetMiniMap = L.map(mapEl, {
-      zoomControl: false,
-      scrollWheelZoom: false
-    });
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(sheetMiniMap);
-
-    sheetMiniMap.setView([lat, lng], 15);
-    sheetMiniMarker = L.marker([lat, lng]).addTo(sheetMiniMap);
-
-    sheetMiniMap.invalidateSize();
-  }, 120);
-});
-  function buildReviewMessage(reason = "completed") {
-  const cards = getCards();
-
-  const favs = cards.filter((card) => card.dataset.isFavourite === "true").length;
-  const maybes = cards.filter((card) => card.dataset.decision === "maybe").length;
-  const no = cards.filter((card) => card.dataset.decision === "pass").length;
-  const reviewed = favs + maybes + no;
-
-  const parts = [];
-
-  if (favs > 0) parts.push(`${favs} favourite${favs > 1 ? "s" : ""}`);
-  if (maybes > 0) parts.push(`${maybes} maybe${maybes > 1 ? "s" : ""}`);
-  if (no > 0) parts.push(`${no} not for me`);
-
-  const summary = parts.length ? parts.join(", ") : "no choices saved yet";
-
-  if (reason === "skipped") {
-  return `Buyer left after reviewing ${reviewed} of ${cards.length} homes: ${summary}.`;
-}
-
-if (reason === "comment") {
-  return `Buyer added a note after reviewing ${cards.length} homes: ${summary}.`;
-}
-
-return `Buyer reviewed all ${cards.length} homes: ${summary}.`;
-}
-
-async function sendReviewComplete(reason = "completed", comment = "") {
-  try {
-    const res = await fetch("/api/shortlists/review-complete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        message: buildReviewMessage(reason),
-        comment,
-        reason
-      })
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed");
-    }
-
-    return true;
-  } catch (err) {
-    console.warn("Could not send review summary", err);
-    return false;
-  }
-}
-
-async function autoSendReviewComplete(reason = "completed") {
-  if (isAgentView) return;
-  if (hasAutoSentReviewSummary) return;
-
-  hasAutoSentReviewSummary = true;
-  await sendReviewComplete(reason, "");
-}
-        function showContent() {
-          isShowingSummary = false;
-          sheetSummary?.classList.remove("open");
-          sheetContent?.classList.add("open");
-        }
-function sortCardsByReview() {
-  if (!shortlistGrid) return;
-
-  reviewCards = null;
-
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  const scoreCard = (card) => {
-  // HARD RULE: "Not for me" always last
-  if (card.dataset.decision === "pass") return 99;
-
-  // Then order the rest
-  if (card.dataset.isFavourite === "true") return 0;
-  if (card.dataset.decision === "maybe") return 1;
-
-  // undecided
-  return 2;
-};
-
-  cards
-    .sort((a, b) => {
-      const scoreDiff = scoreCard(a) - scoreCard(b);
-      if (scoreDiff !== 0) return scoreDiff;
-
-      return Number(a.dataset.originalOrder || 999999) - Number(b.dataset.originalOrder || 999999);
-    })
-    .forEach((card, index) => {
-      shortlistGrid.appendChild(card);
-
-      const indexEl = card.querySelector(".card__index");
-      if (indexEl) {
-        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
-      }
-
-      card.dataset.featured = index === 0 ? "true" : "false";
-    });
-
-  reviewCards = null;
-}
-        function refreshCardUI(card, tags, isFav, decision) {
-  if (!card) return;
-
-  card.dataset.likedTags = JSON.stringify(tags);
-  card.dataset.isFavourite = isFav ? "true" : "false";
-  card.dataset.decision = decision || "";
-// once viewed, never show NEW again
-card.dataset.isNew = card.dataset.viewed === "true"
-  ? "false"
-  : (!isFav && !decision ? "true" : "false");
-
-  const wrap = card.querySelector(".card__image-wrap");
-  if (!wrap) return;
-
-  wrap.querySelector(".card__love-badge")?.remove();
-  wrap.querySelector(".card__maybe-badge")?.remove();
-wrap.querySelector(".card__new-badge")?.remove();
-  if (isFav) {
-    const badge = document.createElement("div");
-    badge.className = "card__love-badge";
-    badge.innerHTML = `
-      <span class="card__love-badge-heart">♥</span>
-      <span>Loved</span>
-    `;
-    wrap.appendChild(badge);
-    return;
-  }
-
-  if (decision === "maybe") {
-    const badge = document.createElement("div");
-    badge.className = "card__maybe-badge";
-    badge.innerHTML = `
-      <span>🤔</span>
-      <span>Not sure</span>
-    `;
-    wrap.appendChild(badge);
-  }
-}
-function getPrevCard() {
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  if (!activeCard || !cards.length) return null;
-
-  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
-  const currentIndex = cards.findIndex((card) => {
-    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
   });
 
-  if (currentIndex <= 0) return null;
-
-  return cards[currentIndex - 1] || null;
-}
-      function getNextCard() {
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  if (!activeCard || !cards.length) return null;
-
-  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
-  const currentIndex = cards.findIndex((card) => {
-    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
-  });
-
-  if (currentIndex === -1) return null;
-
-  return cards[currentIndex + 1] || null;
+  grid.scrollIntoView({ behavior: "smooth", block: "end" });
 }
 
-        function resetDecisionUI() {
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            if (!btn) return;
-            btn.classList.remove("is-selected");
-            btn.blur();
-          });
+</script>
 
-          feedbackChips.forEach((chip) => {
-            chip.classList.remove("active");
-            chip.blur();
-          });
 
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          sheet.classList.remove("is-love-pulse", "is-pass-fade");
-        }
-
-        function openSheetFromCard(card) {
-          if (!card) return;
-          if (editMode && isAgentView) return;
-
-          activeCard = null;
-          activeItemId = "";
-          activeTags = [];
-          activeFavourite = false;
-          activeDecision = "";
-
-          resetDecisionUI();
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          if (sheetNextBtn) sheetNextBtn.disabled = false;
-          if (sheetNextTopBtn) {
-            sheetNextTopBtn.disabled = false;
-            sheetNextTopBtn.textContent = "Next →";
-          }
-
-          showContent();
-
-         activeCard = card;
-markListingViewed(card);
-
-// do not reorder while the sheet is open
-
-activeItemId = String(card.dataset.itemId || "").trim();
-activeTags = parseTags(card.dataset.likedTags || "[]");
-activeFavourite = card.dataset.isFavourite === "true";
-activeDecision = card.dataset.decision || "";
-
-// 🔥 mark as viewed immediately (removes NEW pill)
-card.dataset.isNew = "false";
-card.dataset.viewed = "true";
-
-const wrap = card.querySelector(".card__image-wrap");
-wrap?.querySelector(".card__new-badge")?.remove();
-
-          renderCardStateToPanel(card);
-
-          sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
-          resetSheetTransform();
-          sheet.classList.add("open");
-          overlay.classList.add("open");
-          sheet.setAttribute("aria-hidden", "false");
-          document.body.style.overflow = "hidden";
-
-          resetPanelScroll();
-        }
-
-        async function saveFeedback() {
-          if (!activeItemId || isSaving || !activeCard) return false;
-          isSaving = true;
-
-          try {
-            const res = await fetch("/api/shortlists/feedback", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                shortlistItemId: activeItemId,
-                liked_tags: activeTags,
-                is_favourite: activeFavourite,
-                decision: activeDecision || null
-              })
-            });
-
-            const json = await res.json();
-            if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to save");
-
-            const savedTags = Array.isArray(json?.item?.liked_tags) ? json.item.liked_tags : activeTags;
-            const savedFav = Boolean(json?.item?.is_favourite);
-            const savedDecision = json?.item?.decision || "";
-
-            activeTags = savedTags;
-            activeFavourite = savedFav;
-            activeDecision = savedDecision;
-
-       refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
-updateDecisionButtons();
-shouldRefreshOnClose = true;
-
-return true;
-          } catch (err) {
-            if (sheetFeedback) {
-              sheetFeedback.textContent = err instanceof Error ? err.message : "Could not save";
-              sheetFeedback.className = "panel__feedback";
-            }
-            return false;
-          } finally {
-            isSaving = false;
-          }
-        }
-
-     function popDecisionEmojisFromButton(button, emojiList = ["❤️"], count = 12) {
-  if (!button) return;
-
-  const rect = button.getBoundingClientRect();
-  const startX = rect.left + rect.width / 2;
-  const startY = rect.top + rect.height / 2;
-
-  for (let i = 0; i < count; i++) {
-    const emoji = document.createElement("span");
-
-    emoji.textContent = emojiList[i % emojiList.length];
-
-    emoji.style.position = "fixed";
-    emoji.style.left = `${startX}px`;
-    emoji.style.top = `${startY}px`;
-    emoji.style.zIndex = "2147483647";
-    emoji.style.pointerEvents = "none";
-    emoji.style.fontSize = i === 0 ? "36px" : "28px";
-    emoji.style.lineHeight = "1";
-    emoji.style.transform = "translate(-50%, -50%) scale(0.6)";
-    emoji.style.opacity = "1";
-    emoji.style.filter = "drop-shadow(0 6px 10px rgba(0,0,0,0.22))";
-
-    document.body.appendChild(emoji);
-
-    const driftX = (Math.random() - 0.5) * 160;
-    const driftY = -90 - Math.random() * 80;
-    const rotate = (Math.random() - 0.5) * 45;
-
-    emoji.animate(
-      [
-        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0 },
-        { transform: "translate(-50%, -70%) scale(1.15)", opacity: 1, offset: 0.18 },
-        {
-          transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(1.55) rotate(${rotate}deg)`,
-          opacity: 0
-        }
-      ],
-      {
-        duration: 1200,
-        delay: i * 35,
-        easing: "ease-out",
-        fill: "forwards"
-      }
-    );
-
-    window.setTimeout(() => emoji.remove(), 1600);
-  }
-}
-
-        async function handleDecision(kind) {
-          if (!activeCard) return;
-
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-
-          if (kind === "love") {
-            popDecisionEmojisFromButton(decisionLoveBtn, ["❤️", "🧡", "💛", "💚", "💙", "💜"], 14);
-            activeFavourite = true;
-            activeDecision = "";
-            sheet.classList.remove("is-pass-fade");
-            sheet.classList.add("is-love-pulse");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--love">Saved ✓</span><span>Ready when you are</span></span>`;
-              sheetFeedback.className = "panel__feedback is-love";
-            }
-          }
-
-         if (kind === "maybe") {
-  popDecisionEmojisFromButton(decisionMaybeBtn, ["❓"], 9);
-  activeFavourite = false;
-            activeDecision = "maybe";
-            sheet.classList.remove("is-love-pulse", "is-pass-fade");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--maybe">Maybe</span><span>Saved - review this one, then continue</span></span>`;
-              sheetFeedback.className = "panel__feedback is-maybe";
-            }
-          }
-
-          if (kind === "pass") {
-  popDecisionEmojisFromButton(decisionPassBtn, ["💩"], 9);
-            activeFavourite = false;
-            activeDecision = "pass";
-            sheet.classList.remove("is-love-pulse");
-            sheet.classList.add("is-pass-fade");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--pass">Passed</span><span>Saved - continue when ready</span></span>`;
-              sheetFeedback.className = "panel__feedback is-pass";
-            }
-          }
-
-          refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
-          updateDecisionButtons();
-
-          const ok = await saveFeedback();
-
-       if (ok) {
-            updateHeaderProgress();
-            updateDecisionButtons();
-
-            if (sheetNextBtn) sheetNextBtn.disabled = false;
-            if (sheetNextTopBtn) {
-              sheetNextTopBtn.disabled = false;
-              sheetNextTopBtn.textContent = "Next →";
-            }
-          }
-
-          window.setTimeout(() => {
-            sheet.classList.remove("is-love-pulse", "is-pass-fade");
-          }, 900);
-        }
-
-        function goToNextCard(e) {
-          if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-
-          if (isShowingSummary) return;
-
-          const nextCard = getNextCard();
-          if (nextCard) {
-            openSheetFromCard(nextCard);
-            resetPanelScroll();
-          } else {
-            resetDecisionUI();
-            showSummary();
-            resetPanelScroll();
-          }
-        }
-
-        function goToPrevCard(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  if (isShowingSummary) return;
-
-  const prevCard = getPrevCard();
-
-  if (prevCard) {
-    openSheetFromCard(prevCard);
-    resetPanelScroll();
-  }
-}
-
-        function closeSheet(skipReload = false) {
-          sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
-
-          if (isMobileSheet()) {
-            sheet.style.transition = "none";
-            sheet.classList.remove("open");
-            overlay.classList.remove("open");
-            sheet.setAttribute("aria-hidden", "true");
-            document.body.style.overflow = "";
-            resetSheetTransform();
-
-            requestAnimationFrame(() => {
-              sheet.style.transition = "";
-            });
-          } else {
-            sheet.classList.remove("open");
-            overlay.classList.remove("open");
-            sheet.setAttribute("aria-hidden", "true");
-            document.body.style.overflow = "";
-            resetSheetTransform();
-          }
-
-       const needsRefresh = shouldRefreshOnClose && !skipReload;
-
-if (needsRefresh) {
-  window.location.reload();
-  return;
-}
-
-          activeCard = null;
-          activeItemId = "";
-          activeTags = [];
-          activeFavourite = false;
-          activeDecision = "";
-          isSaving = false;
-          isShowingSummary = false;
-          shouldRefreshOnClose = false;
-          touchStartX = 0;
-          touchStartY = 0;
-          touchCurrentX = 0;
-          touchCurrentY = 0;
-          isDraggingSheet = false;
-          dragMode = "";
-          touchStartedOnInteractive = false;
-          isAnimatingGesture = false;
-          dragCloseY = 0;
-
-          sheetContent?.classList.remove("open");
-          sheetSummary?.classList.remove("open");
-          updateDecisionButtons();
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          if (sheetPosition) sheetPosition.textContent = "1 of 1";
-          if (sheetProgressBar) sheetProgressBar.style.width = "0%";
-
-          sheet.scrollTop = 0;
-          
-        }
-
-        async function removeShortlistItem(card) {
-          if (!isAgentView || !card) return;
-
-          const itemId = String(card.dataset.itemId || "").trim();
-          if (!itemId) {
-            alert("Missing shortlist item id.");
-            return;
-          }
-
-          const ok = window.confirm("Remove this home from the shortlist?");
-          if (!ok) return;
-
-          card.classList.add("is-removing");
-
-          try {
-            const res = await fetch("/api/shortlists/remove-item", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: itemId })
-            });
-
-            const json = await res.json().catch(() => null);
-
-            if (!res.ok || !json?.ok) {
-              throw new Error(json?.error || "Could not remove listing");
-            }
-
-            if (activeCard === card) {
-              closeSheet(true);
-            }
-
-            card.remove();
-            updateCounts();
-          } catch (err) {
-            card.classList.remove("is-removing");
-            alert(err instanceof Error ? err.message : "Could not remove listing");
-          }
-        }
-
-        function animateSheetBack(mode = "close") {
-          if (!isMobileSheet()) return;
-          isAnimatingGesture = true;
-          sheet.classList.remove("dragging");
-
-          if (mode === "nav") {
-            sheet.style.transition = "transform 0.22s ease, opacity 0.22s ease";
-            sheet.style.transform = "translateX(0)";
-            sheet.style.opacity = "1";
-            window.setTimeout(() => {
-              sheet.style.transition = "";
-              sheet.style.opacity = "";
-              resetSheetTransform();
-              isAnimatingGesture = false;
-            }, 220);
-            return;
-          }
-
-          sheet.style.transition = "transform 0.22s ease";
-          overlay.style.transition = "opacity 0.22s ease";
-          setSheetTransform("translateY(0)");
-          overlay.style.opacity = "";
-          window.setTimeout(() => {
-            sheet.style.transition = "";
-            overlay.style.transition = "";
-            resetSheetTransform();
-            isAnimatingGesture = false;
-          }, 220);
-        }
-
-        function animateSheetOffscreenAndClose() {
-          if (!isMobileSheet()) {
-            closeSheet();
-            return;
-          }
-
-          isAnimatingGesture = true;
-          sheet.classList.remove("dragging");
-
-          const startY = Math.max(0, dragCloseY || 0);
-          sheet.style.transition = "none";
-          sheet.style.transform = `translateY(${startY}px)`;
-
-          overlay.style.transition = "opacity 0.22s ease";
-          requestAnimationFrame(() => {
-            sheet.classList.add("closing-down");
-            overlay.style.opacity = "0";
-          });
-
-          window.setTimeout(() => {
-            sheet.classList.remove("closing-down");
-            sheet.style.transition = "";
-            overlay.style.transition = "";
-            closeSheet();
-            isAnimatingGesture = false;
-          }, 220);
-        }
-
-        function clearInteractionState() {
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            btn?.classList.remove("is-selected");
-            btn?.blur?.();
-          });
-
-          feedbackChips.forEach((chip) => {
-            chip.classList.remove("active");
-            chip?.blur?.();
-          });
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          sheet.classList.remove("is-love-pulse", "is-pass-fade");
-        }
-
-        function resetPanelScroll() {
-          requestAnimationFrame(() => {
-            const scrollArea = sheet.querySelector(".panel__view");
-            if (scrollArea) {
-              scrollArea.scrollTop = 0;
-            } else {
-              sheet.scrollTop = 0;
-            }
-          });
-        }
-
-        function animateHorizontalCardChange(direction) {
-          if (isShowingSummary) return;
-          if (direction !== "next") return;
-
-          clearInteractionState();
-
-          activeFavourite = false;
-          activeDecision = "";
-          activeTags = [];
-
-          sheet.classList.remove("dragging", "is-love-pulse", "is-pass-fade");
-          sheet.style.transition = "";
-          sheet.style.opacity = "";
-          resetSheetTransform();
-
-          isAnimatingGesture = true;
-          goToNextCard();
-
-          window.setTimeout(() => {
-            isAnimatingGesture = false;
-          }, 40);
-        }
-
-        function bindCardEvents(card) {
-          card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openSheetFromCard(card);
-          });
-
-          card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openSheetFromCard(card);
-          });
-
-          card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await removeShortlistItem(card);
-          });
-
-          card.querySelector("[data-preview-image-url]")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const btn = e.currentTarget;
-  const imageUrl = btn?.getAttribute("data-preview-image-url") || "";
-
-  if (!imageUrl || !smsImageInput) return;
-
-  smsImageInput.value = imageUrl;
-
-  try {
-    btn.textContent = "Saving...";
-    await saveSmsImageUrl(imageUrl);
-    btn.textContent = "Selected ✓";
-
-    setTimeout(() => {
-  btn.textContent = "Use as text preview";
-}, 1200);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save image.");
-    btn.textContent = "Use as text preview";
-  }
-});
-        }
-
-        async function sendShortlistText(sendBtn) {
-      const slug = sendBtn?.getAttribute("data-shortlist-slug") || "";
-const clientName = sendBtn?.getAttribute("data-client-name") || "";
-const phone = sendBtn?.getAttribute("data-client-phone") || "";
-const note = sendBtn?.getAttribute("data-note") || "";
-const smsImageUrl = sendBtn?.getAttribute("data-sms-image-url") || "";
-const agentName = "{agentName}";
-
-          if (!slug) {
-            alert("Missing shortlist slug.");
-            return;
-          }
-
-          if (!phone) {
-            alert("No client phone number found.");
-            return;
-          }
-
-          const originalText = sendBtn.textContent || "Send text";
-
-          sendBtn.disabled = true;
-          sendBtn.textContent = "Sending...";
-
-          try {
-            const res = await fetch("/api/shortlists/send-text", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-  slug,
-  clientName,
-  phone,
-  note,
-  agentName,
-  smsImageUrl
-})
-            });
-
-            const data = await res.json();
-
-            if (!res.ok || !data?.ok) {
-              throw new Error(data?.error || "Failed to send text.");
-            }
-
-            sendBtn.textContent = "Text sent ✓";
-
-            setTimeout(() => {
-              sendBtn.textContent = originalText;
-            }, 1800);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to send text.");
-            sendBtn.textContent = originalText;
-          } finally {
-            sendBtn.disabled = false;
-          }
-        }
-
-        async function copyShortlistLink(copyBtn) {
-          const path = copyBtn?.getAttribute("data-copy-link");
-          if (!path) return;
-
-          const url = `${window.location.origin}${path}`;
-
-          try {
-            await navigator.clipboard.writeText(url);
-            const orig = copyBtn.textContent || "Copy link";
-            copyBtn.textContent = "Copied!";
-            setTimeout(() => {
-              copyBtn.textContent = orig;
-            }, 1400);
-          } catch {
-            alert(url);
-          }
-        }
-async function loadResourceVendors() {
-  if (!resourceVendorList) return;
-
-  resourceVendorList.textContent = "Loading resources...";
-
-  try {
-    const res = await fetch("/api/buyer-resources/vendors");
-const data = await res.json();
-
-const selectedRes = await fetch(`/api/buyer-resources/selected?shortlistSlug=${encodeURIComponent(pageSlug)}`);
-const selectedData = await selectedRes.json();
-
-const vendors = data.vendors || [];
-const selectedIds = new Set(selectedData.vendorIds || []);
-
-    if (!vendors.length) {
-      resourceVendorList.textContent = "No vendors added yet.";
-      return;
-    }
-
-    resourceVendorList.innerHTML = vendors.map((vendor) => `
-      <label class="resource-vendor-row">
-        <input type="checkbox" value="${vendor.id}" ${selectedIds.has(vendor.id) ? "checked" : ""} />
-        <span>
-          <strong>${vendor.name}</strong>
-          <small>${vendor.type}${vendor.email ? ` · ${vendor.email}` : ""}</small>
-        </span>
-      </label>
-    `).join("");
-  } catch (err) {
-    resourceVendorList.textContent = "Could not load resources.";
-  }
-}
-
-async function saveSelectedResourceVendors() {
-  if (!saveResourceVendorsBtn) return;
-
-  const selectedIds = Array.from(
-    document.querySelectorAll("#resource-vendor-list input[type='checkbox']:checked")
-  ).map((input) => input.value);
-
-  const originalText = saveResourceVendorsBtn.textContent || "Save resources";
-
-  saveResourceVendorsBtn.disabled = true;
-  saveResourceVendorsBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/buyer-resources/select", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-     body: JSON.stringify({
-        shortlistSlug:
-          document.body.dataset.shortlistSlug ||
-          window.location.pathname.split("/").filter(Boolean).pop(),
-        vendorIds: selectedIds
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save resources.");
-    }
-
-    if (showResourcesToggle) showResourcesToggle.checked = true;
-
-await fetch("/api/shortlists/update-resource-visibility", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    slug: pageSlug,
-    showResources: true
-  })
-});
-
-saveResourceVendorsBtn.textContent = "Saved ✓";
-
-setTimeout(() => {
-  window.location.reload();
-}, 500);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save resources.");
-    saveResourceVendorsBtn.textContent = originalText;
-  } finally {
-    saveResourceVendorsBtn.disabled = false;
-
-    setTimeout(() => {
-      saveResourceVendorsBtn.textContent = originalText;
-    }, 1200);
-  }
-}
-        async function saveSmsImageUrl(url) {
-  const cleanUrl = String(url || "").trim();
-
-  const res = await fetch("/api/shortlists/update-sms-image", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      slug: pageSlug,
-      smsImageUrl: cleanUrl
-    })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data?.ok) {
-    throw new Error(data?.error || "Failed to save image.");
-  }
-
-  sendTextButtons.forEach((btn) => {
-    btn.setAttribute("data-sms-image-url", cleanUrl);
-  });
-
-  return cleanUrl;
-}
-
-        const viewedListings = getViewedListings();
-
-getCards().forEach((card, index) => {
-card.dataset.originalOrder = String(index);
-
-  const id = card.dataset.itemId || card.dataset.cardId || "";
-
-  if (id && viewedListings.has(id)) {
-    card.dataset.viewed = "true";
-    card.dataset.isNew = "false";
-    card.querySelector(".card__new-badge")?.remove();
-  }
-
-  bindCardEvents(card);
-});
-
-sortCardsByReview();
-
-const autoOpenParams = new URLSearchParams(window.location.search);
-
-if (autoOpenParams.has("openNew")) {
-  autoOpenParams.delete("openNew");
-
-  const cleanUrl =
-    window.location.pathname +
-    (autoOpenParams.toString() ? `?${autoOpenParams.toString()}` : "");
-
-  window.history.replaceState({}, "", cleanUrl);
-
- requestAnimationFrame(() => {
-  reviewCards = null;
-
-  const cards = getCards();
-
-  console.log(
-    "AUTO OPEN DEBUG",
-    cards.map((card, index) => ({
-      visualNumber: index + 1,
-      sortOrder: card.dataset.sortOrder,
-      price: card.dataset.price,
-      address: card.dataset.address
-    }))
-  );
-
-  const batchStartIndex = Math.max(0, cards.length - 3);
-  const firstNewCard = cards[batchStartIndex] || cards[0];
-
-  if (firstNewCard) {
-    openSheetFromCard(firstNewCard);
-  }
-});
-}
-
-presetImageButtons.forEach((btn) => {
-  btn.addEventListener("click", async (e) => {
-    e.preventDefault();
-
-    const imageUrl = btn.getAttribute("data-preset-image-url") || "";
-    if (!imageUrl || !smsImageInput) return;
-
-    const label = btn.querySelector("span");
-    const originalText = label?.textContent || "Preset";
-
-    smsImageInput.value = imageUrl;
-
-presetImageButtons.forEach((b) => b.classList.remove("is-selected"));
-btn.classList.add("is-selected");
-
-    try {
-      if (label) label.textContent = "Saving...";
-      await saveSmsImageUrl(imageUrl);
-      if (label) label.textContent = "Selected ✓";
-
-      setTimeout(() => {
-  if (label) label.textContent = originalText;
-}, 1200);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save image.");
-      if (label) label.textContent = originalText;
-    }
-  });
-});
-
-        if (editToggleBtn) {
-          editToggleBtn.addEventListener("click", () => {
-            editMode = !editMode;
-            syncEditModeUI();
-          });
-        }
-
-        decisionLoveBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("love");
-        });
-
-        decisionMaybeBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("maybe");
-        });
-
-        decisionPassBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("pass");
-        });
-
-        feedbackChips.forEach((chip) => {
-          chip.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget?.blur?.();
-
-            const tag = chip.dataset.tag || "";
-            if (!tag || !activeCard) return;
-
-            activeTags = activeTags.includes(tag)
-              ? activeTags.filter((t) => t !== tag)
-              : [...activeTags, tag];
-
-            updateDecisionButtons();
-            refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
-            await saveFeedback();
-          });
-        });
-descToggle?.addEventListener("click", () => {
-  if (!sheetDescription) return;
-
-  const isCollapsed = sheetDescription.classList.contains("is-collapsed");
-
-  sheetDescription.classList.toggle("is-collapsed");
-
-  descToggle.textContent = isCollapsed ? "Show less" : "Read more";
-});
-
-sheetPrevBtn?.addEventListener("click", goToPrevCard);
-sheetPrevTopBtn?.addEventListener("click", goToPrevCard);
-
-sheetNextBtn?.addEventListener("click", goToNextCard);
-
-const mapBtn = document.getElementById("page-map-btn");
-const masthead = document.querySelector(".masthead");
-
-let googleShortlistMap = null;
-
-function loadGoogleMapsScript() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps?.Map) {
-      resolve();
-      return;
-    }
-
-    const key = document.body.dataset.googleMapsApiKey || "";
-
-    if (!key) {
-      reject(new Error("Missing Google Maps API key"));
-      return;
-    }
-
-    const existing = document.querySelector("script[data-google-maps-script]");
-
-    if (existing) {
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", reject, { once: true });
-
-      setTimeout(() => {
-        if (window.google?.maps?.Map) resolve();
-        else reject(new Error("Google Maps script exists but did not finish loading."));
-      }, 5000);
-
-      return;
-    }
-
-    window.__initShortlistGoogleMap = () => {
-      resolve();
-    };
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__initShortlistGoogleMap&v=weekly`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleMapsScript = "true";
-    script.onerror = () => reject(new Error("Google Maps script failed to load."));
-
-    document.head.appendChild(script);
-
-    setTimeout(() => {
-      if (!window.google?.maps?.Map) {
-        reject(new Error("Google Maps timed out. Check billing, API key, or referrer restrictions."));
-      }
-    }, 6000);
-  });
-}
-
-async function renderPageMap() {
-  const mapEl = document.querySelector("[data-deferred-map]");
-  if (!mapEl) return;
-
-mapEl.style.height = "100%";
-mapEl.style.minHeight = "100%";
-mapEl.style.width = "100%";
-
-    mapEl.innerHTML = `<div style="padding:18px;">Loading Google map...</div>`;
-
-  try {
-    await loadGoogleMapsScript();
-  } catch (err) {
-    console.error("Google Maps load failed:", err);
-
-    mapEl.innerHTML = `
-      <div style="padding:18px; line-height:1.5;">
-        <strong>Google Maps could not load.</strong><br>
-        ${err instanceof Error ? err.message : "Check your API key, billing, and referrer restrictions."}
-      </div>
-    `;
-    return;
-  }
-  const geocoder = new google.maps.Geocoder();
-
-  const cards = getCards();
-
-  const points = [];
-
-  for (const card of cards) {
-    let lat = Number(card.dataset.lat || "");
-    let lng = Number(card.dataset.lng || "");
-
-    if (coordsLookWrong(lat, lng, card)) {
-      const address = getGeocodeAddress(card);
-
-      try {
-        const result = await geocoder.geocode({ address });
-        const location = result?.results?.[0]?.geometry?.location;
-
-        if (location) {
-          lat = location.lat();
-          lng = location.lng();
-        }
-      } catch (err) {
-        console.warn("Google geocode failed:", card.dataset.address, err);
-      }
-    }
-
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
-      points.push({ card, lat, lng });
-    }
-  }
-
-  if (!points.length) {
-    mapEl.innerHTML = `<div style="padding:18px;">No usable coordinates or addresses found.</div>`;
-    return;
-  }
-  mapEl.innerHTML = "";
-
-  googleShortlistMap = new google.maps.Map(mapEl, {
-    center: { lat: points[0].lat, lng: points[0].lng },
-    zoom: 13,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true
-  });
-
-  const bounds = new google.maps.LatLngBounds();
-  const info = new google.maps.InfoWindow();
-
-  points.forEach(({ card, lat, lng }, index) => {
-    const marker = new google.maps.Marker({
-      position: { lat, lng },
-      map: googleShortlistMap,
-      label: String(index + 1),
-      title: card.dataset.address || "Listing"
-    });
-
-  marker.addListener("click", () => {
-  openSheetFromCard(card);
-});
-
-    bounds.extend({ lat, lng });
-  });
-
-  if (points.length > 1) {
-    googleShortlistMap.fitBounds(bounds);
-  } else {
-    googleShortlistMap.setZoom(15);
-  }
-
-  setTimeout(() => {
-  google.maps.event.trigger(googleShortlistMap, "resize");
-  googleShortlistMap.fitBounds(bounds);
-}, 250);
-
-setTimeout(() => {
-  google.maps.event.trigger(googleShortlistMap, "resize");
-  googleShortlistMap.fitBounds(bounds);
-}, 700);
-
-window.addEventListener("resize", () => {
-  if (!googleShortlistMap) return;
-
-  const cards = getCards();
-  const bounds = new google.maps.LatLngBounds();
-
-  cards.forEach((card) => {
-    const lat = Number(card.dataset.lat || "");
-    const lng = Number(card.dataset.lng || "");
-
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
-      bounds.extend({ lat, lng });
-    }
-  });
-
-  if (!bounds.isEmpty()) {
-    google.maps.event.trigger(googleShortlistMap, "resize");
-    googleShortlistMap.fitBounds(bounds);
-  }
-});
-}
-
-mapBtn?.addEventListener("click", () => {
-  const mapWrap = document.getElementById("shortlist-page-map-wrap");
-  if (!mapWrap) return;
-
-  const isOpening = mapWrap.hidden;
-
-  mapWrap.hidden = !mapWrap.hidden;
-  mapBtn.classList.toggle("is-active", isOpening);
-  masthead?.classList.toggle("map-mode", isOpening);
-
-  if (isOpening) {
-    masthead?.scrollIntoView({ behavior: "auto", block: "start" });
-    renderPageMap();
-  }
-});
-        sheetNextTopBtn?.addEventListener("click", (e) => {
-          if (isShowingSummary) {
-            e.preventDefault();
-            const firstCard = getCards()[0];
-            if (firstCard) openSheetFromCard(firstCard);
-            return;
-          }
-
-          goToNextCard(e);
-        });
-
-               summaryRestartBtn?.addEventListener("click", () => {
-          const firstCard = getCards()[0];
-          if (firstCard) openSheetFromCard(firstCard);
-        });
-
-        document.querySelectorAll("[data-summary-comment]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const input = document.getElementById("summary-comment-input");
-            const text = btn.getAttribute("data-summary-comment") || "";
-            if (input) input.value = text;
-          });
-        });
-
-        document.getElementById("summary-send-comment-btn")?.addEventListener("click", async (e) => {
-          e.preventDefault();
-
-          const btn = e.currentTarget;
-          const input = document.getElementById("summary-comment-input");
-          const status = document.getElementById("summary-comment-status");
-          const comment = String(input?.value || "").trim();
-
-          if (!comment) {
-            if (status) status.textContent = "Add a quick note first.";
-            return;
-          }
-
-          const originalText = btn.textContent || "Send note to agent";
-
-          btn.disabled = true;
-          btn.textContent = "Sending...";
-
-         const ok = await sendReviewComplete("comment", comment);
-
-          btn.textContent = ok ? "Sent ✓" : originalText;
-if (status) {
-  status.textContent =
-    err instanceof Error
-      ? err.message
-      : "Could not create revised shortlist.";
-}
-
-btn.style.display = "none";
-
-          setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = originalText;
-          }, 1400);
-        });
-
-        navSendTextBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-          await sendShortlistText(navSendTextBtn);
-        });
-
-        navCopyLinkBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-          await copyShortlistLink(navCopyLinkBtn);
-        });
-
-                saveSmsImageBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-
-          const originalText = saveSmsImageBtn.textContent || "Save image URL";
-
-          try {
-            saveSmsImageBtn.disabled = true;
-            saveSmsImageBtn.textContent = "Saving...";
-
-            await saveSmsImageUrl(smsImageInput?.value || "");
-
-            saveSmsImageBtn.textContent = "Saved ✓";
-
-setTimeout(() => {
-  window.location.reload();
-}, 500);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to save image.");
-            saveSmsImageBtn.textContent = originalText;
-          } finally {
-            saveSmsImageBtn.disabled = false;
-          }
-        });
-        addResourceBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = addResourceBtn.textContent || "Add resource";
-
-  addResourceBtn.disabled = true;
-  addResourceBtn.textContent = "Adding...";
-
-  try {
-    const res = await fetch("/api/shortlists/add-resource", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        type: resourceTypeInput?.value || "other",
-        name: resourceNameInput?.value?.trim() || "",
-        phone: resourcePhoneInput?.value?.trim() || "",
-        email: resourceEmailInput?.value?.trim() || "",
-        website_url: resourceWebsiteInput?.value?.trim() || "",
-        description: resourceDescriptionInput?.value?.trim() || ""
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to add resource.");
-    }
-
-    addResourceBtn.textContent = "Added ✓";
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to add resource.");
-    addResourceBtn.textContent = originalText;
-  } finally {
-    addResourceBtn.disabled = false;
-  }
-});
-saveResourceVisibilityBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = saveResourceVisibilityBtn.textContent || "Save resource setting";
-  const showResources = Boolean(showResourcesToggle?.checked);
-
-  saveResourceVisibilityBtn.disabled = true;
-  saveResourceVisibilityBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-resource-visibility", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        showResources
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save setting.");
-    }
-
-    saveResourceVisibilityBtn.textContent = "Saved ✓";
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save setting.");
-    saveResourceVisibilityBtn.textContent = originalText;
-  } finally {
-    saveResourceVisibilityBtn.disabled = false;
-  }
-});
-saveSmsMessageBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = saveSmsMessageBtn.textContent || "Save text message";
-  const smsMessage = smsMessageInput?.value?.trim() || "";
-
-  saveSmsMessageBtn.disabled = true;
-  saveSmsMessageBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-sms-message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slug: pageSlug,
-        smsMessage
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save SMS message.");
-    }
-
-    saveSmsMessageBtn.textContent = "Saved ✓";
-
-   setTimeout(() => {
-  saveSmsMessageBtn.textContent = originalText;
-}, 1400);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save SMS message.");
-    saveSmsMessageBtn.textContent = originalText;
-  } finally {
-    saveSmsMessageBtn.disabled = false;
-  }
-});
-        saveNoteBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-
-  const note = String(noteInput?.value || "").trim();
-  const originalText = saveNoteBtn.textContent || "Save message";
-
-  saveNoteBtn.disabled = true;
-  saveNoteBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-note", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        note
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save message.");
-    }
-
-    if (mastheadMessage) mastheadMessage.textContent = note;
-
-    sendTextButtons.forEach((btn) => {
-      btn.setAttribute("data-note", note);
-    });
-
-    saveNoteBtn.textContent = "Saved ✓";
-
-    setTimeout(() => {
-      saveNoteBtn.textContent = originalText;
-    }, 1400);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save message.");
-    saveNoteBtn.textContent = originalText;
-  } finally {
-    saveNoteBtn.disabled = false;
-  }
-});
-
-        sendTextButtons.forEach((btn) => {
-          if (btn === navSendTextBtn) return;
-          btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await sendShortlistText(btn);
-          });
-        });
-
-        sheetCloseBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          closeSheet();
-        });
-
-        overlay.addEventListener("click", (e) => {
-          e.preventDefault();
-          closeSheet();
-        });
-
-        document.addEventListener("keydown", (e) => {
-          if (!sheet.classList.contains("open")) return;
-
-          if (e.key === "Escape") closeSheet();
-          if (e.key === "ArrowRight" && !sheetNextBtn?.disabled) goToNextCard();
-        });
-
-        sheet.addEventListener(
-          "touchstart",
-          (e) => {
-            if (!sheet.classList.contains("open")) return;
-            if (!isMobileSheet()) return;
-            if (isAnimatingGesture) return;
-
-            const target = e.target;
-            if (!(target instanceof HTMLElement)) return;
-
-            touchStartedOnInteractive = Boolean(
-              target.closest("button, a, input, textarea, select, [data-tag], [data-decision]")
-            );
-
-            if (touchStartedOnInteractive) return;
-
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-            isDraggingSheet = false;
-            dragMode = "";
-            dragCloseY = 0;
-          },
-          { passive: true }
-        );
-
-        sheet.addEventListener(
-          "touchmove",
-          (e) => {
-            if (!sheet.classList.contains("open")) return;
-            if (!isMobileSheet()) return;
-            if (isAnimatingGesture) return;
-            if (touchStartedOnInteractive) return;
-
-            const touch = e.touches[0];
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-
-            const deltaX = touchCurrentX - touchStartX;
-            const deltaY = touchCurrentY - touchStartY;
-
-            if (!dragMode) {
-              if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
-                if (deltaY > 0 && sheet.scrollTop <= 0) {
-                  dragMode = "close";
-                } else {
-                  return;
-                }
-              } else if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                dragMode = "nav";
-              } else {
-                return;
-              }
-            }
-
-            if (dragMode === "close") {
-  dragMode = "";
-  return;
-}
-
-            if (dragMode === "nav") {
-              isDraggingSheet = true;
-              sheet.classList.add("dragging");
-              const limitedX = Math.max(-90, Math.min(90, deltaX));
-              sheet.style.transform = `translateX(${limitedX}px)`;
-              sheet.style.opacity = String(1 - Math.min(Math.abs(limitedX) / 220, 0.22));
-              e.preventDefault();
-            }
-          },
-          { passive: false }
-        );
-
-        sheet.addEventListener("touchend", () => {
-          if (!sheet.classList.contains("open")) return;
-          if (!isMobileSheet()) return;
-          if (isAnimatingGesture) return;
-
-          const deltaX = touchCurrentX - touchStartX;
-          const deltaY = touchCurrentY - touchStartY;
-          const absX = Math.abs(deltaX);
-          const absY = Math.abs(deltaY);
-
-        if (dragMode === "nav") {
-            if (deltaX < -70) {
-              clearInteractionState();
-              animateHorizontalCardChange("next");
-            } else {
-              animateSheetBack("nav");
-            }
-          }
-
-          if (!dragMode) {
-            resetSheetTransform();
-          }
-
-          touchStartX = 0;
-          touchStartY = 0;
-          touchCurrentX = 0;
-          touchCurrentY = 0;
-          isDraggingSheet = false;
-          dragMode = "";
-          touchStartedOnInteractive = false;
-          dragCloseY = 0;
-        });
-
-        loadResourceVendors();
-
-saveResourceVendorsBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  await saveSelectedResourceVendors();
-});
-
-syncEditModeUI();
-updateCounts();
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initShortlistPage, { once: true });
-      } else {
-        initShortlistPage();
-      }
-
-      document.addEventListener("astro:page-load", initShortlistPage);
-    </script>
+   
   </body>
 </html>

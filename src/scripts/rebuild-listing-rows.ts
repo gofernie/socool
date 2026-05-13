@@ -650,6 +650,36 @@ const normalizeImages = (listing: any) => {
   return [...new Set(images.filter(Boolean))];
 };
 
+const getSqft = (listing: any) => {
+  const direct =
+    listing?.sqft ||
+    listing?.square_feet ||
+    listing?.squareFeet ||
+    listing?.details?.sqft ||
+    listing?.details?.squareFeet ||
+    listing?.raw?.sqft ||
+    listing?.raw?.squareFeet ||
+    listing?.raw?.details?.sqft ||
+    listing?.raw?.details?.squareFeet;
+
+  if (direct) {
+    const cleaned = String(direct).replace(/[^0-9.]/g, "");
+    return cleaned ? Number(cleaned) : null;
+  }
+
+  const description = getDescription(listing);
+
+  const match = description.match(
+    /(?:~|approx\.?|approximately)?\s*([\d,]+)\s*(?:sq\.?\s*ft\.?|sqft|square feet)/i
+  );
+
+  if (match?.[1]) {
+    return Number(match[1].replace(/,/g, ""));
+  }
+
+  return null;
+};
+
 const getDescription = (listing: any) =>
   text(
     listing?.description ||
@@ -809,6 +839,54 @@ if (rowAddress.includes("york cres")) {
   normalized_area = "diver lake";
 }
 
+if (rowAddress.includes("manzanita pl")) {
+  normalized_area = "departure bay";
+}
+
+if (rowAddress.includes("4724 uplands dr")) {
+  normalized_area = "uplands";
+}
+
+if (rowAddress.includes("4728 uplands dr")) {
+  normalized_area = "uplands";
+}
+
+if (rowAddress.includes("riley pl")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("coal town way")) {
+  normalized_area = "south nanaimo";
+}
+
+if (rowAddress.includes("poets trail dr")) {
+  normalized_area = "university district";
+}
+
+if (rowAddress.includes("220 townsite rd")) {
+  normalized_area = "brechin hill";
+}
+
+if (rowAddress.includes("kennedy st")) {
+  normalized_area = "old city";
+}
+
+if (rowAddress.includes("milton st")) {
+  normalized_area = "old city";
+}
+
+if (rowAddress.includes("arbour cres")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("linley valley dr")) {
+  normalized_area = "north nanaimo";
+}
+
+if (rowAddress.includes("bradley st")) {
+  normalized_area = "central nanaimo";
+}
+
   if (rowAddress.includes("clematis pl")) {
   normalized_area = "hammond bay";
 }
@@ -894,7 +972,9 @@ baths: numOrNull(
     listing?.raw?.details?.bathrooms
 ),
 
-               address: getNormalizedAddress(listing),
+sqft: getSqft(listing),
+
+address: getNormalizedAddress(listing),
 
         status: String(
           listing?.status ||

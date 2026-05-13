@@ -71,9 +71,14 @@ const fallbackPage = {
 let page = fallbackPage;
 
 try {
-  const res = await fetch(`${Astro.url.origin}/api/agent-page?slug=${slug}`);
+  const res = await fetch(
+  `${Astro.url.origin}/api/agent-page?slug=${slug}`
+);
   const json = await res.json();
   page = { ...fallbackPage, ...(json?.data || {}) };
+  page.agentPickTitle = page.agentPickTitle || fallbackPage.agentPickTitle;
+page.agentPickText = page.agentPickText || fallbackPage.agentPickText;
+page.featuredListingMls = page.featuredListingMls || "";
 } catch (error) {
   console.error("Could not load agent page:", error);
 }
@@ -177,10 +182,10 @@ const getListingMls = (listing) =>
   String(
     listing.mls_number ||
       listing.mlsNumber ||
-      listing.id ||
       listing.repliers_listing_id ||
       listing.raw?.mlsNumber ||
       listing.raw?.id ||
+      listing.id ||
       ""
   ).replace(/[^0-9]/g, "");
 
@@ -512,12 +517,8 @@ try {
   }
 
   if (listingType) {
-    if (listingType === "house") {
-      query = query.eq("normalized_type", "detached");
-    } else {
-      query = query.eq("normalized_type", clean(listingType));
-    }
-  }
+  query = query.eq("normalized_type", clean(listingType));
+}
 
   if (listingMinPrice) {
     query = query.gte("price", listingMinPrice * 1000);
@@ -545,26 +546,26 @@ if (listingSort === "price-low") {
     newListings = data;
   }
 
-   const featuredMls = getListingMls({ id: page.featuredListingMls });
+  const featuredMls = getListingMls({ repliers_listing_id: page.featuredListingMls });
 
-  if (featuredMls) {
-    const { data: featuredRows, error: featuredError } = await supabase
-      .from("listing_rows")
-      .select("*")
-      .limit(2000);
+if (featuredMls) {
+  const { data: featuredRows, error: featuredError } = await supabase
+    .from("listing_rows")
+    .select("*")
+    .limit(3000);
 
-    if (featuredError) {
-      console.error("Featured listing query failed:", featuredError);
-    } else {
-      featuredListing =
-        (featuredRows || []).find((listing) => getListingMls(listing) === featuredMls) ||
-        null;
+  if (featuredError) {
+    console.error("Featured listing query failed:", featuredError);
+  } else {
+    featuredListing =
+      (featuredRows || []).find((listing) => getListingMls(listing) === featuredMls) ||
+      null;
 
-      if (!featuredListing) {
-        console.warn("Featured MLS not found:", featuredMls);
-      }
+    if (!featuredListing) {
+      console.warn("Featured MLS not found:", featuredMls);
     }
   }
+}
 } catch (error) {
   console.error("Could not load new listings:", error);
 }

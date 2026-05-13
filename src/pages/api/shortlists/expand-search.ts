@@ -16,6 +16,9 @@ function normalizeImageUrl(value: any) {
 
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  if (url.startsWith("vreb/")) return `https://cdn.repliers.io/${url}`;
+  if (url.startsWith("/vreb/")) return `https://cdn.repliers.io${url}`;
   if (url.startsWith("/")) return `https://cdn.repliers.io${url}`;
 
   return `https://cdn.repliers.io/${url}`;
@@ -88,120 +91,158 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
- const sentIds = new Set(
-  rows
-    .map((r: any) => String(r.repliers_listing_id || "").trim())
-    .filter(Boolean)
-);
+    // Collect all IDs that have been sent (both repliers_listing_id and mls_number formats)
+    const sentIds = new Set(
+      rows
+        .flatMap((r: any) => [
+          String(r.repliers_listing_id || "").trim(),
+          String(r.mls_number || "").trim(),
+        ])
+        .filter(Boolean)
+    );
+    console.log("EXPAND SEARCH SENT IDS", [...sentIds], "currentMax will be based on rows:", rows.map((r:any) => ({ price_text: r.price_text, price: r.price })));
 
     const first = rows[0];
 
     const city =
       normalizeSearchText(shortlist.search_city) ||
       normalizeSearchText(first.city) ||
-      normalizeSearchText(first.normalized_city);
+      normalizeSearchText(first.normalized_city) ||
+      "nanaimo";
+
+    // Look up original listings by mls_number OR id to get normalized_area
+    const originalIds = rows
+      .filter((r: any) => r.source !== "expand_search")
+      .map((r: any) => String(r.repliers_listing_id || "").trim())
+      .filter(Boolean);
+
+    // Try matching by mls_number first, then by id
+    let originalRows: any[] = [];
+
+    if (originalIds.length) {
+      const byMls = await supabase
+        .from("listing_rows")
+        .select("normalized_area, normalized_city")
+        .in("mls_number", originalIds);
+
+      originalRows = byMls.data || [];
+
+      // If nothing found by mls_number, try by id
+      if (!originalRows.length) {
+        const byId = await supabase
+          .from("listing_rows")
+          .select("normalized_area, normalized_city")
+          .in("id", originalIds);
+
+        originalRows = byId.data || [];
+      }
+    }
+
+    // Use the most common area among original listings
+    const areaCounts: Record<string, number> = {};
+    for (const r of originalRows) {
+      const a = normalizeSearchText(r.normalized_area);
+      if (a) areaCounts[a] = (areaCounts[a] || 0) + 1;
+    }
 
     const area =
       normalizeSearchText(shortlist.search_area) ||
+      Object.entries(areaCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
       normalizeSearchText(first.area) ||
-      normalizeSearchText(first.normalized_area);
+      normalizeSearchText(first.normalized_area) ||
+      "";
 
-    const type =
-      normalizeSearchText(shortlist.search_type) ||
-      normalizeSearchText(first.property_type) ||
-      normalizeSearchText(first.normalized_type);
+    console.log("EXPAND SEARCH AREA RESOLVED", {
+      area,
+      city,
+      areaCounts,
+      originalIdsCount: originalIds.length,
+      originalRowsCount: originalRows.length,
+    });
 
-    const beds =
-      toNumber(shortlist.search_beds) ||
-      Math.min(...rows.map((r: any) => toNumber(r.beds)).filter(Boolean));
+    const type = normalizeSearchText(shortlist.search_type);
+    const beds = toNumber(shortlist.search_beds);
 
-const originalRows = rows.filter((r: any) => {
-  const source = String(r.source || "").toLowerCase();
-  return source !== "expand_search" && source !== "expanded" && source !== "better_matches";
-});
+    // Find the highest price already sent
+    const allPrices = rows
+      .map((r: any) => toNumber(r.price_text || r.price))
+      .filter((p: number) => p > 0);
 
-const priceRows = originalRows.length ? originalRows : rows;
+    const currentMax = allPrices.length > 0 ? Math.max(...allPrices) : 0;
 
-const prices = priceRows
-  .map((r: any) => toNumber(r.price_text || r.price))
-  .filter((p: number) => p > 0);
-
-const engagedRows = rows.filter((r: any) =>
-  r.decision === "love" || r.decision === "maybe"
-);
-
-const engagedPrices = engagedRows
-  .map((r: any) => toNumber(r.price_text || r.price))
-  .filter((p: number) => p > 0);
-
-const highestSeenPrice =
-  engagedPrices.length > 0
-    ? Math.max(...engagedPrices)
-    : Math.max(...prices);
-const currentMax = highestSeenPrice;
-
-    let query = supabase
+let baseQuery = supabase
       .from("listing_rows")
       .select("*")
+      .eq("status", "A")
+      .eq("normalized_city", city)
       .gt("price", currentMax)
       .order("price", { ascending: true })
-      .limit(100);
+      .limit(50);
 
-if (city) query = query.eq("normalized_city", city);
-if (area) query = query.ilike("normalized_area", `%${area}%`);
-if (type) query = query.eq("normalized_type", type);
-if (beds) query = query.gte("beds", beds);
+    if (area) baseQuery = baseQuery.eq("normalized_area", area);
 
-   const { data: candidates, error } = await query;
+    let { data: candidates, error } = await baseQuery;
 
-if (error) throw error;
+    console.log("EXPAND SEARCH RAW QUERY RESULT", { count: candidates?.length, error: error?.message, firstRow: candidates?.[0] });
 
-console.log("EXPAND SEARCH QUERY DEBUG", {
-  city,
-  area,
-  type,
-  beds,
-  currentMax,
-  candidateCount: candidates?.length || 0,
-  candidates: (candidates || []).map((r: any) => ({
-    id: r.id,
-    price: r.price,
-    address: r.address,
-    city: r.normalized_city,
-    area: r.normalized_area,
-    type: r.normalized_type,
-    beds: r.beds
-  }))
-});
+    console.log("EXPAND SEARCH CANDIDATES", {
+      city,
+      area,
+      beds,
+      currentMax,
+      candidateCount: candidates?.length ?? 0,
+      error: error?.message,
+    });
 
- const next = (candidates || [])
-  .filter((r: any) => {
-    const id = String(r.id || "").trim();
-    return id && !sentIds.has(id);
-  })
-  .slice(0, 3);
+    if (error) throw error;
 
-    if (!next.length) {
+    if (!candidates || candidates.length === 0) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: `No next matches found above $${currentMax.toLocaleString()}.`
+          error: `No homes found above $${currentMax.toLocaleString()} in ${area || city || "this area"}.`,
         }),
         { status: 200 }
       );
     }
 
-    console.log(
-      "EXPAND SEARCH IMAGE DEBUG",
-      next.map((r: any) => ({
-        id: r.id,
-        address: r.address,
-        image_url: r.image_url,
-        photo_url: r.photo_url,
-        thumbnail_url: r.thumbnail_url,
-        photo_urls: r.photo_urls,
-        images: r.images
-      }))
+// Filter out already-sent listings and unwanted types
+    const next = candidates
+      .filter((r: any) => {
+        const rowId = String(r.id || "").trim();
+        const mlsId = String(r.mls_number || "").trim();
+        const repliersId = String(r.repliers_listing_id || "").trim();
+        const ntype = String(r.normalized_type || "").toLowerCase();
+        return (
+          rowId &&
+          !sentIds.has(rowId) &&
+          !sentIds.has(mlsId) &&
+          !sentIds.has(repliersId) &&
+          ntype !== "land" &&
+          ntype !== "mobile"
+        );
+      })
+      .sort((a: any, b: any) => a.price - b.price)
+      .slice(0, 3);
+
+    console.log("EXPAND SEARCH NEXT", {
+      nextCount: next.length,
+      sentIdsCount: sentIds.size,
+    });
+
+    if (!next.length) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: `You've seen all available homes above $${currentMax.toLocaleString()} in ${area || city || "this area"}.`,
+        }),
+        { status: 200 }
+      );
+    }
+
+    const maxSortOrder = Math.max(
+      ...rows.map((r: any) => r.sort_order || 0),
+      0
     );
 
     const inserts = next.map((r: any, i: number) => {
@@ -210,30 +251,22 @@ console.log("EXPAND SEARCH QUERY DEBUG", {
 
       return {
         shortlist_send_id: shortlist.id,
-
-        // listing_id is UUID in your DB. Repliers ids are text, so keep this null.
         listing_id: null,
-
         repliers_listing_id: String(r.id),
-        sort_order: 1000 + i,
-
+        sort_order: maxSortOrder + i + 1,
         address: r.address,
         price_text: `$${Number(r.price).toLocaleString()}`,
-
         image_url: imageUrl,
         images: gallery,
         photo_urls: gallery,
-
         beds: String(r.beds || ""),
         baths: String(r.baths || ""),
         sqft: String(r.sqft || ""),
         year_built: String(r.year_built || ""),
-
         property_type: r.normalized_type,
         description: r.description || "",
-
         is_new: true,
-        source: "expand_search"
+        source: "expand_search",
       };
     });
 
@@ -248,7 +281,7 @@ console.log("EXPAND SEARCH QUERY DEBUG", {
       JSON.stringify({
         ok: true,
         added: inserted?.length || 0,
-        listings: inserted || []
+        listings: inserted || [],
       }),
       { status: 200 }
     );
@@ -258,7 +291,7 @@ console.log("EXPAND SEARCH QUERY DEBUG", {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: err.message || "Expand search failed"
+        error: err.message || "Expand search failed",
       }),
       { status: 500 }
     );

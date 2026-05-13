@@ -12,77 +12,94 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
 
+    const id = String(body?.id || "").trim();
     const slug = String(body?.slug || "").trim();
     const type = String(body?.type || "other").trim();
     const name = String(body?.name || "").trim();
     const phone = String(body?.phone || "").trim();
     const email = String(body?.email || "").trim();
-    const website_url = String(body?.website_url || "").trim();
-    const description = String(body?.description || "").trim();
+    const website = String(body?.website || body?.website_url || "").trim();
+    const note = String(body?.note || body?.description || "").trim();
 
     if (!slug) {
-      return new Response(JSON.stringify({ ok: false, error: "Missing slug." }), {
-        status: 400
-      });
+      return new Response(JSON.stringify({ ok: false, error: "Missing slug." }), { status: 400 });
     }
 
-    if (!name && !description) {
-      return new Response(JSON.stringify({ ok: false, error: "Add a name or note." }), {
-        status: 400
-      });
+    if (!name && !note) {
+      return new Response(JSON.stringify({ ok: false, error: "Add a name or note." }), { status: 400 });
     }
 
-    const { data: shortlist, error: shortlistError } = await supabase
-      .from("shortlist_sends")
-      .select("id")
-      .eq("shortlist_slug", slug)
+    if (id) {
+      const { data: vendor, error } = await supabase
+        .from("buyer_resource_vendors")
+        .update({
+          type,
+          name,
+          phone,
+          email,
+          website,
+          note,
+          is_active: true
+        })
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error || !vendor?.id) {
+        return new Response(
+          JSON.stringify({ ok: false, error: error?.message || "Could not update vendor." }),
+          { status: 500 }
+        );
+      }
+
+      return new Response(JSON.stringify({ ok: true, vendor }), { status: 200 });
+    }
+
+    const { data: vendor, error: vendorError } = await supabase
+      .from("buyer_resource_vendors")
+      .insert({
+        type,
+        name,
+        phone,
+        email,
+        website,
+        note,
+        is_active: true
+      })
+      .select("*")
       .single();
 
-    if (shortlistError || !shortlist?.id) {
-      return new Response(JSON.stringify({ ok: false, error: "Shortlist not found." }), {
-        status: 404
-      });
+    if (vendorError || !vendor?.id) {
+      return new Response(
+        JSON.stringify({ ok: false, error: vendorError?.message || "Could not create vendor." }),
+        { status: 500 }
+      );
     }
 
     const { data: existing } = await supabase
-      .from("shortlist_resources")
+      .from("shortlist_resource_vendors")
       .select("sort_order")
-      .eq("shortlist_send_id", shortlist.id)
+      .eq("shortlist_slug", slug)
       .order("sort_order", { ascending: false })
       .limit(1);
 
     const nextSortOrder = Number(existing?.[0]?.sort_order || 0) + 1;
 
-    const { data, error } = await supabase
-      .from("shortlist_resources")
+    await supabase
+      .from("shortlist_resource_vendors")
       .insert({
-        shortlist_send_id: shortlist.id,
-        type,
-        name,
-        phone,
-        email,
-        website_url,
-        description,
-        is_visible: true,
+        shortlist_slug: slug,
+        vendor_id: vendor.id,
+        is_selected: true,
         sort_order: nextSortOrder
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      return new Response(JSON.stringify({ ok: false, error: error.message }), {
-        status: 500
       });
-    }
 
-    return new Response(JSON.stringify({ ok: true, resource: data }), {
-      status: 200
-    });
+    return new Response(JSON.stringify({ ok: true, vendor }), { status: 200 });
   } catch (err) {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: err instanceof Error ? err.message : "Failed to add resource."
+        error: err instanceof Error ? err.message : "Failed to save resource."
       }),
       { status: 500 }
     );

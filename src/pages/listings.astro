@@ -1,7 +1,17 @@
-monday
-
-
 ---
+import { createSupabaseServerClient } from "../lib/supabaseServer";
+
+const supabaseAuth = createSupabaseServerClient(Astro.cookies);
+
+const {
+  data: { user },
+} = await supabaseAuth.auth.getUser();
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const agentId = user.id;
 import {
   getListingAddress,
   getListingBaths,
@@ -177,9 +187,13 @@ if (city) {
       query = query.lte("price", Number(maxPrice));
     }
 
-    if (mls) {
-      query = query.eq("repliers_listing_id", mls.replace(/[^0-9]/g, ""));
-    }
+   if (mls) {
+  const cleanMls = mls.replace(/[^0-9]/g, "");
+
+  query = query.or(
+    `id.eq.${cleanMls},mls_number.eq.${cleanMls}`
+  );
+}
 
     if (sort === "price-desc") {
       query = query.order("price", { ascending: false });
@@ -261,6 +275,25 @@ if (city) {
     margin-bottom: 24px;
     flex-wrap: wrap;
   }
+
+  .logout-form {
+  margin: 0;
+}
+
+.logout-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #fafafa;
+}
 
   h1 {
     margin: 0;
@@ -1076,17 +1109,24 @@ if (city) {
   <body data-shortlist-slug={shortlistSlug}>
     <main class="page">
       <div class="topbar">
-        <div class="brand-head">
-  <img
-    src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
-    alt="Logo"
-    class="page-logo"
-  />
-  <p class="subtle">
-            {shortlistSlug
-              ? "Add more homes to this shortlist or remove existing ones."
-              : "Select homes, then create a clean client shortlist."}
-          </p>
+  <div class="brand-head">
+    <img
+      src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
+      alt="Logo"
+      class="page-logo"
+    />
+    <p class="subtle">
+      {shortlistSlug
+        ? "Add more homes to this shortlist or remove existing ones."
+        : "Select homes, then create a clean client shortlist."}
+    </p>
+  </div>
+
+  <form method="post" action="/api/auth/logout" class="logout-form">
+    <button type="submit" class="logout-btn">Log out</button>
+  </form>
+</div>
+ 
         </div>
 
         

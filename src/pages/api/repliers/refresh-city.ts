@@ -75,6 +75,7 @@ export const GET: APIRoute = async ({ url }) => {
       params.set("pageNum", String(page));
       params.set("resultsPerPage", "100");
       params.set("include", "details,address,images");
+      params.set("status", "A");
 
       const data = await fetchRepliers(params);
       const listings = data?.listings || data?.results || data || [];

@@ -11,6 +11,28 @@ const clean = (value: unknown) =>
     .trim()
     .toLowerCase();
 
+const ALLOWED_AREAS_BY_CITY: Record<string, Set<string>> = {
+  nanaimo: new Set([
+    "brechin hill",
+    "cedar",
+    "central nanaimo",
+    "chase river",
+    "departure bay",
+    "diver lake",
+    "extension",
+    "hammond bay",
+        "jingle pot",
+    "north jingle pot",
+    "north nanaimo",
+    "old city",
+    "pleasant valley",
+    "south jingle pot",
+    "south nanaimo",
+    "uplands",
+    "university district"
+  ])
+};
+
 function isUsableCity(city: string) {
   if (!city) return false;
   if (city.includes("{")) return false;
@@ -33,12 +55,17 @@ function isUsableArea(area: string, city: string) {
   if (!area) return false;
   if (area === city) return false;
   if (area === "other") return false;
-if (area === "unknown") return false;
-if (area.includes("{")) return false;
-if (area.includes(":")) return false;
+  if (area === "unknown") return false;
+  if (area.includes("{")) return false;
+  if (area.includes(":")) return false;
   if (area.includes("regional district")) return false;
   if (area.includes("city of")) return false;
   if (area.includes(", city of")) return false;
+
+  const allowedAreas = ALLOWED_AREAS_BY_CITY[city];
+
+  if (allowedAreas && !allowedAreas.has(area)) return false;
+
   return true;
 }
 

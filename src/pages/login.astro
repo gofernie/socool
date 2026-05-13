@@ -1,0 +1,105 @@
+---
+const error = Astro.url.searchParams.get("error");
+---
+
+<html>
+  <head>
+    <title>Agent Login</title>
+  </head>
+
+  <body>
+    <main class="login-page">
+      <section class="login-card">
+        <p class="eyebrow">Agent Portal</p>
+        <h1>Log in</h1>
+
+        {error && <p class="error">{error}</p>}
+
+        <form method="post" action="/api/auth/login">
+          <label>
+            Email
+            <input name="email" type="email" required />
+          </label>
+
+          <label>
+            Password
+            <input name="password" type="password" required />
+          </label>
+
+          <button type="submit">Log in</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style>
+  .login-page {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #f5f3ef;
+    padding: 24px;
+    font-family: system-ui, sans-serif;
+  }
+
+  .login-card {
+    width: min(100%, 420px);
+    background: white;
+    border: 1px solid rgba(20, 20, 20, 0.08);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  }
+
+  .eyebrow {
+    margin: 0 0 8px;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #777;
+  }
+
+  h1 {
+    margin: 0 0 22px;
+    font-size: 2rem;
+  }
+
+  form {
+    display: grid;
+    gap: 16px;
+  }
+
+  label {
+    display: grid;
+    gap: 7px;
+    font-size: 0.9rem;
+    font-weight: 650;
+  }
+
+  input {
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    padding: 0 12px;
+    font-size: 1rem;
+  }
+
+  button {
+    min-height: 46px;
+    border: 0;
+    border-radius: 999px;
+    background: #111827;
+    color: white;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+</style>

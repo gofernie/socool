@@ -8,35 +8,46 @@ export const GET: APIRoute = async () => {
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data: buyers, error: buyersError } = await supabase
-      .from("buyers")
-      .select("id, name, phone, email, updated_at")
-      .order("updated_at", { ascending: false });
+    const { data: clients, error: clientsError } = await supabase
+      .from("clients")
+      .select("id, name, phone")
+      .order("name", { ascending: true });
 
-    if (buyersError) throw buyersError;
+    if (clientsError) throw clientsError;
 
     const { data: sends, error: sendsError } = await supabase
       .from("shortlist_sends")
       .select(
-        "id, buyer_id, client_name, client_phone, last_viewed_at, last_contacted_at, last_contact_note"
+        "id, buyer_id, client_id, client_name, client_phone, last_viewed_at, last_contacted_at, last_contact_note"
       );
 
     if (sendsError) throw sendsError;
 
-    const sendIds = (sends || []).map((s) => s.id);
+    const sendIds = (sends || []).map((send: any) => send.id);
 
     const { data: items, error: itemsError } = sendIds.length
       ? await supabase
           .from("shortlist_items")
-          .select("shortlist_send_id, decision, is_favourite, price_text")
+          .select(
+            "shortlist_send_id, decision, is_favourite, price_text, liked_tags"
+          )
           .in("shortlist_send_id", sendIds)
       : { data: [], error: null };
 
     if (itemsError) throw itemsError;
 
-    const sendsByBuyer = new Map<string, any[]>();
-    const itemsBySend = new Map<string, any[]>();
+    const sendsByClientId = new Map<string, any[]>();
+    const sendsByClientName = new Map<string, any[]>();
+    const itemsBySendId = new Map<string, any[]>();
     const map = new Map<string, any>();
+
+    function cleanName(value: any) {
+      return String(value || "").trim();
+    }
+
+    function nameKey(value: any) {
+      return cleanName(value).toLowerCase();
+    }
 
     function newerDate(a: string | null, b: string | null) {
       if (!a) return b;
@@ -52,7 +63,9 @@ export const GET: APIRoute = async () => {
 
     function avg(values: number[]) {
       if (!values.length) return null;
-      return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+      return Math.round(
+        values.reduce((sum, value) => sum + value, 0) / values.length
+      );
     }
 
     function formatPrice(value: number | null) {
@@ -72,13 +85,14 @@ export const GET: APIRoute = async () => {
       if (lovedAvg && passAvg && passAvg - lovedAvg >= 50000) {
         const suggestedMax = Math.ceil((lovedAvg + 50000) / 25000) * 25000;
 
-      stats.suggestedMaxPrice = suggestedMax;
-
-stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
-  lovedAvg
-)}, passing more often around ${formatPrice(
-  passAvg
-)}. Next batch should probably stay under ${formatPrice(suggestedMax)}.`;
+        stats.suggestedMaxPrice = suggestedMax;
+        stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
+          lovedAvg
+        )}, passing more often around ${formatPrice(
+          passAvg
+        )}. Next batch should probably stay under ${formatPrice(
+          suggestedMax
+        )}.`;
 
         return;
       }
@@ -110,62 +124,65 @@ stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
       stats.priceSignal = "";
     }
 
-    function addSendToBuyerMap(key: string, send: any) {
-      if (!key) return;
-      const list = sendsByBuyer.get(key) || [];
-      list.push(send);
-      sendsByBuyer.set(key, list);
-    }
-
-    for (const send of sends || []) {
-      addSendToBuyerMap(send.buyer_id ? String(send.buyer_id) : "", send);
-      addSendToBuyerMap(
-        send.client_name ? String(send.client_name).trim().toLowerCase() : "",
-        send
-      );
-    }
-
-    for (const item of items || []) {
-      const list = itemsBySend.get(item.shortlist_send_id) || [];
-      list.push(item);
-      itemsBySend.set(item.shortlist_send_id, list);
-    }
-
     function makeEntry({
       id,
       name,
-      phone,
-      email
+      phone
     }: {
       id: string | null;
       name: string;
       phone?: string;
-      email?: string;
     }) {
       return {
         id,
         name: name || "Unnamed buyer",
         phone: phone || "",
-        email: email || "",
-       stats: {
-  shortlists: 0,
-  loved: 0,
-  maybe: 0,
-  notForMe: 0,
-  lastViewed: null,
-  lastActivityAt: null,
-  lastContactedAt: null,
-  lastContactNote: "",
-  lovedPrices: [],
-  maybePrices: [],
-  passPrices: [],
-  lovedAvgPrice: null,
-  maybeAvgPrice: null,
-  passAvgPrice: null,
-  priceSignal: "",
-  suggestedMaxPrice: null
-}
+        email: "",
+        stats: {
+          shortlists: 0,
+          loved: 0,
+          maybe: 0,
+          notForMe: 0,
+          lastViewed: null,
+          lastActivityAt: null,
+          lastContactedAt: null,
+          lastContactNote: "",
+          lovedPrices: [],
+          maybePrices: [],
+          passPrices: [],
+          lovedAvgPrice: null,
+          maybeAvgPrice: null,
+          passAvgPrice: null,
+          priceSignal: "",
+          suggestedMaxPrice: null
+        }
       };
+    }
+
+    for (const send of sends || []) {
+      const clientId = send.client_id ? String(send.client_id) : "";
+      const clientNameKey = nameKey(send.client_name);
+
+      if (clientId) {
+        const list = sendsByClientId.get(clientId) || [];
+        list.push(send);
+        sendsByClientId.set(clientId, list);
+      }
+
+      if (clientNameKey) {
+        const list = sendsByClientName.get(clientNameKey) || [];
+        list.push(send);
+        sendsByClientName.set(clientNameKey, list);
+      }
+    }
+
+    for (const item of items || []) {
+      const sendId = String(item.shortlist_send_id || "");
+      if (!sendId) continue;
+
+      const list = itemsBySendId.get(sendId) || [];
+      list.push(item);
+      itemsBySendId.set(sendId, list);
     }
 
     function applySendToEntry(entry: any, send: any) {
@@ -192,35 +209,49 @@ stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
         entry.phone = send.client_phone;
       }
 
-      const sendItems = itemsBySend.get(send.id) || [];
+      const sendItems = itemsBySendId.get(String(send.id || "")) || [];
 
       for (const item of sendItems) {
         const decision = String(item.decision || "").toLowerCase();
+        const favouriteValue = String(item.is_favourite || "").toLowerCase();
+        const likedTags = Array.isArray(item.liked_tags) ? item.liked_tags : [];
         const price = parsePrice(item.price_text);
 
         const isLoved =
           item.is_favourite === true ||
-          decision === "love" ||
-          decision === "loved";
-
-        const isMaybe =
-          decision === "maybe" ||
-          decision === "not_sure" ||
-          decision === "not sure";
+          favouriteValue === "true" ||
+          favouriteValue === "1" ||
+          favouriteValue === "yes" ||
+          decision.includes("love") ||
+          decision.includes("loved") ||
+          decision.includes("favourite") ||
+          decision.includes("favorite");
 
         const isPass =
-          decision === "pass" ||
-          decision === "no" ||
-          decision === "not_for_me";
+          decision.includes("pass") ||
+          decision.includes("not_for_me") ||
+          decision.includes("not for me") ||
+          decision.includes("not-for-me");
+
+        const isMaybe =
+          !isLoved &&
+          !isPass &&
+          (decision.includes("maybe") ||
+            decision.includes("not_sure") ||
+            decision.includes("not sure") ||
+            decision.includes("consider") ||
+            likedTags.length > 0);
 
         if (isLoved) {
           entry.stats.loved++;
           if (price) entry.stats.lovedPrices.push(price);
+          continue;
         }
 
         if (isMaybe) {
           entry.stats.maybe++;
           if (price) entry.stats.maybePrices.push(price);
+          continue;
         }
 
         if (isPass) {
@@ -230,74 +261,57 @@ stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
       }
     }
 
-    for (const buyer of buyers || []) {
-      const name = buyer.name || "Unnamed buyer";
-      const nameKey = String(name).trim().toLowerCase();
-      const idKey = String(buyer.id || "");
+    for (const client of clients || []) {
+      const id = String(client.id || "");
+      const key = nameKey(client.name);
 
-      if (!map.has(nameKey)) {
-        map.set(
-          nameKey,
-          makeEntry({
-            id: buyer.id,
-            name,
-            phone: buyer.phone,
-            email: buyer.email
-          })
-        );
+      const entry = makeEntry({
+        id,
+        name: cleanName(client.name) || "Unnamed buyer",
+        phone: client.phone || ""
+      });
+
+      const clientSendsMap = new Map<string, any>();
+
+      for (const send of sendsByClientId.get(id) || []) {
+        clientSendsMap.set(String(send.id), send);
       }
 
-      const entry = map.get(nameKey);
-      const buyerSendsMap = new Map<string, any>();
-
-      for (const send of sendsByBuyer.get(idKey) || []) {
-        buyerSendsMap.set(send.id, send);
+      for (const send of sendsByClientName.get(key) || []) {
+        clientSendsMap.set(String(send.id), send);
       }
 
-      for (const send of sendsByBuyer.get(nameKey) || []) {
-        buyerSendsMap.set(send.id, send);
-      }
+      const clientSends = Array.from(clientSendsMap.values());
 
-      const buyerSends = Array.from(buyerSendsMap.values());
+      entry.stats.shortlists = clientSends.length;
 
-      entry.stats.shortlists = buyerSends.length;
-
-      for (const send of buyerSends) {
+      for (const send of clientSends) {
         applySendToEntry(entry, send);
       }
 
       buildPriceSignal(entry.stats);
+      map.set(id || key, entry);
     }
 
-    const existingBuyerNameKeys = new Set(
-      (buyers || []).map((buyer) =>
-        String(buyer.name || "Unnamed buyer").trim().toLowerCase()
-      )
-    );
-
     for (const send of sends || []) {
-      const name = String(send.client_name || "").trim();
-      const nameKey = name.toLowerCase();
+      const id = send.client_id ? String(send.client_id) : "";
+      const key = nameKey(send.client_name);
+      const mapKey = id || key;
 
-      if (!name || existingBuyerNameKeys.has(nameKey)) continue;
+      if (!mapKey || map.has(mapKey)) continue;
 
-      if (!map.has(nameKey)) {
-        map.set(
-          nameKey,
-          makeEntry({
-            id: send.buyer_id || null,
-            name,
-            phone: send.client_phone || "",
-            email: ""
-          })
-        );
-      }
+      const entry = makeEntry({
+        id: id || null,
+        name: cleanName(send.client_name) || "Unnamed buyer",
+        phone: send.client_phone || ""
+      });
 
-      const entry = map.get(nameKey);
-      const buyerSends = sendsByBuyer.get(nameKey) || [];
+      const sendList = id
+        ? [...(sendsByClientId.get(id) || []), ...(sendsByClientName.get(key) || [])]
+        : sendsByClientName.get(key) || [];
 
       const uniqueSends = Array.from(
-        new Map(buyerSends.map((s) => [s.id, s])).values()
+        new Map(sendList.map((s: any) => [String(s.id), s])).values()
       );
 
       entry.stats.shortlists = uniqueSends.length;
@@ -307,6 +321,7 @@ stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
       }
 
       buildPriceSignal(entry.stats);
+      map.set(mapKey, entry);
     }
 
     const results = Array.from(map.values()).sort((a, b) => {
@@ -322,15 +337,21 @@ stats.priceSignal = `Price signal: likes homes closer to ${formatPrice(
     });
 
     return new Response(JSON.stringify({ ok: true, buyers: results }), {
-      status: 200
+      status: 200,
+      headers: { "Content-Type": "application/json" }
     });
   } catch (error: any) {
+    console.error("BUYERS API ERROR", error);
+
     return new Response(
       JSON.stringify({
         ok: false,
         error: error?.message || "Could not load buyers"
       }),
-      { status: 500 }
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      }
     );
   }
 };

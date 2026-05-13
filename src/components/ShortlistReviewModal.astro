@@ -1,0 +1,5934 @@
+ <div class="overlay" id="sheet-overlay"></div>
+
+    <aside class="panel" id="preview-sheet" aria-hidden="true">
+      <div class="panel__grab" id="sheet-grab-handle" aria-hidden="true"></div>
+
+      <div class="panel__progress-wrap">
+        <div class="panel__progress-track">
+          <div class="panel__progress-bar" id="sheet-progress-bar"></div>
+        </div>
+
+        <div class="panel__header">
+          <div class="panel__position" id="sheet-position">1 of 1</div>
+
+          <div class="panel__header-actions">
+            <button class="panel__map-btn" id="sheet-map-btn" type="button">Map</button>
+<button class="panel__top-btn" id="sheet-prev-top-btn" type="button">← Previous</button>
+<button class="panel__top-btn" id="sheet-next-top-btn" type="button">Next →</button>
+          </div>
+
+          <button class="panel__close" id="sheet-close-btn" type="button" aria-label="Close">✕</button>
+        </div>
+      </div>
+<div class="panel__view">
+        <section class="panel__summary" id="sheet-summary">
+          <div class="review-complete">
+
+  <!-- Header -->
+  <div class="review-complete__header">
+    <div class="eyebrow">Shortlist reviewed</div>
+
+   <h2 class="review-complete__title" id="review-complete-title">
+  You’ve reviewed all the homes — nice work.
+</h2>
+
+    <p class="review-complete__sub">
+      Most buyers don’t make it this far — this really helps narrow things down.
+      Your top picks are ready for a closer look.
+    </p>
+  </div>
+
+  <div class="review-complete__faves" id="summary-fave-strip"></div>
+
+<div class="review-send-prompt" id="summary-insight" hidden></div>
+
+<!-- Stats -->
+<div class="review-complete__stats">
+    <div class="stat stat--love">
+   <div class="stat__num" id="summary-love-count">0</div>
+      <div class="stat__label">❤️ You loved</div>
+    </div>
+
+    <div class="stat stat--maybe">
+      <div class="stat__num" id="summary-maybe-count">0</div>
+      <div class="stat__label">🤔 Worth a second look</div>
+    </div>
+
+    <div class="stat stat--pass">
+      <div class="stat__num" id="summary-pass-count">0</div>
+      <div class="stat__label">✕ Not your fit</div>
+    </div>
+  </div>
+
+  <!-- Optional prompt -->
+  <div class="review-complete__note">
+    <h4>What would you like to do next?</h4>
+
+    <div class="quick-actions">
+      <button type="button" data-summary-comment="We'd like to set up showings for the homes we loved.">
+        👍 Set up showings
+      </button>
+      <button type="button" data-summary-comment="Can you help narrow the search based on what we liked?">
+        🎯 Narrow the search
+      </button>
+      <button type="button" data-summary-comment="These aren't quite right. Can we look at some better options?">
+        🙅 Not quite right
+      </button>
+    </div>
+
+    <textarea
+      id="summary-comment-input"
+      placeholder="Add a note for your agent..."
+    ></textarea>
+
+    <div class="summary__comment-status" id="summary-comment-status"></div>
+
+    <button class="btn-primary" id="summary-send-comment-btn" type="button">
+      Send note to agent →
+    </button>
+  </div>
+
+  </div>
+
+</div>
+        </section>
+
+         
+        
+
+        <section class="panel__content" id="sheet-content">
+          <div class="panel__image-stage">
+           <img
+  id="sheet-image"
+  class="panel__image"
+  src="https://placehold.co/800x600?text=Loading"
+  alt=""
+  loading="eager"
+  decoding="async"
+  fetchpriority="high"
+/>
+            <button type="button" class="photo-nav photo-nav--prev" id="photo-prev-btn">‹</button>
+<button type="button" class="photo-nav photo-nav--next" id="photo-next-btn">›</button>
+<div class="panel__photo-count" id="sheet-photo-count">1 / 1 photos</div>
+          </div>
+
+          <div id="sheet-mini-map" class="panel__mini-map" hidden></div>
+
+         <div class="panel__body">
+  <div class="panel__headline">
+  <div class="panel__headline-left">
+    <h2 class="panel__price" id="sheet-price">—</h2>
+    <p class="panel__address" id="sheet-address">Address</p>
+    <div class="panel__meta" id="sheet-meta">—</div>
+  </div>
+
+    <div class="panel__headline-right">
+    <div class="panel__intelligence" id="sheet-intelligence">
+      Strongest match based on your criteria
+    </div>
+
+    <div class="panel__detail-row" id="sheet-detail-row"></div>
+
+    <div class="panel__highlights" id="sheet-highlights"></div>
+  </div>
+
+</div>
+
+<div class="panel__desc-wrap">
+   <p class="panel__desc" id="sheet-description"></p>
+
+<button type="button" class="panel__desc-toggle" id="sheet-desc-toggle" hidden>
+  Read more
+</button>
+  </div>
+
+  <div class="panel__feedback" id="sheet-feedback"></div>
+
+ <div class="decision-wrap">
+    <p class="decision-title">How does this one feel?</p>
+
+    <div class="decision-actions">
+      <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">
+        <span>❤️</span>
+        <span>Love this</span>
+      </button>
+
+      <button class="decision-btn decision-btn--maybe" type="button" id="decision-maybe-btn">
+        <span>🫤</span>
+        <span>Not sure</span>
+      </button>
+
+      <button class="decision-btn decision-btn--pass" type="button" id="decision-pass-btn">
+        <span>✕</span>
+        <span>Not for me</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel__secondary" id="feedback-secondary" hidden>
+    <p class="panel__secondary-title" id="feedback-chip-title">What stood out?</p>
+    <div class="chip-group chip-group--delight" id="feedback-chips"></div>
+  </div>
+            <div class="panel__footer">
+  <div class="panel__nav-row">
+    <button class="panel__next-btn" id="sheet-prev-btn" type="button">← Previous</button>
+    <button class="panel__next-btn" id="sheet-next-btn" type="button">Next listing →</button>
+  </div>
+</div>
+          </div>
+        </section>
+      </div>
+      <div class="panel__scroll-hint" id="panel-scroll-hint">
+  <span>↓ Scroll for more</span>
+</div>
+    </aside>
+<style>
+    .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 8, 5, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 800;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+.panel {
+    position: fixed;
+    left: 50%;
+    top: 0;
+    width: min(860px, calc(100vw - 32px));
+    max-height: 90vh;
+    background: #fff;
+    z-index: 900;
+    overflow-y: auto;
+    transform: translate(-50%, -106%);
+    transition: transform 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-2xl) var(--r-2xl);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+  }
+
+  .panel.open {
+    transform: translate(-50%, 0);
+  }
+
+  .panel.dragging {
+    transition: none !important;
+  }
+
+  .panel.closing-down {
+    pointer-events: none;
+  }
+
+  .panel__grab {
+    display: none;
+  }
+
+.panel__progress-wrap {
+    position: relative;
+    z-index: 8;
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+  }
+
+  .panel__progress-track {
+    height: 5px;
+    width: 100%;
+    background: #ece8e2;
+    overflow: hidden;
+  }
+
+  .panel__progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-mid));
+    transition: width 0.32s ease;
+  }
+
+  .panel__header {
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+  }
+
+  .panel__position {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .panel__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel__top-btn,
+  .panel__close {
+    appearance: none;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.14s, border-color 0.14s, color 0.14s, opacity 0.14s;
+  }
+
+  .panel__top-btn:hover,
+  .panel__close:hover {
+    background: var(--text-primary);
+    border-color: var(--text-primary);
+    color: #fff;
+  }
+
+  .panel__close {
+    width: 36px;
+    padding: 0;
+    color: var(--text-secondary);
+  }
+
+.panel__view {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+
+ .panel__summary {
+  display: none;
+  padding: 34px 32px 38px;
+  background:
+    radial-gradient(circle at top left, rgba(238, 244, 233, 0.95), transparent 34%),
+    #fff;
+}
+
+.panel__summary.open {
+  display: block;
+}
+
+.review-complete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 30px;
+  align-items: start;
+}
+
+.review-complete__header {
+  grid-column: 1;
+}
+
+.review-complete__header .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.review-complete__header .eyebrow::before {
+  content: "✓";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #e8f6dd;
+  border: 1px solid #b5d79a;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.review-complete__title {
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+
+.review-complete__sub {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.65;
+  max-width: 620px;
+}
+
+.review-send-prompt {
+  grid-column: 1;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid #cfe4bd;
+  background: linear-gradient(135deg, #f3faee, #ffffff);
+  box-shadow: 0 12px 35px rgba(45, 80, 22, 0.08);
+}
+
+.review-send-copy h3 {
+  font-size: 1.05rem;
+  line-height: 1.35;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.review-send-copy p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.review-send-actions button,
+#next-higher-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  min-height: 48px;
+  padding: 0 22px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(45, 80, 22, 0.22);
+}
+
+.review-send-actions button:hover,
+#next-higher-btn:hover {
+  background: var(--accent-mid);
+}
+
+.review-complete__stats {
+  grid-column: 2;
+  grid-row: 1 / span 5;
+  display: grid;
+  gap: 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 50px rgba(17, 14, 9, 0.07);
+}
+
+.review-complete__stats::before {
+  content: "Your summary";
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat:last-child {
+  border-bottom: 0;
+}
+
+.stat__num {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.65rem;
+  font-weight: 900;
+}
+
+.stat--love .stat__num {
+  background: #fde8ed;
+  color: #d92d55;
+}
+
+.stat--maybe .stat__num {
+  background: #fff4d8;
+  color: #d99000;
+}
+
+.stat--pass .stat__num {
+  background: #efefef;
+  color: #555;
+}
+
+.stat__label {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+
+
+#summary-send-comment-btn {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: var(--text-primary);
+  color: #fff;
+  min-height: 48px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+#summary-send-comment-btn:hover {
+  background: #333;
+}
+
+.review-complete__note {
+  grid-column: 1;
+}
+
+.review-complete__note h4 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+
+.quick-actions {
+  margin-bottom: 12px;
+}
+
+#summary-comment-input {
+  margin-bottom: 0;
+}
+
+#summary-comment-input {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  color: var(--text-primary);
+  background: #fff;
+  margin-top: 12px;
+  display: block;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.quick-actions button {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  min-height: 76px;
+  padding: 12px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.quick-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.08);
+}
+
+@media (max-width: 760px) {
+  .review-complete {
+    grid-template-columns: 1fr;
+  }
+
+  .review-complete__stats {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+ 
+
+  .summary__eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .summary__title {
+    font-family: var(--f-display);
+    font-size: clamp(2rem, 4.2vw, 3.3rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+
+  .summary__copy {
+    color: var(--text-secondary);
+    max-width: 560px;
+    font-size: 0.98rem;
+    line-height: 1.8;
+    margin-bottom: 26px;
+  }
+
+  .summary__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 26px;
+  }
+
+  .summary__stat {
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--bg);
+    padding: 18px 16px;
+  }
+
+  .summary__num {
+    display: block;
+    font-family: var(--f-display);
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .summary__label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+
+    .summary__comment-box {
+    border-top: 1px solid var(--border);
+    padding-top: 22px;
+  }
+
+  .summary__comment-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .summary__comment-copy {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+
+  .summary__comment-input {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font: inherit;
+    resize: vertical;
+    margin-bottom: 12px;
+  }
+
+  .summary__quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .summary__comment-status {
+    min-height: 20px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+
+  .summary__actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .summary__btn {
+    appearance: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.84rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .summary__btn--primary {
+    background: var(--text-primary);
+    color: #fff;
+    border-color: var(--text-primary);
+  }
+
+  .panel__content {
+    display: none;
+  }
+
+  .panel__content.open {
+    display: block;
+  }
+
+  .panel__image-stage {
+    position: relative;
+    background: var(--bg-overlay);
+  }
+
+  .panel__image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+  }
+
+  .panel__photo-count {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    z-index: 2;
+    background: rgba(17, 14, 9, 0.58);
+    color: rgba(255, 255, 255, 0.94);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .photo-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.75);
+  background: rgba(17,14,9,0.48);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-nav--prev { left: 14px; }
+.photo-nav--next { right: 14px; }
+
+.photo-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+ .panel__body {
+  padding: 30px 32px 30px;
+}
+
+.panel__headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 34px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.panel__headline-left {
+  min-width: 0;
+}
+
+.panel__headline-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+.panel__headline-right .panel__intelligence {
+  margin-bottom: 16px;
+}
+
+.panel__headline-right .panel__detail-row {
+  justify-content: flex-start;
+  text-align: left;
+  max-width: none;
+  margin-bottom: 14px;
+}
+
+.panel__headline-right .panel__highlights {
+  margin-bottom: 0;
+}
+
+.panel__price {
+  font-family: var(--f-display);
+  font-size: clamp(2.1rem, 4.2vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+
+.panel__address {
+  font-size: 1.35rem;
+  color: var(--text-secondary);
+  line-height: 1.42;
+  margin: 0 0 10px;
+}
+
+.panel__meta {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  margin: 0 0 18px;
+  white-space: normal !important;
+}
+
+.panel__meta-item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font-family: var(--f-body);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.panel__meta-item strong {
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.panel__meta-label {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+
+
+  .panel__intelligence {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+  }
+
+  .panel__intelligence::before {
+    content: "✦";
+    font-size: 0.9rem;
+  }
+
+.panel__detail-row,
+.panel__highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.panel__detail-row span,
+.panel__highlight-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  font-family: var(--f-body);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.panel__detail-row span + span::before {
+  content: none;
+}
+
+.panel__nav-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+ .decision-wrap {
+    text-align: center;
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+.decision-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6f675d;
+  margin-bottom: 14px;
+}
+
+  .decision-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }.masthead__logo {
+  display: block;
+  width: 220px;
+  max-width: 70vw;
+  height: auto;
+  margin-bottom: 28px;
+}
+
+  .decision-btn {
+    appearance: none;
+    min-height: 46px;
+    opacity: 0.94;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    font: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition:
+      transform 0.16s ease,
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease,
+      color 0.16s ease,
+      opacity 0.16s ease;
+  }
+
+.review-complete__faves {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin: 12px 0 16px;
+}
+
+.review-complete__fave-card {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.review-complete__fave-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.review-complete__faves img {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.review-complete__faves img:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+.review-complete__faves button {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.review-complete__faves button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+  @media (hover: hover) and (pointer: fine) {
+    .decision-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-card);
+    }
+
+    .decision-btn--love:hover {
+      background: var(--gold-bg);
+      border-color: var(--gold-border);
+      color: var(--gold);
+    }
+
+    .decision-btn--maybe:hover {
+      background: #f5f3ef;
+      border-color: var(--border-strong);
+    }
+
+    .decision-btn--pass:hover {
+      background: var(--pass-bg);
+      border-color: var(--pass-border);
+      color: var(--pass);
+    }
+  }
+
+.decision-btn--love.is-selected {
+  background: var(--gold-bg);
+  border-color: var(--gold-border);
+  color: var(--gold);
+  animation: loveButtonGlow 0.9s ease-out, loveFade 0.4s ease-out;
+}
+
+@keyframes loveFade {
+  0% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+@keyframes loveButtonGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(176, 125, 42, 0);
+  }
+
+  45% {
+    box-shadow: 0 0 0 6px rgba(176, 125, 42, 0.14);
+  }
+
+  100% {
+    box-shadow: 0 0 0 14px rgba(176, 125, 42, 0);
+  }
+}
+
+.love-heart-pop {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.18));
+  animation: loveHeartFloat 1200ms ease-out forwards;
+}
+
+@keyframes loveHeartFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.45) rotate(-8deg);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -70%) scale(1.15) rotate(4deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--heart-x)), -150px) scale(1.65) rotate(var(--heart-rotate));
+  }
+}
+
+  .decision-btn--maybe.is-selected {
+    background: #f5f3ef;
+    border-color: var(--border-strong);
+  }
+
+  .decision-btn--pass.is-selected {
+    background: var(--pass-bg);
+    border-color: var(--pass-border);
+    color: var(--pass);
+  }
+
+  .panel__feedback {
+    min-height: 22px;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 0px;
+  }
+
+  .panel__feedback.is-love {
+    color: var(--gold);
+  }
+
+  .panel__feedback.is-pass {
+    color: var(--pass);
+  }
+
+  .panel__feedback.is-maybe {
+    color: var(--text-secondary);
+  }
+
+  .panel__micro {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .panel__micro-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .panel__micro-badge--love {
+    background: var(--gold-bg);
+    border-color: var(--gold-border);
+    color: var(--gold);
+  }
+
+  .panel__micro-badge--maybe {
+    background: #f5f3ef;
+    color: var(--text-secondary);
+  }
+
+  .panel__micro-badge--pass {
+    background: var(--pass-bg);
+    border-color: var(--pass-border);
+    color: var(--pass);
+  }
+
+  .panel__desc {
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin: 0 0 18px;
+  }
+
+  .panel__desc.is-collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+.panel__secondary {
+  border-top: 0;
+  padding-top: 2px;
+  margin-top: 6px;
+}
+
+.panel__secondary[hidden] {
+  display: none;
+}
+
+.panel__secondary-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.chip-group--delight {
+  animation: chipGroupIn 0.28s ease both;
+}
+
+button.chip {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--f-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(17, 14, 9, 0.045);
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  animation: chipIn 0.34s ease both;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+button.chip:nth-child(1) { animation-delay: 0.02s; }
+button.chip:nth-child(2) { animation-delay: 0.06s; }
+button.chip:nth-child(3) { animation-delay: 0.10s; }
+button.chip:nth-child(4) { animation-delay: 0.14s; }
+
+button.chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(17, 14, 9, 0.09);
+}
+
+button.chip.active {
+  background: #f3eadc;
+  border-color: #d6b57a;
+  color: #6f4f1f;
+  box-shadow: 0 8px 20px rgba(176, 125, 42, 0.12);
+}
+
+button.chip:focus,
+button.chip:focus-visible {
+  outline: none;
+}
+
+button.chip:active {
+  transform: scale(0.98);
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 80px;
+}
+
+@keyframes chipGroupIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes chipIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.decision-btn:focus,
+.decision-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.panel__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+  padding-bottom: 28px;
+  margin-top: 16px;
+}
+
+.panel__next-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.panel__next-btn:hover {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: #fff;
+}
+
+.panel__next-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.panel.is-love-pulse .panel__image-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  animation: loveWarmGlow 0.9s ease;
+}
+
+.panel.is-pass-fade .panel__content {
+  animation: none;
+}
+
+  .masthead__logo {
+  display: block;
+  width: 240px;
+  max-width: 34vw;
+  height: auto;
+  margin-bottom: 12px;
+  opacity: 0.95;
+}
+  .panel__top-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+    background: #eee;
+    color: #999;
+    border-color: #ddd;
+  }
+.panel__desc-wrap {
+  margin-top: 0px;
+  margin-bottom: 18px;
+}
+
+.panel__desc {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.panel__desc.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.panel__desc-toggle {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.panel__desc-toggle:hover {
+  color: var(--text-primary);
+}
+.masthead__eyebrow {
+  color: #c09b64;
+}
+
+.masthead__eyebrow::before {
+  background: #c09b64;
+}
+
+@media (max-width: 700px) {
+  .resource-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel__map-btn {
+  appearance: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.panel__mini-map {
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  margin: 0;
+  background: #e8e8e8;
+}
+
+.panel__mini-map[hidden] {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .panel__mini-map {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+.shortlist-map-tooltip {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.shortlist-map-tooltip::before {
+  display: none;
+}
+
+.shortlist-map-label {
+  background: #fff;
+  color: #181614;
+  border: 1px solid rgba(24,22,20,0.18);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+}
+
+.shortlist-map-label strong,
+.shortlist-map-label span {
+  display: block;
+  line-height: 1.2;
+}
+
+.shortlist-map-label span {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.agent-edit-grid {
+  display: none;
+  margin-bottom: 32px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+}
+
+body.edit-mode .agent-edit-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.note-editor {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.note-editor__label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding-top: 10px;
+}
+
+.note-editor__input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+#sms-image-editor {
+  grid-template-columns: 140px minmax(0, 1fr) auto;
+}
+
+.preset-image-grid {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preset-image-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.preset-image-btn img {
+  display: block;
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+}
+
+.preset-image-btn span {
+  display: block;
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.preset-image-btn.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+@media (max-width: 899px) {
+  .masthead.map-mode {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .masthead.map-mode .masthead__inner {
+    height: auto;
+    max-height: none;
+    padding: 44px 0 40px;
+    display: grid;
+    overflow: visible;
+  }
+
+  .masthead.map-mode .masthead__left,
+  .masthead.map-mode .masthead__right {
+    display: block;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    position: relative;
+    height: 260px;
+    max-height: 260px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    height: 260px;
+    min-height: 260px;
+    max-height: 260px;
+  }
+}
+
+#feedback-chips button.chip {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-height: 34px !important;
+  padding: 8px 13px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--border) !important;
+  background: #fff !important;
+  color: var(--text-primary) !important;
+  font-family: var(--f-body) !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  box-shadow: 0 5px 16px rgba(17, 14, 9, 0.045) !important;
+}
+
+#feedback-chips button.chip:hover {
+  transform: translateY(-1px) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 9px 22px rgba(17, 14, 9, 0.08) !important;
+}
+
+#feedback-chips button.chip.active {
+  background: #f3eadc !important;
+  border-color: #d6b57a !important;
+  color: #6f4f1f !important;
+}
+
+
+.panel__area {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-family: var(--f-body);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+
+.panel__address-line {
+  display: block;
+}
+
+.panel__address-line--secondary {
+  margin-top: 2px;
+}
+
+.panel__area-inline {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.panel__image-stage.is-hidden {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .agent-bar {
+    padding: 0 16px;
+  }
+
+  .agent-bar__inner {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .agent-bar__actions {
+    max-width: 180px;
+  }
+
+     .masthead {
+    padding: 0 22px;
+    overflow: hidden;
+  }
+
+  .masthead.map-mode {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.masthead.map-mode .masthead-map-wrap {
+  width: 100vw !important;
+  margin-left: -22px !important;
+  margin-right: -22px !important;
+}
+
+  .masthead__inner {
+    height: auto;
+    min-height: 0;
+    padding: 34px 0 30px;
+    display: block;
+  }
+
+  .masthead__heading {
+    font-size: 2.55rem;
+    line-height: 0.95;
+    max-width: 260px;
+    margin-bottom: 16px;
+  }
+
+  .masthead__client,
+  .masthead__right {
+    display: none !important;
+  }
+
+  .masthead__message {
+    max-width: 290px;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin-top: 0;
+  }
+
+  .masthead__message::after {
+    content: "";
+    display: block;
+    width: fit-content;
+    margin-top: 14px;
+    padding: 7px 11px;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px;
+    color: rgba(255,255,255,0.52);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    content: attr(data-mobile-count);
+  }
+
+  .body-wrap {
+    padding: 34px 18px 80px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100vw;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    border: 0;
+    transform: translateY(110%);
+  }
+
+  .panel.open {
+    transform: translateY(0);
+  }
+
+.panel__header {
+  grid-template-columns: 1fr auto auto;
+  padding: 12px 16px;
+  border-radius: 0;
+}
+
+ .panel__header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.resource-edit-btn {
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.resource-edit-btn:hover {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+.panel__map-btn,
+.panel__top-btn,
+.panel__close {
+  height: 34px;
+  padding: 0 9px;
+  font-size: 0.72rem;
+}
+
+.panel__close {
+  width: 34px;
+  padding: 0;
+}
+
+.panel__image {
+  aspect-ratio: 4 / 3;
+}
+
+.panel__body {
+  padding: 30px 32px 30px;
+}
+ .panel__headline {
+  display: block;
+}
+
+
+
+.panel__headline-right {
+  padding-top: 0;
+  margin-top: 18px;
+}
+
+  .panel__price {
+    font-size: 3rem;
+  }
+
+  .panel__address {
+    font-size: 1.65rem;
+  }
+
+  .panel__meta {
+    justify-content: flex-start;
+    margin-top: 12px;
+    white-space: normal;
+  }
+
+  .decision-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-btn {
+    min-height: 48px;
+  }
+
+  .panel__nav-row {
+    width: 100%;
+  }
+
+   .panel__next-btn {
+    flex: 1;
+  }
+
+  .masthead.map-mode {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+    .masthead.map-mode .masthead__inner {
+    padding: 0;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    width: 100vw;
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 0;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    width: 100vw;
+    height: 320px;
+    min-height: 320px;
+  }
+
+  .masthead.map-mode .masthead__right {
+    display: none !important;
+  }
+
+    .masthead.map-mode .masthead__left {
+    display: block !important;
+    padding: 48px 24px 42px;
+    margin-bottom: 0;
+  }
+
+  .masthead.map-mode .masthead__heading {
+    max-width: none;
+    font-size: 3.2rem;
+  }
+
+  .masthead.map-mode .masthead__message {
+    max-width: 330px;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    margin-top: 0;
+  }
+}
+
+@keyframes feedbackPillIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+#feedback-chips .feedback-pill:nth-child(1) { animation-delay: 0.02s; }
+#feedback-chips .feedback-pill:nth-child(2) { animation-delay: 0.07s; }
+#feedback-chips .feedback-pill:nth-child(3) { animation-delay: 0.12s; }
+#feedback-chips .feedback-pill:nth-child(4) { animation-delay: 0.17s; }
+.panel__desc-wrap {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+/* REVIEW COMPLETE - CLOSER TO MOCKUP */
+.review-complete {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 38px;
+}
+
+.review-complete__title {
+  max-width: 680px;
+  font-size: clamp(2.4rem, 5vw, 3.65rem);
+}
+
+.review-send-prompt {
+  position: relative;
+  padding: 28px 28px 28px 92px;
+}
+
+.review-send-prompt::before {
+  content: "↗";
+  position: absolute;
+  left: 28px;
+  top: 28px;
+  width: 50px;
+  height: 50px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.review-send-actions button,
+#next-higher-btn {
+  min-width: 420px;
+  justify-content: center;
+}
+
+
+
+.review-complete__stats {
+  padding: 30px;
+}
+
+.stat__num {
+  font-size: 2rem;
+}
+
+.stat__label {
+  font-size: 1rem;
+}
+
+.review-complete__stats::after {
+  content: "💡  Tip\aYour feedback helps your agent find even better matches for you. The more specific, the better!";
+  white-space: pre-line;
+  margin-top: 22px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #f3faee;
+  border: 1px solid #d6e8c9;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.quick-actions button:nth-child(1) {
+  background: #fff8eb;
+  border-color: #f1d7a8;
+}
+
+.quick-actions button:nth-child(2) {
+  background: #f4f8ff;
+  border-color: #cdddf5;
+}
+
+.quick-actions button:nth-child(3) {
+  background: #fff4f4;
+  border-color: #f0c7c7;
+}
+
+.panel__summary::after {
+  content: "🔒 Your feedback is private and only shared with your agent.";
+  display: block;
+  margin: 30px -38px -38px;
+  padding: 18px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  background: #fafafa;
+}
+
+@media (max-width: 760px) {
+  .review-send-prompt,
+  .review-complete__cta {
+    padding-left: 22px;
+  }
+
+  .review-send-prompt::before,
+  .review-complete__cta::after {
+    display: none;
+  }
+
+  .review-send-actions button,
+  #next-higher-btn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .panel__summary::after {
+    margin: 28px -22px -34px;
+  }
+}
+.review-send-prompt {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding: 26px;
+}
+
+.review-send-prompt::before {
+  content: "↗";
+  position: static;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  font-weight: 900;
+  grid-row: 1 / span 2;
+}
+
+.review-send-copy h3 {
+  font-size: 1.65rem;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.review-send-copy p {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  max-width: 520px;
+  margin: 0 0 18px;
+}
+
+.review-send-actions {
+  grid-column: 2;
+}
+
+.review-send-actions button,
+#next-higher-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px);
+  min-height: 50px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), #173f08);
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(45, 80, 22, 0.22);
+  text-decoration: none;
+}
+
+.review-send-actions button::before,
+#next-higher-btn::before {
+  content: "✨";
+  margin-right: 8px;
+}
+
+.review-send-actions button:hover,
+#next-higher-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(45, 80, 22, 0.28);
+}
+
+@media (max-width: 760px) {
+  .review-send-prompt {
+    grid-template-columns: 1fr;
+    padding: 22px;
+  }
+
+  .review-send-prompt::before {
+    display: none;
+  }
+
+  .review-send-actions {
+    grid-column: 1;
+  }
+
+  .review-send-actions button,
+  #next-higher-btn {
+    width: 100%;
+  }
+}
+
+#summary-insight .review-send-actions button#next-higher-btn {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: min(100%, 420px) !important;
+  min-height: 52px !important;
+  padding: 0 24px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #2d5016, #163f08) !important;
+  color: #fff !important;
+  font-family: var(--f-body) !important;
+  font-size: 0.92rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  box-shadow: 0 14px 28px rgba(45, 80, 22, 0.24) !important;
+}
+
+#summary-insight .review-send-actions button#next-higher-btn::before {
+  content: "✨";
+}
+
+#summary-insight .review-send-actions button#next-higher-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(45, 80, 22, 0.3) !important;
+}
+
+/* REVIEW COMPLETE - WIDER, BETTER SPACE USE */
+.panel {
+  width: min(1180px, calc(100vw - 48px));
+}
+
+.panel__summary {
+  padding: 48px 58px 0;
+}
+
+.review-complete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 370px;
+  gap: 54px;
+  align-items: start;
+}
+
+.review-complete__title {
+  max-width: 620px;
+  font-size: clamp(3rem, 5.2vw, 4.25rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+}
+
+.review-complete__sub {
+  max-width: 650px;
+  font-size: 1.08rem;
+  line-height: 1.65;
+}
+
+.review-complete__faves {
+  grid-column: 1;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 18px !important;
+  margin: 28px 0 28px !important;
+}
+
+.review-complete__faves button,
+.review-complete__faves img,
+.review-complete__fave-card {
+  height: 170px !important;
+  max-height: 170px !important;
+  border-radius: 18px !important;
+}
+
+.review-send-prompt {
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  padding: 28px 32px;
+  border-radius: 22px;
+}
+
+.review-send-prompt::before {
+  width: 64px;
+  height: 64px;
+  font-size: 2rem;
+}
+
+.review-send-copy h3 {
+  font-size: 1.85rem;
+  line-height: 1.08;
+  margin-bottom: 8px;
+}
+
+.review-send-copy p {
+  max-width: 540px;
+  font-size: 1rem;
+  margin-bottom: 18px;
+}
+
+.review-send-actions {
+  grid-column: 2;
+}
+
+.review-send-actions button#next-higher-btn {
+  width: min(100%, 460px) !important;
+  min-height: 56px !important;
+  border-radius: 16px !important;
+  font-size: 1rem !important;
+}
+
+.review-complete__stats {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  padding: 34px 30px;
+  border-radius: 26px;
+}
+
+.stat {
+  grid-template-columns: 76px 1fr;
+  gap: 18px;
+  padding: 24px 0;
+}
+
+.stat__num {
+  width: 76px;
+  height: 76px;
+  font-size: 2.1rem;
+}
+
+.stat__label {
+  font-size: 1.02rem;
+}
+
+
+
+.review-complete__note {
+  grid-column: 1;
+}
+
+#summary-comment-input {
+  min-height: 120px;
+}
+
+.quick-actions {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.quick-actions button {
+  min-height: 88px;
+}
+
+.panel__summary::after {
+  margin: 42px -58px 0;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    width: min(860px, calc(100vw - 32px));
+  }
+
+  .panel__summary {
+    padding: 32px 24px 0;
+  }
+
+  .review-complete {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .review-complete__stats {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .review-complete__title {
+    font-size: 2.55rem;
+  }
+
+  .review-complete__faves {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .review-send-prompt {
+    grid-template-columns: 1fr;
+  }
+
+  .review-send-prompt::before {
+    display: none;
+  }
+
+  .review-send-actions {
+    grid-column: 1;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .panel__summary::after {
+    margin: 32px -24px 0;
+  }
+}
+
+/* REVIEW COMPLETE - SLIGHTLY NARROWER MODAL */
+.panel {
+  width: min(680px, calc(100vw - 48px));
+}
+
+.review-complete {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 34px;
+}
+
+.panel__summary {
+  padding: 40px 44px 0;
+}
+
+.review-complete__title {
+  font-size: clamp(2.55rem, 4.4vw, 3.55rem);
+}
+
+.review-complete__faves button,
+.review-complete__faves img,
+.review-complete__fave-card {
+  height: 135px !important;
+  max-height: 135px !important;
+}
+
+.review-complete__stats {
+  padding: 28px 24px;
+}
+
+.stat {
+  grid-template-columns: 62px 1fr;
+  padding: 18px 0;
+}
+
+.stat__num {
+  width: 62px;
+  height: 62px;
+  font-size: 1.75rem;
+}
+
+/* MOBILE REVIEW COMPLETE FIX */
+@media (max-width: 760px) {
+  .panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .panel__summary {
+    padding: 28px 20px 0;
+  }
+
+  .review-complete {
+    display: grid;
+    grid-template-columns: 1fr !important;
+    gap: 22px;
+  }
+
+  .review-complete__header,
+  .review-send-prompt,
+  .review-complete__cta,
+  .review-complete__note,
+  .review-complete__stats {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  .review-complete__title {
+    font-size: 2.35rem;
+    line-height: 1;
+  }
+
+  .review-complete__sub {
+    font-size: 0.95rem;
+  }
+
+  .review-complete__faves {
+    display: none !important;
+  }
+
+  .review-send-prompt {
+    grid-template-columns: 1fr !important;
+    padding: 22px !important;
+  }
+
+  .review-send-prompt::before {
+    display: none !important;
+  }
+
+  .review-send-actions {
+    grid-column: 1 !important;
+  }
+
+  .review-send-actions button#next-higher-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+  }
+
+  .review-complete__stats {
+    padding: 22px !important;
+  }
+
+  .stat {
+    grid-template-columns: 54px 1fr !important;
+    padding: 14px 0 !important;
+  }
+
+  .stat__num {
+    width: 54px !important;
+    height: 54px !important;
+    font-size: 1.45rem !important;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .quick-actions button {
+    min-height: 58px !important;
+    text-align: center;
+  }
+}
+
+/* DESKTOP REVIEW MODAL - SAFE LAYOUT FIX */
+.panel {
+  width: min(940px, calc(100vw - 40px)) !important;
+  overflow-x: hidden !important;
+}
+
+.panel__view {
+  overflow-x: hidden !important;
+}
+
+.panel__summary {
+  padding: 36px 34px 0 !important;
+  overflow-x: hidden !important;
+}
+
+.review-complete {
+  grid-template-columns: minmax(0, 1fr) 300px !important;
+  gap: 28px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.review-complete > * {
+  min-width: 0 !important;
+}
+
+.review-complete__title {
+  font-size: clamp(2.4rem, 4vw, 3.25rem) !important;
+  line-height: 0.98 !important;
+}
+
+.review-complete__faves {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.review-complete__faves button,
+.review-complete__faves img,
+.review-complete__fave-card {
+  width: 100% !important;
+  height: 120px !important;
+  max-height: 120px !important;
+  object-fit: cover !important;
+}
+
+.review-send-prompt {
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) !important;
+  gap: 18px !important;
+  padding: 24px !important;
+  width: 100% !important;
+}
+
+.review-send-prompt::before {
+  display: grid !important;
+  width: 56px !important;
+  height: 56px !important;
+}
+
+.review-send-actions {
+  grid-column: 2 !important;
+  width: 100% !important;
+}
+
+.review-send-actions button#next-higher-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 440px !important;
+  white-space: normal !important;
+  line-height: 1.2 !important;
+}
+
+
+
+.quick-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.quick-actions button {
+  min-width: 0 !important;
+  white-space: normal !important;
+}
+
+/* When the browser/modal gets narrower, stack it cleanly */
+@media (max-width: 980px) {
+  .panel {
+    width: min(760px, calc(100vw - 28px)) !important;
+  }
+
+  .review-complete {
+    grid-template-columns: 1fr !important;
+  }
+
+  .review-complete__stats {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+}
+/* MOBILE REVIEW SUMMARY - CLEAN STACK */
+@media (max-width: 640px) {
+  .panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .panel__header {
+    grid-template-columns: auto 1fr auto !important;
+    gap: 6px !important;
+    padding: 10px 12px !important;
+  }
+
+  .panel__position {
+    font-size: 0.68rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .panel__header-actions {
+    gap: 4px !important;
+  }
+
+  .panel__map-btn,
+  .panel__top-btn,
+  .panel__close {
+    height: 32px !important;
+    padding: 0 9px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .panel__summary {
+    padding: 28px 22px 0 !important;
+  }
+
+  .review-complete {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  .review-complete__header,
+  .review-send-prompt,
+  .review-complete__stats,
+    .review-complete__note {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  .review-complete__title {
+    font-size: 2.55rem !important;
+    line-height: 0.98 !important;
+    letter-spacing: -0.055em !important;
+  }
+
+  .review-complete__sub {
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+  }
+
+  .review-complete__faves {
+    display: none !important;
+  }
+
+  .review-send-prompt {
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 22px !important;
+  }
+
+  .review-send-prompt::before {
+    display: grid !important;
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.4rem !important;
+    grid-row: 1 / span 2 !important;
+  }
+
+  .review-send-copy h3 {
+    font-size: 1.25rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .review-send-copy p {
+    font-size: 0.88rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .review-send-actions {
+    grid-column: 1 / -1 !important;
+  }
+
+  .review-send-actions button#next-higher-btn {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 48px !important;
+    font-size: 0.82rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .review-complete__stats {
+    padding: 22px !important;
+  }
+
+  .stat {
+    grid-template-columns: 56px 1fr !important;
+    gap: 14px !important;
+  }
+
+  .stat__num {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 1.5rem !important;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+#summary-fave-strip:empty {
+  display: none !important;
+  margin: 0 !important;
+}
+
+.panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.panel::-webkit-scrollbar {
+  display: none;
+}
+
+.panel__scroll-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 14, 9, 0.72);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 999;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.panel__scroll-hint.visible {
+  opacity: 1;
+}
+
+
+
+  @media (max-width: 640px) {
+  .masthead.map-mode {
+    padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .masthead.map-mode .masthead__inner {
+    padding: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  .masthead.map-mode .masthead__left,
+  .masthead.map-mode .masthead__right {
+    display: none !important;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    width: 100vw !important;
+    height: 420px !important;
+    max-height: 420px !important;
+    margin: 0 !important;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    width: 100vw !important;
+    height: 420px !important;
+    min-height: 420px !important;
+    max-height: 420px !important;
+  }
+}
+
+
+
+
+
+
+  .masthead.map-mode .masthead__inner {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .masthead.map-mode .masthead-map-wrap {
+    width: 100vw !important;
+    height: 380px !important;
+    max-height: 380px !important;
+  }
+
+  .masthead.map-mode .shortlist-page-map {
+    width: 100vw !important;
+    height: 380px !important;
+    min-height: 380px !important;
+    max-height: 380px !important;
+  }
+
+  .masthead.map-mode .masthead__left {
+    display: none !important;
+  }
+}
+</style>
+
+<script is:inline>
+      function initShortlistPage() {
+        function coordsLookWrong(lat, lng, card) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+  if (lat === 0 || lng === 0) return true;
+
+  const city = String(card?.dataset?.city || "").toLowerCase();
+
+  const cityBounds = {
+    nanaimo: { minLat: 49.0, maxLat: 49.35, minLng: -124.15, maxLng: -123.75 },
+    lantzville: { minLat: 49.2, maxLat: 49.35, minLng: -124.15, maxLng: -123.9 },
+    parksville: { minLat: 49.25, maxLat: 49.4, minLng: -124.45, maxLng: -124.2 }
+  };
+
+  const bounds = cityBounds[city];
+
+  if (!bounds) {
+    return lat < 48.2 || lat > 50.7 || lng < -128.5 || lng > -122.9;
+  }
+
+  return (
+    lat < bounds.minLat ||
+    lat > bounds.maxLat ||
+    lng < bounds.minLng ||
+    lng > bounds.maxLng
+  );
+}
+
+function getGeocodeAddress(card) {
+  const address = card.dataset.address || "";
+  const city = card.dataset.city || "";
+
+  return city
+    ? `${address}, ${city}, BC, Canada`
+    : `${address}, British Columbia, Canada`;
+}
+        const body = document.body;
+        const isAgentView = body?.dataset.agentView === "true";
+const pageSlug = body?.dataset.shortlistSlug || "";
+const isExpandedReview = new URLSearchParams(window.location.search).has("expanded");
+if (!isAgentView && pageSlug) {
+  fetch("/api/shortlists/track-view", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug: pageSlug })
+  }).catch(() => {});
+}
+const viewedKey = `shortlist_viewed_${pageSlug}`;
+
+function getViewedListings() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(viewedKey) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function markListingViewed(card) {
+  if (!card) return;
+
+  const id = card.dataset.itemId || card.dataset.cardId || "";
+  if (!id) return;
+
+  const viewed = getViewedListings();
+  viewed.add(id);
+  localStorage.setItem(viewedKey, JSON.stringify([...viewed]));
+
+  card.dataset.viewed = "true";
+  card.dataset.isNew = "false";
+  card.querySelector(".card__new-badge")?.remove();
+}
+
+function clearNewBadgesAfterModalClose() {
+  const viewed = getViewedListings();
+
+  document.querySelectorAll(".card").forEach((card) => {
+    const id = card.dataset.itemId || card.dataset.cardId || "";
+
+    if (id && viewed.has(id)) {
+      card.dataset.viewed = "true";
+      card.dataset.isNew = "false";
+      card.querySelector(".card__new-badge")?.remove();
+    }
+  });
+}
+
+        const sheet = document.getElementById("preview-sheet");
+        const overlay = document.getElementById("sheet-overlay");
+        const sheetImage = document.getElementById("sheet-image");
+        const sheetPrice = document.getElementById("sheet-price");
+        const sheetAddress = document.getElementById("sheet-address");
+        const sheetMeta = document.getElementById("sheet-meta");
+        const sheetDescription = document.getElementById("sheet-description");
+const descToggle = document.getElementById("sheet-desc-toggle");
+const sheetCloseBtn = document.getElementById("sheet-close-btn");
+        const sheetNextBtn = document.getElementById("sheet-next-btn");
+const sheetPrevBtn = document.getElementById("sheet-prev-btn");
+const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
+const sheetPrevTopBtn = document.getElementById("sheet-prev-top-btn");
+const sheetDetailRow = document.getElementById("sheet-detail-row");
+const sheetHighlights = document.getElementById("sheet-highlights");
+        const sheetProgressBar = document.getElementById("sheet-progress-bar");
+        const sheetPosition = document.getElementById("sheet-position");
+        const sheetFeedback = document.getElementById("sheet-feedback");
+        const sheetIntelligence = document.getElementById("sheet-intelligence");
+       const sheetPhotoCount = document.getElementById("sheet-photo-count");
+const photoPrevBtn = document.getElementById("photo-prev-btn");
+const photoNextBtn = document.getElementById("photo-next-btn");
+const sheetMapBtn = document.getElementById("sheet-map-btn");
+const sheetImageStage = document.querySelector(".panel__image-stage");
+let activePhotoUrls = [];
+let activePhotoIndex = 0;
+let photoTouchStartX = 0;
+let photoTouchEndX = 0;
+
+const shortlistSendId = document.body?.dataset.shortlistSendId || "";
+
+let metricListingId = "";
+let metricMls = "";
+let metricStartTime = 0;
+let metricViewedImages = new Set();
+let metricImageViews = 0;
+let metricMaxImageIndex = 0;
+
+function trackActivePhotoMetric(index = activePhotoIndex) {
+  if (!metricListingId) return;
+
+  metricViewedImages.add(index);
+  metricImageViews += 1;
+  metricMaxImageIndex = Math.max(metricMaxImageIndex, index);
+}
+
+async function flushListingMetrics(extra = {}) {
+  if (!shortlistSendId || !metricListingId || !metricStartTime) return;
+
+  const timeSpentSeconds = Math.max(
+    1,
+    Math.round((Date.now() - metricStartTime) / 1000)
+  );
+
+  const payload = {
+    shortlistSendId,
+    listingId: metricListingId,
+    mls: metricMls,
+    timeSpentSeconds,
+    uniqueImagesViewed: metricViewedImages.size,
+    imageViews: metricImageViews,
+    maxImageIndex: metricMaxImageIndex,
+    ...extra
+  };
+
+  metricListingId = "";
+  metricMls = "";
+  metricStartTime = 0;
+  metricViewedImages = new Set();
+  metricImageViews = 0;
+  metricMaxImageIndex = 0;
+
+  try {
+    await fetch("/api/shortlists/track-listing-metrics", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.warn("Could not track listing metrics", err);
+  }
+}
+
+function startListingMetrics(card) {
+  flushListingMetrics();
+
+  metricListingId =
+    card?.dataset?.listingId ||
+    card?.dataset?.cardId ||
+    card?.dataset?.itemId ||
+    "";
+
+  metricMls = card?.dataset?.mls || metricListingId;
+  metricStartTime = Date.now();
+  metricViewedImages = new Set();
+  metricImageViews = 0;
+  metricMaxImageIndex = 0;
+
+  // first photo is counted when renderActivePhoto() runs
+}
+
+const sheetContent = document.getElementById("sheet-content");
+const sheetSummary = document.getElementById("sheet-summary");
+        const summaryLoveCount = document.getElementById("summary-love-count");
+        const summaryMaybeCount = document.getElementById("summary-maybe-count");
+        const summaryPassCount = document.getElementById("summary-pass-count");
+        const summaryRestartBtn = document.getElementById("summary-restart-btn");
+        const editToggleBtn = document.getElementById("edit-shortlist-toggle");
+        const editBanner = document.getElementById("edit-banner");
+        const homesCountNum = document.getElementById("homes-count-num");
+        const sectionMetaCount = document.getElementById("section-meta-count");
+        const shortlistGrid = document.getElementById("shortlist-grid");
+        const emptyState = document.getElementById("empty-state");
+       const navSendTextBtn = document.getElementById("nav-send-text-btn");
+       const navCopyLinkBtn = document.getElementById("nav-copy-link-btn");
+const saveNoteBtn = document.getElementById("save-note-btn");
+const noteInput = document.getElementById("shortlist-note-input");
+const smsMessageInput = document.getElementById("sms-message-input");
+const saveSmsMessageBtn = document.getElementById("save-sms-message-btn");
+const mastheadMessage = document.getElementById("masthead-message");
+const sendTextButtons = Array.from(document.querySelectorAll("[data-send-text]"));
+const saveSmsImageBtn = document.getElementById("save-sms-image-btn");
+const smsImageInput = document.getElementById("sms-image-url-input");
+const presetImageButtons = Array.from(document.querySelectorAll("[data-preset-image-url]"));
+const showResourcesToggle = document.getElementById("show-resources-toggle");
+const saveResourceVisibilityBtn = document.getElementById("save-resource-visibility-btn");
+const addResourceBtn = document.getElementById("add-resource-btn");
+const resourceTypeInput = document.getElementById("resource-type-input");
+const resourceNameInput = document.getElementById("resource-name-input");
+const resourcePhoneInput = document.getElementById("resource-phone-input");
+const resourceEmailInput = document.getElementById("resource-email-input");
+const resourceWebsiteInput = document.getElementById("resource-website-input");
+const resourceDescriptionInput = document.getElementById("resource-description-input");
+const resourceVendorList = document.getElementById("resource-vendor-list");
+const saveResourceVendorsBtn = document.getElementById("save-resource-vendors-btn");       
+const showAddResourceBtn = document.getElementById("show-add-resource-btn");
+const resourceAddEditor = document.getElementById("resource-add-editor");      
+const decisionLoveBtn = document.getElementById("decision-love-btn");
+        const decisionMaybeBtn = document.getElementById("decision-maybe-btn");
+        const decisionPassBtn = document.getElementById("decision-pass-btn");
+        const feedbackSecondary = document.getElementById("feedback-secondary");
+const feedbackChipTitle = document.getElementById("feedback-chip-title");
+const feedbackChipGroup = document.getElementById("feedback-chips");
+const FEATURE_MAP = [
+  {
+    terms: ["walk-on waterfront", "walk on waterfront"],
+    label: "Walk-on waterfront",
+    emoji: "🏖️"
+  },
+  {
+    terms: ["oceanfront", "waterfront", "low bank", "beach access"],
+    label: "Waterfront setting",
+    emoji: "🌊"
+  },
+  {
+    terms: ["ocean view", "water view", "sea view", "harbour view", "harbor view", "mountain view", "lake view", "river view", "city view", "panoramic view"],
+    label: "Views",
+    emoji: "🌅"
+  },
+  {
+    terms: ["pool", "swimming pool"],
+    label: "Pool",
+    emoji: "🏊"
+  },
+  
+{
+  terms: ["hot tub", "jacuzzi"],
+  label: "Hot tub",
+  emoji: "♨️"
+},
+  {
+    terms: ["carriage house", "carriage home", "coach house", "carriage"],
+    label: "Carriage home",
+    emoji: "🏡"
+  },
+  {
+    terms: ["legal suite", "secondary suite", "mortgage helper", "income suite", "suite"],
+    label: "Income suite",
+    emoji: "💵"
+  },
+  {
+    terms: ["updated kitchen", "renovated kitchen", "modern kitchen", "chef's kitchen", "gourmet kitchen", "quartz counters", "stone counters"],
+    label: "Kitchen finish",
+    emoji: "🍽️"
+  },
+  {
+    terms: ["garage", "double garage", "triple garage", "rv parking", "boat parking", "shop", "workshop"],
+    label: "Parking / shop",
+    emoji: "🚗"
+  },
+  {
+    terms: ["private yard", "fully fenced", "backyard", "garden"],
+    label: "Private yard",
+    emoji: "🌳"
+  },
+  {
+    terms: ["private", "privacy", "secluded", "treed"],
+    label: "Privacy",
+    emoji: "🌲"
+  },
+  {
+    terms: ["walk to", "walking distance", "steps to"],
+    label: "Walkability",
+    emoji: "🚶"
+  },
+  {
+    terms: ["downtown", "shops", "restaurants", "cafes", "coffee shops"],
+    label: "Shops nearby",
+    emoji: "☕"
+  },
+  {
+    terms: ["school", "schools", "catchment"],
+    label: "Schools nearby",
+    emoji: "🎒"
+  },
+  {
+    terms: ["trail", "trails", "hiking", "bike path", "greenway"],
+    label: "Trails nearby",
+    emoji: "🥾"
+  },
+  {
+    terms: ["marina", "boat launch", "moorage"],
+    label: "Boating lifestyle",
+    emoji: "⛵"
+  },
+  {
+    terms: ["fireplace", "gas fireplace", "wood fireplace"],
+    label: "Fireplace",
+    emoji: "🔥"
+  },
+  {
+    terms: ["vaulted ceiling", "vaulted ceilings", "cathedral ceiling"],
+    label: "Vaulted ceilings",
+    emoji: "🏠"
+  },
+  {
+    terms: ["covered deck", "large deck", "sun deck", "patio", "balcony"],
+    label: "Outdoor living",
+    emoji: "🌤️"
+  },
+  {
+    terms: ["cul-de-sac", "quiet street", "no through road"],
+    label: "Quiet street",
+    emoji: "🤫"
+  },
+  {
+    terms: ["acreage", "acres", "large lot", "oversized lot", "big lot"],
+    label: "Large lot",
+    emoji: "🌾"
+  },
+  {
+    terms: ["south facing", "sunny exposure", "lots of natural light", "natural light", "bright"],
+    label: "Natural light",
+    emoji: "☀️"
+  },
+  {
+    terms: ["open concept", "open plan", "open floor plan"],
+    label: "Open layout",
+    emoji: "🛋️"
+  },
+  {
+    terms: ["main level entry", "main floor living", "rancher", "one level living"],
+    label: "Main-level living",
+    emoji: "🚪"
+  },
+  {
+    terms: ["primary on main", "master on main"],
+    label: "Primary on main",
+    emoji: "🛏️"
+  },
+  {
+    terms: ["family room", "rec room", "media room", "bonus room"],
+    label: "Extra living space",
+    emoji: "🎬"
+  },
+  {
+    terms: ["home office", "den", "flex room"],
+    label: "Work-from-home space",
+    emoji: "💻"
+  },
+  {
+    terms: ["new build", "new construction", "brand new"],
+    label: "Newer build",
+    emoji: "🏗️"
+  },
+  {
+    terms: ["new roof", "new windows", "heat pump", "new furnace"],
+    label: "Big-ticket updates",
+    emoji: "🛠️"
+  },
+  {
+    terms: ["air conditioning", "a/c", "heat pump"],
+    label: "Comfort upgrades",
+    emoji: "❄️"
+  },
+  {
+    terms: ["lane access", "rear lane", "alley access"],
+    label: "Lane access",
+    emoji: "↩️"
+  },
+  {
+    terms: ["low maintenance", "easy care", "lock and leave"],
+    label: "Low maintenance",
+    emoji: "🧳"
+  },
+  {
+    terms: ["renovated", "updated", "turnkey", "move-in ready", "modern"],
+    label: "Updated interior",
+    emoji: "🛋️"
+  }
+];
+
+function extractListingFeaturesFromCard(card) {
+  const text = `
+    ${card?.dataset?.address || ""}
+    ${card?.dataset?.description || ""}
+    ${card?.dataset?.type || ""}
+    ${card?.dataset?.area || ""}
+  `.toLowerCase();
+
+  return FEATURE_MAP.filter((feature) =>
+    feature.terms.some((term) => text.includes(term))
+  ).slice(0, 6);
+}
+const feedbackOptions = {
+  love: {
+    title: "Possible reasons this stood out:",
+    chips: []
+  },
+  maybe: {
+    title: "What are you unsure about?",
+    chips: [
+      ["price", "💰 Price"],
+      ["size", "📐 Size"],
+      ["layout", "🛋️ Layout"],
+      ["condition", "🔎 Condition"]
+    ]
+  },
+  pass: {
+    title: "What ruled it out?",
+    chips: [
+      ["too-much-work", "🛠️ Too much work"],
+      ["location", "📍 Location"],
+      ["layout", "🛋️ Layout"],
+      ["price", "💰 Price"]
+    ]
+  }
+};
+
+let feedbackChips = [];
+
+        if (!sheet || !overlay) return;
+        if (sheet.dataset.initialized === "true") return;
+        sheet.dataset.initialized = "true";
+
+        let activeCard = null;
+        let activeItemId = "";
+        let activeTags = [];
+        let activeFavourite = false;
+        let activeDecision = "";
+        let isSaving = false;
+        let shouldRefreshOnClose = false;
+        let editMode = false;
+        let isShowingSummary = false;
+let hasAutoSentReviewSummary = false;
+let cameFromSummary = false;
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchCurrentX = 0;
+        let touchCurrentY = 0;
+        let isDraggingSheet = false;
+        let dragMode = "";
+        let touchStartedOnInteractive = false;
+        let isAnimatingGesture = false;
+        let dragCloseY = 0;
+
+    let reviewCards = null;
+
+function getCards() {
+  if (reviewCards) return reviewCards;
+
+  const allCards = Array.from(document.querySelectorAll(".card"));
+
+  reviewCards = allCards;
+  return reviewCards;
+}
+
+        function currentCardIndex() {
+          const cards = getCards();
+          if (!activeCard) return -1;
+          return cards.indexOf(activeCard);
+        }
+
+        function updateCounts() {
+          const count = getCards().length;
+
+          if (homesCountNum) {
+            homesCountNum.textContent = String(count).padStart(2, "0");
+          }
+
+          if (sectionMetaCount) {
+            sectionMetaCount.textContent = `${count} ${count === 1 ? "home" : "homes"} chosen for review`;
+          }
+
+          if (shortlistGrid && emptyState) {
+            if (count === 0) {
+              shortlistGrid.style.display = "none";
+              emptyState.style.display = "block";
+            } else {
+              shortlistGrid.style.display = "";
+              emptyState.style.display = "none";
+            }
+          }
+        }
+
+        function syncEditModeUI() {
+          body.classList.toggle("edit-mode", editMode);
+
+          if (editToggleBtn) {
+            editToggleBtn.textContent = editMode ? "Done editing" : "Edit shortlist";
+            editToggleBtn.setAttribute("data-editing", editMode ? "true" : "false");
+          }
+
+          if (editBanner) {
+            editBanner.classList.toggle("show", editMode);
+          }
+        }
+
+        function isMobileSheet() {
+          return window.innerWidth <= 640;
+        }
+
+        function parseTags(v) {
+          try {
+            const p = JSON.parse(v || "[]");
+            return Array.isArray(p) ? p : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function setSheetTransform(value) {
+          if (!isMobileSheet()) return;
+          sheet.style.transform = value;
+        }
+
+        function resetSheetTransform() {
+          sheet.style.transform = "";
+          sheet.style.opacity = "";
+          overlay.style.opacity = "";
+        }
+
+        function setOverlayOpacityByProgress(progress) {
+          const minOpacity = 0.12;
+          const maxOpacity = 1;
+          const clamped = Math.max(0, Math.min(1, progress));
+          const opacity = minOpacity + (maxOpacity - minOpacity) * clamped;
+          overlay.style.opacity = String(opacity);
+        }
+function pickNote(seed, options) {
+  const text = String(seed || "");
+  const total = text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return options[total % options.length];
+}
+
+function buildHighlightChips(card) {
+  const desc = String(card.dataset.description || "").toLowerCase();
+  const type = String(card.dataset.type || "").toLowerCase();
+  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const beds = Number(card.dataset.beds || 0);
+
+  const isCondo = type.includes("condo") || type.includes("apartment");
+  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
+  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
+
+  const hasView =
+    /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc) &&
+    !/viewing|preview|virtual tour|view today|viewing appointment/.test(desc);
+
+  const hasSuite = /suite|mortgage helper|income|secondary suite|legal suite/.test(desc);
+  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+  const quiet = /cul-de-sac|quiet street|private|privacy/.test(desc);
+  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+
+  const highlights = [];
+
+  if (isCondo) {
+    if (hasView) highlights.push("Open outlook");
+    if (amenities) highlights.push("Building amenities");
+    if (hasParking) highlights.push("Parking included");
+    if (outdoor) highlights.push("Outdoor space");
+    if (isUpdated) highlights.push("Updated interior");
+    if (sqft >= 900) highlights.push("Larger layout");
+    if (!highlights.length) highlights.push("Low-maintenance living");
+  } else if (isTownhouse) {
+    if (beds >= 3) highlights.push("Family-friendly layout");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Private outdoor space");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quieter setting");
+    if (sqft >= 1600) highlights.push("Generous townhome space");
+    highlights.push("Lock-and-leave option");
+  } else if (isHouse) {
+    if (sqft >= 2500) highlights.push("Generous floor plan");
+    if (beds >= 4) highlights.push("Family-sized");
+    if (hasView) highlights.push("View potential");
+    if (hasSuite) highlights.push("Suite potential");
+    if (isUpdated) highlights.push("Updated features");
+    if (quiet) highlights.push("Quiet setting");
+    if (hasParking) highlights.push("Good parking");
+  } else {
+    if (hasView) highlights.push("View setting");
+    if (isUpdated) highlights.push("Updated features");
+    if (hasParking) highlights.push("Good parking");
+    if (outdoor) highlights.push("Outdoor space");
+  }
+
+  return Array.from(new Set(highlights)).slice(0, 3);
+}
+    function buildIntelligenceLabel(index, card) {
+  const desc = String(card.dataset.description || "").toLowerCase();
+  const type = String(card.dataset.type || "").toLowerCase();
+
+  const beds = Number(card.dataset.beds || 0);
+  const baths = Number(card.dataset.baths || 0);
+  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const year = Number(card.dataset.year || 0);
+
+  const isCondo = type.includes("condo") || type.includes("apartment");
+  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
+  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
+
+  const hasView = /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc);
+  const hasSuite = isHouse && /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
+  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
+  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+
+  if (isCondo) {
+    if (sqft >= 900 && outdoor) return "Feels bigger than most condos";
+    if (isUpdated) {
+      return pickNote(card.dataset.cardId || card.dataset.address, [
+        "Move-in ready condo option",
+        "Clean, easy condo choice",
+        "A simpler option to step into",
+        "Low-effort condo living"
+      ]);
+    }
+    if (sqft >= 900) return "More room than the typical condo";
+    if (amenities) return "Easy living with building perks";
+    if (hasParking) return "Convenient everyday setup";
+    return "Simple, low-maintenance living";
+  }
+
+  if (isTownhouse) {
+    if (beds >= 3 && outdoor) return "Great layout for everyday living";
+    if (hasParking) return "Practical townhome setup";
+    if (isUpdated) return "Updated townhome option";
+    return "Balanced space with low upkeep";
+  }
+
+  if (isHouse) {
+    const isFamilySized = beds >= 4 && baths >= 3;
+    const isLarge = sqft >= 2500;
+    const isNewer = year >= 2015;
+
+    if (hasView && hasSuite) return "Strong upside with income potential";
+    if (isNewer && isFamilySized && isLarge) return "Checks the boxes for a growing family";
+    if (isUpdated && isLarge) return "Updated home with real space";
+    if (hasSuite) return "Flexible layout with income potential";
+    if (hasView) return "Nice outlook from main living areas";
+    return index === 0 ? "Best overall match in this group" : "Solid detached option to consider";
+  }
+
+  if (hasView) return "Open outlook worth noting";
+  if (isUpdated) return "Updated features stand out";
+
+  return index === 0 ? "Best overall match in this group" : "Worth a closer look";
+}
+
+function renderFeedbackChips(kind = "") {
+  if (!feedbackSecondary || !feedbackChipTitle || !feedbackChipGroup) return;
+
+ const config = feedbackOptions[kind]
+  ? { ...feedbackOptions[kind] }
+  : null;
+  if (kind === "love" && activeCard) {
+  const features = extractListingFeaturesFromCard(activeCard);
+
+  if (features.length) {
+    config.chips = features.map((feature) => [
+      feature.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+      `${feature.emoji} ${feature.label}`
+    ]);
+  } else {
+    config.chips = [
+      ["layout", "🛋️ Layout"],
+      ["location", "📍 Location"],
+      ["finishes", "✨ Finishes"],
+      ["overall-feel", "❤️ Overall feel"]
+    ];
+  }
+}
+
+  if (!config) {
+    feedbackSecondary.hidden = true;
+    feedbackChipGroup.innerHTML = "";
+    feedbackChips = [];
+    return;
+  }
+
+  feedbackSecondary.hidden = false;
+  feedbackChipTitle.textContent = config.title;
+
+feedbackChipGroup.innerHTML = config.chips
+  .map(([tag, label]) => `
+    <button
+      class="chip feedback-pill"
+      type="button"
+      data-tag="${tag}"
+      style="
+        appearance:none;
+        -webkit-appearance:none;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:6px;
+        min-height:34px;
+        padding:8px 14px;
+        border-radius:999px;
+        border:1px solid #e4e0d9;
+        background:#fff;
+        color:#18160f;
+        font-family:var(--f-body);
+        font-size:0.76rem;
+        font-weight:700;
+        line-height:1;
+        cursor:pointer;
+        box-shadow:0 5px 16px rgba(17,14,9,0.045);
+   opacity:1;
+transform:translateY(0) scale(1);
+transition:transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
+      "
+    >
+      ${label}
+    </button>
+  `)
+  .join("");
+
+feedbackChipGroup.querySelectorAll(".feedback-pill").forEach((pill) => {
+  pill.addEventListener("mouseenter", () => {
+    pill.style.transform = "translateY(-1px)";
+  });
+
+  pill.addEventListener("mouseleave", () => {
+    pill.style.transform = "";
+  });
+});
+
+feedbackChips = Array.from(feedbackChipGroup.querySelectorAll(".chip[data-tag]"));
+
+  feedbackChips.forEach((chip) => {
+    chip.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget?.blur?.();
+
+      const tag = chip.dataset.tag || "";
+      if (!tag || !activeCard) return;
+
+      activeTags = activeTags.includes(tag)
+        ? activeTags.filter((t) => t !== tag)
+        : [...activeTags, tag];
+
+      updateDecisionButtons();
+      refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
+      await saveFeedback();
+    });
+  });
+
+  updateDecisionButtons();
+}
+
+        function updateDecisionButtons() {
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            btn?.classList.remove("is-selected");
+          });
+
+          if (activeFavourite && decisionLoveBtn) {
+            decisionLoveBtn.classList.add("is-selected");
+          }
+
+          if (activeDecision === "maybe" && decisionMaybeBtn) {
+            decisionMaybeBtn.classList.add("is-selected");
+          }
+
+          if (activeDecision === "pass" && decisionPassBtn) {
+            decisionPassBtn.classList.add("is-selected");
+          }
+
+          feedbackChips.forEach((c) => {
+            const isActive = activeTags.includes(c.dataset.tag || "");
+c.classList.toggle("active", isActive);
+
+c.style.background = isActive ? "#f3eadc" : "#fff";
+c.style.borderColor = isActive ? "#d6b57a" : "#e4e0d9";
+c.style.color = isActive ? "#6f4f1f" : "#18160f";
+          });
+        }
+
+        function updateHeaderProgress() {
+          const cards = getCards();
+          const total = cards.length;
+          const index = currentCardIndex();
+          const mapEl = document.getElementById("sheet-mini-map");
+
+if (mapEl) {
+  mapEl.hidden = true;
+  mapEl.innerHTML = "";
+}
+
+if (sheetMiniMap) {
+  sheetMiniMap.remove();
+  sheetMiniMap = null;
+  sheetMiniMarker = null;
+}
+
+          if (!sheetPosition || !sheetProgressBar) return;
+
+          if (isShowingSummary) {
+            sheetPosition.textContent = `${total} of ${total}`;
+            sheetProgressBar.style.width = "100%";
+            return;
+          }
+
+          const displayIndex = index >= 0 ? index + 1 : 1;
+          sheetPosition.textContent = `${displayIndex} of ${Math.max(total, 1)}`;
+
+          const progress = total > 0 ? (displayIndex / total) * 100 : 0;
+          sheetProgressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        }
+function preloadImage(src) {
+  if (!src) return;
+
+  const img = new Image();
+  img.src = src;
+}
+
+function renderActivePhoto() {
+  if (!sheetImage || !activePhotoUrls.length) return;
+
+  trackActivePhotoMetric(activePhotoIndex);
+
+  sheetImage.src = activePhotoUrls[activePhotoIndex];
+  sheetImage.alt = activeCard?.dataset.address || "";
+
+  preloadImage(activePhotoUrls[activePhotoIndex + 1]);
+  preloadImage(activePhotoUrls[activePhotoIndex - 1]);
+
+  if (sheetPhotoCount) {
+    sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+  }
+
+  if (photoPrevBtn) {
+    photoPrevBtn.disabled = activePhotoIndex === 0;
+  }
+
+  if (photoNextBtn) {
+    photoNextBtn.disabled = activePhotoIndex === activePhotoUrls.length - 1;
+  }
+}
+
+function showPrevPhoto() {
+  if (activePhotoIndex <= 0) return;
+  activePhotoIndex -= 1;
+  renderActivePhoto();
+}
+
+function showNextPhoto() {
+  if (activePhotoIndex >= activePhotoUrls.length - 1) return;
+  activePhotoIndex += 1;
+  renderActivePhoto();
+}
+
+photoPrevBtn?.addEventListener("click", showPrevPhoto);
+photoNextBtn?.addEventListener("click", showNextPhoto);
+
+sheetImage?.addEventListener(
+  "touchstart",
+  (event) => {
+    event.stopPropagation();
+    photoTouchStartX = event.changedTouches[0].screenX;
+  },
+  { passive: true }
+);
+
+sheetImage?.addEventListener(
+  "touchmove",
+  (event) => {
+    event.stopPropagation();
+  },
+  { passive: true }
+);
+
+sheetImage?.addEventListener(
+  "touchend",
+  (event) => {
+    event.stopPropagation();
+
+    photoTouchEndX = event.changedTouches[0].screenX;
+
+    const swipeDistance = photoTouchEndX - photoTouchStartX;
+
+    if (Math.abs(swipeDistance) < 50) return;
+
+    if (swipeDistance < 0) {
+      showNextPhoto();
+    } else {
+      showPrevPhoto();
+    }
+  },
+  { passive: true }
+);
+
+
+        function renderCardStateToPanel(card) {
+          if (!card) return;
+
+          const beds = card.dataset.beds || "—";
+          const baths = card.dataset.baths || "—";
+          const sqft = card.dataset.sqft ? ` · ${card.dataset.sqft} sqft` : "";
+          const index = currentCardIndex();
+
+          if (sheetImage) {
+const rawImages = JSON.parse(card.dataset.images || "[]");
+
+const normalizePhotoUrl = (url) => {
+  const value = String(url || "").trim();
+
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+
+  return `https://cdn.repliers.io/${value}`;
+};
+
+const photoUrls = rawImages
+  .map((img) => {
+    if (typeof img === "string") return normalizePhotoUrl(img);
+
+    return normalizePhotoUrl(
+      img.highRes ||
+      img.mediumRes ||
+      img.lowRes ||
+      img.url ||
+      ""
+    );
+  })
+  .filter(Boolean);
+
+  if (!photoUrls.length) {
+    photoUrls.push(card.dataset.image || "https://placehold.co/800x600?text=Listing");
+  }
+
+  activePhotoUrls = photoUrls;
+activePhotoIndex = 0;
+renderActivePhoto();
+
+ 
+}
+ if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
+
+const titleCase = (value) =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+if (sheetAddress) {
+  const area = card.dataset.area ? titleCase(card.dataset.area) : "";
+  const rawAddress = card.dataset.address || "—";
+
+  let cleanAddress = rawAddress;
+
+  if (area && rawAddress.toLowerCase().endsWith(area.toLowerCase())) {
+    cleanAddress = rawAddress.slice(0, -area.length).trim();
+  }
+
+sheetAddress.innerHTML = area
+  ? `<span>${rawAddress}</span> <span class="panel__area-inline">• ${area}</span>`
+  : `<span>${rawAddress}</span>`;
+}
+
+if (sheetMeta) {
+  const facts = [
+    beds ? `<span class="panel__meta-item"><strong>${beds}</strong> <span class="panel__meta-label">Bed</span></span>` : "",
+    baths ? `<span class="panel__meta-item"><strong>${baths}</strong> <span class="panel__meta-label">Bath</span></span>` : "",
+    card.dataset.sqft
+      ? `<span class="panel__meta-item"><strong>${card.dataset.sqft}</strong> <span class="panel__meta-label">Sq Ft</span></span>`
+      : ""
+  ].filter(Boolean);
+
+  sheetMeta.innerHTML = facts.join("");
+}
+          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
+         if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
+          if (sheetDetailRow) {
+const titleCase = (value) =>
+  String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const details = [
+  card.dataset.dom ? `${card.dataset.dom} Days on Market` : "",
+  card.dataset.year ? `Built ${card.dataset.year}` : "",
+  card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""
+].filter(Boolean);
+
+  sheetDetailRow.innerHTML = details.map((item) => `<span>${item}</span>`).join("");
+}
+
+if (sheetHighlights) {
+  const highlights = buildHighlightChips(card);
+
+  sheetHighlights.innerHTML = highlights
+    .map((item) => `<span class="panel__highlight-chip">${item}</span>`)
+    .join("");
+}
+
+                  updateHeaderProgress();
+
+          renderFeedbackChips(
+            activeFavourite
+              ? "love"
+              : activeDecision === "maybe"
+                ? "maybe"
+                : activeDecision === "pass"
+                  ? "pass"
+                  : ""
+          );
+
+          updateDecisionButtons();
+
+          const cards = getCards();
+const currentIndex = cards.indexOf(card);
+const isFirst = currentIndex <= 0;
+const isLast = currentIndex >= cards.length - 1;
+
+if (sheetPrevBtn) sheetPrevBtn.disabled = isFirst && !cameFromSummary;
+if (sheetPrevTopBtn) sheetPrevTopBtn.disabled = isFirst && !cameFromSummary;
+
+if (sheetNextBtn) sheetNextBtn.textContent = isLast ? "Finish review →" : "Next listing →";
+if (sheetNextTopBtn) sheetNextTopBtn.textContent = isLast ? "Finish →" : "Next →";
+        }
+
+function appendExpandedListings(listings) {
+  if (!shortlistGrid || !Array.isArray(listings) || !listings.length) return [];
+
+  const appendedCards = [];
+
+  reviewCards = null;
+
+  listings.forEach((listing) => {
+    const article = document.createElement("article");
+
+    const itemId = String(listing.shortlist_item_id || listing.id || "");
+    const listingId = String(listing.repliers_listing_id || listing.listing_id || listing.id || "");
+    const price = listing.price_text || "Price unavailable";
+    const address = listing.address || "Address unavailable";
+    const image = listing.image_url || "https://placehold.co/800x600?text=Listing";
+const safeDescription = String(listing.description || "").replace(/\s+/g, " ").trim();
+
+    article.className = "card";
+    article.dataset.itemId = itemId;
+    article.dataset.cardId = listingId;
+    article.dataset.price = price;
+    article.dataset.address = address;
+    article.dataset.beds = String(listing.beds || "-");
+    article.dataset.baths = String(listing.baths || "-");
+    article.dataset.sqft = String(listing.sqft || "");
+    article.dataset.type = listing.property_type || "Home";
+    article.dataset.year = String(listing.year_built || "");
+    article.dataset.image = image;
+    article.dataset.images = JSON.stringify(listing.images || []);
+    article.dataset.description = listing.description || "";
+    article.dataset.likedTags = "[]";
+    article.dataset.isFavourite = "false";
+    article.dataset.decision = "";
+    article.dataset.isNew = "true";
+    article.dataset.featured = "false";
+    article.dataset.originalOrder = String(-Date.now());
+
+    article.innerHTML = `
+      <div class="card__image-wrap">
+        <div class="card__new-badge">
+          <span>✨</span>
+          <span>New</span>
+        </div>
+
+        <img src="${image}" alt="${address}" loading="lazy" />
+        <span class="card__index">New</span>
+      </div>
+
+      <div class="card__body">
+        <p class="card__price">${price}</p>
+        <p class="card__address">${address}</p>
+        <p class="card__meta">
+          ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+          ${listing.sqft ? ` · ${listing.sqft} sqft` : ""}
+          ${listing.year_built ? ` · Built ${listing.year_built}` : ""}
+        </p>
+    <p class="card__desc">${safeDescription}</p>
+        <button type="button" class="card__action preview-btn">View property →</button>
+      </div>
+    `;
+
+   shortlistGrid.appendChild(article);
+appendedCards.push(article);
+    bindCardEvents(article);
+  });
+reviewCards = null;
+  updateCounts();
+}
+
+        function showSummary() {
+          isShowingSummary = true;
+          activeCard = null;
+          activeItemId = "";
+
+          const cards = getCards();
+
+const summaryTitle = document.getElementById("review-complete-title");
+if (summaryTitle && isExpandedReview) {
+  summaryTitle.textContent = "You’ve seen the new homes.";
+}
+
+const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
+          const maybeCount = cards.filter((card) => card.dataset.decision === "maybe").length;
+          const passCount = cards.filter((card) => card.dataset.decision === "pass").length;
+const faveStrip = document.getElementById("summary-fave-strip");
+const insightEl = document.getElementById("summary-insight");
+
+function parseSummaryPrice(value) {
+  return parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
+}
+
+const prices = cards
+  .map((card) => parseSummaryPrice(card.dataset.price))
+  .filter(Boolean);
+
+const lovedCards = cards.filter((card) => card.dataset.isFavourite === "true");
+
+const lovedPrices = lovedCards
+  .map((card) => parseSummaryPrice(card.dataset.price))
+  .filter(Boolean);
+
+const avgLovedPrice =
+  lovedPrices.reduce((sum, price) => sum + price, 0) /
+  Math.max(lovedPrices.length, 1);
+
+const maxSearchPrice = Math.max(...prices, 0);
+const minSearchPrice = Math.min(...prices, maxSearchPrice || 0);
+
+const topBudgetLine = maxSearchPrice * 0.88;
+const lowerBudgetLine = minSearchPrice + (maxSearchPrice - minSearchPrice) * 0.38;
+
+let insightType = "neutral";
+
+if (lovedCards.length >= 2 && avgLovedPrice && maxSearchPrice) {
+  if (avgLovedPrice >= topBudgetLine) {
+    insightType = "high";
+  } else if (avgLovedPrice <= lowerBudgetLine) {
+    insightType = "low";
+  }
+}
+
+if (insightEl) {
+  insightEl.hidden = false;
+
+ const heading = "See what’s next.";
+
+const copy = "A few homes just above this range can help clarify the search.";
+  insightEl.innerHTML = `
+    <div class="review-send-copy">
+      <h3>${heading}</h3>
+      <p>${copy}</p>
+    </div>
+
+    <div class="review-send-actions">
+    <button
+  type="button"
+  id="next-higher-btn"
+  style="
+    appearance:none;
+    -webkit-appearance:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:min(100%, 420px);
+    min-height:52px;
+    padding:0 24px;
+    border:0;
+    border-radius:14px;
+    background:linear-gradient(135deg, #2d5016, #163f08);
+    color:#fff;
+    font-family:var(--f-body);
+    font-size:0.92rem;
+    font-weight:900;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 14px 28px rgba(45,80,22,0.24);
+  "
+>
+  ✨ Show next higher-priced homes →
+</button>
+    </div>
+  `;
+
+  insightEl.querySelector("button")?.addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const status = document.getElementById("summary-comment-status");
+
+    const originalText = btn.textContent || "Show more";
+
+    btn.disabled = true;
+    btn.textContent = "Finding homes...";
+
+    try {
+      const res = await fetch(`/api/shortlists/expand-search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          slug: pageSlug
+        })
+      });
+
+      const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+  throw new Error(data?.error || "Could not find more homes.");
+}
+
+if (!Array.isArray(data.listings) || data.listings.length === 0) {
+  throw new Error(data?.error || "No new homes were returned.");
+}
+
+// Add the new listings to the page
+appendExpandedListings(data.listings);
+
+// Close the summary
+closeSheet(true);
+
+// Find the first new card by item ID instead of position
+const newItemIds = new Set(
+  data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean)
+);
+
+const allCards = Array.from(document.querySelectorAll(".card"));
+const firstNewCard = allCards.find((card) =>
+  newItemIds.has(card.dataset.itemId || "")
+);
+
+if (firstNewCard) {
+  setTimeout(() => {
+    openSheetFromCard(firstNewCard);
+  }, 100);
+}
+
+return;
+   } catch (err) {
+      btn.disabled = false;
+
+      const msg = err instanceof Error ? err.message : "Could not load more homes.";
+
+if (msg.toLowerCase().includes("no homes") || msg.toLowerCase().includes("you've seen all") || msg.toLowerCase().includes("no homes found")) {        btn.textContent = "✓ You've seen all available homes";
+        btn.style.background = "#e8f0e4";
+        btn.style.color = "#2d5016";
+        btn.style.boxShadow = "none";
+        btn.style.cursor = "default";
+        btn.disabled = true;
+      } else {
+        btn.textContent = originalText;
+        if (status) status.textContent = msg;
+      }
+    }
+  });
+}
+
+if (faveStrip) {
+  const faveCards = cards
+    .filter((card) => card.dataset.isFavourite === "true")
+    .slice(0, 4);
+
+faveStrip.style.display = faveCards.length ? "grid" : "none";
+  faveStrip.style.margin = faveCards.length ? "12px 0 18px" : "0";
+  faveStrip.style.gridTemplateColumns = `repeat(${Math.max(faveCards.length, 1)}, minmax(0, 1fr))`;
+  faveStrip.style.gap = "12px";
+  faveStrip.style.width = "100%";
+
+  faveStrip.innerHTML = faveCards
+    .map((card) => {
+      const img = card.dataset.image || "";
+      const address = card.dataset.address || "Favourite home";
+      if (!img) return "";
+
+      return `
+  <button
+    type="button"
+    data-summary-fave-card-id="${card.dataset.cardId || ""}"
+    style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;transition:transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;border-radius:14px;"
+  >
+    <img
+      src="${img}"
+      alt="${address}"
+      style="width:100%;height:150px;max-height:150px;object-fit:cover;border-radius:14px;display:block;"
+    >
+  </button>
+`;
+    })
+        .join("");
+
+faveStrip.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
+  btn.addEventListener("mouseenter", () => {
+  btn.style.transform = "translateY(-2px)";
+  btn.style.boxShadow = "0 8px 18px rgba(0,0,0,0.08)";
+  btn.style.opacity = "0.96";
+});
+
+btn.addEventListener("mouseleave", () => {
+  btn.style.transform = "";
+  btn.style.boxShadow = "";
+  btn.style.opacity = "";
+});
+
+  btn.addEventListener("click", () => {
+      const cardId = btn.getAttribute("data-summary-fave-card-id");
+      const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
+
+      if (card) {
+        cameFromSummary = true;
+        openSheetFromCard(card);
+      }
+    });
+  });
+}
+      if (summaryLoveCount) {
+  summaryLoveCount.textContent = String(loveCount);
+  summaryLoveCount.setAttribute("data-count", "favourites");
+}
+
+if (summaryMaybeCount) {
+  summaryMaybeCount.textContent = String(maybeCount);
+  summaryMaybeCount.setAttribute("data-count", "maybes");
+}
+
+if (summaryPassCount) {
+  summaryPassCount.textContent = String(passCount);
+  summaryPassCount.setAttribute("data-count", "not");
+}
+
+          sheetContent?.classList.remove("open");
+sheetSummary?.classList.add("open");
+updateHeaderProgress();
+if (sheetMapBtn) sheetMapBtn.style.display = "none";
+
+          if (sheetNextBtn) sheetNextBtn.disabled = true;
+
+       if (sheetNextTopBtn) {
+  sheetNextTopBtn.disabled = false;
+  sheetNextTopBtn.textContent = "Review again →";
+}
+
+autoSendReviewComplete();
+        }
+let sheetMiniMap = null;
+let sheetMiniMarker = null;
+
+sheetMapBtn?.addEventListener("click", async () => {
+  const mapEl = document.getElementById("sheet-mini-map");
+  if (!mapEl || !sheetImageStage) return;
+
+  const isOpening = mapEl.hidden;
+
+  mapEl.hidden = !isOpening;
+  sheetImageStage.classList.toggle("is-hidden", isOpening);
+  sheetMapBtn.textContent = isOpening ? "Photos" : "Map";
+
+  if (!isOpening || !activeCard) return;
+
+  // Already rendered a map for this card
+  if (mapEl.dataset.renderedFor === activeCard.dataset.cardId) return;
+
+  mapEl.dataset.renderedFor = activeCard.dataset.cardId || "";
+  mapEl.innerHTML = `<div style="padding:14px;font-size:0.82rem;color:#888;">Loading map...</div>`;
+
+  const lat = Number(activeCard.dataset.lat || "");
+  const lng = Number(activeCard.dataset.lng || "");
+  const address = activeCard.dataset.address || "";
+
+  try {
+    await loadGoogleMapsScript();
+
+    mapEl.innerHTML = "";
+
+    const map = new google.maps.Map(mapEl, {
+      center: { lat, lng },
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      zoomControl: true,
+      gestureHandling: "cooperative"
+    });
+
+    new google.maps.Marker({
+      position: { lat, lng },
+      map,
+      title: address
+    });
+
+  } catch (err) {
+    mapEl.innerHTML = `<div style="padding:14px;font-size:0.82rem;color:#888;">Map unavailable</div>`;
+  }
+});
+  function buildReviewMessage(reason = "completed") {
+  const cards = getCards();
+
+  const favs = cards.filter((card) => card.dataset.isFavourite === "true").length;
+  const maybes = cards.filter((card) => card.dataset.decision === "maybe").length;
+  const no = cards.filter((card) => card.dataset.decision === "pass").length;
+  const reviewed = favs + maybes + no;
+
+  const parts = [];
+
+  if (favs > 0) parts.push(`${favs} favourite${favs > 1 ? "s" : ""}`);
+  if (maybes > 0) parts.push(`${maybes} maybe${maybes > 1 ? "s" : ""}`);
+  if (no > 0) parts.push(`${no} not for me`);
+
+  const summary = parts.length ? parts.join(", ") : "no choices saved yet";
+
+  if (reason === "skipped") {
+  return `Buyer left after reviewing ${reviewed} of ${cards.length} homes: ${summary}.`;
+}
+
+if (reason === "comment") {
+  return `Buyer added a note after reviewing ${cards.length} homes: ${summary}.`;
+}
+
+return `Buyer reviewed all ${cards.length} homes: ${summary}.`;
+}
+
+async function sendReviewComplete(reason = "completed", comment = "") {
+  try {
+    const res = await fetch("/api/shortlists/review-complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        message: buildReviewMessage(reason),
+        comment,
+        reason
+      })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed");
+    }
+
+    return true;
+  } catch (err) {
+    console.warn("Could not send review summary", err);
+    return false;
+  }
+}
+
+async function autoSendReviewComplete(reason = "completed") {
+  if (isAgentView) return;
+  if (hasAutoSentReviewSummary) return;
+
+  hasAutoSentReviewSummary = true;
+  await sendReviewComplete(reason, "");
+}
+        function showContent() {
+  isShowingSummary = false;
+  sheetSummary?.classList.remove("open");
+  sheetContent?.classList.add("open");
+  if (sheetMapBtn) sheetMapBtn.style.display = "";
+}
+function sortCardsByReview() {
+  if (!shortlistGrid) return;
+
+  reviewCards = null;
+
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  const scoreCard = (card) => {
+  // HARD RULE: "Not for me" always last
+  if (card.dataset.decision === "pass") return 99;
+
+  // Then order the rest
+  if (card.dataset.isFavourite === "true") return 0;
+  if (card.dataset.decision === "maybe") return 1;
+
+  // undecided
+  return 2;
+};
+
+  cards
+    .sort((a, b) => {
+      const scoreDiff = scoreCard(a) - scoreCard(b);
+      if (scoreDiff !== 0) return scoreDiff;
+
+      return Number(a.dataset.originalOrder || 999999) - Number(b.dataset.originalOrder || 999999);
+    })
+    .forEach((card, index) => {
+      shortlistGrid.appendChild(card);
+
+      const indexEl = card.querySelector(".card__index");
+      if (indexEl) {
+        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
+      }
+
+      card.dataset.featured = index === 0 ? "true" : "false";
+    });
+
+  reviewCards = null;
+}
+        function refreshCardUI(card, tags, isFav, decision) {
+  if (!card) return;
+
+  card.dataset.likedTags = JSON.stringify(tags);
+  card.dataset.isFavourite = isFav ? "true" : "false";
+  card.dataset.decision = decision || "";
+// once viewed, never show NEW again
+card.dataset.isNew = card.dataset.viewed === "true"
+  ? "false"
+  : (!isFav && !decision ? "true" : "false");
+
+  const wrap = card.querySelector(".card__image-wrap");
+  if (!wrap) return;
+
+  wrap.querySelector(".card__love-badge")?.remove();
+  wrap.querySelector(".card__maybe-badge")?.remove();
+wrap.querySelector(".card__new-badge")?.remove();
+  if (isFav) {
+    const badge = document.createElement("div");
+    badge.className = "card__love-badge";
+    badge.innerHTML = `
+      <span class="card__love-badge-heart">♥</span>
+      <span>Loved</span>
+    `;
+    wrap.appendChild(badge);
+    return;
+  }
+
+  if (decision === "maybe") {
+    const badge = document.createElement("div");
+    badge.className = "card__maybe-badge";
+    badge.innerHTML = `
+      <span>🤔</span>
+      <span>Not sure</span>
+    `;
+    wrap.appendChild(badge);
+  }
+}
+function getPrevCard() {
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  if (!activeCard || !cards.length) return null;
+
+  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
+  const currentIndex = cards.findIndex((card) => {
+    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
+  });
+
+  if (currentIndex <= 0) return null;
+
+  return cards[currentIndex - 1] || null;
+}
+      function getNextCard() {
+  const cards = Array.from(document.querySelectorAll(".card"));
+
+  if (!activeCard || !cards.length) return null;
+
+  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
+  const currentIndex = cards.findIndex((card) => {
+    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
+  });
+
+  if (currentIndex === -1) return null;
+
+  return cards[currentIndex + 1] || null;
+}
+
+        function resetDecisionUI() {
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            if (!btn) return;
+            btn.classList.remove("is-selected");
+            btn.blur();
+          });
+
+          feedbackChips.forEach((chip) => {
+            chip.classList.remove("active");
+            chip.blur();
+          });
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          sheet.classList.remove("is-love-pulse", "is-pass-fade");
+        }
+
+        function openSheetFromCard(card) {
+          if (!card) return;
+          if (editMode && isAgentView) return;
+
+          activeCard = null;
+          activeItemId = "";
+          activeTags = [];
+          activeFavourite = false;
+          activeDecision = "";
+
+          resetDecisionUI();
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          if (sheetNextBtn) sheetNextBtn.disabled = false;
+          if (sheetNextTopBtn) {
+            sheetNextTopBtn.disabled = false;
+            sheetNextTopBtn.textContent = "Next →";
+          }
+
+          showContent();
+
+         activeCard = card;
+markListingViewed(card);
+startListingMetrics(card);
+
+// do not reorder while the sheet is open
+
+activeItemId = String(card.dataset.itemId || "").trim();
+activeTags = parseTags(card.dataset.likedTags || "[]");
+activeFavourite = card.dataset.isFavourite === "true";
+activeDecision = card.dataset.decision || "";
+
+// 🔥 mark as viewed immediately (removes NEW pill)
+card.dataset.isNew = "false";
+card.dataset.viewed = "true";
+
+const wrap = card.querySelector(".card__image-wrap");
+wrap?.querySelector(".card__new-badge")?.remove();
+
+          renderCardStateToPanel(card);
+
+clearNewBadgesAfterModalClose();
+
+sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
+sheetImageStage?.classList.remove("is-hidden");
+if (sheetMapBtn) sheetMapBtn.textContent = "Map";
+if (sheetPrevTopBtn) sheetPrevTopBtn.textContent = cameFromSummary ? "← Summary" : "← Previous";sheetImageStage?.classList.remove("is-hidden");          resetSheetTransform();
+          sheet.classList.add("open");
+          const scrollHint = document.getElementById("panel-scroll-hint");
+if (scrollHint) {
+  scrollHint.classList.add("visible");
+  setTimeout(() => scrollHint.classList.remove("visible"), 2000);
+}
+          overlay.classList.add("open");
+          sheet.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+
+          resetPanelScroll();
+        }
+
+        async function saveFeedback() {
+          if (!activeItemId || isSaving || !activeCard) return false;
+          isSaving = true;
+
+          try {
+            const res = await fetch("/api/shortlists/feedback", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                shortlistItemId: activeItemId,
+                liked_tags: activeTags,
+                is_favourite: activeFavourite,
+                decision: activeDecision || null
+              })
+            });
+
+            const json = await res.json();
+            if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to save");
+
+            const savedTags = Array.isArray(json?.item?.liked_tags) ? json.item.liked_tags : activeTags;
+            const savedFav = Boolean(json?.item?.is_favourite);
+            const savedDecision = json?.item?.decision || "";
+
+            activeTags = savedTags;
+            activeFavourite = savedFav;
+            activeDecision = savedDecision;
+
+       refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
+updateDecisionButtons();
+shouldRefreshOnClose = true;
+
+return true;
+          } catch (err) {
+            if (sheetFeedback) {
+              sheetFeedback.textContent = err instanceof Error ? err.message : "Could not save";
+              sheetFeedback.className = "panel__feedback";
+            }
+            return false;
+          } finally {
+            isSaving = false;
+          }
+        }
+
+     function popDecisionEmojisFromButton(button, emojiList = ["❤️"], count = 12) {
+  if (!button) return;
+
+  const rect = button.getBoundingClientRect();
+  const startX = rect.left + rect.width / 2;
+  const startY = rect.top + rect.height / 2;
+
+  for (let i = 0; i < count; i++) {
+    const emoji = document.createElement("span");
+
+    emoji.textContent = emojiList[i % emojiList.length];
+
+    emoji.style.position = "fixed";
+    emoji.style.left = `${startX}px`;
+    emoji.style.top = `${startY}px`;
+    emoji.style.zIndex = "2147483647";
+    emoji.style.pointerEvents = "none";
+    emoji.style.fontSize = i === 0 ? "36px" : "28px";
+    emoji.style.lineHeight = "1";
+    emoji.style.transform = "translate(-50%, -50%) scale(0.6)";
+    emoji.style.opacity = "1";
+    emoji.style.filter = "drop-shadow(0 6px 10px rgba(0,0,0,0.22))";
+
+    document.body.appendChild(emoji);
+
+    const driftX = (Math.random() - 0.5) * 160;
+    const driftY = -90 - Math.random() * 80;
+    const rotate = (Math.random() - 0.5) * 45;
+
+    emoji.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0 },
+        { transform: "translate(-50%, -70%) scale(1.15)", opacity: 1, offset: 0.18 },
+        {
+          transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(1.55) rotate(${rotate}deg)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 1200,
+        delay: i * 35,
+        easing: "ease-out",
+        fill: "forwards"
+      }
+    );
+
+    window.setTimeout(() => emoji.remove(), 1600);
+  }
+}
+
+        async function handleDecision(kind) {
+          if (!activeCard) return;
+
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+
+          if (kind === "love") {
+            popDecisionEmojisFromButton(decisionLoveBtn, ["❤️", "🧡", "💛", "💚", "💙", "💜"], 1);
+            activeFavourite = true;
+            activeDecision = "";
+            sheet.classList.remove("is-pass-fade");
+            sheet.classList.add("is-love-pulse");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--love">Saved ✓</span><span>Ready when you are</span></span>`;
+              sheetFeedback.className = "panel__feedback is-love";
+            }
+          }
+
+         if (kind === "maybe") {
+  popDecisionEmojisFromButton(decisionMaybeBtn, ["🫤"], 1);
+  activeFavourite = false;
+            activeDecision = "maybe";
+            sheet.classList.remove("is-love-pulse", "is-pass-fade");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--maybe">Maybe</span><span>Saved - review this one, then continue</span></span>`;
+              sheetFeedback.className = "panel__feedback is-maybe";
+            }
+          }
+
+          if (kind === "pass") {
+  popDecisionEmojisFromButton(decisionPassBtn, ["❌"], 1);
+            activeFavourite = false;
+            activeDecision = "pass";
+            sheet.classList.remove("is-love-pulse");
+            sheet.classList.add("is-pass-fade");
+            if (sheetFeedback) {
+              sheetFeedback.innerHTML =
+                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--pass">Passed</span><span>Saved - continue when ready</span></span>`;
+              sheetFeedback.className = "panel__feedback is-pass";
+            }
+          }
+
+            window.setTimeout(() => {
+  renderFeedbackChips(kind);
+
+ window.setTimeout(() => {
+    sheet.scrollTop = sheet.scrollHeight;
+  }, 300);
+}, 200);
+
+          refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
+          updateDecisionButtons();
+
+const ok = await saveFeedback();
+
+if (ok) {
+            updateHeaderProgress();
+            updateDecisionButtons();
+
+            if (sheetNextBtn) sheetNextBtn.disabled = false;
+            if (sheetNextTopBtn) {
+              sheetNextTopBtn.disabled = false;
+              sheetNextTopBtn.textContent = "Next →";
+            }
+          }
+
+          window.setTimeout(() => {
+            sheet.classList.remove("is-love-pulse", "is-pass-fade");
+          }, 900);
+        }
+
+        async function goToNextCard(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  if (isShowingSummary) return;
+
+  await flushListingMetrics({
+    primaryReaction: activeFavourite ? "love" : activeDecision || "",
+    secondaryReasons: activeTags
+  });
+
+  const nextCard = getNextCard();
+          if (nextCard) {
+            openSheetFromCard(nextCard);
+            resetPanelScroll();
+          } else {
+            resetDecisionUI();
+            showSummary();
+            resetPanelScroll();
+          }
+        }
+
+        async function goToPrevCard(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  if (isShowingSummary) return;
+
+await flushListingMetrics({
+  primaryReaction: activeFavourite ? "love" : activeDecision || "",
+  secondaryReasons: activeTags
+});
+
+const prevCard = getPrevCard();
+
+  if (prevCard) {
+    openSheetFromCard(prevCard);
+    resetPanelScroll();
+  }
+}
+
+        async function closeSheet(skipReload = false) {
+        await flushListingMetrics({
+  primaryReaction: activeFavourite ? "love" : activeDecision || "",
+  secondaryReasons: activeTags
+});
+sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
+
+          if (isMobileSheet()) {
+            sheet.style.transition = "none";
+            sheet.classList.remove("open");
+            overlay.classList.remove("open");
+            sheet.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+            resetSheetTransform();
+
+            requestAnimationFrame(() => {
+              sheet.style.transition = "";
+            });
+          } else {
+            sheet.classList.remove("open");
+            overlay.classList.remove("open");
+            sheet.setAttribute("aria-hidden", "true");
+            document.body.style.overflow = "";
+            resetSheetTransform();
+          }
+
+     const needsRefresh = shouldRefreshOnClose && !skipReload;
+
+if (needsRefresh) {
+  window.location.reload();
+  return;
+}
+
+          activeCard = null;
+          activeItemId = "";
+          activeTags = [];
+          activeFavourite = false;
+          activeDecision = "";
+          isSaving = false;
+          isShowingSummary = false;
+          shouldRefreshOnClose = false;
+          touchStartX = 0;
+          touchStartY = 0;
+          touchCurrentX = 0;
+          touchCurrentY = 0;
+          isDraggingSheet = false;
+          dragMode = "";
+          touchStartedOnInteractive = false;
+          isAnimatingGesture = false;
+          dragCloseY = 0;
+
+          sheetContent?.classList.remove("open");
+          sheetSummary?.classList.remove("open");
+          updateDecisionButtons();
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          if (sheetPosition) sheetPosition.textContent = "1 of 1";
+          if (sheetProgressBar) sheetProgressBar.style.width = "0%";
+
+          sheet.scrollTop = 0;
+          
+        }
+
+        async function removeShortlistItem(card) {
+          if (!isAgentView || !card) return;
+
+          const itemId = String(card.dataset.itemId || "").trim();
+          if (!itemId) {
+            alert("Missing shortlist item id.");
+            return;
+          }
+
+          const ok = window.confirm("Remove this home from the shortlist?");
+          if (!ok) return;
+
+          card.classList.add("is-removing");
+
+          try {
+            const res = await fetch("/api/shortlists/remove-item", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: itemId })
+            });
+
+            const json = await res.json().catch(() => null);
+
+            if (!res.ok || !json?.ok) {
+              throw new Error(json?.error || "Could not remove listing");
+            }
+
+            if (activeCard === card) {
+              closeSheet(true);
+            }
+
+            card.remove();
+            updateCounts();
+          } catch (err) {
+            card.classList.remove("is-removing");
+            alert(err instanceof Error ? err.message : "Could not remove listing");
+          }
+        }
+
+        function animateSheetBack(mode = "close") {
+          if (!isMobileSheet()) return;
+          isAnimatingGesture = true;
+          sheet.classList.remove("dragging");
+
+          if (mode === "nav") {
+            sheet.style.transition = "transform 0.22s ease, opacity 0.22s ease";
+            sheet.style.transform = "translateX(0)";
+            sheet.style.opacity = "1";
+            window.setTimeout(() => {
+              sheet.style.transition = "";
+              sheet.style.opacity = "";
+              resetSheetTransform();
+              isAnimatingGesture = false;
+            }, 220);
+            return;
+          }
+
+          sheet.style.transition = "transform 0.22s ease";
+          overlay.style.transition = "opacity 0.22s ease";
+          setSheetTransform("translateY(0)");
+          overlay.style.opacity = "";
+          window.setTimeout(() => {
+            sheet.style.transition = "";
+            overlay.style.transition = "";
+            resetSheetTransform();
+            isAnimatingGesture = false;
+          }, 220);
+        }
+
+        function animateSheetOffscreenAndClose() {
+          if (!isMobileSheet()) {
+            closeSheet();
+            return;
+          }
+
+          isAnimatingGesture = true;
+          sheet.classList.remove("dragging");
+
+          const startY = Math.max(0, dragCloseY || 0);
+          sheet.style.transition = "none";
+          sheet.style.transform = `translateY(${startY}px)`;
+
+          overlay.style.transition = "opacity 0.22s ease";
+          requestAnimationFrame(() => {
+            sheet.classList.add("closing-down");
+            overlay.style.opacity = "0";
+          });
+
+          window.setTimeout(() => {
+            sheet.classList.remove("closing-down");
+            sheet.style.transition = "";
+            overlay.style.transition = "";
+            closeSheet();
+            isAnimatingGesture = false;
+          }, 220);
+        }
+
+        function clearInteractionState() {
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+
+          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
+            btn?.classList.remove("is-selected");
+            btn?.blur?.();
+          });
+
+          feedbackChips.forEach((chip) => {
+            chip.classList.remove("active");
+            chip?.blur?.();
+          });
+
+          if (sheetFeedback) {
+            sheetFeedback.textContent = "";
+            sheetFeedback.className = "panel__feedback";
+          }
+
+          sheet.classList.remove("is-love-pulse", "is-pass-fade");
+        }
+
+       function resetPanelScroll() {
+          requestAnimationFrame(() => {
+            sheet.scrollTop = 0;
+          });
+        }
+
+        function animateHorizontalCardChange(direction) {
+          if (isShowingSummary) return;
+          if (direction !== "next") return;
+
+          clearInteractionState();
+
+          activeFavourite = false;
+          activeDecision = "";
+          activeTags = [];
+
+          sheet.classList.remove("dragging", "is-love-pulse", "is-pass-fade");
+          sheet.style.transition = "";
+          sheet.style.opacity = "";
+          resetSheetTransform();
+
+          isAnimatingGesture = true;
+          goToNextCard();
+
+          window.setTimeout(() => {
+            isAnimatingGesture = false;
+          }, 40);
+        }
+
+        function bindCardEvents(card) {
+          card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openSheetFromCard(card);
+          });
+
+          card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openSheetFromCard(card);
+          });
+
+          card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await removeShortlistItem(card);
+          });
+
+          card.querySelector("[data-preview-image-url]")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const btn = e.currentTarget;
+  const imageUrl = btn?.getAttribute("data-preview-image-url") || "";
+
+  if (!imageUrl || !smsImageInput) return;
+
+  smsImageInput.value = imageUrl;
+
+  try {
+    btn.textContent = "Saving...";
+    await saveSmsImageUrl(imageUrl);
+    btn.textContent = "Selected ✓";
+
+    setTimeout(() => {
+  btn.textContent = "Use as text preview";
+}, 1200);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save image.");
+    btn.textContent = "Use as text preview";
+  }
+});
+        }
+
+        async function sendShortlistText(sendBtn) {
+      const slug = sendBtn?.getAttribute("data-shortlist-slug") || "";
+const clientName = sendBtn?.getAttribute("data-client-name") || "";
+const phone = sendBtn?.getAttribute("data-client-phone") || "";
+const note = sendBtn?.getAttribute("data-note") || "";
+const smsImageUrl = sendBtn?.getAttribute("data-sms-image-url") || "";
+const agentName = "{agentName}";
+
+          if (!slug) {
+            alert("Missing shortlist slug.");
+            return;
+          }
+
+          if (!phone) {
+            alert("No client phone number found.");
+            return;
+          }
+
+          const originalText = sendBtn.textContent || "Send text";
+
+          sendBtn.disabled = true;
+          sendBtn.textContent = "Sending...";
+
+          try {
+            const res = await fetch("/api/shortlists/send-text", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+  slug,
+  clientName,
+  phone,
+  note,
+  agentName,
+  smsImageUrl
+})
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data?.ok) {
+              throw new Error(data?.error || "Failed to send text.");
+            }
+
+            sendBtn.textContent = "Text sent ✓";
+
+            setTimeout(() => {
+              sendBtn.textContent = originalText;
+            }, 1800);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to send text.");
+            sendBtn.textContent = originalText;
+          } finally {
+            sendBtn.disabled = false;
+          }
+        }
+
+        async function copyShortlistLink(copyBtn) {
+          const path = copyBtn?.getAttribute("data-copy-link");
+          if (!path) return;
+
+          const url = `${window.location.origin}${path}`;
+
+          try {
+            await navigator.clipboard.writeText(url);
+            const orig = copyBtn.textContent || "Copy link";
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => {
+              copyBtn.textContent = orig;
+            }, 1400);
+          } catch {
+            alert(url);
+          }
+        }
+async function loadResourceVendors() {
+  if (!resourceVendorList) return;
+
+  resourceVendorList.textContent = "Loading resources...";
+
+  try {
+    const res = await fetch("/api/buyer-resources/vendors");
+const data = await res.json();
+
+const selectedRes = await fetch(`/api/buyer-resources/selected?shortlistSlug=${encodeURIComponent(pageSlug)}`);
+const selectedData = await selectedRes.json();
+
+const vendors = data.vendors || [];
+const selectedIds = new Set(selectedData.vendorIds || []);
+
+    if (!vendors.length) {
+      resourceVendorList.textContent = "No vendors added yet.";
+      return;
+    }
+
+   resourceVendorList.innerHTML = vendors.map((vendor) => `
+  <div class="resource-vendor-row">
+    <input type="checkbox" value="${vendor.id}" ${selectedIds.has(vendor.id) ? "checked" : ""} />
+
+    <span>
+      <strong>${vendor.name}</strong>
+      <small>${
+  String(vendor.type || "Other")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}${vendor.email ? ` · ${vendor.email}` : ""}</small>
+    </span>
+
+   <div style="margin-left:auto; display:flex; gap:8px;">
+  <button
+    type="button"
+    class="resource-edit-btn"
+    data-edit-resource-id="${vendor.id}"
+    data-resource-type="${vendor.type || ""}"
+    data-resource-name="${vendor.name || ""}"
+    data-resource-phone="${vendor.phone || ""}"
+    data-resource-email="${vendor.email || ""}"
+    data-resource-website="${vendor.website || ""}"
+    data-resource-note="${vendor.note || ""}"
+  >
+    Edit
+  </button>
+
+  <button
+    type="button"
+    class="resource-edit-btn"
+    data-delete-resource-id="${vendor.id}"
+  >
+    Delete
+  </button>
+</div>
+  </div>
+`).join("");
+
+resourceVendorList.querySelectorAll("[data-edit-resource-id]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById("resource-custom-type-input").value =
+      String(btn.dataset.resourceType || "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    resourceNameInput.value = btn.dataset.resourceName || "";
+    resourcePhoneInput.value = btn.dataset.resourcePhone || "";
+    resourceEmailInput.value = btn.dataset.resourceEmail || "";
+    resourceWebsiteInput.value = btn.dataset.resourceWebsite || "";
+    resourceDescriptionInput.value = btn.dataset.resourceNote || "";
+
+    addResourceBtn.dataset.editResourceId = btn.dataset.editResourceId || "";
+    addResourceBtn.textContent = "Save resource";
+
+    resourceNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+});
+
+resourceVendorList.querySelectorAll("[data-delete-resource-id]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const ok = confirm("Delete this vendor?");
+    if (!ok) return;
+
+    const id = btn.dataset.deleteResourceId || "";
+
+    const res = await fetch("/api/buyer-resources/delete-vendor", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ id })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      alert(data?.error || "Could not delete vendor.");
+      return;
+    }
+
+    await loadResourceVendors();
+  });
+});
+  } catch (err) {
+    resourceVendorList.textContent = "Could not load resources.";
+  }
+}
+
+async function saveSelectedResourceVendors() {
+  if (!saveResourceVendorsBtn) return;
+
+  const selectedIds = Array.from(
+    document.querySelectorAll("#resource-vendor-list input[type='checkbox']:checked")
+  ).map((input) => input.value);
+
+  const originalText = saveResourceVendorsBtn.textContent || "Save resources";
+
+  saveResourceVendorsBtn.disabled = true;
+  saveResourceVendorsBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/buyer-resources/select", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+     body: JSON.stringify({
+        shortlistSlug:
+          document.body.dataset.shortlistSlug ||
+          window.location.pathname.split("/").filter(Boolean).pop(),
+        vendorIds: selectedIds
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save resources.");
+    }
+
+    if (showResourcesToggle) showResourcesToggle.checked = true;
+
+await fetch("/api/shortlists/update-resource-visibility", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    slug: pageSlug,
+    showResources: true
+  })
+});
+
+saveResourceVendorsBtn.textContent = "Saved ✓";
+
+setTimeout(() => {
+  window.location.reload();
+}, 500);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save resources.");
+    saveResourceVendorsBtn.textContent = originalText;
+  } finally {
+    saveResourceVendorsBtn.disabled = false;
+
+    setTimeout(() => {
+      saveResourceVendorsBtn.textContent = originalText;
+    }, 1200);
+  }
+}
+        async function saveSmsImageUrl(url) {
+  const cleanUrl = String(url || "").trim();
+
+  const res = await fetch("/api/shortlists/update-sms-image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      slug: pageSlug,
+      smsImageUrl: cleanUrl
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || "Failed to save image.");
+  }
+
+  sendTextButtons.forEach((btn) => {
+    btn.setAttribute("data-sms-image-url", cleanUrl);
+  });
+
+  return cleanUrl;
+}
+
+        const viewedListings = getViewedListings();
+
+getCards().forEach((card, index) => {
+card.dataset.originalOrder = String(index);
+
+  const id = card.dataset.itemId || card.dataset.cardId || "";
+
+  if (id && viewedListings.has(id)) {
+    card.dataset.viewed = "true";
+    card.dataset.isNew = "false";
+    card.querySelector(".card__new-badge")?.remove();
+  }
+
+  bindCardEvents(card);
+});
+
+sortCardsByReview();
+
+const autoOpenParams = new URLSearchParams(window.location.search);
+
+if (autoOpenParams.has("openNew")) {
+  autoOpenParams.delete("openNew");
+
+  const cleanUrl =
+    window.location.pathname +
+    (autoOpenParams.toString() ? `?${autoOpenParams.toString()}` : "");
+
+  window.history.replaceState({}, "", cleanUrl);
+
+ requestAnimationFrame(() => {
+  reviewCards = null;
+
+  const cards = getCards();
+
+  console.log(
+    "AUTO OPEN DEBUG",
+    cards.map((card, index) => ({
+      visualNumber: index + 1,
+      sortOrder: card.dataset.sortOrder,
+      price: card.dataset.price,
+      address: card.dataset.address
+    }))
+  );
+
+  const batchStartIndex = Math.max(0, cards.length - 3);
+  const firstNewCard = cards[batchStartIndex] || cards[0];
+
+  if (firstNewCard) {
+    openSheetFromCard(firstNewCard);
+  }
+});
+}
+
+presetImageButtons.forEach((btn) => {
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    const imageUrl = btn.getAttribute("data-preset-image-url") || "";
+    if (!imageUrl || !smsImageInput) return;
+
+    const label = btn.querySelector("span");
+    const originalText = label?.textContent || "Preset";
+
+    smsImageInput.value = imageUrl;
+
+presetImageButtons.forEach((b) => b.classList.remove("is-selected"));
+btn.classList.add("is-selected");
+
+    try {
+      if (label) label.textContent = "Saving...";
+      await saveSmsImageUrl(imageUrl);
+      if (label) label.textContent = "Selected ✓";
+
+      setTimeout(() => {
+  if (label) label.textContent = originalText;
+}, 1200);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save image.");
+      if (label) label.textContent = originalText;
+    }
+  });
+});
+
+        if (editToggleBtn) {
+          editToggleBtn.addEventListener("click", () => {
+            editMode = !editMode;
+            syncEditModeUI();
+          });
+        }
+
+        decisionLoveBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("love");
+        });
+
+        decisionMaybeBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("maybe");
+        });
+
+        decisionPassBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget?.blur?.();
+          handleDecision("pass");
+        });
+
+        
+descToggle?.addEventListener("click", () => {
+  if (!sheetDescription) return;
+
+  const isCollapsed = sheetDescription.classList.contains("is-collapsed");
+
+  sheetDescription.classList.toggle("is-collapsed");
+
+  descToggle.textContent = isCollapsed ? "Show less" : "Read more";
+});
+
+sheetPrevBtn?.addEventListener("click", goToPrevCard);
+sheetPrevTopBtn?.addEventListener("click", (e) => {
+  if (isShowingSummary) {
+    const cards = Array.from(document.querySelectorAll(".card"));
+    const lastCard = cards[cards.length - 1];
+    if (lastCard) openSheetFromCard(lastCard);
+    return;
+  }
+  if (cameFromSummary) {
+    cameFromSummary = false;
+    if (sheetPrevTopBtn) sheetPrevTopBtn.textContent = "← Previous";
+    showSummary();
+    return;
+  }
+  goToPrevCard(e);
+});
+
+sheetNextBtn?.addEventListener("click", goToNextCard);
+
+const mapBtn = document.getElementById("page-map-btn");
+const masthead = document.querySelector(".masthead");
+
+let googleShortlistMap = null;
+
+function loadGoogleMapsScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps?.Map) {
+      resolve();
+      return;
+    }
+
+    const key = document.body.dataset.googleMapsApiKey || "";
+
+    if (!key) {
+      reject(new Error("Missing Google Maps API key"));
+      return;
+    }
+
+    const existing = document.querySelector("script[data-google-maps-script]");
+
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+
+      setTimeout(() => {
+        if (window.google?.maps?.Map) resolve();
+        else reject(new Error("Google Maps script exists but did not finish loading."));
+      }, 5000);
+
+      return;
+    }
+
+    window.__initShortlistGoogleMap = () => {
+      resolve();
+    };
+
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__initShortlistGoogleMap&v=weekly`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleMapsScript = "true";
+    script.onerror = () => reject(new Error("Google Maps script failed to load."));
+
+    document.head.appendChild(script);
+
+    setTimeout(() => {
+      if (!window.google?.maps?.Map) {
+        reject(new Error("Google Maps timed out. Check billing, API key, or referrer restrictions."));
+      }
+    }, 6000);
+  });
+}
+
+async function renderPageMap() {
+  const mapEl = document.querySelector("[data-deferred-map]");
+  if (!mapEl) return;
+
+  mapEl.style.height = "100%";
+  mapEl.style.minHeight = "100%";
+  mapEl.style.width = "100%";
+  mapEl.innerHTML = `<div style="padding:18px;">Loading Google map...</div>`;
+
+  try {
+    await loadGoogleMapsScript();
+  } catch (err) {
+    console.error("Google Maps load failed:", err);
+    mapEl.innerHTML = `
+      <div style="padding:18px; line-height:1.5;">
+        <strong>Google Maps could not load.</strong><br>
+        ${err instanceof Error ? err.message : "Check your API key, billing, and referrer restrictions."}
+      </div>
+    `;
+    return;
+  }
+
+  const geocoder = new google.maps.Geocoder();
+  const cards = getCards();
+  const points = [];
+
+  for (const card of cards) {
+    let lat = Number(card.dataset.lat || "");
+    let lng = Number(card.dataset.lng || "");
+
+    if (coordsLookWrong(lat, lng, card)) {
+      try {
+        const result = await geocoder.geocode({
+          address: getGeocodeAddress(card)
+        });
+
+        const location = result?.results?.[0]?.geometry?.location;
+
+        if (location) {
+          lat = location.lat();
+          lng = location.lng();
+        }
+      } catch (err) {
+        console.warn("Google geocode failed:", card.dataset.address, err);
+      }
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      points.push({ card, lat, lng });
+    }
+  }
+
+  if (!points.length) {
+    mapEl.innerHTML = `<div style="padding:18px;">No usable coordinates or addresses found.</div>`;
+    return;
+  }
+
+  mapEl.innerHTML = "";
+
+  googleShortlistMap = new google.maps.Map(mapEl, {
+    center: { lat: points[0].lat, lng: points[0].lng },
+    zoom: 13,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true,
+    clickableIcons: false,
+    gestureHandling: "greedy"
+  });
+
+  const bounds = new google.maps.LatLngBounds();
+
+  points.forEach(({ card, lat, lng }, index) => {
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: googleShortlistMap,
+      label: String(index + 1),
+      title: card.dataset.address || "Listing"
+    });
+
+    marker.addListener("click", () => {
+      openSheetFromCard(card);
+    });
+
+    bounds.extend({ lat, lng });
+  });
+
+  googleShortlistMap.fitBounds(bounds);
+
+  window.setTimeout(() => {
+    google.maps.event.trigger(googleShortlistMap, "resize");
+
+    if (points.length > 1) {
+      googleShortlistMap.fitBounds(bounds);
+    } else {
+      googleShortlistMap.setCenter({ lat: points[0].lat, lng: points[0].lng });
+      googleShortlistMap.setZoom(15);
+    }
+  }, 250);
+}
+mapBtn?.addEventListener("click", () => {
+  const mapWrap = document.getElementById("shortlist-page-map-wrap");
+  if (!mapWrap) return;
+
+  const isOpening = mapWrap.hidden;
+
+  mapWrap.hidden = !mapWrap.hidden;
+  mapBtn.classList.toggle("is-active", isOpening);
+  masthead?.classList.toggle("map-mode", isOpening);
+
+  if (isOpening) {
+    masthead?.scrollIntoView({ behavior: "auto", block: "start" });
+    renderPageMap();
+  }
+});
+        sheetNextTopBtn?.addEventListener("click", (e) => {
+          if (isShowingSummary) {
+            e.preventDefault();
+            const firstCard = getCards()[0];
+            if (firstCard) openSheetFromCard(firstCard);
+            return;
+          }
+
+          goToNextCard(e);
+        });
+
+               summaryRestartBtn?.addEventListener("click", () => {
+          const firstCard = getCards()[0];
+          if (firstCard) openSheetFromCard(firstCard);
+        });
+
+        document.querySelectorAll("[data-summary-comment]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const input = document.getElementById("summary-comment-input");
+            const text = btn.getAttribute("data-summary-comment") || "";
+            if (input) input.value = text;
+          });
+        });
+
+        document.getElementById("summary-send-comment-btn")?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+          const btn = e.currentTarget;
+          const input = document.getElementById("summary-comment-input");
+          const status = document.getElementById("summary-comment-status");
+          const comment = String(input?.value || "").trim();
+
+          if (!comment) {
+            if (status) status.textContent = "Add a quick note first.";
+            return;
+          }
+
+          const originalText = btn.textContent || "Send note to agent";
+
+          btn.disabled = true;
+          btn.textContent = "Sending...";
+
+         const ok = await sendReviewComplete("comment", comment);
+
+         btn.textContent = ok ? "Sent ✓" : originalText;
+if (status) {
+  status.textContent = ok ? "Sent ✓" : "Could not send note.";
+}
+
+btn.style.display = "none";
+
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = originalText;
+          }, 1400);
+        });
+
+        navSendTextBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await sendShortlistText(navSendTextBtn);
+        });
+
+        navCopyLinkBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await copyShortlistLink(navCopyLinkBtn);
+        });
+
+                saveSmsImageBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+          const originalText = saveSmsImageBtn.textContent || "Save image URL";
+
+          try {
+            saveSmsImageBtn.disabled = true;
+            saveSmsImageBtn.textContent = "Saving...";
+
+            await saveSmsImageUrl(smsImageInput?.value || "");
+
+            saveSmsImageBtn.textContent = "Saved ✓";
+
+setTimeout(() => {
+  window.location.reload();
+}, 500);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to save image.");
+            saveSmsImageBtn.textContent = originalText;
+          } finally {
+            saveSmsImageBtn.disabled = false;
+          }
+        });
+      addResourceBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = addResourceBtn.textContent || "Add resource";
+
+  const cleanType = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+const editResourceId = addResourceBtn.dataset.editResourceId || "";
+
+const customType = document.getElementById("resource-custom-type-input")?.value || "";
+const resourceType = cleanType(customType) || resourceTypeInput?.value || "other";
+
+  addResourceBtn.disabled = true;
+  addResourceBtn.textContent = "Adding...";
+
+  try {
+   const res = await fetch("/api/shortlists/add-resource", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+  id: editResourceId,
+  slug: pageSlug,
+        type: resourceType,
+        name: resourceNameInput?.value?.trim() || "",
+        phone: resourcePhoneInput?.value?.trim() || "",
+        email: resourceEmailInput?.value?.trim() || "",
+        website_url: resourceWebsiteInput?.value?.trim() || "",
+        website: resourceWebsiteInput?.value?.trim() || "",
+        description: resourceDescriptionInput?.value?.trim() || "",
+        note: resourceDescriptionInput?.value?.trim() || ""
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to add resource.");
+    }
+
+    addResourceBtn.textContent = "Added ✓";
+
+await loadResourceVendors();
+
+    resourceNameInput.value = "";
+    resourcePhoneInput.value = "";
+    resourceEmailInput.value = "";
+    resourceWebsiteInput.value = "";
+    resourceDescriptionInput.value = "";
+
+    const customTypeInput = document.getElementById("resource-custom-type-input");
+    if (customTypeInput) customTypeInput.value = "";
+
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to add resource.");
+    addResourceBtn.textContent = originalText;
+  } finally {
+    addResourceBtn.disabled = false;
+
+    setTimeout(() => {
+      addResourceBtn.textContent = originalText;
+    }, 1200);
+  }
+});
+
+   
+saveResourceVisibilityBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = saveResourceVisibilityBtn.textContent || "Save resource setting";
+  const showResources = Boolean(showResourcesToggle?.checked);
+
+  saveResourceVisibilityBtn.disabled = true;
+  saveResourceVisibilityBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-resource-visibility", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        showResources
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save setting.");
+    }
+
+    saveResourceVisibilityBtn.textContent = "Saved ✓";
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save setting.");
+    saveResourceVisibilityBtn.textContent = originalText;
+  } finally {
+    saveResourceVisibilityBtn.disabled = false;
+  }
+});
+saveSmsMessageBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  const originalText = saveSmsMessageBtn.textContent || "Save text message";
+  const smsMessage = smsMessageInput?.value?.trim() || "";
+
+  saveSmsMessageBtn.disabled = true;
+  saveSmsMessageBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-sms-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: pageSlug,
+        smsMessage
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save SMS message.");
+    }
+
+    saveSmsMessageBtn.textContent = "Saved ✓";
+
+   setTimeout(() => {
+  saveSmsMessageBtn.textContent = originalText;
+}, 1400);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save SMS message.");
+    saveSmsMessageBtn.textContent = originalText;
+  } finally {
+    saveSmsMessageBtn.disabled = false;
+  }
+});
+        saveNoteBtn?.addEventListener("click", async (e) => {
+          e.preventDefault();
+
+  const note = String(noteInput?.value || "").trim();
+  const originalText = saveNoteBtn.textContent || "Save message";
+
+  saveNoteBtn.disabled = true;
+  saveNoteBtn.textContent = "Saving...";
+
+  try {
+    const res = await fetch("/api/shortlists/update-note", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        slug: pageSlug,
+        note
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "Failed to save message.");
+    }
+
+    if (mastheadMessage) mastheadMessage.textContent = note;
+
+    sendTextButtons.forEach((btn) => {
+      btn.setAttribute("data-note", note);
+    });
+
+    saveNoteBtn.textContent = "Saved ✓";
+
+    setTimeout(() => {
+      saveNoteBtn.textContent = originalText;
+    }, 1400);
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Failed to save message.");
+    saveNoteBtn.textContent = originalText;
+  } finally {
+    saveNoteBtn.disabled = false;
+  }
+});
+
+        sendTextButtons.forEach((btn) => {
+          if (btn === navSendTextBtn) return;
+          btn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            await sendShortlistText(btn);
+          });
+        });
+
+        sheetCloseBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          closeSheet();
+        });
+
+        overlay.addEventListener("click", (e) => {
+          e.preventDefault();
+          closeSheet();
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (!sheet.classList.contains("open")) return;
+
+          if (e.key === "Escape") closeSheet();
+          if (e.key === "ArrowRight" && !sheetNextBtn?.disabled) goToNextCard();
+        });
+
+        sheet.addEventListener(
+          "touchstart",
+          (e) => {
+            if (!sheet.classList.contains("open")) return;
+            if (!isMobileSheet()) return;
+            if (isAnimatingGesture) return;
+
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            touchStartedOnInteractive = Boolean(
+              target.closest("button, a, input, textarea, select, [data-tag], [data-decision]")
+            );
+
+            if (touchStartedOnInteractive) return;
+
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchCurrentX = touch.clientX;
+            touchCurrentY = touch.clientY;
+            isDraggingSheet = false;
+            dragMode = "";
+            dragCloseY = 0;
+          },
+          { passive: true }
+        );
+
+        sheet.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!sheet.classList.contains("open")) return;
+            if (!isMobileSheet()) return;
+            if (isAnimatingGesture) return;
+            if (touchStartedOnInteractive) return;
+
+            const touch = e.touches[0];
+            touchCurrentX = touch.clientX;
+            touchCurrentY = touch.clientY;
+
+            const deltaX = touchCurrentX - touchStartX;
+            const deltaY = touchCurrentY - touchStartY;
+
+            if (!dragMode) {
+              if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                if (deltaY > 0 && sheet.scrollTop <= 0) {
+                  dragMode = "close";
+                } else {
+                  return;
+                }
+              } else if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                dragMode = "nav";
+              } else {
+                return;
+              }
+            }
+
+            if (dragMode === "close") {
+  dragMode = "";
+  return;
+}
+
+            if (dragMode === "nav") {
+              isDraggingSheet = true;
+              sheet.classList.add("dragging");
+              const limitedX = Math.max(-90, Math.min(90, deltaX));
+              sheet.style.transform = `translateX(${limitedX}px)`;
+              sheet.style.opacity = String(1 - Math.min(Math.abs(limitedX) / 220, 0.22));
+              e.preventDefault();
+            }
+          },
+          { passive: false }
+        );
+
+        sheet.addEventListener("touchend", () => {
+          if (!sheet.classList.contains("open")) return;
+          if (!isMobileSheet()) return;
+          if (isAnimatingGesture) return;
+
+          const deltaX = touchCurrentX - touchStartX;
+          const deltaY = touchCurrentY - touchStartY;
+          const absX = Math.abs(deltaX);
+          const absY = Math.abs(deltaY);
+
+        if (dragMode === "nav") {
+            if (deltaX < -70) {
+              clearInteractionState();
+              animateHorizontalCardChange("next");
+            } else {
+              animateSheetBack("nav");
+            }
+          }
+
+          if (!dragMode) {
+            resetSheetTransform();
+          }
+
+          touchStartX = 0;
+          touchStartY = 0;
+          touchCurrentX = 0;
+          touchCurrentY = 0;
+          isDraggingSheet = false;
+          dragMode = "";
+          touchStartedOnInteractive = false;
+          dragCloseY = 0;
+        });
+
+       loadResourceVendors();
+
+showAddResourceBtn?.addEventListener("click", () => {
+  resourceNameInput?.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  setTimeout(() => {
+    resourceNameInput?.focus();
+  }, 350);
+});
+
+saveResourceVendorsBtn?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  await saveSelectedResourceVendors();
+});
+
+syncEditModeUI();
+updateCounts();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initShortlistPage, { once: true });
+      } else {
+        initShortlistPage();
+      }
+
+      document.addEventListener("astro:page-load", initShortlistPage);
+    
