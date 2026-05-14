@@ -1,0 +1,965 @@
+---
+import { createClient } from "@supabase/supabase-js";
+
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const url = Astro.url;
+
+const city = url.searchParams.get("city") || "";
+const area = url.searchParams.get("area") || "";
+const type = url.searchParams.get("type") || "";
+const minPrice = Number(url.searchParams.get("minPrice") || 0);
+const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
+const sort = url.searchParams.get("sort") || "newest";
+
+const clean = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .trim();
+
+const getListingMls = (listing: any) =>
+  String(
+    listing.mls_number ||
+      listing.mlsNumber ||
+      listing.id ||
+      listing.repliers_listing_id ||
+      listing.raw?.mlsNumber ||
+      listing.raw?.id ||
+      ""
+  ).replace(/[^0-9]/g, "");
+
+const getListingPrice = (listing: any) => {
+  const num = Number(listing.price ?? listing.listPrice ?? listing.priceNumber ?? 0);
+  if (Number.isFinite(num) && num > 1000) return `$${Math.round(num).toLocaleString()}`;
+  return listing.price_text || listing.priceText || "Price on request";
+};
+
+const getListingAddress = (listing: any) =>
+  listing.address ||
+  listing.full_address ||
+  listing.addressText ||
+  listing.addressObj?.streetAddress ||
+  [listing.addressObj?.streetNumber, listing.addressObj?.streetName, listing.addressObj?.streetSuffix]
+    .filter(Boolean)
+    .join(" ") ||
+  "Address available";
+
+const normalizeListingImageUrl = (value: any) => {
+  if (!value) return "";
+  const raw = typeof value === "string" ? value : value.highRes || value.mediumRes || value.lowRes || value.url || value.src || value.href || value.path || "";
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+  if (cleaned.startsWith("/vreb/")) return `https://cdn.repliers.io${cleaned}`;
+  return cleaned;
+};
+
+const getListingImage = (listing: any) => {
+  const image = listing.image_url || listing.image || listing.photo || listing.images?.[0] || listing.images?.[1] || listing.raw?.images?.[0] || listing.raw?.images?.[1] || listing.raw?.images?.[0]?.url || listing.raw?.images?.[1]?.url;
+  return normalizeListingImageUrl(image);
+};
+
+const getListingImages = (listing: any) => {
+  const rawImages = listing.images || listing.photo_urls || listing.photos || listing.raw?.images || [];
+  const images = Array.isArray(rawImages)
+    ? rawImages.map((img: any) => typeof img === "string" ? normalizeListingImageUrl(img) : normalizeListingImageUrl(img.highRes || img.mediumRes || img.lowRes || img.url || img.src || img.href || img.path || "")).filter(Boolean)
+    : [];
+  const firstImage = getListingImage(listing);
+  return Array.from(new Set([firstImage, ...images].filter(Boolean)));
+};
+
+const getListingBeds = (listing: any) => listing.beds || listing.bedrooms || listing.details?.numBedrooms || listing.raw?.details?.numBedrooms || 0;
+const getListingBaths = (listing: any) => listing.baths || listing.bathrooms || listing.details?.numBathrooms || listing.raw?.details?.numBathrooms || 0;
+const getListingSqft = (listing: any) => listing.sqft || listing.square_feet || listing.squareFeet || listing.details?.sqft || listing.details?.squareFeet || listing.raw?.details?.sqft || listing.raw?.details?.squareFeet || "";
+const getListingDescription = (listing: any) => listing.description || listing.publicRemarks || listing.remarks || listing.details?.description || listing.details?.publicRemarks || listing.details?.remarks || listing.raw?.description || listing.raw?.publicRemarks || listing.raw?.remarks || listing.raw?.details?.description || listing.raw?.details?.publicRemarks || listing.raw?.details?.remarks || "A quiet preview of this property.";
+const getListingYearBuilt = (listing: any) => listing.year_built || listing.yearBuilt || listing.details?.yearBuilt || listing.raw?.details?.yearBuilt || "";
+const getListingLotSize = (listing: any) => listing.lot_size || listing.lotSize || listing.details?.lotSize || listing.raw?.details?.lotSize || "";
+const getListingArea = (listing: any) => listing.normalized_area || listing.area || listing.neighborhood || listing.addressObj?.neighborhood || listing.address?.neighborhood || listing.details?.area || listing.details?.subArea || listing.raw?.address?.neighborhood || listing.raw?.details?.area || listing.raw?.details?.subArea || "";
+const getListingPropertyType = (listing: any) => String(listing.normalized_type || listing.property_type || listing.propertyType || listing.type || listing.details?.propertyType || listing.raw?.details?.propertyType || "Home").replace(/[_-]+/g, " ").replace(/\b\w/g, (char: string) => char.toUpperCase());
+
+const groupLabel = [
+  area || "",
+  type ? type.replace(/-/g, " ") : "",
+  maxPrice ? `under $${maxPrice}k` : "",
+  minPrice ? `over $${minPrice}k` : ""
+].filter(Boolean).join(" · ");
+
+let listings: any[] = [];
+let errorMessage = "";
+
+try {
+  let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(48);
+
+  if (city) query = query.eq("normalized_city", clean(city));
+
+  if (type) {
+    if (["condo", "house", "townhouse", "land", "mobile"].includes(type)) {
+      query = query.eq("normalized_type", type);
+    } else {
+      query = query.eq("normalized_type", clean(type));
+    }
+  }
+
+  if (area) query = query.eq("normalized_area", clean(area));
+  if (minPrice) query = query.gte("price", minPrice * 1000);
+  if (maxPrice) query = query.lte("price", maxPrice * 1000);
+
+  if (sort === "price-low" || sort === "price-asc") query = query.order("price", { ascending: true });
+  else if (sort === "price-high" || sort === "price-desc") query = query.order("price", { ascending: false });
+  else if (sort === "beds-high") query = query.order("beds", { ascending: false });
+  else query = query.order("listed_at", { ascending: false });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  listings = data || [];
+
+  if (type === "condo") {
+    listings = listings.filter((listing: any) => {
+      const text = [listing.normalized_type, listing.property_type, listing.propertyType, listing.type, listing.details?.propertyType, listing.raw?.details?.propertyType, listing.description, listing.publicRemarks, listing.remarks].filter(Boolean).join(" ").toLowerCase();
+      return !text.includes("manufactured") && !text.includes("mobile") && !text.includes("modular") && !text.includes("park model") && !text.includes("mfd");
+    });
+  }
+} catch (error: any) {
+  errorMessage = error?.message || "Could not load listings.";
+}
+---
+
+<html lang="en">
+  <head>
+    <title>{city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale${maxPrice ? ` under $${maxPrice}k` : ""}` : "Explore homes for sale"} | {city || "Listings"}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={city ? `Browse ${listings.length} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale in ${city}${maxPrice ? ` under $${maxPrice}k` : ""}${minPrice ? ` over $${minPrice}k` : ""}. View photos, prices, and listing details.` : "Browse current homes for sale. View photos, prices, and listing details."} />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={Astro.url.href} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale` : "Explore homes for sale"} />
+    <meta property="og:url" content={Astro.url.href} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600&display=swap" rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg: #f5f2ed;
+        --surface: #fdfcfa;
+        --surface-warm: #f9f6f1;
+        --ink: #1c1917;
+        --ink-soft: #3d3935;
+        --muted: #6b6560;
+        --soft: #9c9590;
+        --line: #e8e3dc;
+        --line-warm: #ddd8d0;
+        --accent: #8b6f47;
+        --accent-light: #c4a882;
+        --accent-bg: #f7f0e6;
+
+        --f-display: "Lora", Georgia, serif;
+        --f-body: "Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+        --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        --radius: 12px;
+        --radius-lg: 20px;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 100%; overflow-x: hidden; }
+      body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+      body.modal-open { overflow: hidden; }
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; }
+
+      .shell { width: min(1400px, calc(100% - 80px)); margin: 0 auto; }
+
+      /* ========== HERO ========== */
+
+      .hero {
+        padding: 80px 0 60px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero__inner {
+        display: grid;
+        grid-template-columns: 1.3fr 0.7fr;
+        gap: 80px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 20px;
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 20px;
+        height: 1px;
+        background: var(--accent-light);
+      }
+
+      h1 {
+        font-family: var(--f-display);
+        font-size: clamp(3rem, 6vw, 5.5rem);
+        font-weight: 400;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        margin: 0 0 20px;
+      }
+
+      h1 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+
+      .hero-desc {
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.7;
+        max-width: 440px;
+        font-weight: 300;
+      }
+
+      /* ========== HERO META CARD ========== */
+
+      .hero__meta {
+        background: var(--surface-warm);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--line-warm);
+        overflow: hidden;
+        box-shadow: 0 4px 24px rgba(28, 25, 23, 0.07);
+      }
+
+      .hero__meta-body {
+        padding: 28px 28px 20px;
+      }
+
+      .hero__meta-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 12px;
+        color: var(--accent);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .hero__meta-label::before {
+        content: "";
+        width: 16px;
+        height: 1px;
+        background: var(--accent-light);
+      }
+
+      .hero__meta-desc {
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.6;
+        font-weight: 300;
+      }
+
+      .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        border-top: 1px solid var(--line-warm);
+      }
+
+      .hero-stat {
+        padding: 20px 28px;
+        border-right: 1px solid var(--line-warm);
+      }
+
+      .hero-stat:last-child { border-right: 0; }
+
+      .hero-stat__label {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--soft);
+        margin-bottom: 6px;
+      }
+
+      .hero-stat__value {
+        display: block;
+        font-family: var(--f-display);
+        font-size: 2.4rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+      }
+
+      /* ========== MAIN SECTION ========== */
+
+      .section {
+        padding: 60px 0 100px;
+      }
+
+      /* ========== BACK LINK ========== */
+
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 36px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 8px 20px;
+        border-radius: 999px;
+        border: 1.5px solid var(--line-warm);
+        transition: all 0.2s var(--ease);
+      }
+
+      .back:hover {
+        border-color: var(--accent-light);
+        color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      /* ========== SECTION HEAD ========== */
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 32px;
+        padding-bottom: 24px;
+        margin-bottom: 28px;
+        border-bottom: 1px solid var(--line-warm);
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-family: var(--f-display);
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        font-weight: 400;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+      }
+
+      .section-head h2 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+
+      .count {
+        flex-shrink: 0;
+        color: var(--soft);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      /* ========== GRID ========== */
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      /* ========== CARD ========== */
+
+      .card {
+        appearance: none;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--line-warm);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        text-align: left;
+        cursor: pointer;
+        color: inherit;
+        padding: 0;
+        transition: all 0.28s var(--ease);
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 48px rgba(28, 25, 23, 0.1);
+        border-color: var(--accent-light);
+      }
+
+      .card__image {
+        width: 100%;
+        height: 220px;
+        background: linear-gradient(135deg, var(--accent-bg), var(--line-warm));
+        background-size: cover;
+        background-position: center;
+        flex-shrink: 0;
+        transition: opacity 0.28s var(--ease);
+      }
+
+      .card__body {
+        padding: 20px 22px 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .price {
+        display: block;
+        font-family: var(--f-display);
+        font-size: 1.6rem;
+        font-weight: 500;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        margin-bottom: 8px;
+      }
+
+      .address {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.4;
+        font-weight: 300;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        color: var(--soft);
+        font-size: 0.78rem;
+        font-weight: 500;
+        margin-bottom: 10px;
+      }
+
+      .meta span + span::before {
+        content: "·";
+        margin-right: 12px;
+      }
+
+      .desc {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.6;
+        font-weight: 300;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        flex: 1;
+      }
+
+      /* ========== EMPTY STATE ========== */
+
+      .empty {
+        padding: 80px 28px;
+        background: var(--surface);
+        border: 1px solid var(--line-warm);
+        border-radius: var(--radius-lg);
+        color: var(--muted);
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 300;
+      }
+
+      /* ========== MODAL ========== */
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(28, 25, 23, 0.6);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s var(--ease);
+        z-index: 800;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+      .panel {
+        position: fixed;
+        left: 50%;
+        top: 0;
+        width: min(920px, calc(100vw - 40px));
+        max-height: 100vh;
+        background: var(--surface);
+        z-index: 900;
+        overflow: hidden;
+        transform: translate(-50%, -110%);
+        transition: transform 0.45s var(--ease);
+        display: flex;
+        flex-direction: column;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        box-shadow: 0 24px 80px rgba(28, 25, 23, 0.2);
+      }
+
+      .panel.open { transform: translate(-50%, 0); }
+      .panel__grab { display: none; }
+
+      .panel__progress-track { height: 3px; background: var(--line); overflow: hidden; }
+      .panel__progress-bar { height: 100%; width: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-light)); }
+
+      .panel__header {
+        padding: 18px 28px;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: center;
+        gap: 14px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel__position { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+      .panel__header-actions { display: flex; align-items: center; gap: 10px; }
+
+      .panel__top-btn, .panel__close, .panel__next-btn {
+        appearance: none;
+        height: 38px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1.5px solid var(--line-warm);
+        background: var(--surface);
+        color: var(--ink-soft);
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s var(--ease);
+      }
+
+      .panel__top-btn:hover, .panel__close:hover, .panel__next-btn:hover { background: var(--ink); border-color: var(--ink); color: white; }
+      .panel__top-btn:disabled, .panel__next-btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+      .panel__close { width: 38px; padding: 0; }
+      .panel__view { overflow-y: auto; flex: 1; }
+      .panel__image-stage { position: relative; background: var(--line); }
+      .panel__image { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+
+      .panel__photo-count {
+        position: absolute; right: 16px; bottom: 16px; z-index: 2;
+        background: rgba(28, 25, 23, 0.75); color: white;
+        padding: 6px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+      }
+
+      .photo-nav {
+        position: absolute; top: 50%; z-index: 3; transform: translateY(-50%);
+        width: 40px; height: 40px; border-radius: 999px;
+        border: 1.5px solid rgba(255,255,255,0.7);
+        background: rgba(28, 25, 23, 0.5); color: white;
+        font-size: 1.5rem; line-height: 1; cursor: pointer;
+        transition: all 0.2s var(--ease);
+      }
+
+      .photo-nav:hover { background: rgba(28, 25, 23, 0.85); }
+      .photo-nav--prev { left: 16px; }
+      .photo-nav--next { right: 16px; }
+      .photo-nav:disabled { opacity: 0.25; cursor: default; }
+
+      .panel__body { padding: 36px 40px 44px; }
+      .panel__price { font-family: var(--f-display); font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: var(--ink); margin: 0 0 10px; }
+      .panel__address { font-size: 1.2rem; color: var(--muted); line-height: 1.4; margin: 0 0 16px; font-weight: 300; }
+      .panel__meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; color: var(--ink-soft); font-size: 0.9rem; font-weight: 500; }
+
+      .panel__intelligence {
+        display: inline-flex; align-items: center; gap: 8px;
+        min-height: 36px; padding: 8px 16px;
+        background: var(--accent-bg); border: 1px solid var(--accent-light);
+        border-radius: 999px; color: var(--accent);
+        font-size: 0.8rem; font-weight: 600; margin-bottom: 20px;
+      }
+
+      .panel__intelligence::before { content: "✦"; }
+
+      .panel__detail-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 20px; color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+      .panel__detail-row span + span::before { content: "·"; margin-right: 16px; color: var(--soft); }
+      .panel__highlights { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
+
+      .panel__highlight-chip {
+        display: inline-flex; align-items: center; min-height: 32px; padding: 6px 14px;
+        background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-light);
+        border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+      }
+
+      .panel__section-title { margin: 0 0 10px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-light); }
+      .panel__desc { font-size: 0.95rem; line-height: 1.75; color: var(--muted); margin: 0 0 28px; font-weight: 300; }
+      .panel__cta-row { display: flex; justify-content: center; margin: 8px 0 20px; }
+
+      .panel__sms-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 48px; padding: 0 32px;
+        background: var(--accent); color: white;
+        font-size: 0.88rem; font-weight: 600;
+        border-radius: 999px; border: 2px solid var(--accent);
+        transition: all 0.22s var(--ease);
+      }
+
+      .panel__sms-btn:hover { background: var(--ink); border-color: var(--ink); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(28,25,23,0.18); }
+      .panel__nav-row { display: flex; justify-content: center; gap: 12px; }
+
+      /* ========== RESPONSIVE ========== */
+
+      @media (max-width: 1100px) {
+        .shell { width: calc(100% - 60px); }
+        .hero__inner { grid-template-columns: 1fr; gap: 48px; }
+        .grid { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      @media (max-width: 768px) {
+        .hero { padding: 60px 0 48px; }
+        .section { padding: 48px 0 80px; }
+        .section-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+      }
+
+      @media (max-width: 640px) {
+        .shell { width: calc(100% - 32px); }
+        .grid { grid-template-columns: 1fr; }
+        .hero-stats { grid-template-columns: 1fr 1fr; }
+        .panel { left: 0; right: 0; width: 100%; max-height: 100svh; border-radius: 0; transform: translateY(-110%); }
+        .panel.open { transform: translateY(0); }
+        .panel__grab { display: flex; justify-content: center; align-items: center; padding: 10px 0 6px; background: var(--surface); }
+        .panel__grab::before { content: ""; width: 40px; height: 4px; background: var(--line-warm); border-radius: 999px; }
+        .panel__header-actions { display: none; }
+        .panel__body { padding: 24px 20px 32px; }
+      }
+    </style>
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale` : "Homes for sale",
+      "description": city ? `${listings.length} active listings in ${city}` : "Active real estate listings",
+      "numberOfItems": listings.length,
+      "url": Astro.url.href
+    })}></script>
+  </head>
+
+  <body>
+    <header class="hero">
+      <div class="shell hero__inner">
+        <div>
+          <p class="eyebrow">Explore homes</p>
+          <h1>
+            {city || "Curated"}
+            <em>{type ? type.replace(/-/g, " ") : "listings."}</em>
+          </h1>
+          <p class="hero-desc">
+            {groupLabel
+              ? `A focused group of homes: ${groupLabel}.`
+              : "Listings pulled from the current market."}
+          </p>
+        </div>
+
+        <aside class="hero__meta">
+          <div class="hero__meta-body">
+            <span class="hero__meta-label">Market snapshot</span>
+            <p class="hero__meta-desc">
+              {city ? `Active listings in ${city}${type ? ` · ${type}` : ""}${maxPrice ? ` · under $${maxPrice}k` : ""}` : "Listings pulled from the current market."}
+            </p>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <span class="hero-stat__label">Found</span>
+              <span class="hero-stat__value">{listings.length}</span>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat__label">Market</span>
+              <span class="hero-stat__value">{city || "All"}</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <main class="section">
+      <div class="shell">
+        <nav aria-label="Page navigation">
+          <a class="back" href="/agent-listings-calm">← Back to agent page</a>
+        </nav>
+
+        <div class="section-head">
+          <h2>
+            {type
+              ? <>{listings.length} <em>{type.replace(/-/g, " ")}s</em> in {city || "this area"}.</>
+              : <>{listings.length} homes in <em>{city || "this area"}.</em></>
+            }
+          </h2>
+          <div class="count">{listings.length} {listings.length === 1 ? "home" : "homes"} found</div>
+        </div>
+
+        {errorMessage && <div class="empty">{errorMessage}</div>}
+
+        {!errorMessage && listings.length === 0 && (
+          <div class="empty">No matching homes found yet.</div>
+        )}
+
+        {!errorMessage && listings.length > 0 && (
+          <ol class="grid" aria-label={`${listings.length} listings${city ? ` in ${city}` : ""}`}>
+            {listings.map((listing: any) => {
+              const image = getListingImage(listing);
+              const address = getListingAddress(listing);
+              const price = getListingPrice(listing);
+              const beds = getListingBeds(listing);
+              const baths = getListingBaths(listing);
+              const sqft = getListingSqft(listing);
+              const mls = getListingMls(listing);
+              const propertyType = getListingPropertyType(listing);
+              const description = getListingDescription(listing);
+              const images = getListingImages(listing);
+
+              return (
+                <li style="display:contents;">
+                  <button
+                    type="button"
+                    class="card listing-modal-trigger"
+                    data-price={price}
+                    data-address={address}
+                    data-image={image}
+                    data-images={JSON.stringify(images)}
+                    data-beds={String(beds)}
+                    data-baths={String(baths)}
+                    data-sqft={String(sqft)}
+                    data-description={description}
+                    data-property-type={propertyType}
+                    data-year={String(getListingYearBuilt(listing))}
+                    data-lot-size={String(getListingLotSize(listing))}
+                    data-area={String(getListingArea(listing))}
+                    data-highlights={JSON.stringify([
+                      propertyType.toLowerCase().includes("condo") ? "Open outlook" : "",
+                      description.toLowerCase().includes("parking") ? "Parking included" : "",
+                      (description.toLowerCase().includes("patio") || description.toLowerCase().includes("balcony")) ? "Outdoor space" : ""
+                    ].filter(Boolean))}
+                    data-mls={mls}
+                    aria-label={`${price} — ${address}`}
+                  >
+                    <div
+                      class="card__image"
+                      role="img"
+                      aria-label={`Photo of ${address}`}
+                      style={image ? `background-image:url('${image}');` : ""}
+                    ></div>
+                    <div class="card__body">
+                      <strong class="price">{price}</strong>
+                      <p class="address">{address}</p>
+                      <div class="meta">
+                        <span>{propertyType}</span>
+                        <span>{beds} Bed</span>
+                        <span>{baths} Bath</span>
+                        {sqft ? <span>{sqft} Sq Ft</span> : null}
+                      </div>
+                      <p class="desc">{description}</p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+    </main>
+
+    <div class="modal-overlay" id="listing-modal-overlay"></div>
+
+    <aside class="panel" id="listing-modal" aria-hidden="true">
+      <div class="panel__grab" aria-hidden="true"></div>
+      <div class="panel__progress-track"><div class="panel__progress-bar"></div></div>
+      <div class="panel__header">
+        <div class="panel__position" id="listing-modal-position">Listing preview</div>
+        <div class="panel__header-actions">
+          <button class="panel__top-btn" id="listing-modal-prev" type="button">← Previous</button>
+          <button class="panel__top-btn" id="listing-modal-next" type="button">Next →</button>
+        </div>
+        <button class="panel__close" id="listing-modal-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="panel__view" id="listing-modal-scroll">
+        <div class="panel__image-stage">
+          <img id="listing-modal-image" class="panel__image" src="https://placehold.co/800x600?text=Listing" alt="" loading="eager" decoding="async" />
+          <button type="button" class="photo-nav photo-nav--prev" id="listing-photo-prev">‹</button>
+          <button type="button" class="photo-nav photo-nav--next" id="listing-photo-next">›</button>
+          <div class="panel__photo-count" id="listing-photo-count">1 / 1 photos</div>
+        </div>
+        <div class="panel__body">
+          <h2 class="panel__price" id="listing-modal-price">—</h2>
+          <p class="panel__address" id="listing-modal-address">Address</p>
+          <div class="panel__meta" id="listing-modal-meta">—</div>
+          <div class="panel__intelligence" id="listing-modal-intelligence">Fresh listing worth a closer look</div>
+          <div class="panel__detail-row" id="listing-modal-detail-row"></div>
+          <div class="panel__highlights" id="listing-modal-highlights"></div>
+          <div>
+            <h3 class="panel__section-title">Description</h3>
+            <p class="panel__desc" id="listing-modal-description">A quiet preview of this property.</p>
+          </div>
+          <div class="panel__cta-row">
+            <a class="panel__sms-btn" id="listing-modal-sms" href="#">Request info / showing →</a>
+          </div>
+          <div class="panel__nav-row">
+            <button class="panel__next-btn" id="listing-modal-bottom-prev" type="button">← Previous</button>
+            <button class="panel__next-btn" id="listing-modal-bottom-next" type="button">Next →</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <script is:inline>
+      function initExploreModal() {
+        const modal = document.getElementById("listing-modal");
+        const overlay = document.getElementById("listing-modal-overlay");
+        const closeBtn = document.getElementById("listing-modal-close");
+        const imageEl = document.getElementById("listing-modal-image");
+        const priceEl = document.getElementById("listing-modal-price");
+        const addressEl = document.getElementById("listing-modal-address");
+        const metaEl = document.getElementById("listing-modal-meta");
+        const descEl = document.getElementById("listing-modal-description");
+        const positionEl = document.getElementById("listing-modal-position");
+        const intelligenceEl = document.getElementById("listing-modal-intelligence");
+        const detailRowEl = document.getElementById("listing-modal-detail-row");
+        const highlightsEl = document.getElementById("listing-modal-highlights");
+        const smsEl = document.getElementById("listing-modal-sms");
+        const photoCountEl = document.getElementById("listing-photo-count");
+        const photoPrevBtn = document.getElementById("listing-photo-prev");
+        const photoNextBtn = document.getElementById("listing-photo-next");
+        const prevListingBtn = document.getElementById("listing-modal-prev");
+        const nextListingBtn = document.getElementById("listing-modal-next");
+        const bottomPrevListingBtn = document.getElementById("listing-modal-bottom-prev");
+        const bottomNextListingBtn = document.getElementById("listing-modal-bottom-next");
+        const scrollArea = document.getElementById("listing-modal-scroll");
+
+        if (!modal || !overlay) return;
+        if (modal.dataset.initialized === "true") return;
+        modal.dataset.initialized = "true";
+
+        let activePhotos = [], activePhotoIndex = 0, allCards = [], activeIndex = -1;
+
+        function parseImages(value, fallback) {
+          try { const parsed = JSON.parse(value || "[]"); const images = Array.isArray(parsed) ? parsed.filter(Boolean) : []; return Array.from(new Set([fallback, ...images].filter(Boolean))); }
+          catch { return fallback ? [fallback] : []; }
+        }
+
+        function preloadImage(src) { if (!src) return; const img = new Image(); img.src = src; }
+
+        function renderPhoto() {
+          if (!imageEl) return;
+          imageEl.src = activePhotos[activePhotoIndex] || "https://placehold.co/800x600?text=Listing";
+          preloadImage(activePhotos[activePhotoIndex + 1]);
+          preloadImage(activePhotos[activePhotoIndex - 1]);
+          if ("requestIdleCallback" in window) { window.requestIdleCallback(() => activePhotos.slice(8).forEach(preloadImage)); } else { setTimeout(() => activePhotos.slice(8).forEach(preloadImage), 800); }
+          if (photoCountEl) photoCountEl.textContent = `${activePhotoIndex + 1} / ${Math.max(activePhotos.length, 1)} photos`;
+          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotos.length - 1;
+        }
+
+        function updateNavButtons() {
+          [prevListingBtn, bottomPrevListingBtn].forEach(b => { if (b) b.disabled = activeIndex <= 0; });
+          [nextListingBtn, bottomNextListingBtn].forEach(b => { if (b) b.disabled = activeIndex >= allCards.length - 1; });
+        }
+
+        function buildNote(card) {
+          const desc = String(card.dataset.description || "").toLowerCase();
+          const pt = String(card.dataset.propertyType || "").toLowerCase();
+          const beds = Number(card.dataset.beds || 0);
+          const baths = Number(card.dataset.baths || 0);
+          const sqft = Number(String(card.dataset.sqft || "").replace(/[^0-9.]/g, ""));
+          const isCondo = pt.includes("condo") || pt.includes("apartment");
+          const isHouse = pt.includes("house") || pt.includes("detached") || pt.includes("single family");
+          const isTownhouse = pt.includes("townhouse") || pt.includes("townhome") || pt.includes("row");
+          const hasView = /ocean view|water view|harbour view|harbor view|lake view|mountain view|city view|panoramic view/.test(desc);
+          const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
+          const hasSuite = /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
+          const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
+          const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
+          if (isCondo) { if (sqft >= 900 && outdoor) return "Feels bigger than most condos"; if (isUpdated) return "Move-in ready condo"; if (hasParking) return "Convenient everyday setup"; return "Low-maintenance living"; }
+          if (isTownhouse) { if (beds >= 3 && outdoor) return "Great layout for everyday living"; if (hasParking) return "Practical townhome setup"; return "Balanced space and value"; }
+          if (isHouse) { if (hasView && hasSuite) return "Views and income potential"; if (beds >= 4 && baths >= 3) return "Checks the boxes for a growing family"; if (hasSuite) return "Flexible layout with suite"; if (hasView) return "Nice outlook from main living"; return "Solid detached option"; }
+          if (hasView) return "Open outlook worth noting";
+          if (isUpdated) return "Updated features stand out";
+          return "Worth a closer look";
+        }
+
+        function openModal(card, resetIndex = true) {
+          if (resetIndex) { allCards = Array.from(document.querySelectorAll(".listing-modal-trigger")); activeIndex = allCards.indexOf(card); }
+          const image = card.dataset.image || "";
+          const address = card.dataset.address || "Address available";
+          const mls = card.dataset.mls || "";
+          activePhotos = parseImages(card.dataset.images || "[]", image);
+          activePhotoIndex = 0;
+          if (priceEl) priceEl.textContent = card.dataset.price || "Price on request";
+          if (addressEl) addressEl.textContent = address;
+          if (imageEl) imageEl.alt = address;
+          if (descEl) descEl.textContent = card.dataset.description || "A quiet preview of this property.";
+          if (positionEl) positionEl.textContent = mls ? `MLS ${mls}` : "Listing preview";
+          if (intelligenceEl) intelligenceEl.textContent = buildNote(card);
+          if (detailRowEl) {
+            const details = [card.dataset.propertyType, card.dataset.area, card.dataset.year ? `Built ${card.dataset.year}` : "", card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""].filter(Boolean);
+            detailRowEl.innerHTML = details.map(i => `<span>${i}</span>`).join("");
+          }
+          if (highlightsEl) {
+            let h = []; try { h = JSON.parse(card.dataset.highlights || "[]"); } catch {}
+            highlightsEl.innerHTML = h.map(i => `<span class="panel__highlight-chip">${i}</span>`).join("");
+          }
+          if (metaEl) metaEl.textContent = [card.dataset.beds ? `${card.dataset.beds} Bed` : "", card.dataset.baths ? `${card.dataset.baths} Bath` : "", card.dataset.sqft ? `${card.dataset.sqft} Sq Ft` : ""].filter(Boolean).join(" • ");
+          if (smsEl) {
+            const msg = `Hi, I'd like more info or a showing for ${address}${mls ? ` MLS ${mls}` : ""}.`;
+            smsEl.href = `mailto:?subject=Listing Inquiry&body=${encodeURIComponent(msg)}`;
+          }
+          renderPhoto();
+          updateNavButtons();
+          modal.classList.add("open");
+          overlay.classList.add("open");
+          modal.setAttribute("aria-hidden", "false");
+          document.body.classList.add("modal-open");
+          requestAnimationFrame(() => { if (scrollArea) scrollArea.scrollTop = 0; });
+        }
+
+        function closeModal() {
+          modal.classList.remove("open");
+          overlay.classList.remove("open");
+          modal.setAttribute("aria-hidden", "true");
+          document.body.classList.remove("modal-open");
+        }
+
+        document.addEventListener("click", (e) => { const trigger = e.target.closest(".listing-modal-trigger"); if (!trigger) return; e.preventDefault(); e.stopPropagation(); openModal(trigger); });
+        closeBtn?.addEventListener("click", closeModal);
+        overlay?.addEventListener("click", closeModal);
+        photoPrevBtn?.addEventListener("click", () => { if (activePhotoIndex > 0) { activePhotoIndex--; renderPhoto(); } });
+        photoNextBtn?.addEventListener("click", () => { if (activePhotoIndex < activePhotos.length - 1) { activePhotoIndex++; renderPhoto(); } });
+        prevListingBtn?.addEventListener("click", () => { if (activeIndex > 0) { activeIndex--; openModal(allCards[activeIndex], false); } });
+        nextListingBtn?.addEventListener("click", () => { if (activeIndex < allCards.length - 1) { activeIndex++; openModal(allCards[activeIndex], false); } });
+        bottomPrevListingBtn?.addEventListener("click", () => { if (activeIndex > 0) { activeIndex--; openModal(allCards[activeIndex], false); } });
+        bottomNextListingBtn?.addEventListener("click", () => { if (activeIndex < allCards.length - 1) { activeIndex++; openModal(allCards[activeIndex], false); } });
+        document.addEventListener("keydown", (e) => {
+          if (!modal.classList.contains("open")) return;
+          if (e.key === "Escape") closeModal();
+          if (e.key === "ArrowLeft") { if (activePhotoIndex > 0) { activePhotoIndex--; renderPhoto(); } }
+          if (e.key === "ArrowRight") { if (activePhotoIndex < activePhotos.length - 1) { activePhotoIndex++; renderPhoto(); } }
+        });
+      }
+
+      if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", initExploreModal, { once: true }); } else { initExploreModal(); }
+      document.addEventListener("astro:page-load", initExploreModal);
+    </script>
+  </body>
+</html>
