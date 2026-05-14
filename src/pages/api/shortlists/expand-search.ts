@@ -158,10 +158,24 @@ export const POST: APIRoute = async ({ request }) => {
       areaCounts,
       originalIdsCount: originalIds.length,
       originalRowsCount: originalRows.length,
+      shortlist_search_area: shortlist.search_area,
+      first_area: first.area,
+      first_normalized_area: first.normalized_area,
     });
 
-    const type = normalizeSearchText(shortlist.search_type);
-    const beds = toNumber(shortlist.search_beds);
+  const type = normalizeSearchText(shortlist.search_type);
+const beds = toNumber(shortlist.search_beds);
+
+// Map search type to normalized_type values in database
+const typeMap: Record<string, string> = {
+  detached: "house",
+  condo: "condo",
+  townhouse: "townhouse",
+  land: "land",
+  mobile: "mobile",
+};
+
+const mappedType = type ? (typeMap[type] || type) : "";
 
     // Find the highest price already sent
     const allPrices = rows
@@ -170,7 +184,11 @@ export const POST: APIRoute = async ({ request }) => {
 
     const currentMax = allPrices.length > 0 ? Math.max(...allPrices) : 0;
 
-let baseQuery = supabase
+const areas = area
+      ? area.split(",").map((a: string) => a.trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    let baseQuery = supabase
       .from("listing_rows")
       .select("*")
       .eq("status", "A")
@@ -179,8 +197,22 @@ let baseQuery = supabase
       .order("price", { ascending: true })
       .limit(50);
 
-    if (area) baseQuery = baseQuery.eq("normalized_area", area);
+if (areas.length === 1) {
+      baseQuery = baseQuery.eq("normalized_area", areas[0]);
+    } else if (areas.length > 1) {
+      baseQuery = baseQuery.in("normalized_area", areas);
+    }
 
+if (mappedType) baseQuery = baseQuery.eq("normalized_type", mappedType);    if (beds) baseQuery = baseQuery.gte("beds", beds);
+console.log("EXPAND SEARCH QUERY PARAMS", {
+  city,
+  area,
+  areas,
+  currentMax,
+  type,
+  beds,
+  sentIds: Array.from(sentIds),
+});
     let { data: candidates, error } = await baseQuery;
 
     console.log("EXPAND SEARCH RAW QUERY RESULT", { count: candidates?.length, error: error?.message, firstRow: candidates?.[0] });

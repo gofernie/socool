@@ -101,8 +101,118 @@ const slug = "chris-crump";
         line-height: 1.45;
       }
 
+      /* Template preview swatches */
+      .template-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 12px;
+      }
+
+      .template-option {
+        position: relative;
+        cursor: pointer;
+      }
+
+      .template-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .template-option__card {
+        border: 2px solid rgba(24, 22, 20, 0.15);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .template-option input:checked + .template-option__card {
+        border-color: #181614;
+        box-shadow: 0 0 0 3px rgba(24, 22, 20, 0.12);
+      }
+
+      .template-option__preview {
+        height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .template-option--brutal .template-option__preview {
+        background: #0a0a0a;
+      }
+
+      .template-option--calm .template-option__preview {
+        background: #f5f2ed;
+      }
+
+      .template-option__preview-title {
+        font-weight: 800;
+        font-size: 0.85rem;
+        letter-spacing: -0.03em;
+      }
+
+      .template-option--brutal .template-option__preview-title {
+        color: white;
+        font-size: 1rem;
+      }
+
+      .template-option--calm .template-option__preview-title {
+        color: #1c1917;
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-weight: 400;
+        font-size: 0.95rem;
+      }
+
+      .template-option__preview-accent {
+        height: 3px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+      }
+
+      .template-option--brutal .template-option__preview-accent {
+        background: #ff4d00;
+      }
+
+      .template-option--calm .template-option__preview-accent {
+        background: #8b6f47;
+      }
+
+      .template-option__label {
+        padding: 10px 14px;
+        background: white;
+        border-top: 1px solid rgba(24,22,20,0.1);
+      }
+
+      .template-option__label strong {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+
+      .template-option__label span {
+        font-size: 0.75rem;
+        color: rgba(24, 22, 20, 0.55);
+      }
+
+      .template-option input:checked + .template-option__card .template-option__label {
+        background: #f4efe7;
+      }
+
       @media (max-width: 700px) {
         .grid-2 {
+          grid-template-columns: 1fr;
+        }
+        .template-options {
           grid-template-columns: 1fr;
         }
       }
@@ -133,6 +243,43 @@ const slug = "chris-crump";
           <input name="city" />
         </div>
 
+        <!-- ===== TEMPLATE SELECTOR ===== -->
+        <div class="card">
+          <h2>Page template</h2>
+          <p class="hint">Choose the visual style for this agent's landing page.</p>
+
+          <div class="template-options">
+            <label class="template-option template-option--brutal">
+              <input type="radio" name="template" value="brutal" />
+              <div class="template-option__card">
+                <div class="template-option__preview">
+                  <div class="template-option__preview-accent"></div>
+                  <div class="template-option__preview-title">Nanaimo<br/><span style="color:#ff4d00;">homes.</span></div>
+                </div>
+                <div class="template-option__label">
+                  <strong>Template 1 — Brutalist</strong>
+                  <span>Bold, high contrast, editorial</span>
+                </div>
+              </div>
+            </label>
+
+            <label class="template-option template-option--calm">
+              <input type="radio" name="template" value="calm" />
+              <div class="template-option__card">
+                <div class="template-option__preview">
+                  <div class="template-option__preview-accent"></div>
+                  <div class="template-option__preview-title">Nanaimo<br/><span style="color:#8b6f47;">homes.</span></div>
+                </div>
+                <div class="template-option__label">
+                  <strong>Template 2 — Calm</strong>
+                  <span>Warm, soft, approachable</span>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+        <!-- ===== END TEMPLATE SELECTOR ===== -->
+
         <div class="card">
           <h2>Hero</h2>
 
@@ -151,32 +298,20 @@ const slug = "chris-crump";
           <label>Agent pick text</label>
           <textarea name="agentPickText"></textarea>
 
-      <label>Featured listing MLS number</label>
-<input
-  name="featuredListingMls"
-  inputmode="numeric"
-  placeholder="Example: 1032478"
-/>
-<p class="hint">
-  Optional. Enter the MLS number only - no # symbol, spaces, or extra text.
-</p>
-        
+          <label>Featured listing MLS number</label>
+          <input name="featuredListingMls" inputmode="numeric" placeholder="Example: 1032478" />
+          <p class="hint">Optional. Enter the MLS number only - no # symbol, spaces, or extra text.</p>
         </div>
 
         <div class="card">
           <h2>Social links and feeds</h2>
-          <p class="hint">
-            Add profile links for the buttons. Feed embed fields are optional. X/Twitter profile
-            URLs can usually render as a feed. LinkedIn is often better as a profile link unless
-            the agent has a specific public embed snippet or post URL.
-          </p>
+          <p class="hint">Add profile links for the buttons.</p>
 
           <div class="grid-2">
             <div>
               <label>LinkedIn profile URL</label>
               <input name="linkedinUrl" placeholder="https://www.linkedin.com/in/..." />
             </div>
-
             <div>
               <label>X / Twitter profile URL</label>
               <input name="twitterUrl" placeholder="https://twitter.com/..." />
@@ -188,7 +323,6 @@ const slug = "chris-crump";
               <label>Instagram URL</label>
               <input name="instagramUrl" placeholder="https://www.instagram.com/..." />
             </div>
-
             <div>
               <label>Facebook URL</label>
               <input name="facebookUrl" placeholder="https://www.facebook.com/..." />
@@ -211,19 +345,14 @@ const slug = "chris-crump";
           <label>Feed URL</label>
           <input name="socialFeedUrl" placeholder="Example: https://twitter.com/chriscrump" />
 
-          <label>Social feed (Elfsight ID or embed code)</label>
+          <label>Social feed embed</label>
           <textarea name="socialFeedEmbed"></textarea>
-          <p class="hint">
-            Use this for a simple note, embed code, or a manually pasted public post block.
-          </p>
+          <p class="hint">Use this for a simple note, embed code, or a manually pasted public post block.</p>
         </div>
 
         <div class="card">
           <h2>Listing sections</h2>
-          <p class="hint">
-            These are the four curated cards near the top of the page. Agents select filters here;
-            the Explore link is generated automatically.
-          </p>
+          <p class="hint">These are the four curated cards near the top of the page.</p>
 
           {[1, 2, 3, 4].map((num) => (
             <div class="group-editor">
@@ -245,7 +374,6 @@ const slug = "chris-crump";
                     <option value="">Loading cities...</option>
                   </select>
                 </div>
-
                 <div>
                   <label>Area / neighbourhood</label>
                   <select name={`group${num}Area`} class="area-select">
@@ -261,7 +389,6 @@ const slug = "chris-crump";
                     <option value="">Loading types...</option>
                   </select>
                 </div>
-
                 <div>
                   <label>Sort</label>
                   <select name={`group${num}Sort`}>
@@ -278,7 +405,6 @@ const slug = "chris-crump";
                   <label>Min price in 000s</label>
                   <input name={`group${num}MinPrice`} inputmode="numeric" placeholder="0" />
                 </div>
-
                 <div>
                   <label>Max price in 000s</label>
                   <input name={`group${num}MaxPrice`} inputmode="numeric" placeholder="Example: 800" />
@@ -290,9 +416,7 @@ const slug = "chris-crump";
 
         <div class="card">
           <h2>Live listings section</h2>
-          <p class="hint">
-            Change the city, area, property type, price, sort, or limit to show a different live listing group.
-          </p>
+          <p class="hint">Change the city, area, property type, price, sort, or limit to show a different live listing group.</p>
 
           <label>Section title</label>
           <input name="newListingsTitle" />
@@ -307,7 +431,6 @@ const slug = "chris-crump";
                 <option value="">Loading cities...</option>
               </select>
             </div>
-
             <div>
               <label>Area / neighbourhood</label>
               <select name="newListingsArea" id="newListingsAreaSelect" class="area-select">
@@ -323,7 +446,6 @@ const slug = "chris-crump";
                 <option value="">Loading types...</option>
               </select>
             </div>
-
             <div>
               <label>Sort</label>
               <select name="newListingsSort">
@@ -340,7 +462,6 @@ const slug = "chris-crump";
               <label>Min price in 000s</label>
               <input name="newListingsMinPrice" inputmode="numeric" placeholder="0" />
             </div>
-
             <div>
               <label>Max price in 000s</label>
               <input name="newListingsMaxPrice" inputmode="numeric" placeholder="Example: 800" />
@@ -369,7 +490,7 @@ const slug = "chris-crump";
         </div>
 
         <button type="submit">Save page</button>
-        <a class="preview" href="/agent-listings" target="_blank">Preview page</a>
+        <a class="preview" id="previewLink" href="/agent-listings" target="_blank">Preview page</a>
 
         <div class="status" id="status"></div>
       </form>
@@ -392,31 +513,25 @@ const slug = "chris-crump";
         phone: "250.619.0390",
         email: "chris@example.com",
         city: "",
+        template: "brutal",
         heroEyebrow: "Curated by Chris Crump",
         heroHeading: "Homes worth watching.",
-        heroIntro:
-          "A simple, curated place to explore homes - organized by property type, price point, and what buyers are watching right now.",
+        heroIntro: "A simple, curated place to explore homes - organized by property type, price point, and what buyers are watching right now.",
         agentPickTitle: "Not a giant listing portal.",
-        agentPickText:
-          "Just the homes and categories buyers actually ask about most.",
+        agentPickText: "Just the homes and categories buyers actually ask about most.",
         featuredListingMls: "",
-
         linkedinUrl: "",
         twitterUrl: "",
         instagramUrl: "",
         facebookUrl: "",
         socialTitle: "Follow along.",
-        socialIntro:
-          "Market notes, listing updates, and local real estate context from your agent.",
+        socialIntro: "Market notes, listing updates, and local real estate context from your agent.",
         socialFeedType: "",
         socialFeedUrl: "",
         socialFeedEmbed: "",
-
         cityIntro: "",
         cityNotes: "",
-        agentBio:
-          "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
-
+        agentBio: "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
         newListingsTitle: "New listings.",
         newListingsIntro: "The latest homes to hit the market.",
         newListingsCity: "",
@@ -426,153 +541,90 @@ const slug = "chris-crump";
         newListingsMaxPrice: "",
         newListingsSort: "newest",
         newListingsLimit: "6",
-
         groups: [
-          {
-            title: "Condos",
-            kicker: "Low-maintenance living",
-            text: "Explore condo options from the latest listing data.",
-            city: "",
-            area: "",
-            type: "condo",
-            minPrice: "",
-            maxPrice: "",
-            sort: "newest",
-            href: "/explore?type=condo&sort=newest"
-          },
-          {
-            title: "Single-family homes",
-            kicker: "Room to grow",
-            text: "Detached homes from the latest listing data.",
-            city: "",
-            area: "",
-            type: "house",
-            minPrice: "",
-            maxPrice: "",
-            sort: "newest",
-            href: "/explore?type=house&sort=newest"
-          },
-          {
-            title: "Popular under $800k",
-            kicker: "Buyer sweet spot",
-            text: "Homes in one of the most watched price ranges for active buyers.",
-            city: "",
-            area: "",
-            type: "",
-            minPrice: "",
-            maxPrice: "800",
-            sort: "newest",
-            href: "/explore?maxPrice=800&sort=newest"
-          },
-          {
-            title: "New listings",
-            kicker: "Fresh to market",
-            text: "Recently listed homes worth watching before they get buried.",
-            city: "",
-            area: "",
-            type: "",
-            minPrice: "",
-            maxPrice: "",
-            sort: "newest",
-            href: "/explore?sort=newest"
-          }
+          { title: "Condos", kicker: "Low-maintenance living", text: "Explore condo options from the latest listing data.", city: "", area: "", type: "condo", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=condo&sort=newest" },
+          { title: "Single-family homes", kicker: "Room to grow", text: "Detached homes from the latest listing data.", city: "", area: "", type: "house", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=house&sort=newest" },
+          { title: "Popular under $800k", kicker: "Buyer sweet spot", text: "Homes in one of the most watched price ranges for active buyers.", city: "", area: "", type: "", minPrice: "", maxPrice: "800", sort: "newest", href: "/explore?maxPrice=800&sort=newest" },
+          { title: "New listings", kicker: "Fresh to market", text: "Recently listed homes worth watching before they get buried.", city: "", area: "", type: "", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?sort=newest" }
         ]
       };
 
+      // ── Template radio helper ──────────────────────────────────────
+      function getSelectedTemplate() {
+        const radios = form.querySelectorAll('input[name="template"]');
+        for (const radio of radios) {
+          if (radio.checked) return radio.value;
+        }
+        return "brutal";
+      }
+
+      function setSelectedTemplate(value) {
+        const radios = form.querySelectorAll('input[name="template"]');
+        for (const radio of radios) {
+          radio.checked = radio.value === value;
+        }
+        updatePreviewLink(value);
+      }
+
+      function updatePreviewLink(template) {
+        const link = document.getElementById("previewLink");
+        if (!link) return;
+        link.href = template === "calm" ? "/agent-listings-calm" : "/agent-listings";
+      }
+
+      // Update preview link whenever template selection changes
+      form.querySelectorAll('input[name="template"]').forEach((radio) => {
+        radio.addEventListener("change", () => updatePreviewLink(radio.value));
+      });
+
+      // ── Filter helpers ─────────────────────────────────────────────
       function normalizeFilterValue(value) {
         return String(value || "").trim().toLowerCase();
       }
 
       function titleCase(value) {
-        return String(value || "")
-          .trim()
-          .replace(/[-_]+/g, " ")
-          .replace(/\s+/g, " ")
-          .replace(/\b\w/g, (char) => char.toUpperCase());
+        return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
       }
 
       function optionValue(item) {
-  if (!item) return "";
+        if (!item) return "";
+        if (typeof item === "object") {
+          return normalizeFilterValue(item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || item.label || "");
+        }
+        return normalizeFilterValue(item);
+      }
 
-  if (typeof item === "object") {
-    return normalizeFilterValue(
-      item.value ||
-      item.normalized_value ||
-      item.normalized_area ||
-      item.normalized_city ||
-      item.normalized_type ||
-      item.name ||
-      item.label ||
-      ""
-    );
-  }
+      function optionLabel(item) {
+        if (!item) return "";
+        if (typeof item === "object") {
+          return titleCase(item.label || item.display_name || item.name || item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || "");
+        }
+        return titleCase(item);
+      }
 
-  return normalizeFilterValue(item);
-}
-
-function optionLabel(item) {
-  if (!item) return "";
-
-  if (typeof item === "object") {
-    return titleCase(
-      item.label ||
-      item.display_name ||
-      item.name ||
-      item.value ||
-      item.normalized_value ||
-      item.normalized_area ||
-      item.normalized_city ||
-      item.normalized_type ||
-      ""
-    );
-  }
-
-  return titleCase(item);
-}
-
-function uniqueOptions(items) {
-  const seen = new Set();
-
-  return (Array.isArray(items) ? items : [])
-    .map((item) => {
-      const value = optionValue(item);
-
-      return {
-        value,
-        label: optionLabel(item) || titleCase(value)
-      };
-    })
-    .filter((item) => {
-      if (!item.value || seen.has(item.value)) return false;
-      seen.add(item.value);
-      return true;
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
+      function uniqueOptions(items) {
+        const seen = new Set();
+        return (Array.isArray(items) ? items : [])
+          .map((item) => { const value = optionValue(item); return { value, label: optionLabel(item) || titleCase(value) }; })
+          .filter((item) => { if (!item.value || seen.has(item.value)) return false; seen.add(item.value); return true; })
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
 
       function getPrimaryCity() {
-        const savedCity =
-          normalizeFilterValue(form.elements.newListingsCity?.value) ||
-          normalizeFilterValue(form.elements.city?.value) ||
-          normalizeFilterValue(filterOptions.cities?.[0]?.value);
-
-        return savedCity;
+        return normalizeFilterValue(form.elements.newListingsCity?.value) || normalizeFilterValue(form.elements.city?.value) || normalizeFilterValue(filterOptions.cities?.[0]?.value);
       }
 
       function buildExploreHref(group) {
         const params = new URLSearchParams();
-
         const city = normalizeFilterValue(group.city);
         const area = normalizeFilterValue(group.area);
         const type = normalizeFilterValue(group.type);
-
         if (city) params.set("city", city);
         if (area) params.set("area", area);
         if (type) params.set("type", type);
-      if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
-if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
+        if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
+        if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
         if (group.sort) params.set("sort", group.sort);
-
         const query = params.toString();
         return query ? `/explore?${query}` : "/explore";
       }
@@ -582,96 +634,52 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
           const res = await fetch(url);
           if (!res.ok) return null;
           return await res.json();
-        } catch (error) {
-          return null;
-        }
+        } catch { return null; }
       }
 
       async function loadFilterOptions() {
         status.textContent = "Loading listing filters...";
-
         const filtersJson = await fetchJsonSafe("/api/listing-filters");
-
         if (filtersJson) {
           filterOptions.cities = uniqueOptions(filtersJson.cities || []);
           filterOptions.types = uniqueOptions(filtersJson.types || filtersJson.propertyTypes || []);
-
           const areasByCity = filtersJson.areasByCity || {};
-          filterOptions.areasByCity = Object.fromEntries(
-            Object.entries(areasByCity).map(([city, areas]) => [
-              normalizeFilterValue(city),
-              uniqueOptions(areas)
-            ])
-          );
-
+          filterOptions.areasByCity = Object.fromEntries(Object.entries(areasByCity).map(([city, areas]) => [normalizeFilterValue(city), uniqueOptions(areas)]));
           status.textContent = "";
           return;
         }
-
         filterOptions.cities = [];
         filterOptions.types = [];
         filterOptions.areasByCity = {};
-
         status.textContent = "Could not load listing filters.";
       }
 
       function populateCitySelects() {
-        const citySelects = Array.from(document.querySelectorAll(".city-select"));
-
-        citySelects.forEach((select) => {
-          const current = normalizeFilterValue(select.value);
-          const selectedCity = current || getPrimaryCity();
-
-          select.innerHTML = [
-            `<option value="">Any city</option>`,
-            ...filterOptions.cities.map((city) => {
-              const selected = city.value === selectedCity ? "selected" : "";
-              return `<option value="${city.value}" ${selected}>${city.label}</option>`;
-            })
-          ].join("");
+        Array.from(document.querySelectorAll(".city-select")).forEach((select) => {
+          const current = normalizeFilterValue(select.value) || getPrimaryCity();
+          select.innerHTML = [`<option value="">Any city</option>`, ...filterOptions.cities.map((city) => `<option value="${city.value}" ${city.value === current ? "selected" : ""}>${city.label}</option>`)].join("");
         });
       }
 
       function populateTypeSelects() {
-        const typeSelects = Array.from(document.querySelectorAll(".type-select"));
-
-        typeSelects.forEach((select) => {
+        Array.from(document.querySelectorAll(".type-select")).forEach((select) => {
           const current = normalizeFilterValue(select.value);
-
-          select.innerHTML = [
-            `<option value="">Any type</option>`,
-            ...filterOptions.types.map((type) => {
-              const selected = type.value === current ? "selected" : "";
-              return `<option value="${type.value}" ${selected}>${type.label}</option>`;
-            })
-          ].join("");
+          select.innerHTML = [`<option value="">Any type</option>`, ...filterOptions.types.map((type) => `<option value="${type.value}" ${type.value === current ? "selected" : ""}>${type.label}</option>`)].join("");
         });
       }
 
       function getCityForAreaSelect(areaSelect) {
-        if (areaSelect.name === "newListingsArea") {
-          return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
-        }
-
+        if (areaSelect.name === "newListingsArea") return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
         const groupNum = areaSelect.name.match(/\d+/)?.[0];
         return normalizeFilterValue(form.elements[`group${groupNum}City`]?.value || getPrimaryCity());
       }
 
       function populateAreaSelects() {
-        const areaSelects = Array.from(document.querySelectorAll(".area-select"));
-
-        areaSelects.forEach((select) => {
+        Array.from(document.querySelectorAll(".area-select")).forEach((select) => {
           const current = normalizeFilterValue(select.value);
           const city = getCityForAreaSelect(select);
           const areas = filterOptions.areasByCity[city] || [];
-
-          select.innerHTML = [
-            `<option value="">Any area</option>`,
-            ...areas.map((area) => {
-              const selected = area.value === current ? "selected" : "";
-              return `<option value="${area.value}" ${selected}>${area.label}</option>`;
-            })
-          ].join("");
+          select.innerHTML = [`<option value="">Any area</option>`, ...areas.map((area) => `<option value="${area.value}" ${area.value === current ? "selected" : ""}>${area.label}</option>`)].join("");
         });
       }
 
@@ -683,53 +691,31 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
 
       function fillForm(data) {
         const savedGroups = Array.isArray(data?.groups) ? data.groups : [];
-
         const mergedGroups = [1, 2, 3, 4].map((_, index) => {
           const saved = savedGroups[index] || {};
           const fallback = defaults.groups[index] || {};
-
-          const isBlank =
-            !saved.kicker &&
-            !saved.title &&
-            !saved.text &&
-            !saved.href &&
-            !saved.city &&
-            !saved.area &&
-            !saved.type &&
-            !saved.minPrice &&
-            !saved.maxPrice;
-
+          const isBlank = !saved.kicker && !saved.title && !saved.text && !saved.href && !saved.city && !saved.area && !saved.type && !saved.minPrice && !saved.maxPrice;
           return isBlank ? fallback : { ...fallback, ...saved };
         });
 
-        const merged = {
-          ...defaults,
-          ...(data || {}),
-          groups: mergedGroups
-        };
+        const merged = { ...defaults, ...(data || {}), groups: mergedGroups };
+
+        // Set template radio buttons
+        setSelectedTemplate(merged.template || "brutal");
 
         Object.entries(merged).forEach(([key, value]) => {
-          if (key === "groups") return;
-
+          if (key === "groups" || key === "template") return;
           const field = form.elements[key];
           if (!field) return;
-
-          if (
-            key === "city" ||
-            key === "newListingsCity" ||
-            key === "newListingsArea" ||
-            key === "newListingsType"
-          ) {
+          if (key === "city" || key === "newListingsCity" || key === "newListingsArea" || key === "newListingsType") {
             field.value = normalizeFilterValue(value);
             return;
           }
-
           field.value = value || "";
         });
 
         [1, 2, 3, 4].forEach((num) => {
           const group = merged.groups[num - 1] || {};
-
           form.elements[`group${num}Kicker`].value = group.kicker || "";
           form.elements[`group${num}Title`].value = group.title || "";
           form.elements[`group${num}Text`].value = group.text || "";
@@ -747,16 +733,13 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
         data.newListingsCity = normalizeFilterValue(data.newListingsCity);
         data.newListingsArea = normalizeFilterValue(data.newListingsArea);
         data.newListingsType = normalizeFilterValue(data.newListingsType);
-
         return data;
       }
 
       async function loadPage() {
         const res = await fetch(`/api/agent-page?slug=${encodeURIComponent(slug)}`);
         const json = await res.json();
-
         const data = json?.data || defaults;
-
         fillForm(data);
         await loadFilterOptions();
         populateDropdowns();
@@ -772,32 +755,28 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-
         status.textContent = "Saving...";
 
         const formData = new FormData(form);
         const data = normalizeSavedData(Object.fromEntries(formData.entries()));
 
-        data.groups = [1, 2, 3, 4]
-          .map((num) => {
-            const group = {
-              kicker: data[`group${num}Kicker`] || "",
-              title: data[`group${num}Title`] || "",
-              text: data[`group${num}Text`] || "",
-              city: normalizeFilterValue(data[`group${num}City`]),
-              area: normalizeFilterValue(data[`group${num}Area`]),
-              type: normalizeFilterValue(data[`group${num}Type`]),
-              minPrice: data[`group${num}MinPrice`] || "",
-              maxPrice: data[`group${num}MaxPrice`] || "",
-              sort: data[`group${num}Sort`] || "newest"
-            };
+        // Capture template from radio (FormData handles it correctly since only checked radio is included)
+        data.template = data.template || "brutal";
 
-            return {
-              ...group,
-              href: buildExploreHref(group)
-            };
-          })
-          .filter((group) => group.title || group.text || group.href);
+        data.groups = [1, 2, 3, 4].map((num) => {
+          const group = {
+            kicker: data[`group${num}Kicker`] || "",
+            title: data[`group${num}Title`] || "",
+            text: data[`group${num}Text`] || "",
+            city: normalizeFilterValue(data[`group${num}City`]),
+            area: normalizeFilterValue(data[`group${num}Area`]),
+            type: normalizeFilterValue(data[`group${num}Type`]),
+            minPrice: data[`group${num}MinPrice`] || "",
+            maxPrice: data[`group${num}MaxPrice`] || "",
+            sort: data[`group${num}Sort`] || "newest"
+          };
+          return { ...group, href: buildExploreHref(group) };
+        }).filter((group) => group.title || group.text || group.href);
 
         [1, 2, 3, 4].forEach((num) => {
           delete data[`group${num}Kicker`];
@@ -816,7 +795,6 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
         data.newListingsMaxPrice = data.newListingsMaxPrice || "";
         data.newListingsSort = data.newListingsSort || "newest";
         data.featuredListingMls = data.featuredListingMls || "";
-
         data.linkedinUrl = data.linkedinUrl || "";
         data.twitterUrl = data.twitterUrl || "";
         data.instagramUrl = data.instagramUrl || "";
@@ -829,14 +807,11 @@ if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000)
 
         const res = await fetch("/api/agent-page", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slug, data })
         });
 
         const json = await res.json();
-
         status.textContent = json.ok ? "Saved." : json.error || "Save failed.";
       });
 

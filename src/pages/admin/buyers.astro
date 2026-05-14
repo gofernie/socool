@@ -710,8 +710,10 @@ window.addEventListener("resize", setScrollbarWidth);
 
       
 
-function getListingSignals(item) {
+function getListingSignals(item, groupTitle = "") {
   const signals = [];
+  const isPass = groupTitle.toLowerCase().includes("not for me");
+  const prefix = isPass ? "Disliked" : "Liked";
 
   const description = String(item.description || "").toLowerCase();
   const type = String(item.property_type || item.type || "").toLowerCase();
@@ -719,33 +721,33 @@ function getListingSignals(item) {
   const sqft = Number(item.sqft || 0);
 
   if (description.includes("updated") || description.includes("renovated") || description.includes("modern")) {
-    signals.push("Liked updated feel");
+    signals.push(`${prefix} updated feel`);
   }
 
   if (description.includes("bright") || description.includes("natural light") || description.includes("open concept")) {
-    signals.push("Liked bright/open layout");
+    signals.push(`${prefix} bright/open layout`);
   }
 
   if (description.includes("view") || description.includes("mountain") || description.includes("ocean")) {
-    signals.push("Liked the view");
+    signals.push(`${prefix} the view`);
   }
 
   if (description.includes("patio") || description.includes("deck") || description.includes("yard") || description.includes("balcony")) {
-    signals.push("Liked outdoor space");
+    signals.push(`${prefix} outdoor space`);
   }
 
   if (description.includes("garage") || description.includes("parking")) {
-    signals.push("Liked parking");
+    signals.push(`${prefix} parking`);
   }
 
   if (sqft >= 900 && type.includes("condo")) {
-    signals.push("Liked larger condo layout");
+    signals.push(`${prefix} larger condo layout`);
   } else if (sqft >= 1600) {
-    signals.push("Liked more space");
+    signals.push(`${prefix} more space`);
   }
 
   if (price > 0 && price < 450000) {
-    signals.push("Liked lower price point");
+    signals.push(`${prefix} lower price point`);
   }
 
   return signals.slice(0, 4);
@@ -1427,14 +1429,18 @@ data-liked-tags="${escapeHtml(likedTags.join("|"))}"
   
 
   ${
-    likedTags.length
-      ? likedTags.map((tag) => `
+  likedTags.length
+    ? likedTags.map((tag) => {
+        const isPass = title.toLowerCase().includes("not for me");
+        const label = isPass ? "Disliked" : "Liked";
+        return `
           <span class="activity-signal">
-            Liked: ${escapeHtml(tag)}
+            ${label}: ${escapeHtml(tag)}
           </span>
-        `).join("")
-      : ""
-  }
+        `;
+      }).join("")
+    : ""
+}
 
   ${
     getListingSignals(item).length
