@@ -516,10 +516,10 @@ export async function loadAgentPage(
   let featuredListing: any | null = null;
   let marketStats: MarketStats = { total: 0, newThisWeek: 0, avgDom: 0 };
 
-  const supabase = createClient(
-    env.PUBLIC_SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY
-  );
+const supabase = createClient(
+  env.PUBLIC_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL || "",
+  env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
   // Listings
   try {
