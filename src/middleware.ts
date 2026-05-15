@@ -14,16 +14,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     template = json?.data?.template || "brutal";
   } catch {}
 
-  if (pathname === "/") {
-    const target = template === "calm" ? "/calm" : "/brutal";
-    return Response.redirect(new URL(target, context.url), 302);
+if (pathname === "/") {
+    return context.rewrite(template === "calm" ? "/calm" : "/brutal");
   }
 
   if (pathname === "/explore") {
-    const target = template === "calm"
+    return context.rewrite(template === "calm"
       ? `/explore-calm${search}`
-      : `/explore-brutal${search}`;
-    return Response.redirect(new URL(target, context.url), 302);
+      : `/explore-brutal${search}`
+    );
   }
 
   return next();
