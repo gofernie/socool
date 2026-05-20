@@ -13,7 +13,7 @@ const client = twilio(accountSid, authToken);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { slug, message, comment } = await request.json();
+    const { slug, message, comment, reason } = await request.json();
 
     if (!slug) {
       return new Response(JSON.stringify({ ok: false, error: "Missing slug" }), {
@@ -28,16 +28,13 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: send, error: sendError } = await supabase
       .from("shortlist_sends")
-      .select("client_name, buyer_name")
+      .select("client_name")
       .eq("shortlist_slug", slug)
       .maybeSingle();
 
     if (sendError) throw sendError;
 
-    const buyerName =
-      send?.client_name ||
-      send?.buyer_name ||
-      "Buyer";
+    const buyerName = send?.client_name || "Buyer";
 
     if (comment) {
       const { error } = await supabase
@@ -48,16 +45,31 @@ export const POST: APIRoute = async ({ request }) => {
       if (error) throw error;
     }
 
+    // Skip SMS for intermediate pings — only notify on meaningful events
+    const silentReasons = ["completed"];
+    if (silentReasons.includes(reason)) {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+
     if (!agentPhone) {
       return new Response(JSON.stringify({ ok: false, error: "Missing AGENT_PHONE_NUMBER" }), {
         status: 500
       });
     }
 
+    const reasonLabel =
+      reason === "consult"
+        ? `🎯 ${buyerName} has completed a full review cycle and is ready for a follow-up.`
+        : reason === "comment"
+          ? `💬 ${buyerName} left a note on their shortlist.`
+          : reason === "skipped"
+            ? `⚠️ ${buyerName} left the review early.`
+            : `✅ ${buyerName} reviewed their shortlist.`;
+
     const body =
-      `${buyerName} reviewed their shortlist.\n\n` +
-      `${message || `${buyerName} reviewed all homes.`}` +
-      `${comment ? `\n\n${buyerName} note:\n${comment}` : ""}` +
+      `${reasonLabel}\n\n` +
+      `${message || ""}` +
+      `${comment ? `\n\n${buyerName}'s note:\n"${comment}"` : ""}` +
       `\n\nOpen: ${import.meta.env.PUBLIC_SITE_URL}/shortlists/${slug}?agent=1`;
 
     await client.messages.create({
@@ -66,10 +78,9 @@ export const POST: APIRoute = async ({ request }) => {
       body
     });
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200
-    });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
   } catch (err) {
+    console.error("REVIEW COMPLETE ERROR:", err);
     return new Response(
       JSON.stringify({
         ok: false,

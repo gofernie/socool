@@ -2722,6 +2722,20 @@ let feedbackChips = [];
         let isShowingSummary = false;
 let hasAutoSentReviewSummary = false;
 let cameFromSummary = false;
+// Scope counters to this specific shortlist slug so different shortlists don't bleed into each other
+const _expandKey = `priceExpandCount_${pageSlug}`;
+const _refineKey = `criteriaRefineCount_${pageSlug}`;
+
+// Reset counters if this is a genuine fresh load (not a reload-after-new-cards)
+const _isReload = sessionStorage.getItem(`lastSlug`) === pageSlug;
+if (!_isReload) {
+  sessionStorage.removeItem(_expandKey);
+  sessionStorage.removeItem(_refineKey);
+}
+sessionStorage.setItem("lastSlug", pageSlug);
+
+let priceExpandCount = parseInt(sessionStorage.getItem(_expandKey) || "0", 10);
+let criteriaRefineCount = parseInt(sessionStorage.getItem(_refineKey) || "0", 10);
 
         let touchStartX = 0;
         let touchStartY = 0;
@@ -3444,224 +3458,156 @@ if (lovedCards.length >= 2 && avgLovedPrice && maxSearchPrice) {
 if (insightEl) {
   insightEl.hidden = false;
 
- const heading = "See what’s next.";
-
-const copy = "A few homes just above this range can help clarify the search.";
-  insightEl.innerHTML = `
-    <div class="review-send-copy">
-      <h3>${heading}</h3>
-      <p>${copy}</p>
-    </div>
-
-    <div class="review-send-actions">
-    <button
-  type="button"
-  id="next-higher-btn"
-  style="
-    appearance:none;
-    -webkit-appearance:none;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    width:min(100%, 420px);
-    min-height:52px;
-    padding:0 24px;
-    border:0;
-    border-radius:14px;
-    background:linear-gradient(135deg, #2d5016, #163f08);
-    color:#fff;
-    font-family:var(--f-body);
-    font-size:0.92rem;
-    font-weight:900;
-    line-height:1;
-    cursor:pointer;
-    box-shadow:0 14px 28px rgba(45,80,22,0.24);
-  "
->
-  ✨ Show next higher-priced homes →
-</button>
-    </div>
-  `;
-
-  insightEl.querySelector("button")?.addEventListener("click", async (e) => {
-    const btn = e.currentTarget;
-    const status = document.getElementById("summary-comment-status");
-
-    const originalText = btn.textContent || "Show more";
-
-    btn.disabled = true;
-    btn.textContent = "Finding homes...";
-
-    try {
-      const res = await fetch(`/api/shortlists/expand-search`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          slug: pageSlug
-        })
-      });
-
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("EXPAND SEARCH BAD RESPONSE", text);
-        btn.disabled = false;
-        btn.textContent = originalText;
-        if (status) status.textContent = "Server returned an unexpected response.";
-        return;
-      }
-
- if (!res.ok || !data?.ok || !Array.isArray(data.listings) || data.listings.length === 0) {
+  // Build liked tags HTML for use in all screens
   const likedTags = Array.from(
     new Set(
       Array.from(document.querySelectorAll("[data-liked-tags]"))
-        .flatMap((el) => {
-          try {
-            return JSON.parse(el.dataset.likedTags || "[]");
-          } catch {
-            return [];
-          }
-        })
+        .flatMap((el) => { try { return JSON.parse(el.dataset.likedTags || "[]"); } catch { return []; } })
         .filter(Boolean)
     )
   ).slice(0, 4);
 
   const tagHtml = likedTags.length
-    ? `
-      <div class="review-summary-tags">
-        ${likedTags
-          .map((tag) => `<span class="review-summary-tag">${tag}</span>`)
-          .join("")}
-      </div>
-    `
+    ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">${likedTags.map((tag) => `<span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#edf3e7;color:#45642e;font-size:0.82rem;font-weight:800;">${tag}</span>`).join("")}</div>`
     : "";
 
-  insightEl.innerHTML = `
-    <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;">
-      <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">You've seen all available homes in this search.</h3>
-      <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 14px;">Based on the homes you responded positively to, a few clear themes emerged.</p>
-      ${tagHtml}
-      <p style="font-size:0.88rem;color:#5f675a;line-height:1.6;margin:14px 0 16px;">We can now broaden the search slightly and look for the next-best matches nearby.</p>
-      <button
-        type="button"
-        id="show-behaviour-matches-btn"
-        style="appearance:none;display:block;width:100%;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:linear-gradient(135deg,#2d5016,#163f08);color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(45,80,22,0.22);"
-      >
-        Show recommended next matches →
-      </button>
-    </div>
-  `;
-
-const behaviourBtn = document.getElementById("show-behaviour-matches-btn");
-
-behaviourBtn?.addEventListener("click", async () => {
-  behaviourBtn.disabled = true;
-  behaviourBtn.textContent = "Finding recommended matches...";
-
-  try {
-    const refineRes = await fetch("/api/shortlists/refine-search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug
-      })
-    });
-
-    const refineData = await refineRes.json();
-
-    if (
-      !refineRes.ok ||
-      !refineData?.ok ||
-      !Array.isArray(refineData.listings) ||
-      refineData.listings.length === 0
-    ) {
-      behaviourBtn.textContent = "No recommended matches found";
-      return;
-    }
-
-    appendExpandedListings(refineData.listings);
-
-    closeSheet(true);
-
-    const newItemIds = new Set(
-      refineData.listings
-        .map((l) => String(l.id || l.shortlist_item_id || ""))
-        .filter(Boolean)
-    );
-
-    const firstNewCard = Array.from(
-      document.querySelectorAll(".card")
-    ).find((card) =>
-      newItemIds.has(String(card.dataset.itemId || ""))
-    );
-
-    if (firstNewCard) {
-      setTimeout(() => {
-        openSheetFromCard(firstNewCard);
-      }, 250);
-    }
-  } catch (error) {
-    console.error("REFINE SEARCH CLIENT ERROR", error);
-
-    behaviourBtn.disabled = false;
-    behaviourBtn.textContent = "Try again";
-  }
-});
-
-  if (status) {
-    status.textContent = "";
+  async function showConsultScreen() {
+    insightEl.innerHTML = `
+      <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;text-align:center;">
+        <div style="width:52px;height:52px;border-radius:999px;background:#2d5016;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;">✓</div>
+        <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">Your agent has a clear picture now.</h3>
+        <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 12px;">You've done a thorough review. Based on what you responded to, your agent can now hand-pick the right options for you.</p>
+        ${tagHtml}
+        <p style="font-size:0.85rem;color:#8a8680;margin-top:14px;line-height:1.5;">Your agent will be in touch shortly with a curated selection.</p>
+      </div>
+    `;
+    console.log("CONSULT PING firing...");
+    const pingOk = await sendReviewComplete("consult", "Buyer completed full review cycle. Ready for agent follow-up.");
+    console.log("CONSULT PING result:", pingOk);
   }
 
-  return;
-}
+  function showNextScreen() {
+    // Phase 1: price expand (up to 2 times)
+    if (priceExpandCount < 2) {
+      const expandLabel = priceExpandCount === 0
+        ? "See homes in the next price range →"
+        : "One more step up — worth a look →";
 
-// Add the new listings to the page
-appendExpandedListings(data.listings);
+      insightEl.innerHTML = `
+        <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;">
+          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">Want to see what a little more budget unlocks?</h3>
+          <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 16px;">Sometimes a small stretch in price opens up significantly better options. Worth a quick look.</p>
+          <button type="button" id="next-phase-btn" style="appearance:none;display:block;width:100%;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:linear-gradient(135deg,#2d5016,#163f08);color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(45,80,22,0.22);">
+            ${expandLabel}
+          </button>
+        </div>
+      `;
 
-// Close the summary
-closeSheet(true);
-
-// Find the first new card by item ID instead of position
-const newItemIds = new Set(
-  data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean)
-);
-
-const allCards = Array.from(document.querySelectorAll(".card"));
-const firstNewCard = allCards.find((card) =>
-  newItemIds.has(card.dataset.itemId || "")
-);
-
-if (firstNewCard) {
-  setTimeout(() => {
-    openSheetFromCard(firstNewCard);
-  }, 100);
-}
-
-return;
-   } catch (err) {
-      btn.disabled = false;
-
-      const msg = err instanceof Error ? err.message : "Could not load more homes.";
-
-if (msg.toLowerCase().includes("no homes") || msg.toLowerCase().includes("you've seen all") || msg.toLowerCase().includes("no homes found")) {        btn.textContent = "✓ You've seen all available homes";
-        btn.style.background = "#e8f0e4";
-        btn.style.color = "#2d5016";
-        btn.style.boxShadow = "none";
-        btn.style.cursor = "default";
+      document.getElementById("next-phase-btn")?.addEventListener("click", async () => {
+        const btn = document.getElementById("next-phase-btn");
+        if (!btn) return;
         btn.disabled = true;
-      } else {
-        btn.textContent = originalText;
-        if (status) status.textContent = msg;
-      }
+        btn.textContent = "Finding homes...";
+
+        try {
+          // Cap price expansion at 20% above the highest price already seen
+          const _allPrices = Array.from(document.querySelectorAll(".card"))
+            .map(c => parseInt((c.dataset.price || "").replace(/[^0-9]/g, ""), 10))
+            .filter(Boolean);
+          const _currentMax = _allPrices.length ? Math.max(..._allPrices) : 0;
+          const _maxPrice = _currentMax ? Math.round(_currentMax * 1.2) : 0;
+
+          const res = await fetch("/api/shortlists/expand-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug: pageSlug, maxPrice: _maxPrice })
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data?.ok || !Array.isArray(data.listings) || !data.listings.length) {
+            // Price expand failed — skip to criteria phase
+            priceExpandCount = 2;
+            sessionStorage.setItem(_expandKey, "2");
+            showNextScreen();
+            return;
+          }
+
+          priceExpandCount += 1;
+          sessionStorage.setItem(_expandKey, String(priceExpandCount));
+          appendExpandedListings(data.listings);
+          closeSheet(true);
+
+          const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
+          const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
+          if (firstNew) setTimeout(() => openSheetFromCard(firstNew), 250);
+
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = "Try again";
+        }
+      });
+
+    // Phase 2: criteria broaden (up to 2 times)
+    } else if (criteriaRefineCount < 2) {
+      const refineLabel = criteriaRefineCount === 0
+        ? "Find matches based on what I liked →"
+        : "Show more like these →";
+
+      insightEl.innerHTML = `
+        <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;">
+          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">You've seen all available homes in this search.</h3>
+          <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 12px;">Based on what you responded to, a few clear themes emerged.</p>
+          ${tagHtml}
+          <p style="font-size:0.88rem;color:#5f675a;line-height:1.6;margin:12px 0 16px;">We can broaden slightly — different area, bedroom count, or property type — to find more like what you liked.</p>
+          <button type="button" id="next-phase-btn" style="appearance:none;display:block;width:100%;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:linear-gradient(135deg,#2d5016,#163f08);color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(45,80,22,0.22);">
+            ${refineLabel}
+          </button>
+        </div>
+      `;
+
+      document.getElementById("next-phase-btn")?.addEventListener("click", async () => {
+        const btn = document.getElementById("next-phase-btn");
+        if (!btn) return;
+        btn.disabled = true;
+        btn.textContent = "Finding recommended matches...";
+
+        try {
+          const res = await fetch("/api/shortlists/refine-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug: pageSlug })
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data?.ok || !Array.isArray(data.listings) || !data.listings.length) {
+            criteriaRefineCount = 2;
+            sessionStorage.setItem(_refineKey, "2");
+            showConsultScreen();
+            return;
+          }
+
+          criteriaRefineCount += 1;
+          sessionStorage.setItem(_refineKey, String(criteriaRefineCount));
+          appendExpandedListings(data.listings);
+          closeSheet(true);
+
+          const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
+          const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
+          if (firstNew) setTimeout(() => openSheetFromCard(firstNew), 250);
+
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = "Try again";
+        }
+      });
+
+    // Phase 3: consult
+    } else {
+      showConsultScreen();
     }
-  });
+  }
+
+  showNextScreen();
 }
 
 if (faveStrip) {
@@ -3842,6 +3788,10 @@ setTimeout(() => {
 
 if (reason === "comment") {
   return `Buyer added a note after reviewing ${cards.length} homes: ${summary}.`;
+}
+
+if (reason === "consult") {
+  return `Buyer completed full review cycle (${cards.length} homes reviewed: ${summary}). Ready for agent follow-up.`;
 }
 
 return `Buyer reviewed all ${cards.length} homes: ${summary}.`;
