@@ -21,7 +21,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 function normalizePhone(input: string) {
   const raw = String(input || "").trim();
-
   const digits = raw.replace(/\D/g, "");
 
   if (digits.length === 10) return `+1${digits}`;
@@ -31,16 +30,27 @@ function normalizePhone(input: string) {
   return null;
 }
 
+function cleanAgentName(value: unknown) {
+  const name = String(value || "").trim();
+
+  if (!name) return "";
+  if (name.includes("@")) return "";
+  if (name === "{agentName}") return "";
+
+  return name;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
+
     const shortlistSlug = String(body?.slug || "").trim();
-    const slug = shortlistSlug;
     const clientName = String(body?.clientName || "").trim();
     const phone = normalizePhone(body?.phone || "");
-    const agentName = String(body?.agentName || "").trim();
     const smsImageUrl = String(body?.smsImageUrl || "").trim();
     const note = String(body?.note || "").trim();
+
+    let agentName = cleanAgentName(body?.agentName);
 
     if (!shortlistSlug) {
       return new Response(
@@ -71,108 +81,122 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const cleanBase = String(siteUrl).replace(/\/$/, "");
+    const shortlistPath = `/shortlists/${shortlistSlug}`;
 
-   const shortlistPath = `/shortlists/${shortlistSlug}`;
+    const { data: existingRow, error: existingRowError } = await supabase
+      .from("shortlist_sends")
+      .select("id")
+      .eq("shortlist_slug", shortlistSlug)
+      .single();
 
-const { data: existingRow, error: existingRowError } = await supabase
-  .from("shortlist_sends")
-  .select("id")
-  .eq("shortlist_slug", shortlistSlug)
-  .single();
+    if (existingRowError && existingRowError.code !== "PGRST116") {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: existingRowError.message || "Failed to check existing send row."
+        }),
+        { status: 500 }
+      );
+    }
 
-if (existingRowError && existingRowError.code !== "PGRST116") {
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      error: existingRowError.message || "Failed to check existing send row."
-    }),
-    { status: 500 }
-  );
-}
+    let sendRow = existingRow;
 
-let sendRow = existingRow;
+    if (!sendRow) {
+      const { data: insertedRow, error: sendInsertError } = await supabase
+        .from("shortlist_sends")
+        .insert({
+          shortlist_slug: shortlistSlug,
+          shortlist_url: shortlistPath,
+          client_name: clientName || null,
+          status: "pending",
+          message_body: null,
+          sms_image_url: smsImageUrl || null,
+          sms_image_source: smsImageUrl ? "custom" : "auto"
+        })
+        .select()
+        .single();
 
-if (!sendRow) {
-  const { data: insertedRow, error: sendInsertError } = await supabase
-    .from("shortlist_sends")
-    .insert({
-  shortlist_slug: shortlistSlug,
-  shortlist_url: shortlistPath,
-  client_name: clientName || null,
-  status: "pending",
-  message_body: null,
-  sms_image_url: smsImageUrl || null,
-  sms_image_source: smsImageUrl ? "custom" : "auto"
-})
-    .select()
-    .single();
+      if (sendInsertError || !insertedRow) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: sendInsertError?.message || "Failed to create send row."
+          }),
+          { status: 500 }
+        );
+      }
 
-  if (sendInsertError || !insertedRow) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: sendInsertError?.message || "Failed to create send row."
-      }),
-      { status: 500 }
-    );
-  }
+      sendRow = insertedRow;
+    } else {
+      const { error: prepUpdateError } = await supabase
+        .from("shortlist_sends")
+        .update({
+          shortlist_url: shortlistPath,
+          client_name: clientName || null,
+          status: "pending",
+          sms_image_url: smsImageUrl || null,
+          sms_image_source: smsImageUrl ? "custom" : "auto"
+        })
+        .eq("id", sendRow.id);
 
-  sendRow = insertedRow;
-} else {
-  const { error: prepUpdateError } = await supabase
-    .from("shortlist_sends")
-    .update({
-  shortlist_url: shortlistPath,
-  client_name: clientName || null,
-  status: "pending",
-  sms_image_url: smsImageUrl || null,
-  sms_image_source: smsImageUrl ? "custom" : "auto"
-})
-    .eq("id", sendRow.id);
-
-  if (prepUpdateError) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: prepUpdateError.message || "Failed to prepare existing send row."
-      }),
-      { status: 500 }
-    );
-  }
-}
+      if (prepUpdateError) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: prepUpdateError.message || "Failed to prepare existing send row."
+          }),
+          { status: 500 }
+        );
+      }
+    }
 
     const { data: shortlist } = await supabase
-  .from("shortlist_sends")
-  .select("sms_message, note, sms_image_url")
-  .eq("shortlist_slug", shortlistSlug)
-  .single();
+      .from("shortlist_sends")
+      .select(`
+        sms_message,
+        note,
+        sms_image_url,
+        agent_name,
+        agent:agent_id (
+          name
+        )
+      `)
+      .eq("shortlist_slug", shortlistSlug)
+      .single();
 
-const shortlistUrl = `${cleanBase}/shortlists/${shortlistSlug}`;
-const introName = clientName ? `Hi ${clientName}, ` : "Hi, ";
-const senderLine = agentName ? ` - ${agentName}` : "";
+    if (!agentName) {
+      agentName =
+        cleanAgentName(shortlist?.agent_name) ||
+        cleanAgentName(shortlist?.agent?.name) ||
+        "Chris Crump";
+    }
 
-const savedSmsMessage = String(shortlist?.sms_message || "").trim();
-const savedHeroMessage = String(shortlist?.note || "").trim();
+    const shortlistUrl = `${cleanBase}/shortlists/${shortlistSlug}`;
+    const introName = clientName ? `Hi ${clientName}, ` : "Hi, ";
+    const senderLine = agentName ? ` - ${agentName}` : "";
 
-const introCopy =
-  savedSmsMessage ||
-  savedHeroMessage ||
-  note ||
-  "I pulled these homes together based on what you're looking for.";
+    const savedSmsMessage = String(shortlist?.sms_message || "").trim();
+    const savedHeroMessage = String(shortlist?.note || "").trim();
 
-const messageBody =
-  `${introName}${introCopy}` +
-  `${senderLine}\n${shortlistUrl}`;
+    const introCopy =
+      savedSmsMessage ||
+      savedHeroMessage ||
+      note ||
+      "I pulled these homes together based on what you're looking for.";
 
-const finalImage = smsImageUrl || shortlist?.sms_image_url || null;
+    const cleanedIntroCopy = introCopy
+      .replaceAll("{agentName}", agentName)
+      .replaceAll("{{agentName}}", agentName);
 
-// send
-const sentMessage = await client.messages.create({
-  body: messageBody,
-  from: fromNumber,
-  to: phone,
-  
-});
+    const messageBody =
+      `${introName}${cleanedIntroCopy}` +
+      `${senderLine}\n${shortlistUrl}`;
+
+    const sentMessage = await client.messages.create({
+      body: messageBody,
+      from: fromNumber,
+      to: phone
+    });
 
     const { error: sendUpdateError } = await supabase
       .from("shortlist_sends")

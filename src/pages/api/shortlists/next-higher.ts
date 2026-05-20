@@ -62,24 +62,22 @@ export const GET: APIRoute = async ({ url }) => {
       .filter(Boolean);
 
     const highestExistingPrice = existingPrices.length
-      ? Math.max(...existingPrices)
-      : 0;
+  ? Math.max(...existingPrices)
+  : 0;
 
-    let query = supabase
-      .from("listing_rows")
-      .select("*")
-      .eq("normalized_city", shortlist.search_city || "nanaimo")
-      .gt("price", highestExistingPrice)
-      .order("price", { ascending: true })
-      .limit(20); // fetch extra so we have room to filter out excluded IDs
 
+ let query = supabase
+  .from("listing_rows")
+  .select("*")
+  .eq("normalized_city", shortlist.search_city || "nanaimo")
+  .gt("price", highestExistingPrice)
+  .order("price", { ascending: true })
+  .limit(80);
     if (shortlist.search_type) {
       query = query.eq("normalized_type", shortlist.search_type);
     }
 
-    if (shortlist.search_area) {
-      query = query.eq("normalized_area", shortlist.search_area);
-    }
+  
 
     const { data: rows, error: rowsError } = await query;
 

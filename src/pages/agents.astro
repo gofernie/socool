@@ -1,0 +1,553 @@
+---
+export const prerender = false;
+---
+
+<section class="agent-showcase">
+  <nav class="showcase-nav">
+    <strong>Shortlist Platform</strong>
+    <div>
+      <a href="#features">Features</a>
+      <a href="#buyer">Buyer Experience</a>
+      <a href="#agent">Agent Tools</a>
+      <a href="#demo" class="nav-cta">Book a demo</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Built for modern real estate agents</p>
+      <h1>A better way to send listings, read buyer intent, and win the follow-up.</h1>
+      <p>
+        Give buyers a polished private shortlist experience while you capture what they love,
+        what they pass on, and what they want to see next.
+      </p>
+      <div class="hero-actions">
+        <a href="#demo">Show me how it works</a>
+        <a href="#features" class="secondary">Explore features</a>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div class="mock-browser">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="mock-image"></div>
+        <div class="mock-body">
+          <p class="mock-price">$849,900</p>
+          <p>Curated shortlist for Sarah & Mike</p>
+          <div class="reaction-row">
+            <span>❤️ Love</span>
+            <span>🤔 Maybe</span>
+            <span>✕ Pass</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-strip">
+    <div><strong>Private</strong><span>buyer pages</span></div>
+    <div><strong>Emotional</strong><span>listing feedback</span></div>
+    <div><strong>Smart</strong><span>next-best matches</span></div>
+    <div><strong>Agent</strong><span>CRM insights</span></div>
+  </section>
+
+  <section class="feature-intro" id="features">
+    <p class="eyebrow">The full system</p>
+    <h2>Everything an agent needs after “I’ll send you some listings.”</h2>
+  </section>
+
+  <section class="feature-grid">
+    <article>
+      <span>01</span>
+      <h3>Private buyer shortlist pages</h3>
+      <p>Send a clean branded page instead of a messy link dump. Buyers review homes in a focused, mobile-friendly experience.</p>
+    </article>
+
+    <article>
+      <span>02</span>
+      <h3>Love / maybe / pass feedback</h3>
+      <p>Capture how buyers actually feel about each property instead of waiting for vague replies days later.</p>
+    </article>
+
+    <article>
+      <span>03</span>
+      <h3>Secondary “what stood out?” chips</h3>
+      <p>Buyers can quickly tag what they liked - views, yard, kitchen, garage, layout, location, income potential, and more.</p>
+    </article>
+
+    <article>
+      <span>04</span>
+      <h3>Next higher-priced homes</h3>
+      <p>When buyers finish a list, the system can suggest the next logical batch so the conversation keeps moving.</p>
+    </article>
+
+    <article>
+      <span>05</span>
+      <h3>Agent insight dashboard</h3>
+      <p>See loved homes, maybes, passes, notes, tags, engagement, and buyer intent in one place.</p>
+    </article>
+
+    <article>
+      <span>06</span>
+      <h3>Text-message friendly</h3>
+      <p>Send polished shortlist links by SMS and make the follow-up feel personal, fast, and professional.</p>
+    </article>
+  </section>
+
+  <section class="split-section dark" id="buyer">
+    <div>
+      <p class="eyebrow">Buyer experience</p>
+      <h2>Feels more like browsing a product than opening a property feed.</h2>
+      <p>
+        Buyers get a smooth listing review flow with large photos, map context,
+        clear property details, reactions, and simple next steps.
+      </p>
+    </div>
+
+    <div class="phone-stack">
+      <div class="phone-card">❤️ Loved<br><small>Updated kitchen, yard, location</small></div>
+      <div class="phone-card">🤔 Maybe<br><small>Worth a second look</small></div>
+      <div class="phone-card">✕ Not for me<br><small>Too small, wrong layout</small></div>
+    </div>
+  </section>
+
+  <section class="split-section" id="agent">
+    <div class="panel-preview">
+      <div class="panel-line"></div>
+      <div class="panel-line short"></div>
+      <div class="mini-cards">
+        <span>Buyer loved 3 homes</span>
+        <span>Strong garage signal</span>
+        <span>Ready for showings</span>
+      </div>
+    </div>
+
+    <div>
+      <p class="eyebrow">Agent tools</p>
+      <h2>Turn buyer behaviour into better follow-up.</h2>
+      <p>
+        Instead of guessing, you can see which homes created interest, what features mattered,
+        and what to send next.
+      </p>
+    </div>
+  </section>
+
+  <section class="specs">
+    <h2>Built for real agent workflows</h2>
+
+    <div class="spec-grid">
+      <div><strong>Shortlists</strong><span>Curated listing sets</span></div>
+      <div><strong>CRM</strong><span>Buyer activity summaries</span></div>
+      <div><strong>Maps</strong><span>Location-aware browsing</span></div>
+      <div><strong>SMS</strong><span>Easy mobile sharing</span></div>
+      <div><strong>Analytics</strong><span>Intent and engagement</span></div>
+      <div><strong>Branding</strong><span>Agent-focused presentation</span></div>
+    </div>
+  </section>
+
+  <section class="final-cta" id="demo">
+    <p class="eyebrow">For agents who want better conversations</p>
+    <h2>Send better listing pages. Learn what buyers want. Follow up faster.</h2>
+    <a href="mailto:chris@crump.ca">Book a demo</a>
+  </section>
+</section>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #f4f0e8;
+    color: #171411;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .agent-showcase {
+    overflow: hidden;
+  }
+
+  .showcase-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 32px;
+    background: rgba(244, 240, 232, 0.86);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .showcase-nav div {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+  }
+
+  .showcase-nav a {
+    color: #171411;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .nav-cta {
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: #171411;
+    color: #fff !important;
+  }
+
+  .hero {
+    min-height: 92vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    padding: 80px 7vw;
+  }
+
+  .eyebrow {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 900;
+    color: #6b7f32;
+  }
+
+  h1, h2, h3, p {
+    margin: 0;
+  }
+
+  h1 {
+    font-size: clamp(3.4rem, 7vw, 6.7rem);
+    line-height: 0.9;
+    letter-spacing: -0.07em;
+    max-width: 880px;
+  }
+
+  h2 {
+    font-size: clamp(2.6rem, 5vw, 5rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+  }
+
+  h3 {
+    font-size: 1.45rem;
+    letter-spacing: -0.03em;
+  }
+
+  .hero-copy p:not(.eyebrow),
+  .split-section p,
+  .feature-intro p:not(.eyebrow) {
+    margin-top: 24px;
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: #5d574f;
+    max-width: 680px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    margin-top: 34px;
+    flex-wrap: wrap;
+  }
+
+  .hero-actions a,
+  .final-cta a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    padding: 0 22px;
+    border-radius: 999px;
+    background: #171411;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 900;
+  }
+
+  .hero-actions .secondary {
+    background: transparent;
+    color: #171411;
+    border: 1px solid rgba(0,0,0,0.18);
+  }
+
+  .hero-card {
+    display: flex;
+    justify-content: center;
+  }
+
+  .mock-browser {
+    width: min(520px, 100%);
+    border-radius: 34px;
+    background: #fff;
+    box-shadow: 0 36px 100px rgba(0,0,0,0.18);
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .dots {
+    display: flex;
+    gap: 7px;
+    padding: 18px;
+  }
+
+  .dots span {
+    width: 10px;
+    height: 10px;
+    background: #d9d3c8;
+    border-radius: 50%;
+  }
+
+  .mock-image {
+    height: 330px;
+    background:
+      linear-gradient(135deg, rgba(23,20,17,0.1), rgba(23,20,17,0.45)),
+      url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80");
+    background-size: cover;
+    background-position: center;
+  }
+
+  .mock-body {
+    padding: 26px;
+  }
+
+  .mock-price {
+    font-size: 2.1rem;
+    font-weight: 950;
+    color: #171411 !important;
+    margin: 0 0 6px !important;
+  }
+
+  .reaction-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .reaction-row span {
+    padding: 12px 10px;
+    border-radius: 14px;
+    background: #f4f0e8;
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.85rem;
+  }
+
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .stats-strip div {
+    padding: 34px;
+    border-right: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .stats-strip strong {
+    display: block;
+    font-size: 2rem;
+    letter-spacing: -0.04em;
+  }
+
+  .stats-strip span {
+    color: #6f675f;
+  }
+
+  .feature-intro {
+    padding: 110px 7vw 30px;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding: 30px 7vw 120px;
+  }
+
+  .feature-grid article {
+    min-height: 270px;
+    padding: 28px;
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.06);
+  }
+
+  .feature-grid span {
+    display: block;
+    margin-bottom: 60px;
+    color: #8b8378;
+    font-weight: 900;
+  }
+
+  .feature-grid p {
+    margin-top: 14px;
+    color: #5d574f;
+    line-height: 1.65;
+  }
+
+  .split-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 70px;
+    align-items: center;
+    padding: 130px 7vw;
+    background: #fff;
+  }
+
+  .split-section.dark {
+    background: #171411;
+    color: #fff;
+  }
+
+  .split-section.dark p {
+    color: rgba(255,255,255,0.68);
+  }
+
+  .phone-stack {
+    display: grid;
+    gap: 18px;
+  }
+
+  .phone-card {
+    padding: 28px;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.14);
+    font-size: 1.6rem;
+    font-weight: 950;
+  }
+
+  .phone-card small {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.62);
+  }
+
+  .panel-preview {
+    padding: 34px;
+    border-radius: 34px;
+    background: #f4f0e8;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
+
+  .panel-line {
+    height: 42px;
+    border-radius: 999px;
+    background: #171411;
+    opacity: 0.9;
+    margin-bottom: 16px;
+  }
+
+  .panel-line.short {
+    width: 62%;
+    opacity: 0.28;
+  }
+
+  .mini-cards {
+    display: grid;
+    gap: 12px;
+    margin-top: 40px;
+  }
+
+  .mini-cards span {
+    padding: 18px;
+    border-radius: 18px;
+    background: #fff;
+    font-weight: 850;
+  }
+
+  .specs {
+    padding: 120px 7vw;
+  }
+
+  .specs h2 {
+    max-width: 760px;
+    margin-bottom: 38px;
+  }
+
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .spec-grid div {
+    padding: 34px;
+    border-right: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .spec-grid strong {
+    display: block;
+    font-size: 1.8rem;
+    letter-spacing: -0.04em;
+  }
+
+  .spec-grid span {
+    color: #6f675f;
+  }
+
+  .final-cta {
+    min-height: 70vh;
+    padding: 120px 7vw;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    background: #171411;
+    color: #fff;
+  }
+
+  .final-cta h2 {
+    max-width: 920px;
+  }
+
+  .final-cta a {
+    margin: 34px auto 0;
+    background: #fff;
+    color: #171411;
+  }
+
+  @media (max-width: 900px) {
+    .showcase-nav div {
+      display: none;
+    }
+
+    .hero,
+    .split-section {
+      grid-template-columns: 1fr;
+      padding: 70px 24px;
+    }
+
+    .stats-strip,
+    .feature-grid,
+    .spec-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .feature-intro,
+    .feature-grid,
+    .specs,
+    .final-cta {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    h1 {
+      font-size: 3.6rem;
+    }
+
+    h2 {
+      font-size: 3rem;
+    }
+
+    .mock-image {
+      height: 250px;
+    }
+  }
+</style>

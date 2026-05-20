@@ -355,10 +355,15 @@ const clientDisplayName =
   shortlist?.client?.name ||
   "";
 
-const agentName =
+const rawAgentName =
   shortlist?.agent_name ||
   shortlist?.agent?.name ||
-  "Chris Crump";
+  "";
+
+const agentName =
+  rawAgentName && !rawAgentName.includes("@")
+    ? rawAgentName
+    : "Chris Crump";
 
 const pageTitle = shortlist?.client_name
   ? `${shortlist.client_name}'s shortlist`

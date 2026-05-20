@@ -42,7 +42,6 @@ const type = url.searchParams.get("type") || "";
 const minPrice = url.searchParams.get("minPrice") || "";
 const maxPrice = url.searchParams.get("maxPrice") || "";
 const area = url.searchParams.get("area") || "";
-console.log("AREA PARAM", area);
 const sort = url.searchParams.get("sort") || "";
 const mls = url.searchParams.get("mls") || "";
 const shortlistSlug = url.searchParams.get("shortlist") || "";
@@ -52,170 +51,37 @@ let error: string | null = null;
 
 const hasListingFilters = Boolean(city || area || beds || baths || type || minPrice || maxPrice || mls);
 
-function cleanArea(value: string) {
-  return String(value || "")
-    .replace(/^na\s+/i, "")
-    .trim();
-}
-
-
-
-
-
 function getListingAreaName(listing: any) {
-  const raw =
-    listing?.area ||
-    listing?.normalized_area ||
-    listing?.raw?.details?.subArea ||
-    listing?.details?.subArea ||
-    listing?.raw?.details?.area ||
-    listing?.details?.area ||
-    listing?.raw?.address?.neighborhood ||
-    listing?.address?.neighborhood ||
-    "";
-
-  const rawArea = String(raw || "")
-    .replace(/^na\s+/i, "")
-    .trim();
-
-  const addressText = String(
-    listing?.address ||
-      listing?.raw?.address?.streetName ||
-      listing?.raw?.address?.addressKey ||
-      getListingAddress(listing) ||
-      ""
-  ).toLowerCase();
-
-  const SOUTH_NANAIMO_STREETS = [
-    "ninth",
-    "highview",
-    "petroglyph",
-    "howard",
-    "bruce",
-    "victoria",
-    "harewood",
-    "duke"
-  ];
-
-  if (SOUTH_NANAIMO_STREETS.some((street) => addressText.includes(street))) {
-    return "South Nanaimo";
-  }
-
-  const NORTH_NANAIMO_STREETS = [
-    "uplands",
-    "dover",
-    "edgewater",
-    "blueback",
-    "vista view",
-    "mcrobb",
-    "sentinal",
-    "metral"
-  ];
-
-  if (NORTH_NANAIMO_STREETS.some((street) => addressText.includes(street))) {
-    return "North Nanaimo";
-  }
-
-  const uselessAreas = [
-    "other",
-    "nanaimo",
-    "nanaimo, city of",
-    "city of nanaimo"
-  ];
-
-  if (rawArea && !uselessAreas.includes(rawArea.toLowerCase())) {
-    return rawArea;
-  }
-
+  const raw = listing?.area || listing?.normalized_area || listing?.raw?.details?.subArea || listing?.details?.subArea || listing?.raw?.details?.area || listing?.details?.area || listing?.raw?.address?.neighborhood || listing?.address?.neighborhood || "";
+  const rawArea = String(raw || "").replace(/^na\s+/i, "").trim();
+  const addressText = String(listing?.address || listing?.raw?.address?.streetName || listing?.raw?.address?.addressKey || getListingAddress(listing) || "").toLowerCase();
+  const SOUTH = ["ninth","highview","petroglyph","howard","bruce","victoria","harewood","duke"];
+  if (SOUTH.some((s) => addressText.includes(s))) return "South Nanaimo";
+  const NORTH = ["uplands","dover","edgewater","blueback","vista view","mcrobb","sentinal","metral"];
+  if (NORTH.some((s) => addressText.includes(s))) return "North Nanaimo";
+  const useless = ["other","nanaimo","nanaimo, city of","city of nanaimo"];
+  if (rawArea && !useless.includes(rawArea.toLowerCase())) return rawArea;
   const desc = String(listing?.raw?.details?.description || "").toLowerCase();
-
   if (desc.includes("south nanaimo")) return "South Nanaimo";
   if (desc.includes("north nanaimo")) return "North Nanaimo";
-
   return rawArea;
-}
-function normalizeArea(value: string) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/^na\s+/i, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 }
 
 if (hasListingFilters) {
   try {
-    let query = supabase
-  .from("listing_rows")
-  .select("*");
-
-query = query.eq("status", "A");
-
-if (city) {
-      query = query.eq("normalized_city", city.toLowerCase());
-    } else {
-      query = query.eq("normalized_city", "nanaimo");
-    }
-
- if (area) {
-  const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
-  if (areas.length === 1) {
-    query = query.eq("normalized_area", areas[0]);
-  } else if (areas.length > 1) {
-    query = query.in("normalized_area", areas);
-  }
-}
-
-    if (type) {
-      const typeMap: Record<string, string> = {
-        detached: "house",
-        condo: "condo",
-        townhouse: "townhouse",
-        land: "land",
-        mobile: "mobile"
-      };
-
-      query = query.eq("normalized_type", typeMap[type] || type);
-    }
-
-    if (beds) {
-      query = query.gte("beds", Number(beds));
-    }
-
-    if (baths) {
-      query = query.gte("baths", Number(baths));
-    }
-
-    if (minPrice) {
-      query = query.gte("price", Number(minPrice));
-    }
-
-    if (maxPrice) {
-      query = query.lte("price", Number(maxPrice));
-    }
-
-   if (mls) {
-  const cleanMls = mls.replace(/[^0-9]/g, "");
-
-  query = query.or(
-    `id.eq.${cleanMls},mls_number.eq.${cleanMls}`
-  );
-}
-
-    if (sort === "price-desc") {
-      query = query.order("price", { ascending: false });
-    } else {
-      query = query.order("price", { ascending: true });
-    }
-
+    let query = supabase.from("listing_rows").select("*").eq("status", "A");
+    if (city) { query = query.eq("normalized_city", city.toLowerCase()); } else { query = query.eq("normalized_city", "nanaimo"); }
+    if (area) { const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean); if (areas.length === 1) { query = query.eq("normalized_area", areas[0]); } else if (areas.length > 1) { query = query.in("normalized_area", areas); } }
+    if (type) { const typeMap: Record<string, string> = { detached: "house", condo: "condo", townhouse: "townhouse", land: "land", mobile: "mobile" }; query = query.eq("normalized_type", typeMap[type] || type); }
+    if (beds) query = query.gte("beds", Number(beds));
+    if (baths) query = query.gte("baths", Number(baths));
+    if (minPrice) query = query.gte("price", Number(minPrice));
+    if (maxPrice) query = query.lte("price", Number(maxPrice));
+    if (mls) { const cleanMls = mls.replace(/[^0-9]/g, ""); query = query.or(`id.eq.${cleanMls},mls_number.eq.${cleanMls}`); }
+    if (sort === "price-desc") { query = query.order("price", { ascending: false }); } else { query = query.order("price", { ascending: true }); }
     const { data, error: dbError } = await query.limit(500);
-
-    if (dbError) {
-      throw new Error(dbError.message);
-    }
-
+    if (dbError) throw new Error(dbError.message);
     listings = data || [];
-
-    
   } catch (err) {
     console.error("Failed to load listings:", err);
     error = err instanceof Error ? err.message : "Failed to load listings";
@@ -228,1330 +94,977 @@ if (city) {
     <meta charset="utf-8" />
     <title>Listings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
-   <style>
-  :root {
-    --bg: #f4efe7;
-    --card: #ffffff;
-    --text: #1f1f1f;
-    --muted: #6b6b6b;
-    --line: #dddddd;
-    --accent: #111111;
-    --success: #1f7a45;
-    --danger: #8b1e1e;
-    --danger-bg: #fff6f6;
-    --radius: 16px;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  html,
-  body {
-    margin: 0;
-    padding: 0;
-  }
-
-  html {
-    scrollbar-gutter: stable;
-  }
-
-  body {
-    font-family: system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-  }
-
-  .page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px;
-    padding-bottom: 280px;
-  }
-
-  .topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-    gap: 16px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-  }
-
-  .logout-form {
-  margin: 0;
-}
-
-.logout-btn {
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--text);
-  border-radius: 999px;
-  padding: 10px 14px;
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  background: #fafafa;
-}
-
-  h1 {
-    margin: 0;
-    font-size: 2rem;
-    line-height: 1.1;
-  }
-
-  .subtle {
-    margin: 6px 0 0;
-    color: var(--muted);
-  }
-
-  .saved-pill {
-    border: 1px solid var(--line);
-    background: var(--card);
-    border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 0.95rem;
-    white-space: nowrap;
-  }
-
-  .filters {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 8px;
-    margin-bottom: 18px;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    width: 100%;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-  }
-
-  .filter-group {
-    display: contents;
-  }
-
-  .filter-group-title {
-    display: none;
-  }
-
-  .filters label,
-  .filter-group label {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 0.68rem;
-    color: var(--muted);
-    padding-left: 2px;
-  }
-
-.filters label:has(input[name="minPrice"]),
-.filters label:has(input[name="maxPrice"]) {
-  flex: 0 0 95px;
-}
-
-.filters label:has(select[name="beds"]),
-.filters label:has(select[name="baths"]) {
-  flex: 0 0 70px;
-}
-
-.filters label:has(select[name="sort"]) {
-  flex: 0 0 165px;
-}
-
-  .filters input,
-  .filters select {
-    width: 100%;
-    min-width: 0;
-    min-height: 40px;
-    border: 0;
-    border-radius: 10px;
-    padding: 8px 34px 8px 12px;
-    font: inherit;
-    background-color: #f7f7f7;
-    color: var(--text);
-  }
-
-  .filters select {
-    appearance: none;
-    cursor: pointer;
-    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23111111' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 12px 8px;
-  }
-
-  .filters input:focus,
-  .filters select:focus {
-    outline: none;
-    background: #fff;
-    box-shadow: 0 0 0 2px rgba(17,17,17,0.12);
-  }
-
-  .filter-actions {
-    flex: 0 0 auto;
-    display: flex;
-    gap: 6px;
-    padding: 0;
-    border: 0;
-  }
-
-  .filter-actions .primary-btn,
-  .filter-actions .filter-clear {
-    min-height: 40px;
-    padding: 8px 16px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  .filter-clear {
-    text-decoration: none;
-    border: 1px solid var(--line);
-    background: #fff;
-    color: var(--text);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-.selection-bar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  margin: -6px 0 18px;
-}
-
-.selection-count {
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-#visible-saved-count {
-  color: var(--muted);
-}
-
-.filter-select-all {
-  min-height: 40px;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid var(--line);
-  white-space: nowrap;
-}
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-  }
-
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    overflow: hidden;
-    padding: 12px;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .card.saved {
-    border-color: var(--success);
-    box-shadow: 0 0 0 1px rgba(31, 122, 69, 0.12);
-  }
-
-  .card:hover {
-    transform: translateY(-2px);
-  }
-
-  .image-wrap {
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #ececec;
-    margin-bottom: 12px;
-    cursor: pointer;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .price {
-    margin: 0 0 6px;
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  .address {
-    margin: 0 0 8px;
-    color: var(--text);
-  }
-
-  .meta {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.95rem;
-  }
-
-  .card-actions {
-    margin-top: 14px;
-    display: flex;
-    gap: 8px;
-  }
-
-  button {
-    appearance: none;
-    border: 1px solid var(--line);
-    background: white;
-    color: var(--text);
-    padding: 10px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    font: inherit;
-  }
-
-  button:hover {
-    background: #fafafa;
-  }
-
-  .page-logo {
-    display: block;
-    width: 220px;
-    max-width: 70vw;
-    height: auto;
-  }
-
-  .brand-head {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .primary-btn {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-    min-height: 44px;
-  }
-
-  .primary-btn:hover {
-    background: #242424;
-    color: #fff;
-    border-color: #242424;
-  }
-
-  button:disabled {
-    cursor: default;
-    opacity: 1;
-    background: #fff;
-  }
-
-  .save-btn.saved,
-  .sheet-save.saved {
-    border-color: var(--success);
-    color: var(--success);
-    font-weight: 600;
-  }
-
-  .save-btn.remove,
-  .sheet-save.remove {
-    border-color: rgba(139, 30, 30, 0.28);
-    color: var(--danger);
-    background: var(--danger-bg);
-    font-weight: 600;
-  }
-
-  .preview-btn,
-  .sheet-close {
-    background: #fafafa;
-  }
-
-  .empty {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 20px;
-  }
-
-  .error {
-    margin-top: 14px;
-    color: #8b1e1e;
-  }
-
-  .composer {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(245, 242, 236, 0.98);
-    border-top: 1px solid #d7d1c7;
-    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(14px);
-    z-index: 10000;
-  }
-
-  .composer-inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 14px 24px 18px;
-  }
-
-  .composer-inner--edit {
-    display: block;
-  }
-
-  .composer-fields {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr 1.5fr auto;
-    gap: 16px;
-    align-items: start;
-    padding: 28px 0 32px;
-  }
-
-  .composer-toggle,
-  .composer-toggle-row,
-  .composer-handle {
-    display: none;
-  }
-
-  .composer-toggle-left {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-  }
-
-  .composer-toggle-kicker {
-    font-size: 0.78rem;
-    color: var(--muted);
-    letter-spacing: 0.02em;
-  }
-
-  .composer-toggle-title {
-    font-size: 0.98rem;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .composer-toggle-meta {
-    font-size: 0.88rem;
-    color: var(--muted);
-  }
-
-  .composer-chev {
-    font-size: 1.1rem;
-    color: var(--muted);
-    transition: transform 0.18s ease;
-  }
-
-  .edit-shortlist-bar {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 14px 24px 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .edit-shortlist-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .edit-shortlist-copy strong {
-    font-size: 0.98rem;
-  }
-
-  .edit-shortlist-copy span {
-    color: var(--muted);
-    font-size: 0.92rem;
-  }
-
-  .edit-back-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    padding: 10px 16px;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-    align-self: start;
-  }
-
-  .field label {
-    font-size: 0.85rem;
-    color: var(--muted);
-    min-height: 20px;
-    display: flex;
-    align-items: center;
-  }
-
-  .composer-fields .field:last-child {
-    padding-top: 26px;
-  }
-
-  .field input,
-  .field textarea {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 12px 14px;
-    font: inherit;
-    background: white;
-  }
-
-  .field textarea {
-    min-height: 90px;
-    max-height: 180px;
-    resize: vertical;
-  }
-
-  .status {
-    margin-top: 8px;
-    color: var(--muted);
-    font-size: 0.92rem;
-  }
-
-  .sheet-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.42);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 20000;
-  }
-
-  .sheet-overlay.open {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 20001;
-    background: #fff;
-    border-radius: 22px 22px 0 0;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.18);
-    max-height: 88vh;
-    overflow: hidden;
-    padding: 12px 12px 18px;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transform: translateY(102%);
-    transition:
-      transform 0.22s ease,
-      opacity 0.18s ease,
-      visibility 0s linear 0.22s;
-  }
-
-  .sheet.open {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateY(0);
-  }
-
-  .sheet-handle {
-    width: 44px;
-    height: 5px;
-    background: #d4d4d4;
-    border-radius: 999px;
-    margin: 4px auto 14px;
-    pointer-events: none;
-  }
-
-  .sheet-content {
-    position: relative;
-    z-index: 1;
-    height: calc(88vh - 24px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: 6px;
-  }
-
-  .sheet-body {
-    padding: 14px 2px 0;
-    position: relative;
-    z-index: 3;
-  }
-
-  .sheet-price {
-    margin: 0 0 8px;
-    font-size: 2rem;
-    line-height: 1;
-    letter-spacing: -0.03em;
-  }
-
-  .sheet-address {
-    margin: 0 0 8px;
-    font-size: 1.45rem;
-    line-height: 1.2;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-  }
-
-  .sheet-desc {
-    margin: 0 0 18px;
-    color: #222;
-    line-height: 1.6;
-  }
-
-  .sheet-stat-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 0 0 16px;
-    color: var(--muted);
-    font-size: 0.95rem;
-    font-weight: 500;
-  }
-
-  .sheet-stat-strip span:nth-child(odd) {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .view-toggle {
-    display: inline-flex;
-    gap: 0;
-    margin: -4px 0 14px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
-  }
-
-  .view-toggle button {
-    border: 0;
-    border-radius: 0;
-    min-height: 38px;
-    padding: 8px 14px;
-    background: #fff;
-  }
-
-  .view-toggle button + button {
-    border-left: 1px solid var(--line);
-  }
-
-  .view-btn.active {
-    background: var(--accent);
-    color: #fff;
-  }
-
-  .results-map {
-    height: 70vh;
-    min-height: 420px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 22px;
-    background: #e8e8e8;
-  }
-
-  .sheet-mini-map {
-    height: 340px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    overflow: hidden;
-    margin: 0 0 18px;
-    background: #e8e8e8;
-  }
-
-  .sheet-mini-map[hidden],
-  .grid.map-hidden {
-    display: none;
-  }
-
-  .sheet-photo-wrap {
-    position: relative;
-    width: 100%;
-    height: 400px;
-    border-radius: 16px;
-    overflow: hidden;
-    background: #ececec;
-  }
-
-  .sheet-main-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .photo-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    width: 38px;
-    height: 38px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid var(--line);
-    font-size: 1.6rem;
-    line-height: 1;
-  }
-
-  .photo-prev {
-    left: 10px;
-  }
-
-  .photo-next {
-    right: 10px;
-  }
-
-  .photo-count {
-    position: absolute;
-    right: 12px;
-    bottom: 10px;
-    background: rgba(0, 0, 0, 0.68);
-    color: white;
-    border-radius: 999px;
-    padding: 5px 9px;
-    font-size: 0.78rem;
-  }
-
-  .sheet-head {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: start;
-    gap: 18px;
-    margin: 14px 0 16px;
-  }
-
-  .sheet-head-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .sheet-save-top {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-    min-width: 92px;
-  }
-
-  .sheet-save-top,
-  .sheet-map-btn,
-  .sheet-close-top {
-    min-width: 84px;
-    min-height: 40px;
-  }
-
-  .sheet-map-btn,
-  .sheet-close-top {
-    background: #fafafa;
-  }
-
-  @media (max-width: 900px) {
-    .page {
-      padding: 20px;
-      padding-bottom: 92px;
-    }
-
-    .topbar {
-      align-items: flex-start;
-      margin-bottom: 18px;
-    }
-
-    .saved-pill {
-      padding: 9px 14px;
-    }
-
-    .filters {
-      border-radius: 18px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      padding: 10px;
-      gap: 8px;
-    }
-
-    .filter-actions {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .filter-actions button,
-    .filter-actions a {
-      width: 100%;
-    }
-
-    .composer {
-      border-top-left-radius: 18px;
-      border-top-right-radius: 18px;
-      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
-    }
-
-    .composer-inner {
-      padding: 0;
-    }
-
-    .composer-toggle {
-      display: block;
-      width: 100%;
-      appearance: none;
-      border: 0;
-      background: transparent;
-      padding: 10px 16px 12px;
-      cursor: pointer;
-      font: inherit;
-    }
-
-    .composer-toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .composer-handle {
-      display: block;
-      width: 42px;
-      height: 5px;
-      border-radius: 999px;
-      background: #d7d7d7;
-      margin: 8px auto 4px;
-    }
-
-    .composer-fields {
-      grid-template-columns: 1fr;
-      gap: 12px;
-      max-height: 0;
-      overflow: hidden;
-      opacity: 0;
-      padding: 0 16px;
-      transition:
-        max-height 0.24s ease,
-        opacity 0.18s ease,
-        padding 0.18s ease;
-    }
-
-    .composer.open .composer-fields {
-      max-height: 70vh;
-      overflow: auto;
-      opacity: 1;
-      padding: 0 16px 16px;
-    }
-
-    .composer.open .composer-chev {
-      transform: rotate(180deg);
-    }
-
-    .edit-shortlist-bar {
-      padding: 14px 16px 18px;
-      align-items: stretch;
-    }
-
-    .edit-back-btn {
-      width: 100%;
-    }
-  }
-
-  @media (min-width: 900px) {
-    .sheet {
-      left: 50%;
-      top: 50%;
-      right: auto;
-      bottom: auto;
-      width: min(860px, calc(100vw - 48px));
-      max-height: min(760px, calc(100vh - 48px));
-      border-radius: 22px;
-      padding: 14px 14px 20px;
-      transform: translate(-50%, -50%) scale(0.98);
-    }
-
-    .sheet.open {
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    .sheet-content {
-      display: block;
-      height: calc(min(760px, calc(100vh - 48px)) - 34px);
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding-right: 6px;
-    }
-
-    .sheet-body {
-      padding: 10px 2px 0;
-    }
-
-    .sheet-actions {
-      position: static;
-      background: transparent;
-      padding-top: 0;
-    }
-  }
-
-  .multi-select-wrap {
-  position: relative;
-}
-
-.multi-select-trigger {
-  width: 100%;
-  min-height: 40px;
-  border: 0;
-  border-radius: 10px;
-  padding: 8px 34px 8px 12px;
-  font: inherit;
-  background-color: #f7f7f7;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23111111' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 12px 8px;
-}
-
-.multi-select-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 999;
-  max-height: 220px;
-  overflow-y: auto;
-  padding: 6px;
-}
-
-.multi-select-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 7px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.multi-select-option:hover {
-  background: #f5f5f5;
-}
-
-.multi-select-option input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-}
-</style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg: #f4efe7;
+        --surface: #ffffff;
+        --card: #ffffff;
+        --card-warm: #f9f5f0;
+        --ink: #1a1917;
+        --ink-light: #1a1917;
+        --muted-light: #6b6b6b;
+        --muted-dark: #6b6b6b;
+        --line-dark: #dddddd;
+        --line-card: #efefef;
+        --accent: #8b6f47;
+        --accent-light: #8b6f47;
+        --accent-bg: #f5ece0;
+        --accent-dark: #6b5235;
+        --success: #1f7a45;
+        --success-bg: #edf7f1;
+        --danger: #8b1e1e;
+        --danger-bg: #fff6f6;
+        --f-display: "Lora", Georgia, serif;
+        --f-body: "Nunito Sans", system-ui, sans-serif;
+        --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        --radius: 16px;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scrollbar-gutter: stable; }
+
+      html, body {
+        font-family: var(--f-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; }
+
+      /* ── PAGE ── */
+      .page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 24px 280px;
+      }
+
+      /* ── TOPBAR ── */
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      .brand-head { display: flex; flex-direction: column; gap: 6px; }
+
+      .page-logo { display: block; width: 220px; max-width: 60vw; height: 36px; object-fit: contain; object-position: left center; }
+
+      .subtle { color: var(--muted-dark); font-size: 0.88rem; }
+
+      .logout-form { margin: 0; }
+
+      .logout-btn {
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 9px 18px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .logout-btn:hover { background: #fafafa; }
+
+      /* ── NAV ── */
+      .admin-nav {
+        display: inline-flex;
+        gap: 4px;
+        padding: 5px;
+        background: #fff;
+        border: 1px solid var(--line-dark);
+        border-radius: 999px;
+        margin-bottom: 24px;
+      }
+
+      .admin-nav a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 18px;
+        border-radius: 999px;
+        color: var(--muted-dark);
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+
+      .admin-nav a:hover { color: var(--ink); background: #f5f5f5; }
+      .admin-nav a.active { background: var(--ink); color: #fff; }
+
+      /* ── FILTERS ── */
+      .filters {
+        background: #fff;
+        border: 1px solid var(--line-dark);
+        border-radius: 14px;
+        padding: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .filter-group { display: contents; }
+      .filter-group-title { display: none; }
+
+      .filters label,
+      .filter-group label {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted-dark);
+        padding-left: 2px;
+      }
+
+      .filters label:has(input[name="minPrice"]),
+      .filters label:has(input[name="maxPrice"]) { flex: 0 0 95px; }
+      .filters label:has(select[name="beds"]),
+      .filters label:has(select[name="baths"]) { flex: 0 0 70px; }
+      .filters label:has(select[name="sort"]) { flex: 0 0 165px; }
+
+      .filters input,
+      .filters select {
+        width: 100%;
+        min-width: 0;
+        min-height: 40px;
+        border: 0;
+        border-radius: 10px;
+        padding: 8px 34px 8px 12px;
+        font: inherit;
+        font-size: 0.85rem;
+        background: #f7f7f7;
+        color: var(--ink);
+      }
+
+      .filters select {
+        appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23c4a882' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 12px 8px;
+      }
+
+      .filters select option {
+        background: #fff;
+        color: var(--ink);
+      }
+
+      .filters input:focus,
+      .filters select:focus {
+        outline: none;
+        border-color: #999;
+        background: #fff;
+      }
+
+      .filters input::placeholder { color: var(--muted-dark); }
+
+      .filter-actions {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 6px;
+        padding: 0;
+        border: 0;
+      }
+
+      .filter-actions .primary-btn,
+      .filter-actions .filter-clear {
+        min-height: 40px;
+        padding: 8px 18px;
+        border-radius: 999px;
+        white-space: nowrap;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
+      .primary-btn {
+        background: var(--ink);
+        color: white;
+        border: 1px solid var(--ink);
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .primary-btn:hover { background: #333; }
+
+      .filter-clear {
+        text-decoration: none;
+        border: 1px solid var(--line-dark);
+        background: #fff;
+        color: var(--ink);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+      }
+
+      .filter-clear:hover { background: #fafafa; }
+
+      /* ── MULTI SELECT ── */
+      .multi-select-wrap { position: relative; }
+
+      .multi-select-trigger {
+        width: 100%;
+        min-height: 40px;
+        border: 0;
+        border-radius: 10px;
+        padding: 8px 34px 8px 12px;
+        font: inherit;
+        font-size: 0.85rem;
+        background: #f7f7f7;
+        color: var(--ink);
+        text-align: left;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23c4a882' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 12px 8px;
+        transition: border-color 0.15s;
+      }
+
+      .multi-select-trigger:hover { border-color: var(--accent-light); }
+
+      .multi-select-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid var(--line-dark);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        z-index: 999;
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 6px;
+      }
+
+      .multi-select-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.88rem;
+        color: var(--ink);
+      }
+
+      .multi-select-option:hover { background: #f5f5f5; }
+
+      .multi-select-option input[type="checkbox"] {
+        width: 15px;
+        height: 15px;
+        accent-color: var(--accent);
+        flex-shrink: 0;
+      }
+
+      /* ── SELECTION BAR ── */
+      .selection-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
+        margin: -4px 0 16px;
+      }
+
+      .selection-count { font-size: 0.88rem; color: var(--muted-dark); }
+      #visible-saved-count { color: var(--muted-dark); }
+
+      .filter-select-all {
+        min-height: 36px;
+        padding: 7px 16px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line-dark);
+        color: var(--ink);
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s;
+      }
+
+      .filter-select-all:hover { background: #fafafa; }
+
+      /* ── VIEW TOGGLE ── */
+      .view-toggle {
+        display: inline-flex;
+        margin-bottom: 16px;
+        border: 1px solid var(--line-dark);
+        border-radius: 999px;
+        overflow: hidden;
+        background: #fff;
+      }
+
+      .view-toggle button {
+        border: 0;
+        border-radius: 0;
+        min-height: 36px;
+        padding: 7px 18px;
+        background: transparent;
+        color: var(--muted-dark);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+
+      .view-toggle button + button { border-left: 1px solid var(--line-dark); }
+      .view-btn.active { background: var(--ink); color: #fff; }
+
+      /* ── MAP ── */
+      .results-map {
+        height: 60vh;
+        min-height: 400px;
+        border: 1px solid var(--line-dark);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin-bottom: 20px;
+        background: #e8e4de;
+      }
+
+      /* ── GRID ── */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+
+      .grid.map-hidden { display: none; }
+
+      /* ── CARD ── */
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line-dark);
+        border-radius: var(--radius);
+        overflow: hidden;
+        padding: 0;
+        transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      }
+
+      .card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+      .card.saved {
+        border-color: var(--success);
+        box-shadow: 0 0 0 2px rgba(58,107,50,0.2), 0 2px 12px rgba(0,0,0,0.2);
+      }
+
+      .image-wrap {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        background: #ececec;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+
+      .image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s var(--ease); }
+      .image-wrap:hover img { transform: scale(1.03); }
+
+      .card-body { padding: 14px 16px 16px; flex: 1; display: flex; flex-direction: column; }
+
+      .price {
+        font-family: var(--f-display);
+        font-size: 1.3rem;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+
+      .address { color: var(--ink); font-size: 0.88rem; line-height: 1.3; margin-bottom: 6px; }
+
+      .meta { color: var(--muted-dark); font-size: 0.8rem; margin-bottom: 2px; }
+
+      .card-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .save-btn, .preview-btn {
+        appearance: none;
+        border: 1px solid rgba(24,22,20,0.12);
+        background: white;
+        color: var(--ink);
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.15s;
+      }
+
+      .save-btn:hover, .preview-btn:hover { background: var(--card-warm); }
+
+      .save-btn.saved { border-color: var(--success); color: var(--success); }
+      .save-btn.remove { border-color: rgba(139,30,30,0.3); color: var(--danger); background: var(--danger-bg); }
+      .save-btn:disabled { opacity: 0.5; cursor: default; }
+
+      /* ── EMPTY ── */
+      .empty {
+        background: #fff;
+        border: 1px solid var(--line-dark);
+        border-radius: var(--radius);
+        padding: 40px 24px;
+        color: var(--muted-dark);
+        text-align: center;
+      }
+
+      .error { color: var(--danger); margin-top: 8px; font-size: 0.88rem; }
+
+      /* ── SHEET OVERLAY ── */
+      .sheet-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s var(--ease);
+        z-index: 20000;
+      }
+
+      .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+      /* ── SHEET ── */
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 20001;
+        background: #fff;
+        color: var(--ink);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -10px 50px rgba(0,0,0,0.35);
+        max-height: 88vh;
+        overflow: hidden;
+        padding: 10px 12px 18px;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(102%);
+        transition: transform 0.22s var(--ease), opacity 0.18s var(--ease), visibility 0s linear 0.22s;
+      }
+
+      .sheet.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); transition: transform 0.22s var(--ease), opacity 0.18s var(--ease); }
+
+      .sheet-handle { width: 40px; height: 4px; background: rgba(24,22,20,0.15); border-radius: 999px; margin: 4px auto 12px; }
+
+      .sheet-content { height: calc(88vh - 24px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+
+      .sheet-photo-wrap { position: relative; width: 100%; height: 320px; border-radius: 12px; overflow: hidden; background: #d8d3cc; }
+
+      .sheet-main-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      .photo-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        background: rgba(247,243,238,0.92);
+        border: 0;
+        color: var(--ink);
+        font-size: 1.3rem;
+        line-height: 1;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        transition: background 0.15s;
+      }
+
+      .photo-nav:hover { background: white; }
+      .photo-prev { left: 10px; }
+      .photo-next { right: 10px; }
+
+      .photo-count { position: absolute; right: 12px; bottom: 10px; background: rgba(24,22,20,0.7); color: #fffaf3; border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; font-weight: 700; }
+
+      .sheet-body { padding: 14px 2px 0; }
+
+      .sheet-head { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 14px; margin-bottom: 14px; }
+
+      .sheet-price {
+        font-family: var(--f-display);
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+
+      .sheet-address { font-size: 1.1rem; font-weight: 500; line-height: 1.3; color: rgba(24,22,20,0.75); margin-bottom: 8px; }
+
+      .sheet-stat-strip { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--muted-dark); font-size: 0.85rem; font-weight: 500; }
+
+      .sheet-head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+      .sheet-save, .sheet-map-btn, .sheet-close {
+        appearance: none;
+        border: 1px solid rgba(24,22,20,0.12);
+        background: white;
+        color: var(--ink);
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        min-width: 72px;
+        min-height: 38px;
+        transition: all 0.15s;
+      }
+
+      .sheet-save:hover, .sheet-map-btn:hover, .sheet-close:hover { background: var(--card-warm); }
+
+      .sheet-save-top {
+        background: var(--ink);
+        color: white;
+        border-color: var(--ink);
+      }
+
+      .sheet-save-top:hover { background: #333; }
+      .sheet-save.saved { border-color: var(--success); color: var(--success); }
+      .sheet-save.remove { border-color: rgba(139,30,30,0.3); color: var(--danger); background: var(--danger-bg); }
+
+      .sheet-mini-map { height: 280px; border: 1px solid rgba(24,22,20,0.1); border-radius: 12px; overflow: hidden; margin: 14px 0; background: #d8d3cc; }
+
+      .sheet-desc { color: rgba(24,22,20,0.7); line-height: 1.6; font-size: 0.9rem; margin-top: 12px; }
+
+      /* ── COMPOSER ── */
+      .composer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(245,242,236,0.98);
+        border-top: 1px solid #d7d1c7;
+        box-shadow: 0 -12px 40px rgba(0,0,0,0.3);
+        backdrop-filter: blur(16px);
+        z-index: 10000;
+      }
+
+      .composer-inner { max-width: 1200px; margin: 0 auto; padding: 16px 24px 20px; }
+      .composer-inner--edit { display: block; }
+
+      .composer-toggle, .composer-toggle-row, .composer-handle { display: none; }
+
+      .composer-toggle-left { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+      .composer-toggle-kicker { font-size: 0.72rem; color: var(--muted-dark); letter-spacing: 0.04em; }
+      .composer-toggle-title { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+      .composer-toggle-meta { font-size: 0.82rem; color: var(--muted-dark); }
+      .composer-chev { font-size: 1rem; color: var(--muted-dark); transition: transform 0.18s; }
+
+      .composer-fields {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr 1.5fr auto;
+        gap: 16px;
+        align-items: start;
+        padding: 20px 0 24px;
+      }
+
+      .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; align-self: start; }
+
+      .field label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-dark); min-height: 18px; display: flex; align-items: center; }
+
+      .composer-fields .field:last-child { padding-top: 24px; }
+
+      .field input, .field textarea {
+        width: 100%;
+        border: 1px solid var(--line-dark);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font: inherit;
+        font-size: 0.88rem;
+        background: #f7f7f7;
+        color: var(--ink);
+        transition: border-color 0.15s, background 0.15s;
+      }
+
+      .field input::placeholder, .field textarea::placeholder { color: var(--muted-dark); }
+      .field input:focus, .field textarea:focus { outline: none; border-color: #aaa; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
+
+      .field textarea { min-height: 82px; max-height: 160px; resize: vertical; }
+
+      .status { margin-top: 6px; color: var(--muted-dark); font-size: 0.82rem; }
+
+      .edit-shortlist-bar { max-width: 1200px; margin: 0 auto; padding: 14px 24px 18px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+      .edit-shortlist-copy { display: flex; flex-direction: column; gap: 3px; }
+      .edit-shortlist-copy strong { font-size: 0.95rem; color: var(--ink); font-weight: 600; }
+      .edit-shortlist-copy span { color: var(--muted-dark); font-size: 0.85rem; }
+
+      .edit-back-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        padding: 10px 20px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: 1px solid var(--ink);
+        transition: background 0.15s;
+      }
+
+      .edit-back-btn:hover { background: #333; }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 900px) {
+        .page { padding: 20px 16px 92px; }
+
+        .filters {
+          border-radius: 14px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          padding: 10px;
+          gap: 8px;
+        }
+
+        .filter-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
+        .filter-actions button, .filter-actions a { width: 100%; }
+
+        .composer {
+          border-top-left-radius: 16px;
+          border-top-right-radius: 16px;
+          overflow: hidden;
+        }
+
+        .composer-inner { padding: 0; }
+
+        .composer-toggle {
+          display: block;
+          width: 100%;
+          appearance: none;
+          border: 0;
+          background: transparent;
+          padding: 10px 16px 12px;
+          cursor: pointer;
+          font: inherit;
+          color: var(--ink);
+        }
+
+        .composer-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+        .composer-handle { display: block; width: 40px; height: 4px; border-radius: 999px; background: #d7d7d7; margin: 8px auto 4px; }
+
+        .composer-fields {
+          grid-template-columns: 1fr;
+          gap: 12px;
+          max-height: 0;
+          overflow: hidden;
+          opacity: 0;
+          padding: 0 16px;
+          transition: max-height 0.24s var(--ease), opacity 0.18s, padding 0.18s;
+        }
+
+        .composer.open .composer-fields { max-height: 70vh; overflow: auto; opacity: 1; padding: 0 16px 16px; }
+        .composer.open .composer-chev { transform: rotate(180deg); }
+
+        .edit-shortlist-bar { padding: 14px 16px 18px; align-items: stretch; }
+        .edit-back-btn { width: 100%; }
+      }
+
+      @media (min-width: 900px) {
+        .sheet {
+          left: 50%;
+          top: 50%;
+          right: auto;
+          bottom: auto;
+          width: min(840px, calc(100vw - 48px));
+          max-height: min(740px, calc(100vh - 48px));
+          border-radius: 20px;
+          padding: 12px 14px 20px;
+          transform: translate(-50%, -50%) scale(0.97);
+        }
+
+        .sheet.open { transform: translate(-50%, -50%) scale(1); }
+
+        .sheet-content {
+          height: calc(min(740px, calc(100vh - 48px)) - 32px);
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding-right: 4px;
+        }
+      }
+    </style>
   </head>
 
   <body data-shortlist-slug={shortlistSlug}>
     <main class="page">
       <div class="topbar">
-  <div class="brand-head">
-    <img
-      src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
-      alt="Logo"
-      class="page-logo"
-    />
-    <p class="subtle">
-      {shortlistSlug
-        ? "Add more homes to this shortlist or remove existing ones."
-        : "Select homes, then create a clean client shortlist."}
-    </p>
-  </div>
-
-  <form method="post" action="/api/auth/logout" class="logout-form">
-    <button type="submit" class="logout-btn">Log out</button>
-  </form>
-</div>
- 
+        <div class="brand-head">
+          <img
+src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
+            alt="Logo"
+            class="page-logo"
+            width="220"
+            height="36"
+          />
+          <p class="subtle">
+            {shortlistSlug
+              ? "Add more homes to this shortlist or remove existing ones."
+              : "Select homes, then create a clean client shortlist."}
+          </p>
         </div>
 
-        
-
-      
+        <form method="post" action="/api/auth/logout" class="logout-form">
+          <button type="submit" class="logout-btn">Log out</button>
+        </form>
       </div>
 
-<form class="filters" method="get" action="/listings">
-  {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
+      <nav class="admin-nav">
+        <a href="/admin/buyers">Buyers</a>
+        <a href="/shortlists">Shortlists</a>
+        <a href="/listings" class="active">Listings</a>
+      </nav>
 
-  <!-- SECTION 1: LOCATION -->
-  <div class="filter-group">
-    <div class="filter-group-title">Location</div>
+      <form class="filters" method="get" action="/listings">
+        {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
 
-    <label>
-      City
-     <select name="city" id="city-select" data-selected-city={city || "nanaimo"}>
-  <option value="">Loading cities...</option>
-</select>
-    </label>
+        <div class="filter-group">
+          <label>
+            City
+            <select name="city" id="city-select" data-selected-city={city || "nanaimo"}>
+              <option value="">Loading cities...</option>
+            </select>
+          </label>
 
-   <label>
-      Sub Area
-      <div class="multi-select-wrap" id="area-multi-wrap">
-        <button type="button" class="multi-select-trigger" id="area-trigger">
-          All areas
-        </button>
-        <div class="multi-select-dropdown" id="area-dropdown" hidden>
+          <label>
+            Sub Area
+            <div class="multi-select-wrap" id="area-multi-wrap">
+              <button type="button" class="multi-select-trigger" id="area-trigger">All areas</button>
+              <div class="multi-select-dropdown" id="area-dropdown" hidden></div>
+            </div>
+            <input type="hidden" name="area" id="area-hidden" value={area} />
+          </label>
         </div>
-      </div>
-      <input type="hidden" name="area" id="area-hidden" value={area} />
-    </label>
-  </div>
 
-  <!-- SECTION 2: PROPERTY -->
-  <div class="filter-group">
-    <div class="filter-group-title">Property</div>
+        <div class="filter-group">
+          <label>
+            Type
+            <select name="type">
+              <option value="" selected={type === ""}>Any</option>
+              <option value="detached" selected={type === "detached"}>Detached</option>
+              <option value="condo" selected={type === "condo"}>Condo</option>
+              <option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
+              <option value="land" selected={type === "land"}>Land</option>
+              <option value="mobile" selected={type === "mobile"}>Mobile</option>
+            </select>
+          </label>
 
-    <label>
-      Type
-      <select name="type">
-        <option value="" selected={type === ""}>Any</option>
-        <option value="detached" selected={type === "detached"}>Detached</option>
-        <option value="condo" selected={type === "condo"}>Condo</option>
-        <option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
-        <option value="land" selected={type === "land"}>Land</option>
-        <option value="mobile" selected={type === "mobile"}>Mobile</option>
-      </select>
-    </label>
+          <label>
+            Beds
+            <select name="beds">
+              <option value="" selected={beds === ""}>Any</option>
+              <option value="1" selected={beds === "1"}>1+</option>
+              <option value="2" selected={beds === "2"}>2+</option>
+              <option value="3" selected={beds === "3"}>3+</option>
+              <option value="4" selected={beds === "4"}>4+</option>
+            </select>
+          </label>
 
-    <label>
-      Beds
-      <select name="beds">
-        <option value="" selected={beds === ""}>Any</option>
-        <option value="1" selected={beds === "1"}>1+</option>
-        <option value="2" selected={beds === "2"}>2+</option>
-        <option value="3" selected={beds === "3"}>3+</option>
-        <option value="4" selected={beds === "4"}>4+</option>
-      </select>
-    </label>
+          <label>
+            Baths
+            <select name="baths">
+              <option value="" selected={baths === ""}>Any</option>
+              <option value="1" selected={baths === "1"}>1+</option>
+              <option value="2" selected={baths === "2"}>2+</option>
+              <option value="3" selected={baths === "3"}>3+</option>
+            </select>
+          </label>
+        </div>
 
-    <label>
-      Baths
-      <select name="baths">
-        <option value="" selected={baths === ""}>Any</option>
-        <option value="1" selected={baths === "1"}>1+</option>
-        <option value="2" selected={baths === "2"}>2+</option>
-        <option value="3" selected={baths === "3"}>3+</option>
-      </select>
-    </label>
-  </div>
+        <div class="filter-group">
+          <label>
+            Min price (000s)
+            <input name="minPrice" value={minPrice} inputmode="numeric" placeholder="0" />
+          </label>
 
-  <!-- SECTION 3: PRICE + SORT -->
-  <div class="filter-group">
-    <div class="filter-group-title">Price + Sort</div>
+          <label>
+            Max price (000s)
+            <input name="maxPrice" value={maxPrice} inputmode="numeric" placeholder="Any" />
+          </label>
 
-    <label>
-      Min price (000s)
-      <input name="minPrice" value={minPrice} inputmode="numeric" />
-    </label>
+          <label>
+            Sort
+            <select name="sort">
+              <option value="price-asc" selected={sort === "" || sort === "price-asc"}>Price low to high</option>
+              <option value="price-desc" selected={sort === "price-desc"}>Price high to low</option>
+            </select>
+          </label>
+        </div>
 
-    <label>
-      Max price (000s)
-      <input name="maxPrice" value={maxPrice} inputmode="numeric" />
-    </label>
+        <div class="filter-actions">
+          <button type="submit" class="primary-btn">Filter</button>
+          <a class="filter-clear" href={shortlistSlug ? `/listings?shortlist=${shortlistSlug}` : "/listings"}>Clear</a>
+        </div>
+      </form>
 
-    <label>
-      Sort
-      <select name="sort">
-        <option value="price-asc" selected={sort === "" || sort === "price-asc"}>
-          Price low to high
-        </option>
-        <option value="price-desc" selected={sort === "price-desc"}>
-          Price high to low
-        </option>
-      </select>
-    </label>
-  </div>
+      {hasListingFilters && listings.length > 0 && (
+        <div class="selection-bar">
+          <div class="selection-count">
+            <span id="saved-count">0</span> selected
+            <span id="visible-saved-count"></span>
+          </div>
+          {!shortlistSlug && (
+            <button type="button" id="select-all-btn" class="filter-select-all">Select all visible</button>
+          )}
+        </div>
+      )}
 
-  <!-- ACTIONS -->
-  <div class="filter-actions">
-    <button type="submit" class="primary-btn">Filter</button>
-   <a
-  class="filter-clear"
-  href={shortlistSlug ? `/listings?shortlist=${shortlistSlug}` : "/listings"}
->
-  Clear
-</a>
+      {hasListingFilters && listings.length > 0 && (
+        <div>
+          <div class="view-toggle">
+            <button type="button" id="list-view-btn" class="view-btn active">List</button>
+            <button type="button" id="map-view-btn" class="view-btn">Map</button>
+          </div>
+          <div id="results-map" class="results-map" hidden></div>
+        </div>
+      )}
 
+      {!hasListingFilters ? (
+        <p class="subtle" style="margin:-4px 0 16px;">Apply filters above to see listings.</p>
+      ) : (
+        <p class="subtle" style="margin:-4px 0 16px;">Showing {listings.length} result{listings.length === 1 ? "" : "s"}</p>
+      )}
 
-  </div>
-</form>
-{hasListingFilters && listings.length > 0 && (
-  <div class="selection-bar">
-    <div class="selection-count">
-      <span id="saved-count">0</span> selected
-      <span id="visible-saved-count"></span>
-    </div>
-
-    {!shortlistSlug && (
-      <button type="button" id="select-all-btn" class="filter-select-all">
-        Select all visible
-      </button>
-    )}
-  </div>
-)}
-{hasListingFilters && listings.length > 0 && (
-  <div class="view-toggle">
-    <button type="button" id="list-view-btn" class="view-btn active">List</button>
-    <button type="button" id="map-view-btn" class="view-btn">Map</button>
-  </div>
-
-  <div id="results-map" class="results-map" hidden></div>
-)}
-{!hasListingFilters ? (
-  <p class="subtle" style="margin:-8px 0 18px;">
-    Apply filters to see listings
-  </p>
-) : (
-  <p class="subtle" style="margin:-8px 0 18px;">
-    Showing {listings.length} result{listings.length === 1 ? "" : "s"}
-  </p>
-)}
-
-{
-  listings && listings.length > 0 ? (
-          <div class="grid">
-            {listings.map((listing) => {
+      {listings && listings.length > 0 ? (
+        <div class="grid">
+          {listings.map((listing) => {
             const raw = listing?.raw || listing;
+            const listingId = listing?.id || getListingId(raw) || "";
+            const price = listing?.price ? `$${Number(listing.price).toLocaleString()}` : getListingPrice(raw) || "Price unavailable";
+            const address = typeof listing?.address === "string" ? listing.address : listing?.address?.addressKey || listing?.address?.streetAddress || listing?.address?.full || getListingAddress(raw) || "Address unavailable";
+            const beds = listing?.beds || getListingBeds(raw) || "-";
+            const baths = listing?.baths || getListingBaths(raw) || "-";
+            const sqft = getListingSqft(raw) || "";
+            const propertyType = listing?.raw_type || getListingType(raw) || listing?.type || "Home";
+            const yearBuilt = getListingYear(raw) || "";
 
-const listingId = listing?.id || getListingId(raw) || "";
+            function normalizeImageUrl(url: any) {
+              const value = String(url || "").trim();
+              if (!value) return "";
+              if (value.startsWith("http://") || value.startsWith("https://")) return value;
+              if (value.startsWith("/vreb/")) return `https://cdn.repliers.io${value}`;
+              if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+              if (value.startsWith("vreb/")) return `https://cdn.repliers.io/${value}`;
+              return value;
+            }
 
-const price = listing?.price
-  ? `$${Number(listing.price).toLocaleString()}`
-  : getListingPrice(raw) || "Price unavailable";
+            const image = normalizeImageUrl(getListingImage(raw)) || normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) || "https://placehold.co/800x600?text=Listing";
+            const description = listing?.description || getListingDescription(raw) || listing?.raw?.description || listing?.raw?.details?.description || "A quick preview of this property.";
 
-const address =
-  typeof listing?.address === "string"
-    ? listing.address
-    : listing?.address?.addressKey ||
-      listing?.address?.streetAddress ||
-      listing?.address?.full ||
-      getListingAddress(raw) ||
-      "Address unavailable";
-
-const beds = listing?.beds || getListingBeds(raw) || "-";
-const baths = listing?.baths || getListingBaths(raw) || "-";
-const sqft = getListingSqft(raw) || "";
-const propertyType = listing?.raw_type || getListingType(raw) || listing?.type || "Home";
-const yearBuilt = getListingYear(raw) || "";
-
-function normalizeImageUrl(url) {
-  const value = String(url || "").trim();
-
-  if (!value) return "";
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  if (value.startsWith("/vreb/")) {
-    return `https://cdn.repliers.io${value}`;
-  }
-
- if (value.startsWith("/")) {
-  return `https://cdn.repliers.io${value}`;
-}
-
-if (value.startsWith("vreb/")) {
-  return `https://cdn.repliers.io/${value}`;
-}
-
-return value;
-}
-
-// 👇 THIS IS WHAT YOU WERE MISSING
-const image =
-normalizeImageUrl(getListingImage(raw)) ||
-normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
-  "https://placehold.co/800x600?text=Listing";
-  
-              const description =
-  listing?.description ||
-  getListingDescription(raw) ||
-  listing?.raw?.description ||
-  listing?.raw?.details?.description ||
-  "A quick preview of this property.";
-
-              return (
-                <article
-  class="card"
-  data-card-id={String(listingId).trim()}
-  data-mls={String(listingId).trim()}
-  data-price={price}
-  data-address={address}
-  data-beds={String(beds)}
-  data-baths={String(baths)}
-  data-sqft={String(sqft)}
-  data-type={propertyType}
-  data-year={String(yearBuilt)}
-  data-image={image}
- data-images={JSON.stringify(
-  (listing.images || listing.photo_urls || [])
-    .map((img) =>
-      normalizeImageUrl(
-        typeof img === "string"
-          ? img
-          : img?.highRes ||
-            img?.mediumRes ||
-            img?.lowRes ||
-            img?.url ||
-            ""
-      )
-    )
-    .filter(Boolean)
-)}
-  data-description={description}
-  data-lat={
-    listing?.lat ||
-    listing?.latitude ||
-    listing?.raw?.map?.latitude ||
-    listing?.raw?.coordinates?.latitude ||
-    listing?.raw?.address?.latitude ||
-    ""
-  }
-  data-lng={
-    listing?.lng ||
-    listing?.longitude ||
-    listing?.raw?.map?.longitude ||
-    listing?.raw?.coordinates?.longitude ||
-    listing?.raw?.address?.longitude ||
-    ""
-  }
-  data-shortlist-item-id=""
->
-                  <div class="image-wrap">
-                    <img src={image} alt={address} />
-                  </div>
-
+            return (
+              <article
+                class="card"
+                data-card-id={String(listingId).trim()}
+                data-mls={String(listingId).trim()}
+                data-price={price}
+                data-address={address}
+                data-beds={String(beds)}
+                data-baths={String(baths)}
+                data-sqft={String(sqft)}
+                data-type={propertyType}
+                data-year={String(yearBuilt)}
+                data-image={image}
+                data-images={JSON.stringify((listing.images || listing.photo_urls || []).map((img: any) => normalizeImageUrl(typeof img === "string" ? img : img?.highRes || img?.mediumRes || img?.lowRes || img?.url || "")).filter(Boolean))}
+                data-description={description}
+                data-lat={listing?.lat || listing?.latitude || listing?.raw?.map?.latitude || listing?.raw?.coordinates?.latitude || listing?.raw?.address?.latitude || ""}
+                data-lng={listing?.lng || listing?.longitude || listing?.raw?.map?.longitude || listing?.raw?.coordinates?.longitude || listing?.raw?.address?.longitude || ""}
+                data-shortlist-item-id=""
+              >
+                <div class="image-wrap">
+                  <img src={image} alt={address} loading="lazy" />
+                </div>
+                <div class="card-body">
                   <p class="price">{price}</p>
                   <p class="address">{address}</p>
-                  <p class="meta">
-  {beds} bed • {baths} bath • {propertyType}
-</p>
-
-<p class="meta" style="font-size:0.78rem;">
-  {listing?.raw?.details?.style || listing?.raw?.details?.propertyType || listing?.raw_type || "Property details"}
-</p>
-
+                  <p class="meta">{beds} bed · {baths} bath · {propertyType}</p>
                   <div class="card-actions">
-                    <button
-                      type="button"
-                      class="save-btn"
-                      data-listing-id={String(listingId)}
-                    >
-                      Save
-                    </button>
-
-                    <button type="button" class="preview-btn">
-                      Preview
-                    </button>
+                    <button type="button" class="save-btn" data-listing-id={String(listingId)}>Save</button>
+                    <button type="button" class="preview-btn">Preview</button>
                   </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <div class="empty">
-            No listings found yet.
-            {error && <div class="error">There was a problem loading listings.</div>}
-          </div>
-        )
-      }
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div class="empty">
+          {hasListingFilters ? "No listings found." : ""}
+          {error && <div class="error">There was a problem loading listings.</div>}
+        </div>
+      )}
     </main>
 
     <div class="sheet-overlay" id="sheet-overlay"></div>
 
-    <aside
-      class="sheet"
-      id="preview-sheet"
-      aria-hidden="true"
-      aria-label="Listing preview"
-    >
+    <aside class="sheet" id="preview-sheet" aria-hidden="true" aria-label="Listing preview">
       <div class="sheet-handle"></div>
-
       <div class="sheet-content">
         <div class="sheet-photo-wrap">
-  <button type="button" class="photo-nav photo-prev" id="photo-prev">‹</button>
-
-  <img
-    id="sheet-main-image"
-    class="sheet-main-image"
-    src="https://placehold.co/800x600?text=Listing"
-    alt="Listing photo"
-  />
-
-  <button type="button" class="photo-nav photo-next" id="photo-next">›</button>
-
-  <div class="photo-count" id="photo-count"></div>
-</div>
+          <button type="button" class="photo-nav photo-prev" id="photo-prev">‹</button>
+          <img id="sheet-main-image" class="sheet-main-image" src="https://placehold.co/800x600?text=Listing" alt="Listing photo" />
+          <button type="button" class="photo-nav photo-next" id="photo-next">›</button>
+          <div class="photo-count" id="photo-count"></div>
+        </div>
 
         <div class="sheet-body">
-        <div class="sheet-head">
-  <div>
-    <h2 class="sheet-price" id="sheet-price">$0</h2>
-    <p class="sheet-address" id="sheet-address">Address</p>
-    <div class="sheet-stat-strip" id="sheet-stat-strip">
-  <span id="sheet-year">-</span>
-  <span>•</span>
-  <span id="sheet-sqft">-</span>
-  <span>•</span>
-  <span id="sheet-layout">-</span>
-</div>
-  </div>
+          <div class="sheet-head">
+            <div>
+              <h2 class="sheet-price" id="sheet-price">$0</h2>
+              <p class="sheet-address" id="sheet-address">Address</p>
+              <div class="sheet-stat-strip" id="sheet-stat-strip">
+                <span id="sheet-year">—</span>
+                <span>·</span>
+                <span id="sheet-sqft">—</span>
+                <span>·</span>
+                <span id="sheet-layout">—</span>
+              </div>
+            </div>
+            <div class="sheet-head-actions">
+              <button class="sheet-save sheet-save-top" id="sheet-save-btn" type="button">Save</button>
+              <button class="sheet-map-btn" id="sheet-map-btn" type="button">Map</button>
+              <button class="sheet-close sheet-close-top" id="sheet-close-btn" type="button">Close</button>
+            </div>
+          </div>
 
-  <div class="sheet-head-actions">
-  <button class="sheet-save sheet-save-top" id="sheet-save-btn" type="button">
-    Save
-  </button>
-
-  <button class="sheet-map-btn" id="sheet-map-btn" type="button">
-    Map
-  </button>
-
-  <button class="sheet-close sheet-close-top" id="sheet-close-btn" type="button">
-    Close
-  </button>
-</div>
-</div>
-
-      
-
-<div id="sheet-mini-map" class="sheet-mini-map" hidden></div>
-
-<p class="sheet-desc" id="sheet-description"></p>
-
-        
+          <div id="sheet-mini-map" class="sheet-mini-map" hidden></div>
+          <p class="sheet-desc" id="sheet-description"></p>
         </div>
       </div>
     </aside>
@@ -1564,32 +1077,19 @@ normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
               <strong>Editing existing shortlist</strong>
               <span>Save adds a home. Remove takes it off this shortlist.</span>
             </div>
-
-            <a class="primary-btn edit-back-btn" href={`/shortlists/${shortlistSlug}?agent=1`}>
-              Back to shortlist
-            </a>
+            <a class="edit-back-btn" href={`/shortlists/${shortlistSlug}?agent=1`}>Back to shortlist</a>
           </div>
         </div>
       ) : (
         <div class="composer-inner">
-          <button
-            type="button"
-            class="composer-toggle"
-            id="composer-toggle"
-            aria-expanded="false"
-            aria-controls="composer-fields"
-          >
+          <button type="button" class="composer-toggle" id="composer-toggle" aria-expanded="false" aria-controls="composer-fields">
             <div class="composer-handle"></div>
-
             <div class="composer-toggle-row">
               <div class="composer-toggle-left">
                 <span class="composer-toggle-kicker">Shortlist builder</span>
                 <span class="composer-toggle-title">Create client shortlist</span>
-                <span class="composer-toggle-meta">
-                  <span id="composer-selected-count">0</span> selected
-                </span>
+                <span class="composer-toggle-meta"><span id="composer-selected-count">0</span> selected</span>
               </div>
-
               <span class="composer-chev">⌃</span>
             </div>
           </button>
@@ -1597,1238 +1097,387 @@ normalizeImageUrl(listing?.images?.[0]?.url || listing?.images?.[0]) ||
           <div class="composer-fields" id="composer-fields">
             <div class="field">
               <label for="shortlist-title">Shortlist title</label>
-              <input
-                id="shortlist-title"
-                type="text"
-                placeholder="Example: Best options this week"
-              />
+              <input id="shortlist-title" type="text" placeholder="Best options this week" />
             </div>
-
             <div class="field">
               <label for="client-name">Client name</label>
-              <input
-                id="client-name"
-                type="text"
-                placeholder="Example: Sarah + Mike"
-              />
+              <input id="client-name" type="text" placeholder="Sarah + Mike" />
             </div>
-
             <div class="field">
               <label for="client-phone">Phone number</label>
-              <input
-                id="client-phone"
-                type="text"
-                placeholder="Example: 250-555-1234"
-              />
+              <input id="client-phone" type="text" placeholder="250-555-1234" />
             </div>
-
             <div class="field">
               <label for="agent-note">Intro note</label>
-              <textarea
-                id="agent-note"
-                placeholder="Example: These are the homes that best match your budget, layout, and view preferences."
-              ></textarea>
+              <textarea id="agent-note" placeholder="These homes match your budget, layout, and preferences."></textarea>
             </div>
-
             <div class="field">
-              <button type="button" id="create-shortlist-btn" class="primary-btn">
-                Create Shortlist
-              </button>
+              <button type="button" id="create-shortlist-btn" class="primary-btn">Create Shortlist</button>
               <div class="status" id="status"></div>
             </div>
           </div>
         </div>
       )}
     </section>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script is:inline>
       const STORAGE_KEY = "agent-shortlist";
-
       const savedCountEl = document.getElementById("saved-count");
-const visibleSavedCountEl = document.getElementById("visible-saved-count");
-const selectAllBtn = document.getElementById("select-all-btn");
+      const visibleSavedCountEl = document.getElementById("visible-saved-count");
+      const selectAllBtn = document.getElementById("select-all-btn");
       const createBtn = document.getElementById("create-shortlist-btn");
       const statusEl = document.getElementById("status");
       const titleInput = document.getElementById("shortlist-title");
       const clientNameInput = document.getElementById("client-name");
       const clientPhoneInput = document.getElementById("client-phone");
       const agentNoteInput = document.getElementById("agent-note");
-
       const composer = document.querySelector(".composer");
       const composerToggle = document.getElementById("composer-toggle");
       const composerSelectedCount = document.getElementById("composer-selected-count");
-
       const sheet = document.getElementById("preview-sheet");
       const overlay = document.getElementById("sheet-overlay");
-      const sheetImage = document.getElementById("sheet-image");
       const sheetPrice = document.getElementById("sheet-price");
       const sheetAddress = document.getElementById("sheet-address");
-      const sheetMeta = document.getElementById("sheet-meta");
-      const sheetType = document.getElementById("sheet-type");
       const sheetSqft = document.getElementById("sheet-sqft");
       const sheetYear = document.getElementById("sheet-year");
       const sheetLayout = document.getElementById("sheet-layout");
       const sheetDescription = document.getElementById("sheet-description");
       const sheetSaveBtn = document.getElementById("sheet-save-btn");
-const sheetCloseBtn = document.getElementById("sheet-close-btn");
-const sheetMapBtn = document.getElementById("sheet-map-btn");
-      
+      const sheetCloseBtn = document.getElementById("sheet-close-btn");
+      const sheetMapBtn = document.getElementById("sheet-map-btn");
       const sheetMainImage = document.getElementById("sheet-main-image");
-const photoPrevBtn = document.getElementById("photo-prev");
-const photoNextBtn = document.getElementById("photo-next");
-const photoCount = document.getElementById("photo-count");
+      const photoPrevBtn = document.getElementById("photo-prev");
+      const photoNextBtn = document.getElementById("photo-next");
+      const photoCount = document.getElementById("photo-count");
 
-let activeImages = [];
-let activeImageIndex = 0;
-
+      let activeImages = [], activeImageIndex = 0;
       const shortlistSlug = document.body.dataset.shortlistSlug || "";
       const isAddMode = Boolean(shortlistSlug);
-
       let activePreviewId = null;
-
       const existingShortlistMap = new Map();
 
-     function loadShortlist() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-      function saveShortlist(items) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      }
-
+      function loadShortlist() { try { const raw = localStorage.getItem(STORAGE_KEY); const parsed = raw ? JSON.parse(raw) : []; return Array.isArray(parsed) ? parsed : []; } catch { return []; } }
+      function saveShortlist(items) { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
       let shortlist = isAddMode ? [] : loadShortlist();
-
-      function hasId(id) {
-        return shortlist.some((item) => String(item.id) === String(id));
-      }
+      function hasId(id) { return shortlist.some((item) => String(item.id) === String(id)); }
 
       function getCardSnapshot(card) {
-        return {
-          id: String(card.dataset.cardId || ""),
-          repliers_listing_id: String(card.dataset.mls || ""),
-          address: card.dataset.address || null,
-          price_text: card.dataset.price || null,
-          image_url: card.dataset.image || null,
-          images: JSON.parse(card.dataset.images || "[]"),
-          beds: card.dataset.beds || null,
-          baths: card.dataset.baths || null,
-          property_type: card.dataset.type || null,
-          sqft: card.dataset.sqft || null,
-          year_built: card.dataset.year || null,
-          description: card.dataset.description || null
-        };
+        return { id: String(card.dataset.cardId || ""), repliers_listing_id: String(card.dataset.mls || ""), address: card.dataset.address || null, price_text: card.dataset.price || null, image_url: card.dataset.image || null, images: JSON.parse(card.dataset.images || "[]"), beds: card.dataset.beds || null, baths: card.dataset.baths || null, property_type: card.dataset.type || null, sqft: card.dataset.sqft || null, year_built: card.dataset.year || null, description: card.dataset.description || null };
       }
 
       function getExistingEntry(cardOrId, mlsMaybe = "") {
-  let id = "";
-  let mls = "";
-
-  if (cardOrId instanceof HTMLElement) {
-    id = String(cardOrId.dataset.cardId || "").trim();
-    mls = String(cardOrId.dataset.mls || "").trim();
-  } else {
-    id = String(cardOrId || "").trim();
-    mls = String(mlsMaybe || "").trim();
-  }
-
-  return (
-  existingShortlistMap.get(id?.trim()) ||
-  existingShortlistMap.get(mls?.trim()) ||
-  null
-);
-}
-
-      function setCardExistingEntry(card, entry) {
-        if (!(card instanceof HTMLElement)) return;
-        card.dataset.shortlistItemId = entry?.shortlistItemId ? String(entry.shortlistItemId) : "";
+        let id = "", mls = "";
+        if (cardOrId instanceof HTMLElement) { id = String(cardOrId.dataset.cardId || "").trim(); mls = String(cardOrId.dataset.mls || "").trim(); } else { id = String(cardOrId || "").trim(); mls = String(mlsMaybe || "").trim(); }
+        return existingShortlistMap.get(id?.trim()) || existingShortlistMap.get(mls?.trim()) || null;
       }
 
-      function markButtonFlash(btn, text, fallback) {
-        if (!(btn instanceof HTMLButtonElement)) return;
-        btn.textContent = text;
-        window.setTimeout(() => {
-          btn.textContent = fallback;
-        }, 1200);
-      }
+      function setCardExistingEntry(card, entry) { if (!(card instanceof HTMLElement)) return; card.dataset.shortlistItemId = entry?.shortlistItemId ? String(entry.shortlistItemId) : ""; }
+      function markButtonFlash(btn, text, fallback) { if (!(btn instanceof HTMLButtonElement)) return; btn.textContent = text; window.setTimeout(() => { btn.textContent = fallback; }, 1200); }
 
       function applyButtonState(btn, state) {
         if (!(btn instanceof HTMLButtonElement)) return;
-
-        btn.classList.remove("saved", "remove");
-        btn.disabled = false;
-
-        if (state === "save") {
-          btn.textContent = "Save";
-          return;
-        }
-
-        if (state === "saved") {
-          btn.textContent = "Saved";
-          btn.classList.add("saved");
-          return;
-        }
-
-        if (state === "remove") {
-          btn.textContent = "Remove";
-          btn.classList.add("remove");
-        }
+        btn.classList.remove("saved", "remove"); btn.disabled = false;
+        if (state === "save") { btn.textContent = "Save"; return; }
+        if (state === "saved") { btn.textContent = "Saved"; btn.classList.add("saved"); return; }
+        if (state === "remove") { btn.textContent = "Remove"; btn.classList.add("remove"); }
       }
 
       function updateSheetSaveButton() {
         if (!sheetSaveBtn) return;
-
-        if (!activePreviewId) {
-          applyButtonState(sheetSaveBtn, "save");
-          return;
-        }
-
+        if (!activePreviewId) { applyButtonState(sheetSaveBtn, "save"); return; }
         const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
-
-        if (isAddMode) {
-          const entry = card instanceof HTMLElement ? getExistingEntry(card) : null;
-          applyButtonState(sheetSaveBtn, entry ? "remove" : "save");
-          return;
-        }
-
-        const saved = hasId(activePreviewId);
-        applyButtonState(sheetSaveBtn, saved ? "saved" : "save");
+        if (isAddMode) { const entry = card instanceof HTMLElement ? getExistingEntry(card) : null; applyButtonState(sheetSaveBtn, entry ? "remove" : "save"); return; }
+        applyButtonState(sheetSaveBtn, hasId(activePreviewId) ? "saved" : "save");
       }
 
-      function setComposerOpen(isOpen) {
-        if (!composer || !composerToggle || window.innerWidth >= 900) return;
-        composer.classList.toggle("open", isOpen);
-        composerToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-      }
+      function setComposerOpen(isOpen) { if (!composer || !composerToggle || window.innerWidth >= 900) return; composer.classList.toggle("open", isOpen); composerToggle.setAttribute("aria-expanded", isOpen ? "true" : "false"); }
 
       function updateUI() {
-        const count = isAddMode
-          ? new Set(
-              Array.from(existingShortlistMap.values()).map((entry) =>
-                String(entry.shortlistItemId || "")
-              )
-            ).size
-          : shortlist.length;
-
-      if (savedCountEl) {
-  savedCountEl.textContent = String(count);
-}
-
-if (visibleSavedCountEl && isAddMode) {
-  const visibleSavedCount = Array.from(document.querySelectorAll(".card.saved")).length;
-
-  visibleSavedCountEl.textContent =
-    count > visibleSavedCount
-      ? ` total · ${visibleSavedCount} visible on this page`
-      : "";
-}
-
-        if (composerSelectedCount) {
-          composerSelectedCount.textContent = String(count);
-        }
-
-        if (selectAllBtn && !isAddMode) {
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  const allVisibleSaved =
-    cards.length > 0 &&
-    cards.every((card) => {
-      const id = String(card.dataset.cardId || "");
-      return id && hasId(id);
-    });
-
-  selectAllBtn.textContent = allVisibleSaved
-    ? "Unselect all visible"
-    : "Select all visible";
-}
-
-        document.querySelectorAll(".save-btn").forEach((btn) => {
-          const card = btn.closest(".card");
-
-          if (isAddMode) {
-            const entry = card instanceof HTMLElement ? getExistingEntry(card) : null;
-            applyButtonState(btn, entry ? "remove" : "save");
-            card?.classList.toggle("saved", Boolean(entry));
-            if (card instanceof HTMLElement) {
-              setCardExistingEntry(card, entry);
-            }
-            return;
-          }
-
-          const id = String(btn.dataset.listingId || "");
-          const saved = !!id && hasId(id);
-
-          applyButtonState(btn, saved ? "saved" : "save");
-          card?.classList.toggle("saved", saved);
-        });
-
-        if (createBtn) {
-          createBtn.disabled = isAddMode ? true : shortlist.length === 0;
-          createBtn.textContent = isAddMode ? "Editing existing shortlist" : "Create Shortlist";
-        }
-
+        const count = isAddMode ? new Set(Array.from(existingShortlistMap.values()).map((e) => String(e.shortlistItemId || ""))).size : shortlist.length;
+        if (savedCountEl) savedCountEl.textContent = String(count);
+        if (visibleSavedCountEl && isAddMode) { const v = Array.from(document.querySelectorAll(".card.saved")).length; visibleSavedCountEl.textContent = count > v ? ` total · ${v} visible on this page` : ""; }
+        if (composerSelectedCount) composerSelectedCount.textContent = String(count);
+        if (selectAllBtn && !isAddMode) { const cards = Array.from(document.querySelectorAll(".card")); const allSaved = cards.length > 0 && cards.every((card) => { const id = String(card.dataset.cardId || ""); return id && hasId(id); }); selectAllBtn.textContent = allSaved ? "Unselect all visible" : "Select all visible"; }
+        document.querySelectorAll(".save-btn").forEach((btn) => { const card = btn.closest(".card"); if (isAddMode) { const entry = card instanceof HTMLElement ? getExistingEntry(card) : null; applyButtonState(btn, entry ? "remove" : "save"); card?.classList.toggle("saved", Boolean(entry)); if (card instanceof HTMLElement) setCardExistingEntry(card, entry); return; } const id = String(btn.dataset.listingId || ""); const saved = !!id && hasId(id); applyButtonState(btn, saved ? "saved" : "save"); card?.classList.toggle("saved", saved); });
+        if (createBtn) { createBtn.disabled = isAddMode ? true : shortlist.length === 0; createBtn.textContent = isAddMode ? "Editing existing shortlist" : "Create Shortlist"; }
         if (titleInput) titleInput.disabled = isAddMode;
         if (clientNameInput) clientNameInput.disabled = isAddMode;
         if (clientPhoneInput) clientPhoneInput.disabled = isAddMode;
         if (agentNoteInput) agentNoteInput.disabled = isAddMode;
-
-        if (statusEl) {
-          if (isAddMode) {
-            statusEl.textContent = "Save adds a home. Remove takes it back off this shortlist.";
-          } else {
-            statusEl.textContent = shortlist.length
-              ? `${shortlist.length} listing${shortlist.length === 1 ? "" : "s"} ready`
-              : "No listings selected";
-          }
-        }
-
+        if (statusEl) { if (isAddMode) { statusEl.textContent = "Save adds a home. Remove takes it back off this shortlist."; } else { statusEl.textContent = shortlist.length ? `${shortlist.length} listing${shortlist.length === 1 ? "" : "s"} ready` : "No listings selected"; } }
         updateSheetSaveButton();
       }
 
       async function fetchExistingShortlistItems() {
         if (!isAddMode || !shortlistSlug) return;
-
         try {
           const res = await fetch(`/api/shortlists/items?slug=${encodeURIComponent(shortlistSlug)}`);
           const json = await res.json();
-
-console.log("SHORTLIST SLUG:", shortlistSlug);
-console.log("SHORTLIST ITEMS API RESPONSE:", json);
-
-          if (!res.ok || !json?.ok || !Array.isArray(json?.items)) {
-            throw new Error(json?.error || "Could not load shortlist items");
-          }
-
+          if (!res.ok || !json?.ok || !Array.isArray(json?.items)) throw new Error(json?.error || "Could not load shortlist items");
           existingShortlistMap.clear();
-
-        json.items.forEach((item) => {
-  const entry = {
-    shortlistItemId: String(
-      item.shortlistItemId ||
-        item.shortlist_item_id ||
-        item.id ||
-        ""
-    ),
-    listingId: String(
-      item.listingId ||
-        item.listing_id ||
-        ""
-    ),
-    repliersListingId: String(
-      item.repliersListingId ||
-        item.repliers_listing_id ||
-        item.mls ||
-        ""
-    )
-  };
-
-  const keys = [
-  entry.listingId,
-  entry.repliersListingId
-]
-  .map((k) => String(k || "").trim())
-  .filter((k) => k.length > 0);
-
-keys.forEach((key) => {
-  existingShortlistMap.set(key, entry);
-});
-});  
-        } catch (err) {
-          console.error("Failed loading existing shortlist items:", err);
-        }
+          json.items.forEach((item) => { const entry = { shortlistItemId: String(item.shortlistItemId || item.shortlist_item_id || item.id || ""), listingId: String(item.listingId || item.listing_id || ""), repliersListingId: String(item.repliersListingId || item.repliers_listing_id || item.mls || "") }; [entry.listingId, entry.repliersListingId].map((k) => String(k || "").trim()).filter((k) => k.length > 0).forEach((key) => { existingShortlistMap.set(key, entry); }); });
+        } catch (err) { console.error("Failed loading existing shortlist items:", err); }
       }
 
       async function addToExistingShortlist(card, btn) {
         const snapshot = getCardSnapshot(card);
         if (!snapshot.id || !shortlistSlug) return;
-
         const existing = getExistingEntry(card);
-        if (existing) {
-          updateUI();
-          return;
-        }
-
-       const payload = {
-  slug: shortlistSlug,
-  listing: {
-    id: snapshot.id,
-    repliers_listing_id: snapshot.repliers_listing_id,
-    address: snapshot.address,
-    price_text: snapshot.price_text,
-    image_url: snapshot.image_url,
-    images: snapshot.images || [], // 🔥 THIS LINE FIXES EVERYTHING
-    beds: snapshot.beds,
-    baths: snapshot.baths,
-    sqft: snapshot.sqft,
-    property_type: snapshot.property_type,
-    year_built: snapshot.year_built,
-    description: snapshot.description
-  }
-};
-
+        if (existing) { updateUI(); return; }
+        const payload = { slug: shortlistSlug, listing: { id: snapshot.id, repliers_listing_id: snapshot.repliers_listing_id, address: snapshot.address, price_text: snapshot.price_text, image_url: snapshot.image_url, images: snapshot.images || [], beds: snapshot.beds, baths: snapshot.baths, sqft: snapshot.sqft, property_type: snapshot.property_type, year_built: snapshot.year_built, description: snapshot.description } };
         const previousText = btn instanceof HTMLButtonElement ? btn.textContent : "Save";
-
-        if (btn instanceof HTMLButtonElement) {
-          btn.disabled = true;
-          btn.textContent = "Adding...";
-        }
-
+        if (btn instanceof HTMLButtonElement) { btn.disabled = true; btn.textContent = "Adding..."; }
         try {
-          const res = await fetch("/api/shortlists/add-item", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-
+          const res = await fetch("/api/shortlists/add-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
           const json = await res.json();
-
-          if (!res.ok || !json?.ok) {
-            throw new Error(json?.error || "Could not add to shortlist");
-          }
-
-          const entry = {
-            shortlistItemId: String(
-              json?.item?.id ||
-                json?.item?.shortlist_item_id ||
-                json?.shortlistItemId ||
-                json?.id ||
-                ""
-            ),
-            listingId: String(snapshot.id),
-            repliersListingId: String(snapshot.repliers_listing_id || "")
-          };
-
+          if (!res.ok || !json?.ok) throw new Error(json?.error || "Could not add to shortlist");
+          const entry = { shortlistItemId: String(json?.item?.id || json?.item?.shortlist_item_id || json?.shortlistItemId || json?.id || ""), listingId: String(snapshot.id), repliersListingId: String(snapshot.repliers_listing_id || "") };
           if (entry.listingId) existingShortlistMap.set(entry.listingId, entry);
           if (entry.repliersListingId) existingShortlistMap.set(entry.repliersListingId, entry);
-
-          setCardExistingEntry(card, entry);
-          card.classList.add("saved");
-
-          if (btn instanceof HTMLButtonElement) {
-            markButtonFlash(btn, "Added ✓", "Remove");
-            btn.classList.remove("saved");
-            btn.classList.add("remove");
-            btn.disabled = false;
-          }
-
+          setCardExistingEntry(card, entry); card.classList.add("saved");
+          if (btn instanceof HTMLButtonElement) { markButtonFlash(btn, "Added ✓", "Remove"); btn.classList.remove("saved"); btn.classList.add("remove"); btn.disabled = false; }
           const pageBtn = card.querySelector(".save-btn");
-          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) {
-            pageBtn.textContent = "Remove";
-            pageBtn.classList.remove("saved");
-            pageBtn.classList.add("remove");
-            pageBtn.disabled = false;
-          }
-
+          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) { pageBtn.textContent = "Remove"; pageBtn.classList.remove("saved"); pageBtn.classList.add("remove"); pageBtn.disabled = false; }
           updateUI();
-        } catch (err) {
-          if (btn instanceof HTMLButtonElement) {
-            btn.disabled = false;
-            btn.textContent = previousText || "Save";
-          }
-          alert(err instanceof Error ? err.message : "Could not add to shortlist");
-        }
+        } catch (err) { if (btn instanceof HTMLButtonElement) { btn.disabled = false; btn.textContent = previousText || "Save"; } alert(err instanceof Error ? err.message : "Could not add to shortlist"); }
       }
 
       async function removeFromExistingShortlist(card, btn) {
         const entry = getExistingEntry(card);
         const shortlistItemId = entry?.shortlistItemId || card.dataset.shortlistItemId || "";
-
-        if (!shortlistItemId) {
-          alert("Missing shortlist item id.");
-          return;
-        }
-
+        if (!shortlistItemId) { alert("Missing shortlist item id."); return; }
         const previousText = btn instanceof HTMLButtonElement ? btn.textContent : "Remove";
-
-        if (btn instanceof HTMLButtonElement) {
-          btn.disabled = true;
-          btn.textContent = "Removing...";
-        }
-
+        if (btn instanceof HTMLButtonElement) { btn.disabled = true; btn.textContent = "Removing..."; }
         try {
-          const res = await fetch("/api/shortlists/remove-item", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ id: shortlistItemId })
-          });
-
+          const res = await fetch("/api/shortlists/remove-item", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: shortlistItemId }) });
           const json = await res.json();
-
-          if (!res.ok || !json?.ok) {
-            throw new Error(json?.error || "Could not remove from shortlist");
-          }
-
-          const id = String(card.dataset.cardId || "");
-          const mls = String(card.dataset.mls || "");
-
-          if (id) existingShortlistMap.delete(id);
-          if (mls) existingShortlistMap.delete(mls);
-
-          card.dataset.shortlistItemId = "";
-          card.classList.remove("saved");
-
-          if (btn instanceof HTMLButtonElement) {
-            markButtonFlash(btn, "Removed", "Save");
-            btn.classList.remove("remove", "saved");
-            btn.disabled = false;
-          }
-
+          if (!res.ok || !json?.ok) throw new Error(json?.error || "Could not remove from shortlist");
+          const id = String(card.dataset.cardId || ""); const mls = String(card.dataset.mls || "");
+          if (id) existingShortlistMap.delete(id); if (mls) existingShortlistMap.delete(mls);
+          card.dataset.shortlistItemId = ""; card.classList.remove("saved");
+          if (btn instanceof HTMLButtonElement) { markButtonFlash(btn, "Removed", "Save"); btn.classList.remove("remove", "saved"); btn.disabled = false; }
           const pageBtn = card.querySelector(".save-btn");
-          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) {
-            pageBtn.textContent = "Save";
-            pageBtn.classList.remove("remove", "saved");
-            pageBtn.disabled = false;
-          }
-
+          if (pageBtn instanceof HTMLButtonElement && pageBtn !== btn) { pageBtn.textContent = "Save"; pageBtn.classList.remove("remove", "saved"); pageBtn.disabled = false; }
           updateUI();
-        } catch (err) {
-          if (btn instanceof HTMLButtonElement) {
-            btn.disabled = false;
-            btn.textContent = previousText || "Remove";
-          }
-          alert(err instanceof Error ? err.message : "Could not remove from shortlist");
-        }
+        } catch (err) { if (btn instanceof HTMLButtonElement) { btn.disabled = false; btn.textContent = previousText || "Remove"; } alert(err instanceof Error ? err.message : "Could not remove from shortlist"); }
       }
 
       function toggleSaveFromCard(card) {
-  const snapshot = getCardSnapshot(card);
-  if (!snapshot.id) return;
-
-  if (hasId(snapshot.id)) {
-    shortlist = shortlist.filter((item) => String(item.id) !== snapshot.id);
-  } else {
-    shortlist = [...shortlist, snapshot];
-  }
-
-  saveShortlist(shortlist);
-  updateUI();
-}
+        const snapshot = getCardSnapshot(card); if (!snapshot.id) return;
+        if (hasId(snapshot.id)) { shortlist = shortlist.filter((item) => String(item.id) !== snapshot.id); } else { shortlist = [...shortlist, snapshot]; }
+        saveShortlist(shortlist); updateUI();
+      }
 
       async function handleSave(card, btn) {
-        if (isAddMode) {
-          const existing = getExistingEntry(card);
-          if (existing) {
-            await removeFromExistingShortlist(card, btn);
-          } else {
-            await addToExistingShortlist(card, btn);
-          }
-          return;
-        }
-
+        if (isAddMode) { const existing = getExistingEntry(card); if (existing) { await removeFromExistingShortlist(card, btn); } else { await addToExistingShortlist(card, btn); } return; }
         toggleSaveFromCard(card);
       }
 
       function normalizeGalleryImageUrl(url) {
-  const value = String(url || "").trim();
+        const value = String(url || "").trim();
+        if (!value) return "";
+        if (value.startsWith("http://") || value.startsWith("https://")) return value;
+        if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+        if (value.startsWith("vreb/")) return `https://cdn.repliers.io/${value}`;
+        return value;
+      }
 
-  if (!value) return "";
+      function preloadImage(src) { if (!src) return; const img = new Image(); img.src = src; }
 
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
+      function updateMainPhoto() {
+        if (!sheetMainImage) return;
+        const src = normalizeGalleryImageUrl(activeImages[activeImageIndex]) || "https://placehold.co/800x600?text=Listing";
+        sheetMainImage.src = src;
+        preloadImage(activeImages[activeImageIndex + 1]);
+        preloadImage(activeImages[activeImageIndex - 1]);
+        if (photoCount) photoCount.textContent = activeImages.length ? `${activeImageIndex + 1} / ${activeImages.length}` : "";
+        if (photoPrevBtn) photoPrevBtn.hidden = activeImages.length <= 1;
+        if (photoNextBtn) photoNextBtn.hidden = activeImages.length <= 1;
+      }
 
-  if (value.startsWith("/")) {
-  return `https://cdn.repliers.io${value}`;
-}
-
-if (value.startsWith("vreb/")) {
-  return `https://cdn.repliers.io/${value}`;
-}
-
-return value;
-}
-function preloadImage(src) {
-  if (!src) return;
-
-  const img = new Image();
-  img.src = src;
-}
-function updateMainPhoto() {
-  if (!sheetMainImage) return;
-
-  const src =
-    normalizeGalleryImageUrl(activeImages[activeImageIndex]) ||
-    "https://placehold.co/800x600?text=Listing";
-
-  sheetMainImage.src = src;
-  preloadImage(activeImages[activeImageIndex + 1]);
-preloadImage(activeImages[activeImageIndex - 1]);
-
-  if (photoCount) {
-    photoCount.textContent = activeImages.length
-      ? `${activeImageIndex + 1} / ${activeImages.length}`
-      : "";
-  }
-
-  if (photoPrevBtn) photoPrevBtn.hidden = activeImages.length <= 1;
-  if (photoNextBtn) photoNextBtn.hidden = activeImages.length <= 1;
-}
-
-function openSheetFromCard(card) {
-  if (!card) return;
-
-  const miniMapEl = document.getElementById("sheet-mini-map");
-  if (miniMapEl) miniMapEl.hidden = true;
-
-  activePreviewId = String(card.dataset.cardId || "");
-
-  const beds = card.dataset.beds || "-";
-  const baths = card.dataset.baths || "-";
-  const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "-";
-  const type = card.dataset.type || "-";
-  const year = card.dataset.year || "-";
-
-  let images = [];
-
-  try {
-    images = JSON.parse(card.dataset.images || "[]");
-  } catch {
-    images = [];
-  }
-
-images = images
-  .map((img) =>
-    normalizeGalleryImageUrl(
-      typeof img === "string"
-        ? img
-        : img?.highRes ||
-          img?.mediumRes ||
-          img?.lowRes ||
-          img?.url ||
-          ""
-    )
-  )
-  .filter(Boolean);
-
-  if (card.dataset.image) {
-    images = [normalizeGalleryImageUrl(card.dataset.image), ...images];
-  }
-  images = [...new Set(images)];
-
-  activeImages = [...new Set(images)];
-  activeImageIndex = 0;
-  updateMainPhoto();
-
-  sheetPrice.textContent = card.dataset.price || "Price unavailable";
-  sheetAddress.textContent = card.dataset.address || "Address unavailable";
- if (sheetMeta) sheetMeta.textContent = `${beds} bed • ${baths} bath`;
-  if (sheetType) sheetType.textContent = type;
-  sheetSqft.textContent = sqft;
-  sheetYear.textContent = year;
-  sheetLayout.textContent = `${beds} bed / ${baths} bath`;
-  sheetDescription.textContent =
-    card.dataset.description || "No additional description available.";
-
-  updateSheetSaveButton();
-
-  sheet.classList.add("open");
-  overlay.classList.add("open");
-  sheet.setAttribute("aria-hidden", "false");
-  requestAnimationFrame(() => {
-  sheet.scrollTop = 0;
-  document.querySelector(".sheet-content")?.scrollTo({ top: 0 });
-});
-
- document.body.style.overflow = "hidden";
-document.documentElement.style.overflow = "hidden";
-}
-      function closeSheet() {
-        sheet.classList.remove("open");
-        overlay.classList.remove("open");
-        sheet.setAttribute("aria-hidden", "true");
-      document.body.style.overflow = "";
-document.documentElement.style.overflow = "";
-        activePreviewId = null;
+      function openSheetFromCard(card) {
+        if (!card) return;
+        const miniMapEl = document.getElementById("sheet-mini-map");
+        if (miniMapEl) miniMapEl.hidden = true;
+        activePreviewId = String(card.dataset.cardId || "");
+        let images = [];
+        try { images = JSON.parse(card.dataset.images || "[]"); } catch { images = []; }
+        images = images.map((img) => normalizeGalleryImageUrl(typeof img === "string" ? img : img?.highRes || img?.mediumRes || img?.lowRes || img?.url || "")).filter(Boolean);
+        if (card.dataset.image) images = [normalizeGalleryImageUrl(card.dataset.image), ...images];
+        activeImages = [...new Set(images)];
+        activeImageIndex = 0;
+        updateMainPhoto();
+        const beds = card.dataset.beds || "—"; const baths = card.dataset.baths || "—"; const sqft = card.dataset.sqft ? `${card.dataset.sqft} sq ft` : "—";
+        sheetPrice.textContent = card.dataset.price || "Price unavailable";
+        sheetAddress.textContent = card.dataset.address || "Address unavailable";
+        if (sheetSqft) sheetSqft.textContent = sqft;
+        if (sheetYear) sheetYear.textContent = card.dataset.year || "—";
+        if (sheetLayout) sheetLayout.textContent = `${beds} bed / ${baths} bath`;
+        if (sheetDescription) sheetDescription.textContent = card.dataset.description || "No additional description available.";
         updateSheetSaveButton();
+        sheet.classList.add("open"); overlay.classList.add("open"); sheet.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => { document.querySelector(".sheet-content")?.scrollTo({ top: 0 }); });
+        document.body.style.overflow = "hidden"; document.documentElement.style.overflow = "hidden";
+      }
+
+      function closeSheet() {
+        sheet.classList.remove("open"); overlay.classList.remove("open"); sheet.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = ""; document.documentElement.style.overflow = "";
+        activePreviewId = null; updateSheetSaveButton();
       }
 
       document.querySelectorAll(".card").forEach((card) => {
-        const imageWrap = card.querySelector(".image-wrap");
-        const previewBtn = card.querySelector(".preview-btn");
-        const saveBtn = card.querySelector(".save-btn");
-
-        imageWrap?.addEventListener("click", () => {
-          openSheetFromCard(card);
-        });
-
-        previewBtn?.addEventListener("click", () => {
-          openSheetFromCard(card);
-        });
-
-        saveBtn?.addEventListener("click", async (event) => {
-          event.preventDefault();
-          await handleSave(card, event.currentTarget);
-        });
+        card.querySelector(".image-wrap")?.addEventListener("click", () => openSheetFromCard(card));
+        card.querySelector(".preview-btn")?.addEventListener("click", () => openSheetFromCard(card));
+        card.querySelector(".save-btn")?.addEventListener("click", async (event) => { event.preventDefault(); await handleSave(card, event.currentTarget); });
       });
 
-      composerToggle?.addEventListener("click", () => {
-        const isOpen = composer.classList.contains("open");
-        setComposerOpen(!isOpen);
-      });
+      composerToggle?.addEventListener("click", () => { const isOpen = composer.classList.contains("open"); setComposerOpen(!isOpen); });
 
-      sheetSaveBtn?.addEventListener("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+      sheetSaveBtn?.addEventListener("click", async (event) => { event.preventDefault(); event.stopPropagation(); if (!activePreviewId) return; const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`); if (card) await handleSave(card, event.currentTarget); });
+      sheetCloseBtn?.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); closeSheet(); });
 
-        if (!activePreviewId) return;
-
+      let sheetMiniMap = null, sheetMiniMarker = null;
+      sheetMapBtn?.addEventListener("click", () => {
+        if (!activePreviewId || typeof L === "undefined") return;
+        const mapEl = document.getElementById("sheet-mini-map");
         const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
-        if (card) {
-          await handleSave(card, event.currentTarget);
-        }
+        if (!mapEl || !card) return;
+        const lat = Number(card.dataset.lat || ""); const lng = Number(card.dataset.lng || "");
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) { mapEl.hidden = false; mapEl.innerHTML = "<p style='padding:14px;color:#6b6560;'>No map location available.</p>"; return; }
+        mapEl.hidden = !mapEl.hidden; if (mapEl.hidden) return;
+        setTimeout(() => { if (!sheetMiniMap) { sheetMiniMap = L.map(mapEl, { zoomControl: false, scrollWheelZoom: false }); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(sheetMiniMap); } sheetMiniMap.setView([lat, lng], 15); if (sheetMiniMarker) sheetMiniMarker.remove(); sheetMiniMarker = L.marker([lat, lng]).addTo(sheetMiniMap); sheetMiniMap.invalidateSize(); }, 120);
       });
 
-      sheetCloseBtn?.addEventListener("click", (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  closeSheet();
-});
+      overlay?.addEventListener("click", (event) => { event.preventDefault(); closeSheet(); });
+      document.addEventListener("keydown", (event) => { if (event.key === "Escape" && sheet.classList.contains("open")) closeSheet(); });
 
-let sheetMiniMap = null;
-let sheetMiniMarker = null;
+      photoPrevBtn?.addEventListener("click", () => { if (!activeImages.length) return; activeImageIndex = (activeImageIndex - 1 + activeImages.length) % activeImages.length; updateMainPhoto(); });
+      photoNextBtn?.addEventListener("click", () => { if (!activeImages.length) return; activeImageIndex = (activeImageIndex + 1) % activeImages.length; updateMainPhoto(); });
 
-sheetMapBtn?.addEventListener("click", () => {
-  if (!activePreviewId || typeof L === "undefined") return;
+      let resultsMap = null, resultsMarkers = [];
+      function getListingLatLng(card) { const lat = Number(card.dataset.lat || ""); const lng = Number(card.dataset.lng || ""); if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) return null; return { lat, lng }; }
 
-  const mapEl = document.getElementById("sheet-mini-map");
-  const card = document.querySelector(`[data-card-id="${CSS.escape(activePreviewId)}"]`);
+      function initResultsMap() {
+        const mapEl = document.getElementById("results-map");
+        if (!mapEl || typeof L === "undefined") return;
+        const cards = Array.from(document.querySelectorAll(".card"));
+        const points = cards.map((card) => ({ card, point: getListingLatLng(card) })).filter((item) => item.point);
+        if (!points.length) { mapEl.innerHTML = "<p style='padding:16px;color:#6b6560;'>No map locations available.</p>"; return; }
+        if (!resultsMap) { resultsMap = L.map(mapEl).setView([49.1659, -123.9401], 12); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(resultsMap); }
+        resultsMarkers.forEach((m) => m.remove()); resultsMarkers = [];
+        const bounds = [];
+        points.forEach(({ card, point }) => { const marker = L.marker([point.lat, point.lng]).addTo(resultsMap); marker.bindPopup(`<strong>${card.dataset.price || "Listing"}</strong><br>${card.dataset.address || ""}`); marker.on("click", () => openSheetFromCard(card)); resultsMarkers.push(marker); bounds.push([point.lat, point.lng]); });
+        resultsMap.fitBounds(bounds, { padding: [32, 32] });
+        setTimeout(() => resultsMap.invalidateSize(), 100);
+      }
 
-  if (!mapEl || !card) return;
+      const listViewBtn = document.getElementById("list-view-btn");
+      const mapViewBtn = document.getElementById("map-view-btn");
+      const resultsMapEl = document.getElementById("results-map");
+      const resultsGrid = document.querySelector(".grid");
+      listViewBtn?.addEventListener("click", () => { resultsMapEl.hidden = true; resultsGrid?.classList.remove("map-hidden"); listViewBtn.classList.add("active"); mapViewBtn?.classList.remove("active"); });
+      mapViewBtn?.addEventListener("click", () => { resultsMapEl.hidden = false; resultsGrid?.classList.add("map-hidden"); mapViewBtn.classList.add("active"); listViewBtn?.classList.remove("active"); initResultsMap(); });
 
-  const lat = Number(card.dataset.lat || "");
-  const lng = Number(card.dataset.lng || "");
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat === 0 || lng === 0) {
-    mapEl.hidden = false;
-    mapEl.innerHTML = "<p style='padding:14px;'>No map location available for this listing.</p>";
-    return;
-  }
-
-  mapEl.hidden = !mapEl.hidden;
-  if (mapEl.hidden) return;
-
-  setTimeout(() => {
-    if (!sheetMiniMap) {
-      sheetMiniMap = L.map(mapEl, {
-        zoomControl: false,
-        scrollWheelZoom: false
+      selectAllBtn?.addEventListener("click", () => {
+        if (isAddMode) return;
+        const cards = Array.from(document.querySelectorAll(".card"));
+        const allSaved = cards.every((card) => { const id = String(card.dataset.cardId || ""); return id && hasId(id); });
+        if (allSaved) { shortlist = shortlist.filter((item) => !cards.some((card) => String(card.dataset.cardId || "") === String(item.id))); } else { const existingIds = new Set(shortlist.map((item) => String(item.id))); const newItems = cards.map((card) => getCardSnapshot(card)).filter((item) => item.id && !existingIds.has(String(item.id))); shortlist = [...shortlist, ...newItems]; }
+        saveShortlist(shortlist); updateUI();
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors"
-      }).addTo(sheetMiniMap);
-    }
+      function moneyToNumber(value) { return Number(String(value || "").replace(/[^0-9]/g, "")) || 0; }
+      function numberFromText(value) { return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0; }
 
-    sheetMiniMap.setView([lat, lng], 15);
-
-    if (sheetMiniMarker) {
-      sheetMiniMarker.remove();
-    }
-
-    sheetMiniMarker = L.marker([lat, lng]).addTo(sheetMiniMap);
-
-    sheetMiniMap.invalidateSize();
-  }, 120);
-});
-
-      overlay?.addEventListener("click", (event) => {
-        event.preventDefault();
-        closeSheet();
-      });
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && sheet.classList.contains("open")) {
-          closeSheet();
-        }
-      });
-function moneyToNumber(value) {
-  return Number(String(value || "").replace(/[^0-9]/g, "")) || 0;
-}
-
-function numberFromText(value) {
-  return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
-}
-
-function addShortlistInsights(items) {
-  const enriched = items.map((item) => {
-    const price = moneyToNumber(item.price_text);
-    const sqft = numberFromText(item.sqft);
-    const beds = numberFromText(item.beds);
-    const baths = numberFromText(item.baths);
-    const year = numberFromText(item.year_built);
-
-    return {
-      ...item,
-      __price: price,
-      __sqft: sqft,
-      __beds: beds,
-      __baths: baths,
-      __year: year,
-      __psf: price && sqft ? Math.round(price / sqft) : null
-    };
-  });
-
-  const validPsf = enriched.filter((i) => i.__psf);
-  const validSqft = enriched.filter((i) => i.__sqft);
-  const validPrice = enriched.filter((i) => i.__price);
-  const validBeds = enriched.filter((i) => i.__beds);
-  const validYear = enriched.filter((i) => i.__year);
-
-  const lowestPsf = validPsf.sort((a, b) => a.__psf - b.__psf)[0];
-  const largest = validSqft.sort((a, b) => b.__sqft - a.__sqft)[0];
-  const lowestPrice = validPrice.sort((a, b) => a.__price - b.__price)[0];
-  const mostBeds = validBeds.sort((a, b) => b.__beds - a.__beds)[0];
-  const newest = validYear.sort((a, b) => b.__year - a.__year)[0];
-
-  return enriched.map((item) => {
-    let insight = null;
-
-    if (lowestPsf && item.id === lowestPsf.id) {
-      insight = {
-        title: "Best value in this group",
-        detail: `$${item.__psf}/sq ft`
-      };
-    } else if (largest && item.id === largest.id) {
-      insight = {
-        title: "Largest home in your shortlist",
-        detail: `${item.__sqft.toLocaleString()} sq ft`
-      };
-    } else if (lowestPrice && item.id === lowestPrice.id) {
-      insight = {
-        title: "Lowest price in this group",
-        detail: item.price_text
-      };
-    } else if (mostBeds && item.id === mostBeds.id) {
-      insight = {
-        title: "Most bedrooms in this group",
-        detail: `${item.__beds} bed`
-      };
-    } else if (newest && item.id === newest.id) {
-      insight = {
-        title: "Newest home in this group",
-        detail: `Built ${item.__year}`
-      };
-    }
-
-    return {
-      ...item,
-      insight_title: insight?.title || null,
-      insight_detail: insight?.detail || null
-    };
-  });
-}
-
-selectAllBtn?.addEventListener("click", () => {
-  if (isAddMode) return;
-
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  const allVisibleSaved = cards.every((card) => {
-    const id = String(card.dataset.cardId || "");
-    return id && hasId(id);
-  });
-
-  if (allVisibleSaved) {
-    shortlist = shortlist.filter((item) => {
-      return !cards.some((card) => String(card.dataset.cardId || "") === String(item.id));
-    });
-  } else {
-    const existingIds = new Set(shortlist.map((item) => String(item.id)));
-
-    const newItems = cards
-      .map((card) => getCardSnapshot(card))
-      .filter((item) => item.id && !existingIds.has(String(item.id)));
-
-    shortlist = [...shortlist, ...newItems];
-  }
-
-  saveShortlist(shortlist);
-  updateUI();
-});
+      function addShortlistInsights(items) {
+        const enriched = items.map((item) => { const price = moneyToNumber(item.price_text); const sqft = numberFromText(item.sqft); const beds = numberFromText(item.beds); const baths = numberFromText(item.baths); const year = numberFromText(item.year_built); return { ...item, __price: price, __sqft: sqft, __beds: beds, __baths: baths, __year: year, __psf: price && sqft ? Math.round(price / sqft) : null }; });
+        const lowestPsf = [...enriched].filter((i) => i.__psf).sort((a, b) => a.__psf - b.__psf)[0];
+        const largest = [...enriched].filter((i) => i.__sqft).sort((a, b) => b.__sqft - a.__sqft)[0];
+        const lowestPrice = [...enriched].filter((i) => i.__price).sort((a, b) => a.__price - b.__price)[0];
+        const mostBeds = [...enriched].filter((i) => i.__beds).sort((a, b) => b.__beds - a.__beds)[0];
+        const newest = [...enriched].filter((i) => i.__year).sort((a, b) => b.__year - a.__year)[0];
+        return enriched.map((item) => { let insight = null; if (lowestPsf && item.id === lowestPsf.id) insight = { title: "Best value in this group", detail: `$${item.__psf}/sq ft` }; else if (largest && item.id === largest.id) insight = { title: "Largest home in your shortlist", detail: `${item.__sqft.toLocaleString()} sq ft` }; else if (lowestPrice && item.id === lowestPrice.id) insight = { title: "Lowest price in this group", detail: item.price_text }; else if (mostBeds && item.id === mostBeds.id) insight = { title: "Most bedrooms in this group", detail: `${item.__beds} bed` }; else if (newest && item.id === newest.id) insight = { title: "Newest home in this group", detail: `Built ${item.__year}` }; return { ...item, insight_title: insight?.title || null, insight_detail: insight?.detail || null }; });
+      }
 
       createBtn?.addEventListener("click", async () => {
         if (isAddMode) return;
-
-        if (!shortlist.length) {
-          if (statusEl) statusEl.textContent = "Select at least one listing first";
-          return;
-        }
-
-        createBtn.disabled = true;
-        createBtn.textContent = "Creating...";
+        if (!shortlist.length) { if (statusEl) statusEl.textContent = "Select at least one listing first"; return; }
+        createBtn.disabled = true; createBtn.textContent = "Creating...";
         if (statusEl) statusEl.textContent = "Building shortlist...";
-
-    try {
-const shortlistWithInsights = addShortlistInsights(shortlist);
-
-const listingSnapshots = shortlistWithInsights.map((item) => ({
-  id: item.id || null,
-  repliers_listing_id: item.repliers_listing_id || null,
-  address: item.address || null,
-  price_text: item.price_text || null,
-  image_url: item.image_url || null,
-  images: item.images || [],
-  beds: item.beds || null,
-  baths: item.baths || null,
-  property_type: item.property_type || null,
-  sqft: item.sqft || null,
-  year_built: item.year_built || null,
-  description: item.description || null,
-  insight_title: item.insight_title || null,
-  insight_detail: item.insight_detail || null
-}));
-
-          const res = await fetch("/api/shortlists/create", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-          body: JSON.stringify({
-  listingIds: listingSnapshots
-    .map((item) => item.id || item.repliers_listing_id)
-    .filter(Boolean),
-  listingSnapshots,
-  title: titleInput?.value?.trim() || null,
-  clientName: clientNameInput?.value?.trim() || null,
-  phone: clientPhoneInput?.value?.trim() || null,
-  note: agentNoteInput?.value?.trim() || null,
-
-  // 👇 NEW — pass search context
-  city: document.querySelector('[name="city"]')?.value || null,
-  area: document.querySelector('[name="area"]')?.value || null,
-  type: document.querySelector('[name="type"]')?.value || null,
-  beds: document.querySelector('[name="beds"]')?.value || null,
-  baths: document.querySelector('[name="baths"]')?.value || null,
-  minPrice: document.querySelector('[name="minPrice"]')?.value || null,
-  maxPrice: document.querySelector('[name="maxPrice"]')?.value || null
-})
-          });
-
+        try {
+          const shortlistWithInsights = addShortlistInsights(shortlist);
+          const listingSnapshots = shortlistWithInsights.map((item) => ({ id: item.id || null, repliers_listing_id: item.repliers_listing_id || null, address: item.address || null, price_text: item.price_text || null, image_url: item.image_url || null, images: item.images || [], beds: item.beds || null, baths: item.baths || null, property_type: item.property_type || null, sqft: item.sqft || null, year_built: item.year_built || null, description: item.description || null, insight_title: item.insight_title || null, insight_detail: item.insight_detail || null }));
+          const res = await fetch("/api/shortlists/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listingIds: listingSnapshots.map((item) => item.id || item.repliers_listing_id).filter(Boolean), listingSnapshots, title: titleInput?.value?.trim() || null, clientName: clientNameInput?.value?.trim() || null, phone: clientPhoneInput?.value?.trim() || null, note: agentNoteInput?.value?.trim() || null, city: document.querySelector('[name="city"]')?.value || null, area: document.querySelector('[name="area"]')?.value || null, type: document.querySelector('[name="type"]')?.value || null, beds: document.querySelector('[name="beds"]')?.value || null, baths: document.querySelector('[name="baths"]')?.value || null, minPrice: document.querySelector('[name="minPrice"]')?.value || null, maxPrice: document.querySelector('[name="maxPrice"]')?.value || null }) });
           const json = await res.json();
-          console.log("CREATE SHORTLIST RESPONSE:", json);
-
-          if (json.ok && json.slug) {
-            localStorage.removeItem(STORAGE_KEY);
-            window.location.href = `/shortlists/${json.slug}?agent=1`;
-            return;
-          }
-
+          if (json.ok && json.slug) { localStorage.removeItem(STORAGE_KEY); window.location.href = `/shortlists/${json.slug}?agent=1`; return; }
           if (statusEl) statusEl.textContent = json.error || "Could not create shortlist";
-          createBtn.disabled = false;
-          createBtn.textContent = "Create Shortlist";
-        } catch (err) {
-          console.error(err);
-          if (statusEl) statusEl.textContent = "Request failed";
-          createBtn.disabled = false;
-          createBtn.textContent = "Create Shortlist";
-        }
+          createBtn.disabled = false; createBtn.textContent = "Create Shortlist";
+        } catch (err) { console.error(err); if (statusEl) statusEl.textContent = "Request failed"; createBtn.disabled = false; createBtn.textContent = "Create Shortlist"; }
       });
-let resultsMap = null;
-let resultsMarkers = [];
 
-function getListingLatLng(card) {
-  const lat = Number(card.dataset.lat || "");
-  const lng = Number(card.dataset.lng || "");
+      // Filter helpers
+      const citySelect = document.querySelector('select[name="city"]');
+      function normalizeFilterValue(value) { return String(value || "").trim().toLowerCase(); }
+      function labelize(value) { return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()); }
+      function getOptionValue(item) { if (!item) return ""; if (typeof item === "object") return normalizeFilterValue(item.value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || item.label || ""); return normalizeFilterValue(item); }
+      function getOptionLabel(item) { if (!item) return ""; if (typeof item === "object") return item.label || item.display_name || labelize(item.value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || ""); return labelize(item); }
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (lat === 0 || lng === 0) return null;
-
-  return { lat, lng };
-}
-
-function initResultsMap() {
-  const mapEl = document.getElementById("results-map");
-  if (!mapEl || typeof L === "undefined") return;
-
-  const cards = Array.from(document.querySelectorAll(".card"));
-  const points = cards
-    .map((card) => ({ card, point: getListingLatLng(card) }))
-    .filter((item) => item.point);
-
-  if (!points.length) {
-    mapEl.innerHTML = "<p style='padding:16px;'>No map locations available for these results.</p>";
-    return;
-  }
-
-  if (!resultsMap) {
-    resultsMap = L.map(mapEl).setView([49.1659, -123.9401], 12);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(resultsMap);
-  }
-
-  resultsMarkers.forEach((marker) => marker.remove());
-  resultsMarkers = [];
-
-  const bounds = [];
-
-  points.forEach(({ card, point }) => {
-    const marker = L.marker([point.lat, point.lng]).addTo(resultsMap);
-
-    marker.bindPopup(`
-      <strong>${card.dataset.price || "Listing"}</strong><br>
-      ${card.dataset.address || ""}
-    `);
-
-    marker.on("click", () => {
-      openSheetFromCard(card);
-    });
-
-    resultsMarkers.push(marker);
-    bounds.push([point.lat, point.lng]);
-  });
-
-  resultsMap.fitBounds(bounds, { padding: [32, 32] });
-
-  setTimeout(() => {
-    resultsMap.invalidateSize();
-  }, 100);
-}
-photoPrevBtn?.addEventListener("click", () => {
-  if (!activeImages.length) return;
-  activeImageIndex =
-    (activeImageIndex - 1 + activeImages.length) % activeImages.length;
-  updateMainPhoto();
-});
-
-photoNextBtn?.addEventListener("click", () => {
-  if (!activeImages.length) return;
-  activeImageIndex = (activeImageIndex + 1) % activeImages.length;
-  updateMainPhoto();
-});
-const listViewBtn = document.getElementById("list-view-btn");
-const mapViewBtn = document.getElementById("map-view-btn");
-const resultsMapEl = document.getElementById("results-map");
-const resultsGrid = document.querySelector(".grid");
-
-listViewBtn?.addEventListener("click", () => {
-  resultsMapEl.hidden = true;
-  resultsGrid?.classList.remove("map-hidden");
-
-  listViewBtn.classList.add("active");
-  mapViewBtn?.classList.remove("active");
-});
-
-mapViewBtn?.addEventListener("click", () => {
-  resultsMapEl.hidden = false;
-  resultsGrid?.classList.add("map-hidden");
-
-  mapViewBtn.classList.add("active");
-  listViewBtn?.classList.remove("active");
-
-  initResultsMap();
-});
-      async function initPage() {
-        closeSheet();
-        await fetchExistingShortlistItems();
-        updateUI();
+      async function updateAreaOptions() {
+        const dropdown = document.getElementById("area-dropdown");
+        const trigger = document.getElementById("area-trigger");
+        const hiddenInput = document.getElementById("area-hidden");
+        if (!dropdown || !trigger || !hiddenInput) return;
+        const selectedCity = normalizeFilterValue(citySelect?.value || "nanaimo");
+        const selectedAreas = (hiddenInput.value || "").split(",").filter(Boolean);
+        dropdown.innerHTML = "";
+        if (!selectedCity) return;
+        try {
+          const res = await fetch("/api/listing-filters");
+          const json = await res.json();
+          const areasByCity = json?.areasByCity || {};
+          const areas = Object.entries(areasByCity).find(([key]) => normalizeFilterValue(key) === selectedCity)?.[1] || [];
+          areas.forEach((areaItem) => {
+            const value = getOptionValue(areaItem); const label = getOptionLabel(areaItem);
+            if (!value) return;
+            const div = document.createElement("div"); div.className = "multi-select-option";
+            const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.value = value; checkbox.checked = selectedAreas.includes(value);
+            const span = document.createElement("span"); span.textContent = label;
+            div.appendChild(checkbox); div.appendChild(span);
+            div.addEventListener("click", (e) => { if (e.target !== checkbox) checkbox.checked = !checkbox.checked; const checked = Array.from(dropdown.querySelectorAll("input:checked")).map((cb) => cb.value); hiddenInput.value = checked.join(","); trigger.textContent = checked.length ? checked.map(labelize).join(", ") : "All areas"; });
+            dropdown.appendChild(div);
+          });
+          const initialChecked = Array.from(dropdown.querySelectorAll("input:checked")).map((cb) => cb.value);
+          trigger.textContent = initialChecked.length ? initialChecked.map(labelize).join(", ") : "All areas";
+        } catch (err) { console.error("Could not load dynamic areas:", err); }
       }
 
+      document.getElementById("area-trigger")?.addEventListener("click", (e) => { e.preventDefault(); const dropdown = document.getElementById("area-dropdown"); if (dropdown) dropdown.hidden = !dropdown.hidden; });
+      document.addEventListener("click", (e) => { const wrap = document.getElementById("area-multi-wrap"); if (wrap && !wrap.contains(e.target)) { const dropdown = document.getElementById("area-dropdown"); if (dropdown) dropdown.hidden = true; } });
+
+      async function updateCityOptions() {
+        if (!citySelect) return;
+        const selectedCity = normalizeFilterValue(citySelect.dataset.selectedCity || citySelect.value || "nanaimo");
+        citySelect.innerHTML = `<option value="">Any city</option>`;
+        try {
+          const res = await fetch("/api/listing-filters");
+          const json = await res.json();
+          const cities = Array.isArray(json?.cities) ? json.cities : [];
+          cities.forEach((cityItem) => { const value = normalizeFilterValue(cityItem?.value || ""); const label = cityItem?.label || labelize(value); if (!value) return; const option = document.createElement("option"); option.value = value; option.textContent = label; if (value === selectedCity) option.selected = true; citySelect.appendChild(option); });
+        } catch (err) { console.error("Could not load dynamic cities:", err); }
+      }
+
+      updateCityOptions().then(updateAreaOptions);
+
+      document.querySelector(".filters")?.addEventListener("submit", () => {
+        ["minPrice", "maxPrice"].forEach((name) => { const input = document.querySelector(`input[name="${name}"]`); if (!input) return; const value = String(input.value || "").trim(); if (/^\d{2,4}$/.test(value)) input.value = String(Number(value) * 1000); });
+      });
+
+      citySelect?.addEventListener("change", updateAreaOptions);
+
+      async function initPage() { closeSheet(); await fetchExistingShortlistItems(); updateUI(); }
       initPage();
-
-    const citySelect = document.querySelector('select[name="city"]');
-const areaSelect = document.getElementById("area-select");
-
-function normalizeFilterValue(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function labelize(value) {
-  return String(value || "")
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function getOptionValue(item) {
-  if (!item) return "";
-
-  if (typeof item === "object") {
-    return normalizeFilterValue(
-      item.value ||
-        item.normalized_area ||
-        item.normalized_city ||
-        item.normalized_type ||
-        item.name ||
-        item.label ||
-        ""
-    );
-  }
-
-  return normalizeFilterValue(item);
-}
-
-function getOptionLabel(item) {
-  if (!item) return "";
-
-  if (typeof item === "object") {
-    return (
-      item.label ||
-      item.display_name ||
-      labelize(
-        item.value ||
-          item.normalized_area ||
-          item.normalized_city ||
-          item.normalized_type ||
-          item.name ||
-          ""
-      )
-    );
-  }
-
-  return labelize(item);
-}
-
-async function updateAreaOptions() {
-  const dropdown = document.getElementById("area-dropdown");
-  const trigger = document.getElementById("area-trigger");
-  const hiddenInput = document.getElementById("area-hidden");
-  if (!dropdown || !trigger || !hiddenInput) return;
-
-  const selectedCity = normalizeFilterValue(citySelect?.value || "nanaimo");
-  const selectedAreas = (hiddenInput.value || "").split(",").filter(Boolean);
-
-  dropdown.innerHTML = "";
-
-  if (!selectedCity) return;
-
-  try {
-    const res = await fetch("/api/listing-filters");
-    const json = await res.json();
-
-    const areasByCity = json?.areasByCity || {};
-    const areas = Object.entries(areasByCity).find(
-      ([key]) => normalizeFilterValue(key) === selectedCity
-    )?.[1] || [];
-
-    areas.forEach((areaItem) => {
-      const value = getOptionValue(areaItem);
-      const label = getOptionLabel(areaItem);
-      if (!value) return;
-
-      const div = document.createElement("div");
-      div.className = "multi-select-option";
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = value;
-      checkbox.checked = selectedAreas.includes(value);
-
-      const span = document.createElement("span");
-      span.textContent = label;
-
-      div.appendChild(checkbox);
-      div.appendChild(span);
-
-      div.addEventListener("click", (e) => {
-        if (e.target !== checkbox) checkbox.checked = !checkbox.checked;
-
-        const checked = Array.from(dropdown.querySelectorAll("input:checked"))
-          .map((cb) => cb.value);
-
-        hiddenInput.value = checked.join(",");
-        trigger.textContent = checked.length
-          ? checked.map(labelize).join(", ")
-          : "All areas";
-      });
-
-      dropdown.appendChild(div);
-    });
-
-    const initialChecked = Array.from(dropdown.querySelectorAll("input:checked"))
-      .map((cb) => cb.value);
-    trigger.textContent = initialChecked.length
-      ? initialChecked.map(labelize).join(", ")
-      : "All areas";
-
-  } catch (err) {
-    console.error("Could not load dynamic areas:", err);
-  }
-}
-
-document.getElementById("area-trigger")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  const dropdown = document.getElementById("area-dropdown");
-  if (dropdown) dropdown.hidden = !dropdown.hidden;
-});
-
-document.addEventListener("click", (e) => {
-  const wrap = document.getElementById("area-multi-wrap");
-  if (wrap && !wrap.contains(e.target)) {
-    const dropdown = document.getElementById("area-dropdown");
-    if (dropdown) dropdown.hidden = true;
-  }
-});
-
-async function updateCityOptions() {
-  if (!citySelect) return;
-
-  const selectedCity = normalizeFilterValue(
-    citySelect.dataset.selectedCity || citySelect.value || "nanaimo"
-  );
-
-  citySelect.innerHTML = `<option value="">Any city</option>`;
-
-  try {
-    const res = await fetch("/api/listing-filters");
-    const json = await res.json();
-
-    const cities = Array.isArray(json?.cities) ? json.cities : [];
-
-    cities.forEach((cityItem) => {
-      const value = normalizeFilterValue(cityItem?.value || "");
-      const label = cityItem?.label || labelize(value);
-
-      if (!value) return;
-
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = label;
-
-      if (value === selectedCity) {
-        option.selected = true;
-      }
-
-      citySelect.appendChild(option);
-    });
-  } catch (err) {
-    console.error("Could not load dynamic cities:", err);
-  }
-}
-
-updateCityOptions().then(updateAreaOptions);
-
-// price shorthand: 800 → 800000
-document.querySelector(".filters")?.addEventListener("submit", () => {
-  ["minPrice", "maxPrice"].forEach((name) => {
-    const input = document.querySelector(`input[name="${name}"]`);
-    if (!input) return;
-
-    const value = String(input.value || "").trim();
-
-    if (/^\d{2,4}$/.test(value)) {
-      input.value = String(Number(value) * 1000);
-    }
-  });
-});
-
-citySelect?.addEventListener("change", () => {
-  if (areaSelect) areaSelect.dataset.selectedArea = "";
-  updateAreaOptions();
-});
     </script>
   </body>
 </html>

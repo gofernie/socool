@@ -21,7 +21,7 @@ const ALLOWED_AREAS_BY_CITY: Record<string, Set<string>> = {
     "diver lake",
     "extension",
     "hammond bay",
-        "jingle pot",
+    "jingle pot",
     "north jingle pot",
     "north nanaimo",
     "old city",
@@ -30,6 +30,14 @@ const ALLOWED_AREAS_BY_CITY: Record<string, Set<string>> = {
     "south nanaimo",
     "uplands",
     "university district"
+  ]),
+
+  "campbell river": new Set([
+    "campbell river central",
+    "campbell river north",
+    "campbell river south",
+    "campbell river west",
+    "willow point"
   ])
 };
 

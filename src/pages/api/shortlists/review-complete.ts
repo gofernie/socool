@@ -26,6 +26,19 @@ export const POST: APIRoute = async ({ request }) => {
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    const { data: send, error: sendError } = await supabase
+      .from("shortlist_sends")
+      .select("client_name, buyer_name")
+      .eq("shortlist_slug", slug)
+      .maybeSingle();
+
+    if (sendError) throw sendError;
+
+    const buyerName =
+      send?.client_name ||
+      send?.buyer_name ||
+      "Buyer";
+
     if (comment) {
       const { error } = await supabase
         .from("shortlist_sends")
@@ -42,9 +55,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const body =
-      `Shortlist reviewed.\n\n` +
-      `${message || "Buyer reviewed all homes."}` +
-      `${comment ? `\n\nBuyer note:\n${comment}` : ""}` +
+      `${buyerName} reviewed their shortlist.\n\n` +
+      `${message || `${buyerName} reviewed all homes.`}` +
+      `${comment ? `\n\n${buyerName} note:\n${comment}` : ""}` +
       `\n\nOpen: ${import.meta.env.PUBLIC_SITE_URL}/shortlists/${slug}?agent=1`;
 
     await client.messages.create({

@@ -521,7 +521,7 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
     "lower lantzville": "lower lantzville"
   },
 
-  parksville: {
+ parksville: {
     "parksville": "parksville",
     "pa parksville": "parksville",
     "errington/coombs/hilliers": "errington coombs hilliers",
@@ -529,12 +529,26 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
     "french creek": "french creek",
     "qualicum beach": "qualicum beach",
     "qb qualicum beach": "qualicum beach",
-        "nanoose": "nanoose bay",
+    "nanoose": "nanoose bay",
     "nanoose bay": "nanoose bay",
     "pa nanoose": "nanoose bay",
     "pa nanoose bay": "nanoose bay",
     "pa errington coombs hilliers": "errington coombs hilliers",
     "pa french creek": "french creek"
+  },
+
+  "campbell river": {
+    "cr campbell river central": "campbell river central",
+    "cr campbell river north": "campbell river north",
+    "cr campbell river south": "campbell river south",
+    "cr campbell river west": "campbell river west",
+    "cr willow point": "willow point",
+
+    "campbell river central": "campbell river central",
+    "campbell river north": "campbell river north",
+    "campbell river south": "campbell river south",
+    "campbell river west": "campbell river west",
+    "willow point": "willow point"
   }
 };
 
@@ -553,7 +567,12 @@ const normalizeArea = (listing: any, city: string) => {
       listing?.details?.area ||
       listing?.details?.subArea ||
       listing?.raw?.area ||
-      listing?.raw?.subArea
+listing?.raw?.subArea ||
+listing?.raw?.address?.area ||
+listing?.raw?.address?.neighborhood ||
+listing?.raw?.address?.community ||
+listing?.raw?.details?.area ||
+listing?.raw?.details?.subArea
   );
 
   const cleanedArea = rawArea
@@ -776,8 +795,8 @@ if (
 ) continue;
 
 // TEMP DEBUG - remove after checking output
-if (normalized_city === "nanaimo") {
-  console.log("AREA DEBUG", {
+if (normalized_city === "campbell river") {
+  console.log("CAMPBELL AREA DEBUG", {
     id,
     address: getNormalizedAddress(listing),
     area: listing?.area,
@@ -1003,8 +1022,40 @@ address: getNormalizedAddress(listing),
     }
   }
 
-  const rows = [...rowMap.values()];
+const rawRows = [...rowMap.values()];
 
+// Final dedupe by normalized address
+const addressMap = new Map<string, any>();
+
+for (const row of rawRows) {
+  const key = clean(row.address);
+
+  if (!key) continue;
+
+  const existing = addressMap.get(key);
+
+  // First version wins
+  if (!existing) {
+    addressMap.set(key, row);
+    continue;
+  }
+
+  // Prefer rows that actually have an MLS number
+  const existingHasMls = !!existing.id;
+  const rowHasMls = !!row.id;
+
+  if (rowHasMls && !existingHasMls) {
+    addressMap.set(key, row);
+    continue;
+  }
+
+  // Otherwise prefer newer / larger numeric ID
+  if (Number(row.id || 0) > Number(existing.id || 0)) {
+    addressMap.set(key, row);
+  }
+}
+
+const rows = [...addressMap.values()];
   console.log("Rows normalized:", rows.length);
 
   const typeCounts: Record<string, number> = {};
@@ -1028,7 +1079,7 @@ address: getNormalizedAddress(listing),
   console.log("Missing coords:", missingCoords);
   console.log("Missing images:", missingImages);
 
-  const BATCH = 200;
+  const BATCH = 50;
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
@@ -1045,6 +1096,18 @@ address: getNormalizedAddress(listing),
     console.log(`Upserted ${Math.min(i + batch.length, rows.length)} / ${rows.length}`);
   }
 
+  console.log("Cleaning duplicate address rows...");
+
+  const { error: cleanupError } = await supabase.rpc(
+    "cleanup_duplicate_listing_rows"
+  );
+
+  if (cleanupError) {
+    console.error("Duplicate cleanup failed:", cleanupError);
+    return;
+  }
+
+  console.log("Duplicate cleanup complete.");
   console.log("Done.");
 };
 

@@ -1,0 +1,20 @@
+[33m9728a59[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m use rewrite to hide template urls
+[33m8e52823[m fix env vars for netlify runtime
+[33ma91521f[m remove redirect, astro ssr handles routing
+[33m830cbdc[m fix ssr function name
+[33mf01be4d[m add functions directory to netlify.toml
+[33m9f5d8b1[m fix netlify.toml node 22 no redirects
+[33m9c6b088[m add netlify.toml redirect rule
+[33m3f19ddb[m fix middleware to use Response.redirect for Netlify
+[33m37be5ce[m push all pages and lib
+[33m4d17fa0[m add agent-listings lib
+[33mf03fff3[m add all template pages
+[33m5671ba4[m add middleware for template routing
+[33m16b523b[m feat: maps + scroll + expand search - stable milestone
+[33m90cf63a[m Refine Nanaimo area normalization rules
+[33mfb30963[m Normalize Nanaimo listing areas
+[33m6b66c1a[m Fix listing filters area output
+[33mf081c28[m Milestone: normalized listings and map stability
+[33m04e4fea[m Milestone: fix shortlist expand review ordering
+[33m542b9db[m Milestone: buyer better matches shortlist flow
+[33m2894e51[m Save current working CRM and listings progress

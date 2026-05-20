@@ -274,11 +274,10 @@
     color: var(--text-secondary);
   }
 
- .panel__header-actions {
+  .panel__header-actions {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
   }
 
   .panel__top-btn,
@@ -2385,8 +2384,8 @@ body.edit-mode .agent-edit-grid {
     font-size: 0.95rem;
   }
 
- .review-complete__faves {
-    grid-template-columns: repeat(2, 1fr) !important;
+  .review-complete__faves {
+    display: none !important;
   }
 
   .review-send-prompt {
@@ -2593,8 +2592,8 @@ body.edit-mode .agent-edit-grid {
     line-height: 1.6 !important;
   }
 
-.review-complete__faves {
-    grid-template-columns: repeat(2, 1fr) !important;
+  .review-complete__faves {
+    display: none !important;
   }
 
   .review-send-prompt {
@@ -3989,17 +3988,7 @@ const copy = "A few homes just above this range can help clarify the search.";
         })
       });
 
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("EXPAND SEARCH BAD RESPONSE", text);
-        btn.disabled = false;
-        btn.textContent = originalText;
-        if (status) status.textContent = "Server returned an unexpected response.";
-        return;
-      }
+      const data = await res.json();
 
     if (!res.ok || !data?.ok) {
   throw new Error(data?.error || "Could not find more homes.");
