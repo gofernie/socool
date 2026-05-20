@@ -35,7 +35,7 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scrollbar-gutter: stable; }
-    body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
     body.modal-open { overflow: hidden; padding-right: var(--scrollbar-width, 0px); }
     a { color: inherit; text-decoration: none; }
     button { font: inherit; }
@@ -232,10 +232,10 @@
             ${b.stats.priceSignal ? `<div class="looking-for" style="margin-top:8px;">${escapeHtml(b.stats.priceSignal)}</div>` : ""}
             <div class="prompt ${prompt.className}">${prompt.text}</div>
             <div class="stats"><div class="pill ${buyerStatusClass(b)}">${buyerStatus(b)}</div><div class="pill ${move.className}">${move.text}</div>${missedOpportunity(b) ? `<div class="pill">⚠ Missed follow-up</div>` : ""}<div class="pill">${b.stats.shortlists||0} shortlist(s)</div></div>
-            <div class="actions">
-              ${phone ? `<a class="action" href="sms:${phone}?&body=${encodeURIComponent(textBody)}">Text next action</a>` : `<span class="action secondary">No phone saved</span>`}
-              <button class="action better-matches" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}">Suggest next best 3</button>
-              <button class="action secondary view-activity" type="button">Show reviewed homes</button>
+            <div class="buyer-tabs" style="display:flex;gap:4px;margin-top:14px;padding:4px;background:#f5f0ea;border-radius:999px;">
+              ${phone ? `<a class="action tab-sms" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" style="flex:1;border-radius:999px;text-align:center;">📱 Text</a>` : ""}
+              <button class="action better-matches tab-btn" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" style="flex:1;border-radius:999px;">✨ Suggest 3</button>
+              <button class="action secondary view-activity tab-btn" type="button" style="flex:1;border-radius:999px;background:#fff;">📋 Reviewed</button>
             </div>
           </div>
         </div>`;
@@ -273,8 +273,19 @@
       const message = `Hi ${name}, I found a few homes closer to what you've been reacting to:\n\n${lines.join("\n")}\n\nWant me to line up a showing?`;
       const existing = card.querySelector(".match-preview"); if (existing) existing.remove();
       const listingsHtml = listings.map((l, i) => { const price = l.priceText||l.price_text||(l.price?`$${Number(l.price).toLocaleString()}`:"Price unavailable"); const reasonHtml = (Array.isArray(l.reasons)&&l.reasons.length)?l.reasons.map((r)=>`<span class="activity-signal">${escapeHtml(r)}</span>`).join(""):`<span class="activity-signal">Similar buyer fit</span>`; return `<div class="detail-item activity-listing" data-address="${escapeHtml(l.address||l.full_address||"Listing")}" data-price="${escapeHtml(price)}" data-decision="Suggested match" data-image="${escapeHtml(l.image||l.image_url||"")}" data-images="${escapeHtml(Array.isArray(l.images)?l.images.join("|"):"")}" data-beds="${escapeHtml(l.beds||"")}" data-baths="${escapeHtml(l.baths||"")}" data-type="${escapeHtml(l.type||l.property_type||"")}" data-sqft="${escapeHtml(l.sqft||"")}" data-description="${escapeHtml(l.description||"")}"><strong>${i+1}. ${escapeHtml(l.address||l.full_address||"Listing")}</strong><div>${price}</div><div class="activity-signals">${reasonHtml}</div></div>`; }).join("");
+      // Remove existing activity panel when showing matches
+      card.querySelector(".detail:not(.match-preview)")?.remove();
+
       const preview = document.createElement("div"); preview.className = "detail match-preview";
-      preview.innerHTML = `<div class="detail-title">Suggested matches to send</div>${listingsHtml}<div class="actions"><button class="action send-matches" type="button" data-name="${escapeHtml(name)}" data-phone="${escapeHtml(phone)}" data-message="${escapeHtml(message)}">Send via Twilio</button><button class="action secondary cancel-preview" type="button">Cancel</button></div>`;
+      preview.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="detail-title" style="margin:0;">✨ Suggested next matches</div>
+          <button class="action send-matches" type="button" data-name="${escapeHtml(name)}" data-phone="${escapeHtml(phone)}" data-message="${escapeHtml(message)}" style="margin:0;">Send via text →</button>
+        </div>
+        ${listingsHtml}
+        <div class="actions" style="margin-top:8px;">
+          <button class="action secondary cancel-preview" type="button">Dismiss</button>
+        </div>`;
       card.appendChild(preview); btn.textContent = "Refresh matches";
     });
 
@@ -295,6 +306,8 @@
     grid.addEventListener("click", async (event) => {
       const btn = event.target.closest(".view-activity"); if (!btn) return; event.stopPropagation();
       const card = btn.closest(".buyer-card"); if (!card) return;
+      // Toggle off match preview when switching to activity
+      card.querySelector(".match-preview")?.remove();
       const existing = card.querySelector(".detail:not(.match-preview)"); if (existing) { existing.remove(); return; }
       const name = card.dataset.name;
       const res = await fetch(`/api/buyer-detail?name=${encodeURIComponent(name)}`); const json = await res.json();
@@ -307,7 +320,73 @@
         if (!arr.length) return "";
         return `<div class="detail-group"><div class="detail-title">${title}</div>${arr.map((item) => { const likedTags = Array.isArray(item.liked_tags) ? item.liked_tags : []; const metrics = item.metrics || {}; const viewedPhotos = Number(metrics.unique_images_viewed||0); const secondsViewed = Number(metrics.time_spent_seconds||0); const allImages = Array.isArray(item.images)?item.images:Array.isArray(item.photos)?item.photos:Array.isArray(item.image_urls)?item.image_urls:[]; const totalPhotos = allImages.length; const mins = Math.floor(secondsViewed/60); const secs = secondsViewed%60; const timeText = secondsViewed>0?(mins>0?`${mins}m ${secs}s viewed`:`${secs}s viewed`):""; const photoText = viewedPhotos>0?(totalPhotos>0?`${Math.min(viewedPhotos,totalPhotos)} of ${totalPhotos} photos viewed`:`${viewedPhotos} photos viewed`):""; return `<div class="detail-item activity-listing" data-address="${escapeHtml(item.address||"Unknown listing")}" data-price="${escapeHtml(item.price_text||"Price unavailable")}" data-decision="${escapeHtml(title)}" data-image="${escapeHtml(item.image_url||item.photo_url||item.thumbnail_url||item.image||item.img||"")}" data-images="${escapeHtml(Array.isArray(item.images)?item.images.join("|"):Array.isArray(item.photos)?item.photos.join("|"):Array.isArray(item.image_urls)?item.image_urls.join("|"):"")}" data-beds="${escapeHtml(item.beds||"")}" data-baths="${escapeHtml(item.baths||"")}" data-type="${escapeHtml(item.property_type||"")}" data-sqft="${escapeHtml(item.sqft||"")}" data-description="${escapeHtml(item.description||"")}" data-liked-tags="${escapeHtml(likedTags.join("|"))}"><strong>${escapeHtml(item.address||"Unknown listing")}</strong><div>${escapeHtml(item.price_text||"Price unavailable")}</div><div class="activity-signals">${timeText?`<span class="activity-signal">${escapeHtml(timeText)}</span>`:""}${photoText?`<span class="activity-signal">${escapeHtml(photoText)}</span>`:""}${likedTags.map((tag)=>`<span class="activity-signal">${title.toLowerCase().includes("not for me")?"Disliked":"Liked"}: ${escapeHtml(tag)}</span>`).join("")}${getListingSignals(item).map((s)=>`<span class="activity-signal">${escapeHtml(s)}</span>`).join("")}</div></div>`; }).join("")}</div>`;
       }
-      detail.innerHTML = items.length ? `${renderGroup("❤️ Loved",loved)}${renderGroup("🤔 Maybe",maybe)}${renderGroup("✕ Not for me",pass)}` : `<p style="color:#999;padding:12px 0;">No listing activity found.</p>`;
+      function buildTrendsSummary(items) {
+        if (!items.length) return "";
+        const loved = items.filter(i => i.is_favourite === true || i.is_favourite === "true" || i.is_favourite === 1);
+        const maybe = items.filter(i => String(i.decision||"").toLowerCase().includes("maybe"));
+        const pass  = items.filter(i => { const d = String(i.decision||"").toLowerCase(); return d.includes("pass") || d.includes("not"); });
+        console.log("TRENDS DEBUG", { total: items.length, loved: loved.length, maybe: maybe.length, pass: pass.length, sample: items[0] });
+
+        // Tally tags
+        const likedCounts = {}, dislikedCounts = {};
+        items.forEach(item => {
+          const tags = Array.isArray(item.liked_tags) ? item.liked_tags : [];
+          const isPass = String(item.decision||"").toLowerCase().includes("pass") || String(item.decision||"").toLowerCase().includes("not_for_me");
+          tags.forEach(tag => {
+            if (isPass) dislikedCounts[tag] = (dislikedCounts[tag]||0) + 1;
+            else likedCounts[tag] = (likedCounts[tag]||0) + 1;
+          });
+        });
+
+        const topLiked    = Object.entries(likedCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+        const topDisliked = Object.entries(dislikedCounts).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+        // Price insight
+        const lovedPrices = loved.map(i => parseInt(String(i.price_text||"").replace(/[^0-9]/g,""),10)).filter(Boolean);
+        const avgLovedPrice = lovedPrices.length ? Math.round(lovedPrices.reduce((a,b)=>a+b,0)/lovedPrices.length) : 0;
+        const maxLovedPrice = lovedPrices.length ? Math.max(...lovedPrices) : 0;
+
+        // Engagement
+        const withTime = items.filter(i => i.metrics?.time_spent_seconds > 0);
+        const avgTime = withTime.length ? Math.round(withTime.reduce((s,i)=>s+Number(i.metrics.time_spent_seconds||0),0)/withTime.length) : 0;
+        const mostEngaged = [...withTime].sort((a,b)=>Number(b.metrics.time_spent_seconds||0)-Number(a.metrics.time_spent_seconds||0))[0];
+
+        const tag = (label, bg, color) => `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;background:${bg};color:${color};font-size:0.74rem;font-weight:700;">${label}</span>`;
+
+        const likedHtml = topLiked.length
+          ? topLiked.map(([t,c]) => tag(`${escapeHtml(t.replace(/-/g," "))} ×${c}`, "#edf7f1", "#1f7a45")).join("")
+          : `<span style="color:#999;font-size:0.82rem;">No tags recorded yet</span>`;
+
+        const dislikedHtml = topDisliked.map(([t,c]) => tag(`${escapeHtml(t.replace(/-/g," "))} ×${c}`, "#fff6f6", "#8b1e1e")).join("");
+
+        // Agent insight lines
+        const insights = [];
+        if (avgLovedPrice) insights.push(`❤️ Loved homes averaged <strong>$${avgLovedPrice.toLocaleString()}</strong>${maxLovedPrice !== avgLovedPrice ? ` (max $${maxLovedPrice.toLocaleString()})` : ""} — use as anchor for next shortlist.`);
+        if (avgTime) insights.push(`⏱ Average time per listing: <strong>${avgTime}s</strong>${mostEngaged ? ` — most time on <strong>${escapeHtml(mostEngaged.address||"")}</strong>` : ""}.`);
+        if (loved.length >= 3) insights.push(`✅ Strong signal — ${loved.length} loved. Good time to book showings.`);
+        if (loved.length === 0 && maybe.length === 0 && pass.length > 0) insights.push(`⚠️ Mostly passing — current shortlist missing the mark. Try different criteria.`);
+        if (loved.length === 0 && maybe.length === 0 && pass.length === 0) insights.push(`💤 No decisions recorded yet — buyer hasn't engaged with the shortlist.`);
+
+        return `<div style="margin-bottom:16px;padding:16px;border-radius:14px;background:#f9f5f0;border:1px solid #e8e0d6;">
+          <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9a8f84;margin-bottom:12px;">Buyer trend summary</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">❤️ ${loved.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Loved</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">🤔 ${maybe.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Maybe</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">✕ ${pass.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Passed</div></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Responds well to</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">${likedHtml}</div>
+          </div>
+          ${topDisliked.length ? `<div style="margin-bottom:10px;"><div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Turned off by</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${dislikedHtml}</div></div>` : ""}
+          ${insights.length ? `<div style="font-size:0.82rem;color:rgba(24,22,20,0.65);line-height:1.7;padding-top:10px;border-top:1px solid #e8e0d6;">${insights.map(i=>`<div>${i}</div>`).join("")}</div>` : ""}
+        </div>`;
+      }
+
+      const trendsHtml = buildTrendsSummary(items);
+      detail.innerHTML = items.length
+        ? `${trendsHtml}${renderGroup("❤️ Loved",loved)}${renderGroup("🤔 Maybe",maybe)}${renderGroup("✕ Not for me",pass)}`
+        : `<p style="color:#999;padding:12px 0;">No listing activity found.</p>`;
       card.appendChild(detail);
     });
 
