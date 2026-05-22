@@ -34,8 +34,8 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scrollbar-gutter: stable; }
-    body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    html { scrollbar-gutter: stable; font-size: 16px; }
+    body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 1.375rem; line-height: 1.5; -webkit-font-smoothing: antialiased; }
     body.modal-open { overflow: hidden; padding-right: var(--scrollbar-width, 0px); }
     a { color: inherit; text-decoration: none; }
     button { font: inherit; }
@@ -45,23 +45,23 @@
     .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
     .brand-head { display: flex; flex-direction: column; gap: 6px; }
     .page-logo { display: block; width: 220px; max-width: 60vw; height: 36px; object-fit: contain; object-position: left center; }
-    .subtle { color: var(--muted); font-size: 0.88rem; }
+    .subtle { color: var(--muted); font-size: 1rem; }
     .logout-form { margin: 0; }
-    .logout-btn { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 999px; padding: 9px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .logout-btn { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 999px; padding: 9px 18px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
     .logout-btn:hover { background: #fafafa; }
 
     .admin-nav { display: inline-flex; gap: 4px; padding: 5px; background: #fff; border: 1px solid var(--line); border-radius: 999px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-    .admin-nav a { display: inline-flex; align-items: center; justify-content: center; padding: 7px 18px; border-radius: 999px; color: var(--muted); font-size: 0.82rem; font-weight: 600; transition: all 0.2s var(--ease); }
+    .admin-nav a { display: inline-flex; align-items: center; justify-content: center; padding: 7px 18px; border-radius: 999px; color: var(--muted); font-size: 0.95rem; font-weight: 600; transition: all 0.2s var(--ease); }
     .admin-nav a:hover { color: var(--ink); background: #f5f5f5; }
     .admin-nav a.active { background: var(--ink); color: #fff; }
 
     .page-heading { font-family: var(--f-display); font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1; margin-bottom: 4px; }
     .page-heading em { font-style: italic; color: var(--accent); }
-    .page-desc { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
+    .page-desc { color: var(--muted); font-size: 1rem; margin-bottom: 20px; }
 
     .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
-    .toolbar label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
-    .toolbar select { border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; background: #fff; color: var(--ink); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; outline: none; }
+    .toolbar label { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+    .toolbar select { border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; background: #fff; color: var(--ink); font: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer; outline: none; }
     .toolbar select option { background: #fff; color: var(--ink); }
 
     .grid { display: grid; gap: 10px; }
@@ -73,50 +73,50 @@
     .buyer-summary:hover { background: rgba(24,22,20,0.02); }
 
     .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-    .name { font-family: var(--f-display); font-size: 1.35rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px; }
-    .meta { font-size: 0.8rem; color: var(--muted); }
-    .mini-read { margin-top: 5px; font-size: 0.8rem; font-weight: 500; color: rgba(24,22,20,0.6); line-height: 1.4; }
-    .expand-icon { font-size: 1.3rem; font-weight: 300; color: rgba(24,22,20,0.3); flex-shrink: 0; margin-top: 2px; }
+    .name { font-family: var(--f-display); font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 4px; }
+    .meta { font-size: 0.9rem; color: var(--muted); }
+    .mini-read { margin-top: 5px; font-size: 0.9rem; font-weight: 500; color: rgba(24,22,20,0.6); line-height: 1.4; }
+    .expand-icon { font-size: 1.4rem; font-weight: 300; color: rgba(24,22,20,0.3); flex-shrink: 0; margin-top: 2px; }
 
     .buyer-priority-strip { display: grid; grid-template-columns: 2fr 0.8fr 1fr; gap: 8px; margin-top: 14px; }
     .priority-box { border-radius: 12px; padding: 12px 14px; background: rgba(24,22,20,0.04); }
     .priority-box.primary { background: var(--accent-bg); }
-    .priority-box span { display: block; margin-bottom: 3px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-    .priority-box strong { display: block; font-size: 0.85rem; font-weight: 600; line-height: 1.3; }
+    .priority-box span { display: block; margin-bottom: 3px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .priority-box strong { display: block; font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
 
-    .reaction-mini-row { display: flex; gap: 14px; margin-top: 10px; font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+    .reaction-mini-row { display: flex; gap: 14px; margin-top: 10px; font-size: 0.95rem; font-weight: 600; color: var(--muted); }
 
     .buyer-expanded { display: none; padding: 0 22px 22px; border-top: 1px solid var(--line); }
     .buyer-card.is-open .buyer-expanded { display: block; }
 
-    .looking-for { margin-top: 14px; font-size: 0.88rem; font-weight: 500; line-height: 1.55; color: rgba(24,22,20,0.72); }
+    .looking-for { margin-top: 14px; font-size: 1rem; font-weight: 500; line-height: 1.55; color: rgba(24,22,20,0.72); }
 
-    .prompt { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-weight: 600; font-size: 0.83rem; line-height: 1.4; }
+    .prompt { margin-top: 12px; padding: 11px 15px; border-radius: 12px; font-weight: 600; font-size: 0.95rem; line-height: 1.4; }
     .prompt.hot { background: var(--amber-bg); color: var(--amber); }
     .prompt.nudge { background: #f5f0ea; color: rgba(24,22,20,0.72); }
     .prompt.good { background: var(--green-bg); color: var(--green); }
     .prompt.quiet { background: rgba(24,22,20,0.04); color: rgba(24,22,20,0.52); }
 
     .stats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .pill { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; background: rgba(24,22,20,0.06); color: rgba(24,22,20,0.6); }
+    .pill { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; background: rgba(24,22,20,0.06); color: rgba(24,22,20,0.6); }
 
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .action { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; background: var(--ink); color: #fff; font-size: 0.8rem; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .action { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; background: var(--ink); color: #fff; font-size: 0.9rem; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
     .action:hover { background: #333; }
     .action.secondary { background: transparent; border: 1px solid var(--line); color: var(--muted); }
     .action.secondary:hover { background: #fafafa; }
 
     .detail { margin-top: 16px; padding: 16px; border-radius: 12px; background: rgba(24,22,20,0.03); border: 1px solid var(--line); }
     .detail-group + .detail-group { margin-top: 14px; }
-    .detail-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
-    .detail-item { padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 0.86rem; }
+    .detail-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+    .detail-item { padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 0.98rem; }
     .detail-item:last-child { border-bottom: 0; }
     .activity-listing { cursor: pointer; }
     .activity-listing:hover strong { text-decoration: underline; }
     .activity-signals { display: flex; flex-wrap: wrap; margin-top: 5px; }
-    .activity-signal { font-size: 0.74rem; font-weight: 600; color: var(--muted); }
+    .activity-signal { font-size: 0.84rem; font-weight: 600; color: var(--muted); }
     .activity-signal:not(:last-child)::after { content: "·"; margin: 0 6px; color: rgba(24,22,20,0.25); }
-    .contact-note { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(24,22,20,0.04); color: rgba(24,22,20,0.65); font-size: 0.8rem; }
+    .contact-note { margin-top: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(24,22,20,0.04); color: rgba(24,22,20,0.65); font-size: 0.9rem; }
     .match-preview { margin-top: 14px; }
 
     .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,0.55); overflow: hidden; backdrop-filter: blur(4px); }
@@ -129,12 +129,12 @@
     .photo-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border: 0; border-radius: 999px; background: rgba(255,255,255,0.92); color: var(--ink); font-size: 1.2rem; font-weight: 700; cursor: pointer; display: grid; place-items: center; padding: 0; transition: background 0.15s; }
     .photo-nav:hover { background: white; }
     .photo-prev { left: 12px; } .photo-next { right: 12px; }
-    .photo-count { position: absolute; right: 12px; bottom: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(24,22,20,0.65); color: #fff; font-size: 0.7rem; font-weight: 700; }
+    .photo-count { position: absolute; right: 12px; bottom: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(24,22,20,0.65); color: #fff; font-size: 0.8rem; font-weight: 700; }
     .listing-modal-card h2 { margin: 12px 22px 6px; font-family: var(--f-display); font-size: 1.7rem; font-weight: 500; letter-spacing: -0.02em; }
-    .modal-price { margin: 0 22px; font-size: 1rem; font-weight: 600; color: var(--muted); }
+    .modal-price { margin: 0 22px; font-size: 1.1rem; font-weight: 600; color: var(--muted); }
     .modal-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 22px; }
-    .modal-facts span { padding: 5px 12px; border-radius: 999px; background: rgba(24,22,20,0.07); font-size: 0.78rem; font-weight: 600; }
-    .modal-description { margin: 0 22px 24px; font-size: 0.88rem; line-height: 1.6; color: rgba(24,22,20,0.68); }
+    .modal-facts span { padding: 5px 12px; border-radius: 999px; background: rgba(24,22,20,0.07); font-size: 0.9rem; font-weight: 600; }
+    .modal-description { margin: 0 22px 24px; font-size: 1rem; line-height: 1.6; color: rgba(24,22,20,0.68); }
     .listing-modal-card .detail-title { margin: 16px 22px 8px; }
 
     @media (max-width: 700px) {
@@ -213,7 +213,12 @@
       grid.innerHTML = sortBuyers(buyers).map((b) => {
         const prompt = followUpPrompt(b); const move = momentum(b); const name = b.name || "Unnamed buyer"; const safeName = escapeHtml(name);
         const phone = b.phone || b.client_phone || b.stats.phone || ""; const textBody = `Hi ${name}, ${prompt.sms}`; const note = b.stats.lastContactNote || "";
-        return `<div class="buyer-card" data-name="${safeName}">
+        const buyerAnchor = String(name || "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-|-$/g, "");
+
+return `<div class="buyer-card" id="buyer-${buyerAnchor}" data-name="${safeName}">
           <button class="buyer-summary" type="button">
             <div class="row">
               <div><div class="name">${safeName}</div><div class="meta">Last activity: ${formatAge(b.stats.lastActivityAt)}</div><div class="mini-read">${escapeHtml(buyerRead(b))}</div></div>
@@ -233,10 +238,11 @@
             <div class="prompt ${prompt.className}">${prompt.text}</div>
             <div class="stats"><div class="pill ${buyerStatusClass(b)}">${buyerStatus(b)}</div><div class="pill ${move.className}">${move.text}</div>${missedOpportunity(b) ? `<div class="pill">⚠ Missed follow-up</div>` : ""}<div class="pill">${b.stats.shortlists||0} shortlist(s)</div></div>
             <div class="buyer-tabs" style="display:flex;gap:4px;margin-top:14px;padding:4px;background:#f5f0ea;border-radius:999px;">
-              ${phone ? `<a class="action tab-sms" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" style="flex:1;border-radius:999px;text-align:center;">📱 Text</a>` : ""}
-              <button class="action better-matches tab-btn" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" style="flex:1;border-radius:999px;">✨ Suggest 3</button>
-              <button class="action secondary view-activity tab-btn" type="button" style="flex:1;border-radius:999px;background:#fff;">📋 Reviewed</button>
-            </div>
+  ${phone ? `<a class="action tab-sms" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" style="flex:1;border-radius:999px;text-align:center;">📱 Text</a>` : ""}
+  <button class="action better-matches tab-btn" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" style="flex:1;border-radius:999px;">✨ Suggest 3</button>
+  <button class="action check-new-matches tab-btn" type="button" data-name="${safeName}" style="flex:1;border-radius:999px;background:#1f7a45;">🆕 Check new</button>
+  <button class="action secondary view-activity tab-btn" type="button" style="flex:1;border-radius:999px;background:#fff;">📋 Reviewed</button>
+</div>
           </div>
         </div>`;
       }).join("");
@@ -273,7 +279,6 @@
       const message = `Hi ${name}, I found a few homes closer to what you've been reacting to:\n\n${lines.join("\n")}\n\nWant me to line up a showing?`;
       const existing = card.querySelector(".match-preview"); if (existing) existing.remove();
       const listingsHtml = listings.map((l, i) => { const price = l.priceText||l.price_text||(l.price?`$${Number(l.price).toLocaleString()}`:"Price unavailable"); const reasonHtml = (Array.isArray(l.reasons)&&l.reasons.length)?l.reasons.map((r)=>`<span class="activity-signal">${escapeHtml(r)}</span>`).join(""):`<span class="activity-signal">Similar buyer fit</span>`; return `<div class="detail-item activity-listing" data-address="${escapeHtml(l.address||l.full_address||"Listing")}" data-price="${escapeHtml(price)}" data-decision="Suggested match" data-image="${escapeHtml(l.image||l.image_url||"")}" data-images="${escapeHtml(Array.isArray(l.images)?l.images.join("|"):"")}" data-beds="${escapeHtml(l.beds||"")}" data-baths="${escapeHtml(l.baths||"")}" data-type="${escapeHtml(l.type||l.property_type||"")}" data-sqft="${escapeHtml(l.sqft||"")}" data-description="${escapeHtml(l.description||"")}"><strong>${i+1}. ${escapeHtml(l.address||l.full_address||"Listing")}</strong><div>${price}</div><div class="activity-signals">${reasonHtml}</div></div>`; }).join("");
-      // Remove existing activity panel when showing matches
       card.querySelector(".detail:not(.match-preview)")?.remove();
 
       const preview = document.createElement("div"); preview.className = "detail match-preview";
@@ -306,7 +311,6 @@
     grid.addEventListener("click", async (event) => {
       const btn = event.target.closest(".view-activity"); if (!btn) return; event.stopPropagation();
       const card = btn.closest(".buyer-card"); if (!card) return;
-      // Toggle off match preview when switching to activity
       card.querySelector(".match-preview")?.remove();
       const existing = card.querySelector(".detail:not(.match-preview)"); if (existing) { existing.remove(); return; }
       const name = card.dataset.name;
@@ -325,9 +329,6 @@
         const loved = items.filter(i => i.is_favourite === true || i.is_favourite === "true" || i.is_favourite === 1);
         const maybe = items.filter(i => String(i.decision||"").toLowerCase().includes("maybe"));
         const pass  = items.filter(i => { const d = String(i.decision||"").toLowerCase(); return d.includes("pass") || d.includes("not"); });
-        console.log("TRENDS DEBUG", { total: items.length, loved: loved.length, maybe: maybe.length, pass: pass.length, sample: items[0] });
-
-        // Tally tags
         const likedCounts = {}, dislikedCounts = {};
         items.forEach(item => {
           const tags = Array.isArray(item.liked_tags) ? item.liked_tags : [];
@@ -337,49 +338,38 @@
             else likedCounts[tag] = (likedCounts[tag]||0) + 1;
           });
         });
-
         const topLiked    = Object.entries(likedCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
         const topDisliked = Object.entries(dislikedCounts).sort((a,b)=>b[1]-a[1]).slice(0,4);
-
-        // Price insight
         const lovedPrices = loved.map(i => parseInt(String(i.price_text||"").replace(/[^0-9]/g,""),10)).filter(Boolean);
         const avgLovedPrice = lovedPrices.length ? Math.round(lovedPrices.reduce((a,b)=>a+b,0)/lovedPrices.length) : 0;
         const maxLovedPrice = lovedPrices.length ? Math.max(...lovedPrices) : 0;
-
-        // Engagement
         const withTime = items.filter(i => i.metrics?.time_spent_seconds > 0);
         const avgTime = withTime.length ? Math.round(withTime.reduce((s,i)=>s+Number(i.metrics.time_spent_seconds||0),0)/withTime.length) : 0;
         const mostEngaged = [...withTime].sort((a,b)=>Number(b.metrics.time_spent_seconds||0)-Number(a.metrics.time_spent_seconds||0))[0];
-
-        const tag = (label, bg, color) => `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;background:${bg};color:${color};font-size:0.74rem;font-weight:700;">${label}</span>`;
-
+        const tag = (label, bg, color) => `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;background:${bg};color:${color};font-size:0.84rem;font-weight:700;">${label}</span>`;
         const likedHtml = topLiked.length
           ? topLiked.map(([t,c]) => tag(`${escapeHtml(t.replace(/-/g," "))} ×${c}`, "#edf7f1", "#1f7a45")).join("")
-          : `<span style="color:#999;font-size:0.82rem;">No tags recorded yet</span>`;
-
+          : `<span style="color:#999;font-size:0.95rem;">No tags recorded yet</span>`;
         const dislikedHtml = topDisliked.map(([t,c]) => tag(`${escapeHtml(t.replace(/-/g," "))} ×${c}`, "#fff6f6", "#8b1e1e")).join("");
-
-        // Agent insight lines
         const insights = [];
         if (avgLovedPrice) insights.push(`❤️ Loved homes averaged <strong>$${avgLovedPrice.toLocaleString()}</strong>${maxLovedPrice !== avgLovedPrice ? ` (max $${maxLovedPrice.toLocaleString()})` : ""} — use as anchor for next shortlist.`);
         if (avgTime) insights.push(`⏱ Average time per listing: <strong>${avgTime}s</strong>${mostEngaged ? ` — most time on <strong>${escapeHtml(mostEngaged.address||"")}</strong>` : ""}.`);
         if (loved.length >= 3) insights.push(`✅ Strong signal — ${loved.length} loved. Good time to book showings.`);
         if (loved.length === 0 && maybe.length === 0 && pass.length > 0) insights.push(`⚠️ Mostly passing — current shortlist missing the mark. Try different criteria.`);
         if (loved.length === 0 && maybe.length === 0 && pass.length === 0) insights.push(`💤 No decisions recorded yet — buyer hasn't engaged with the shortlist.`);
-
         return `<div style="margin-bottom:16px;padding:16px;border-radius:14px;background:#f9f5f0;border:1px solid #e8e0d6;">
-          <div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9a8f84;margin-bottom:12px;">Buyer trend summary</div>
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9a8f84;margin-bottom:12px;">Buyer trend summary</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
-            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">❤️ ${loved.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Loved</div></div>
-            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">🤔 ${maybe.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Maybe</div></div>
-            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.25rem;font-weight:700;">✕ ${pass.length}</div><div style="font-size:0.7rem;color:#999;margin-top:2px;">Passed</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.4rem;font-weight:700;">❤️ ${loved.length}</div><div style="font-size:0.8rem;color:#999;margin-top:2px;">Loved</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.4rem;font-weight:700;">🤔 ${maybe.length}</div><div style="font-size:0.8rem;color:#999;margin-top:2px;">Maybe</div></div>
+            <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee;"><div style="font-size:1.4rem;font-weight:700;">✕ ${pass.length}</div><div style="font-size:0.8rem;color:#999;margin-top:2px;">Passed</div></div>
           </div>
           <div style="margin-bottom:10px;">
-            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Responds well to</div>
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Responds well to</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${likedHtml}</div>
           </div>
-          ${topDisliked.length ? `<div style="margin-bottom:10px;"><div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Turned off by</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${dislikedHtml}</div></div>` : ""}
-          ${insights.length ? `<div style="font-size:0.82rem;color:rgba(24,22,20,0.65);line-height:1.7;padding-top:10px;border-top:1px solid #e8e0d6;">${insights.map(i=>`<div>${i}</div>`).join("")}</div>` : ""}
+          ${topDisliked.length ? `<div style="margin-bottom:10px;"><div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9a8f84;margin-bottom:6px;">Turned off by</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${dislikedHtml}</div></div>` : ""}
+          ${insights.length ? `<div style="font-size:0.95rem;color:rgba(24,22,20,0.65);line-height:1.7;padding-top:10px;border-top:1px solid #e8e0d6;">${insights.map(i=>`<div>${i}</div>`).join("")}</div>` : ""}
         </div>`;
       }
 
@@ -412,7 +402,40 @@
       if (event.target.closest(".photo-prev")) { const item=activityItems[activityIndex]; const photos=item.images?.length?item.images:item.image?[item.image]:[]; if (photos.length) { item.photoIndex=((item.photoIndex||0)-1+photos.length)%photos.length; openActivityModal(activityIndex); } return; }
       if (event.target.closest(".photo-next")) { const item=activityItems[activityIndex]; const photos=item.images?.length?item.images:item.image?[item.image]:[]; if (photos.length) { item.photoIndex=((item.photoIndex||0)+1)%photos.length; openActivityModal(activityIndex); } return; }
     });
+    grid.addEventListener("click", async (event) => {
+      const btn = event.target.closest(".check-new-matches");
+      if (!btn) return;
 
+      event.stopPropagation();
+
+      const name = btn.dataset.name;
+
+      btn.textContent = "Checking...";
+
+      const res = await fetch("/api/buyers/check-new-matches", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
+      });
+
+      const json = await res.json();
+
+      if (!json.ok) {
+        btn.textContent = json.error || "No matches";
+        setTimeout(() => {
+          btn.textContent = "🆕 Check new";
+        }, 3000);
+        return;
+      }
+
+      btn.textContent = `Sent ${json.sent} ✓`;
+
+      setTimeout(() => {
+        btn.textContent = "🆕 Check new";
+      }, 3000);
+    });
     load();
   </script>
 </body>

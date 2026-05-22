@@ -549,6 +549,71 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
     "campbell river south": "campbell river south",
     "campbell river west": "campbell river west",
     "willow point": "willow point"
+  },
+
+  duncan: {
+    "du chemainus": "chemainus",
+    "du cowichan bay": "cowichan bay",
+    "du cowichan station glenora": "cowichan station glenora",
+    "du crofton": "crofton",
+    "du east duncan": "east duncan",
+    "du honeymoon bay": "honeymoon bay",
+    "du ladysmith": "ladysmith",
+    "du lake cowichan": "lake cowichan",
+    "du saltair": "saltair",
+    "du west duncan": "west duncan",
+    "du youbou": "youbou",
+
+    "chemainus": "chemainus",
+    "cowichan bay": "cowichan bay",
+    "cowichan station glenora": "cowichan station glenora",
+    "crofton": "crofton",
+    "east duncan": "east duncan",
+    "honeymoon bay": "honeymoon bay",
+    "ladysmith": "ladysmith",
+    "lake cowichan": "lake cowichan",
+    "saltair": "saltair",
+    "west duncan": "west duncan",
+    "youbou": "youbou"
+  },
+
+  saanich: {
+    "se arbutus": "se arbutus",
+    "se blenkinsop": "se blenkinsop",
+    "se broadmead": "se broadmead",
+    "se cadboro bay": "se cadboro bay",
+    "se camosun": "se camosun",
+    "se cedar hill": "se cedar hill",
+    "se cordova bay": "se cordova bay",
+    "se gordon head": "se gordon head",
+    "se high quadra": "se high quadra",
+    "se lake hill": "se lake hill",
+    "se lambrick park": "se lambrick park",
+    "se maplewood": "se maplewood",
+    "se mt doug": "se mt doug",
+    "se mt tolmie": "se mt tolmie",
+    "se quadra": "se quadra",
+    "se queenswood": "se queenswood",
+    "se sunnymead": "se sunnymead",
+    "se swan lake": "se swan lake",
+    "se ten mile point": "se ten mile point",
+    "sw beaver lake": "sw beaver lake",
+    "sw elk lake": "sw elk lake",
+    "sw gateway": "sw gateway",
+    "sw glanford": "sw glanford",
+    "sw gorge": "sw gorge",
+    "sw granville": "sw granville",
+    "sw interurban": "sw interurban",
+    "sw layritz": "sw layritz",
+    "sw marigold": "sw marigold",
+    "sw northridge": "sw northridge",
+    "sw portage inlet": "sw portage inlet",
+    "sw prospect lake": "sw prospect lake",
+    "sw royal oak": "sw royal oak",
+    "sw rudd park": "sw rudd park",
+    "sw strawberry vale": "sw strawberry vale",
+    "sw tillicum": "sw tillicum",
+    "sw west saanich": "sw west saanich"
   }
 };
 
@@ -628,8 +693,8 @@ const addressText = clean(
     return "unknown";
   }
 
-  // 4. Return cleaned Matrix-style area
-  return cleanedArea;
+  // 4. If it is not an approved area, hide it from filters
+  return "unknown";
 };
 
 const normalizeImages = (listing: any) => {
@@ -786,13 +851,62 @@ const run = async () => {
 
       const snapshotCity = text(snapshot?.city || snapshot?.search_key || "");
       const city = snapshotCity || getCity(listing, snapshot);
-      const normalized_city = clean(city);
+      const rawCity = clean(city);
+
+const DUNCAN_MARKET_CITIES = new Set([
+  "duncan",
+  "chemainus",
+  "cowichan bay",
+  "cowichan station glenora",
+  "crofton",
+  "east duncan",
+  "honeymoon bay",
+  "ladysmith",
+  "lake cowichan",
+  "saltair",
+  "west duncan",
+  "youbou"
+]);
+
+const normalized_city = DUNCAN_MARKET_CITIES.has(rawCity)
+  ? "duncan"
+  : clean(rawCity);
       const normalized_type = normalizeType(listing);
      // Skip commercial completely
 if (
   normalized_type === "commercial" ||
   normalized_type === "business"
 ) continue;
+
+// TEMP DEBUG - remove after checking output
+if (normalized_city === "saanich") {
+  console.log("SAANICH DEBUG", {
+    id,
+    area: listing?.area,
+    subArea: listing?.subArea,
+    neighborhood: listing?.neighborhood,
+    detailsArea: listing?.details?.area,
+    rawArea: listing?.raw?.area,
+    rawSubArea: listing?.raw?.subArea,
+    rawKeys: Object.keys(listing?.raw || {}),
+    detailKeys: Object.keys(listing?.details || {}),
+    topKeys: Object.keys(listing || {}),
+    addressKeys: Object.keys(listing?.address || {}),
+    map: listing?.map,
+  });
+}
+
+if (normalized_city === "colwood") {
+  console.log("COLWOOD AREA DEBUG", {
+    id,
+    address: getNormalizedAddress(listing),
+    area: listing?.area,
+    subArea: listing?.subArea,
+    neighborhood: listing?.neighborhood,
+    rawArea: listing?.raw?.area,
+    rawSubArea: listing?.raw?.subArea,
+  });
+}
 
 // TEMP DEBUG - remove after checking output
 if (normalized_city === "campbell river") {
@@ -818,7 +932,19 @@ if (normalized_city === "campbell river") {
 
 let normalized_area = normalizeArea(listing, normalized_city);
 
+if (normalized_city === "duncan" && normalized_area === "unknown") {
+  const sourceCityArea = AREA_ALIASES.duncan?.[clean(listing?.source_city)];
+
+  if (sourceCityArea) {
+    normalized_area = sourceCityArea;
+  }
+}
+
 const rowAddress = clean(getNormalizedAddress(listing));
+
+if (normalized_city === "duncan" && rowAddress.includes("boys rd")) {
+  normalized_area = "east duncan";
+}
 
 if (normalized_city === "nanaimo") {
   // Exact address overrides - Nanaimo cleanup
@@ -952,7 +1078,7 @@ if (rowAddress.includes("4474 wellington rd")) {
       rowMap.set(id, {
         id,
 
-        city,
+                city: listing?.source_city || city,
         normalized_city,
 
         area:
@@ -1086,9 +1212,7 @@ const rows = [...addressMap.values()];
 
     const { error: upsertError } = await supabase
       .from("listing_rows")
-      .upsert(batch, { onConflict: "id" });
-
-    if (upsertError) {
+.upsert(batch, { onConflict: "id", ignoreDuplicates: false });  if (upsertError) {
       console.error("Batch failed:", upsertError);
       return;
     }
@@ -1096,19 +1220,17 @@ const rows = [...addressMap.values()];
     console.log(`Upserted ${Math.min(i + batch.length, rows.length)} / ${rows.length}`);
   }
 
-  console.log("Cleaning duplicate address rows...");
-
-  const { error: cleanupError } = await supabase.rpc(
-    "cleanup_duplicate_listing_rows"
-  );
-
-  if (cleanupError) {
-    console.error("Duplicate cleanup failed:", cleanupError);
-    return;
-  }
-
-  console.log("Duplicate cleanup complete.");
+   console.log("Skipping duplicate cleanup RPC.");
   console.log("Done.");
 };
 
 run();
+
+
+
+
+
+
+
+
+

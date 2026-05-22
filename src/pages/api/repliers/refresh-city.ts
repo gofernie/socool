@@ -32,6 +32,24 @@ function getListingId(listing: any) {
   );
 }
 
+const CITY_FETCH_GROUPS: Record<string, string[]> = {
+  duncan: [
+    "Duncan",
+    "Chemainus",
+    "Cowichan Bay",
+    "Cowichan Station/Glenora",
+    "Crofton",
+    "Honeymoon Bay",
+    "Ladysmith",
+    "Lake Cowichan",
+    "Saltair",
+    "Youbou"
+  ],
+  colwood: [
+    "Colwood"
+  ]
+};
+
 async function fetchRepliers(params: URLSearchParams) {
   const apiUrl = `${REPLIERS_BASE_URL}/listings?${params.toString()}`;
 
@@ -65,36 +83,43 @@ export const GET: APIRoute = async ({ url }) => {
     const allListings: any[] = [];
     const seen = new Set<string>();
 
-    let page = 1;
-    let hasMore = true;
+    const requestedCityKey = cleanKey(rawCity);
+    const citiesToFetch = CITY_FETCH_GROUPS[requestedCityKey] || [rawCity];
 
-    while (hasMore) {
-      const params = new URLSearchParams();
+    for (const fetchCity of citiesToFetch) {
+      let page = 1;
+      let hasMore = true;
 
-      params.set("city", rawCity);
-      params.set("pageNum", String(page));
-      params.set("resultsPerPage", "100");
-      params.set("include", "details,address,images");
-      params.set("status", "A");
+      while (hasMore) {
+        const params = new URLSearchParams();
 
-      const data = await fetchRepliers(params);
-      const listings = data?.listings || data?.results || data || [];
+        params.set("city", fetchCity);
+        params.set("pageNum", String(page));
+        params.set("resultsPerPage", "100");
+        params.set("include", "details,address,images");
+        params.set("status", "A");
 
-      if (!Array.isArray(listings) || listings.length === 0) break;
+        const data = await fetchRepliers(params);
+        const listings = data?.listings || data?.results || data || [];
 
-      for (const listing of listings) {
-        const id = getListingId(listing);
+        if (!Array.isArray(listings) || listings.length === 0) break;
 
-        if (!id || seen.has(id)) continue;
+        for (const listing of listings) {
+          const id = getListingId(listing);
 
-        seen.add(id);
+          if (!id || seen.has(id)) continue;
 
-        // Save raw Repliers listing only.
-        allListings.push(listing);
+          seen.add(id);
+
+          allListings.push({
+            ...listing,
+            source_city: fetchCity
+          });
+        }
+
+        hasMore = listings.length === 100;
+        page++;
       }
-
-      hasMore = listings.length === 100;
-      page++;
     }
 
     const searchKey = cleanKey(rawCity);
@@ -118,6 +143,7 @@ export const GET: APIRoute = async ({ url }) => {
         mode: "snapshot_only",
         city: rawCity,
         searchKey,
+        citiesFetched: citiesToFetch,
         totalFetched: allListings.length,
         message:
           "Fresh raw listings saved to listing_snapshots. Now run rebuild-listing-rows.ts to normalize."

@@ -1728,7 +1728,219 @@ body.edit-mode .card__preview-image-btn {
   }
 
 }
+.refine-prompt-card {
+  padding: 24px;
+  border-radius: 20px;
+  background: #f5f9f1;
+  border: 1px solid #cfe4bd;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
 
+.refine-prompt-card:hover {
+  transform: translateY(-2px);
+  border-color: #9fcb7c;
+  box-shadow: 0 18px 42px rgba(45, 80, 22, 0.14);
+}
+
+.refine-prompt-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #edf3e7;
+  color: #45642e;
+  font-size: 0.82rem;
+  font-weight: 800;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.refine-prompt-card:hover .refine-prompt-pill {
+  animation: refinePillPop 0.42s ease both;
+}
+
+.refine-prompt-card:hover .refine-prompt-pill:nth-child(2) { animation-delay: 0.05s; }
+.refine-prompt-card:hover .refine-prompt-pill:nth-child(3) { animation-delay: 0.1s; }
+.refine-prompt-card:hover .refine-prompt-pill:nth-child(4) { animation-delay: 0.15s; }
+
+.refine-prompt-btn {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2d5016, #163f08);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(45, 80, 22, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.refine-prompt-card:hover .refine-prompt-btn {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px rgba(45, 80, 22, 0.3);
+  filter: brightness(1.04);
+}
+
+@keyframes refinePillPop {
+  0% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-4px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refine-prompt-card,
+  .refine-prompt-pill,
+  .refine-prompt-btn {
+    transition: none;
+    animation: none !important;
+  }
+}
+
+.consult-card {
+  padding: 26px 24px;
+  border-radius: 20px;
+  background: #f5f9f1;
+  border: 1px solid #cfe4bd;
+  text-align: center;
+  opacity: 0.82;
+  transform: translateY(10px) scale(0.985);
+}
+
+.consult-card.is-in-view {
+  animation: consultCardIn 0.55s ease forwards;
+}
+
+.consult-check {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #2d5016;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  margin: 0 auto 16px;
+}
+
+.consult-title {
+  font-size: 1.1rem;
+  line-height: 1.3;
+  color: #1e2818;
+  margin: 0 0 10px;
+}
+
+.consult-copy {
+  font-size: 0.9rem;
+  color: #5f675a;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.consult-price {
+  margin: 14px auto 12px;
+  padding: 13px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #d6e8c9;
+  box-shadow: 0 10px 26px rgba(45, 80, 22, 0.08);
+}
+
+.consult-price__label {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6d7c62;
+  margin-bottom: 4px;
+}
+
+.consult-price__value {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #2d5016;
+}
+
+.consult-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.consult-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #edf3e7;
+  color: #45642e;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.consult-card.is-in-view .consult-price {
+  animation: consultPricePop 0.48s ease both 0.14s;
+}
+
+.consult-card.is-in-view .consult-tag {
+  animation: consultPillPop 0.42s ease both;
+}
+
+.consult-card.is-in-view .consult-tag:nth-child(1) { animation-delay: 0.22s; }
+.consult-card.is-in-view .consult-tag:nth-child(2) { animation-delay: 0.28s; }
+.consult-card.is-in-view .consult-tag:nth-child(3) { animation-delay: 0.34s; }
+.consult-card.is-in-view .consult-tag:nth-child(4) { animation-delay: 0.4s; }
+
+.consult-footer {
+  font-size: 0.85rem;
+  color: #8a8680;
+  margin-top: 14px;
+  line-height: 1.5;
+}
+
+@keyframes consultCardIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 18px 42px rgba(45, 80, 22, 0.12);
+  }
+}
+
+@keyframes consultPricePop {
+  0% { transform: translateY(6px) scale(0.98); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes consultPillPop {
+  0% { transform: translateY(6px) scale(0.94); opacity: 0; }
+  55% { transform: translateY(-3px) scale(1.05); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .consult-card,
+  .consult-price,
+  .consult-tag {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.refine-prompt-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
 </style>
   </head>
 
@@ -3467,20 +3679,71 @@ if (insightEl) {
     )
   ).slice(0, 4);
 
+   const formatMoney = (value) =>
+    value ? `$${Math.round(value).toLocaleString()}` : "";
+
+  const apparentPriceRange =
+    minSearchPrice && maxSearchPrice
+      ? `${formatMoney(minSearchPrice)} - ${formatMoney(maxSearchPrice)}`
+      : "";
+
   const tagHtml = likedTags.length
-    ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;">${likedTags.map((tag) => `<span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:#edf3e7;color:#45642e;font-size:0.82rem;font-weight:800;">${tag}</span>`).join("")}</div>`
+    ? `<div class="refine-prompt-tags">${likedTags.map((tag) => `<span class="refine-prompt-pill">${tag}</span>`).join("")}</div>`
     : "";
 
   async function showConsultScreen() {
     insightEl.innerHTML = `
-      <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;text-align:center;">
-        <div style="width:52px;height:52px;border-radius:999px;background:#2d5016;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin:0 auto 16px;">✓</div>
-        <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">Your agent has a clear picture now.</h3>
-        <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 12px;">You've done a thorough review. Based on what you responded to, your agent can now hand-pick the right options for you.</p>
+            <div class="consult-card" id="consult-card">
+        <div class="consult-check">✓</div>
+
+        <h3 class="consult-title">Your agent has a clear picture now.</h3>
+
+        <p class="consult-copy">
+          You've done a thorough review. Based on what you responded to, your agent can now hand-pick the right options for you.
+        </p>
+
+        ${apparentPriceRange ? `
+          <div class="consult-price">
+            <div class="consult-price__label">Apparent price range</div>
+            <div class="consult-price__value">${apparentPriceRange}</div>
+          </div>
+        ` : ""}
+
         ${tagHtml}
-        <p style="font-size:0.85rem;color:#8a8680;margin-top:14px;line-height:1.5;">Your agent will be in touch shortly with a curated selection.</p>
+
+                <p class="consult-footer">Your agent will be in touch shortly with a curated selection.</p>
       </div>
     `;
+
+    requestAnimationFrame(() => {
+      const card = document.getElementById("consult-card");
+      const root = document.querySelector(".panel__view");
+
+      if (!card) return;
+
+      const play = () => card.classList.add("is-in-view");
+
+      if (!("IntersectionObserver" in window)) {
+        play();
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.98) {
+            play();
+            observer.disconnect();
+          }
+        },
+        {
+          root,
+          threshold: [0.98]
+        }
+      );
+
+      observer.observe(card);
+    });
+
     console.log("CONSULT PING firing...");
     const pingOk = await sendReviewComplete("consult", "Buyer completed full review cycle. Ready for agent follow-up.");
     console.log("CONSULT PING result:", pingOk);
@@ -3488,16 +3751,16 @@ if (insightEl) {
 
   function showNextScreen() {
     // Phase 1: price expand (up to 2 times)
-    if (priceExpandCount < 2) {
+    if (priceExpandCount < 1) {
       const expandLabel = priceExpandCount === 0
         ? "See homes in the next price range →"
         : "One more step up — worth a look →";
 
       insightEl.innerHTML = `
-        <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;">
+                <div class="refine-prompt-card">
           <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">Want to see what a little more budget unlocks?</h3>
           <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 16px;">Sometimes a small stretch in price opens up significantly better options. Worth a quick look.</p>
-          <button type="button" id="next-phase-btn" style="appearance:none;display:block;width:100%;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:linear-gradient(135deg,#2d5016,#163f08);color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(45,80,22,0.22);">
+          <button type="button" id="next-phase-btn" class="refine-prompt-btn">
             ${expandLabel}
           </button>
         </div>
@@ -3520,7 +3783,11 @@ if (insightEl) {
           const res = await fetch("/api/shortlists/expand-search", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ slug: pageSlug, maxPrice: _maxPrice })
+            body: JSON.stringify({
+  slug: pageSlug,
+  maxPrice: _maxPrice,
+  mode: "price"
+})
           });
           const data = await res.json();
 
@@ -3547,15 +3814,14 @@ if (insightEl) {
         }
       });
 
-    // Phase 2: criteria broaden (up to 2 times)
-    } else if (criteriaRefineCount < 2) {
+   // Phase 2: refined matches - one round only
+} else if (criteriaRefineCount < 1) {
       const refineLabel = criteriaRefineCount === 0
         ? "Find matches based on what I liked →"
         : "Show more like these →";
 
       insightEl.innerHTML = `
-        <div style="padding:24px;border-radius:20px;background:#f5f9f1;border:1px solid #cfe4bd;">
-          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">You've seen all available homes in this search.</h3>
+        <div class="refine-prompt-card">          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">You've seen all available homes in this search.</h3>
           <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 12px;">Based on what you responded to, a few clear themes emerged.</p>
           ${tagHtml}
           <p style="font-size:0.88rem;color:#5f675a;line-height:1.6;margin:12px 0 16px;">We can broaden slightly — different area, bedroom count, or property type — to find more like what you liked.</p>
@@ -3580,8 +3846,8 @@ if (insightEl) {
           const data = await res.json();
 
           if (!res.ok || !data?.ok || !Array.isArray(data.listings) || !data.listings.length) {
-            criteriaRefineCount = 2;
-            sessionStorage.setItem(_refineKey, "2");
+            criteriaRefineCount = 1;
+sessionStorage.setItem(_refineKey, "1");
             showConsultScreen();
             return;
           }

@@ -26,9 +26,9 @@ export const POST: APIRoute = async ({ request }) => {
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data: send, error: sendError } = await supabase
+      const { data: send, error: sendError } = await supabase
       .from("shortlist_sends")
-      .select("client_name")
+      .select("client_name, client_id")
       .eq("shortlist_slug", slug)
       .maybeSingle();
 
@@ -66,11 +66,23 @@ export const POST: APIRoute = async ({ request }) => {
             ? `⚠️ ${buyerName} left the review early.`
             : `✅ ${buyerName} reviewed their shortlist.`;
 
+          const buyerAnchor = buyerName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+     const requestUrl = new URL(request.url);
+
+    const crmBaseUrl =
+      `${requestUrl.protocol}//${requestUrl.host}`;
+
+    const crmUrl =
+      `${crmBaseUrl}/admin/buyers#buyer-${buyerAnchor}`;
     const body =
       `${reasonLabel}\n\n` +
       `${message || ""}` +
       `${comment ? `\n\n${buyerName}'s note:\n"${comment}"` : ""}` +
-      `\n\nOpen: ${import.meta.env.PUBLIC_SITE_URL}/shortlists/${slug}?agent=1`;
+      `\n\nOpen CRM: ${crmUrl}`;
 
     await client.messages.create({
       from: fromNumber,

@@ -38,6 +38,61 @@ const ALLOWED_AREAS_BY_CITY: Record<string, Set<string>> = {
     "campbell river south",
     "campbell river west",
     "willow point"
+  ]),
+
+  duncan: new Set([
+    "chemainus",
+    "cowichan bay",
+    "cowichan station glenora",
+    "crofton",
+    "east duncan",
+    "honeymoon bay",
+    "ladysmith",
+    "lake cowichan",
+    "saltair",
+    "west duncan",
+    "youbou"
+  ]),
+
+  saanich: new Set([
+    // Saanich East
+    "se arbutus",
+    "se blenkinsop",
+    "se broadmead",
+    "se cadboro bay",
+    "se camosun",
+    "se cedar hill",
+    "se cordova bay",
+    "se gordon head",
+    "se high quadra",
+    "se lake hill",
+    "se lambrick park",
+    "se maplewood",
+    "se mt doug",
+    "se mt tolmie",
+    "se quadra",
+    "se queenswood",
+    "se sunnymead",
+    "se swan lake",
+    "se ten mile point",
+    // Saanich West
+    "sw beaver lake",
+    "sw elk lake",
+    "sw gateway",
+    "sw glanford",
+    "sw gorge",
+    "sw granville",
+    "sw interurban",
+    "sw layritz",
+    "sw marigold",
+    "sw northridge",
+    "sw portage inlet",
+    "sw prospect lake",
+    "sw royal oak",
+    "sw rudd park",
+    "sw strawberry vale",
+    "sw tillicum",
+    "sw west saanich"
   ])
 };
 
@@ -94,7 +149,7 @@ export const GET: APIRoute = async () => {
 
   const cities = new Map<string, { value: string; label: string }>();
   const types = new Map<string, { value: string; label: string }>();
-  const areasByCity = new Map<
+const areasByCity = new Map<
     string,
     Map<string, { value: string; label: string }>
   >();

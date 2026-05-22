@@ -210,7 +210,7 @@ const softMin = currentMax
 
         return a.price - b.price;
       })
-      .slice(0, 3);
+           .slice(0, 5);
 
     if (!next.length) {
       return new Response(

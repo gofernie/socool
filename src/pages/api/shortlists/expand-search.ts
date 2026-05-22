@@ -40,7 +40,11 @@ function normalizeImageArray(value: any) {
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { slug, maxPrice: clientMaxPrice } = body;
+    const {
+  slug,
+  maxPrice: clientMaxPrice,
+  mode = "price"
+} = body;
 
     if (!slug) {
       return new Response(JSON.stringify({ ok: false, error: "Missing slug" }), { status: 400 });
@@ -100,8 +104,8 @@ export const POST: APIRoute = async ({ request }) => {
     const allPrices = rows.map((r: any) => toNumber(r.price_text || r.price)).filter((p: number) => p > 0);
     const currentMax = allPrices.length > 0 ? Math.max(...allPrices) : 0;
 
-    // Hard cap: 20% above the highest price already seen
-    const hardMaxPrice = currentMax ? Math.round(currentMax * 1.2) : 0;
+    // Hard cap: 15% above the highest price already seen
+    const hardMaxPrice = currentMax ? Math.round(currentMax * 1.15) : 0;
     // Use client-supplied maxPrice if it's tighter, otherwise use our cap
     const effectiveMaxPrice = clientMaxPrice && clientMaxPrice < hardMaxPrice ? clientMaxPrice : hardMaxPrice;
 
@@ -114,7 +118,7 @@ export const POST: APIRoute = async ({ request }) => {
       .order("price", { ascending: true })
       .limit(50);
 
-    // Apply 20% price ceiling
+    // Apply 15% price ceiling
     if (effectiveMaxPrice) {
       baseQuery = baseQuery.lte("price", effectiveMaxPrice);
     }
@@ -149,8 +153,7 @@ export const POST: APIRoute = async ({ request }) => {
         if (beds && aBedDiff !== bBedDiff) return aBedDiff - bBedDiff;
         return a.price - b.price;
       })
-      .slice(0, 3);
-
+.slice(0, 5);
     if (!next.length) {
       return new Response(JSON.stringify({
         ok: false,
@@ -158,7 +161,7 @@ export const POST: APIRoute = async ({ request }) => {
       }), { status: 200 });
     }
 
-    const maxSortOrder = Math.max(...rows.map((r: any) => r.sort_order || 0), 0);
+  const maxSortOrder = Math.max(...rows.map((r: any) => r.sort_order || 0), 0);
 
     const inserts = next.map((r: any, i: number) => {
       const gallery = normalizeImageArray(r.images || r.photo_urls);
