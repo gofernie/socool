@@ -354,6 +354,7 @@ const priceExpansionTwo = page.price_max
         line-height: 0.95;
         letter-spacing: -0.055em;
         font-weight: 500;
+        margin-bottom: 14px;
       }
 
       .results-bar {
@@ -874,6 +875,19 @@ body.is-map-mode .bottom-refine-cta {
   background: rgba(24, 22, 20, 0.1) !important;
   color: rgba(24, 22, 20, 0.72) !important;
 }
+
+#refined-results .refined-controls-row {
+  grid-column: 1 / -1;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+#refined-results .refined-controls-row .view-toggle {
+  margin: 0 !important;
+}
     </style>
   </head>
 
@@ -994,10 +1008,24 @@ body.is-map-mode .bottom-refine-cta {
         <div>
           <h2>Current matches<span class="accent-dot">.</span></h2>
 
-          <div class="view-toggle">
-            <button type="button" class="view-btn active" id="list-view-btn">List</button>
-<button type="button" class="view-btn" id="map-view-btn">Map</button>
-          </div>
+         <div class="current-controls-row">
+  <div class="view-toggle">
+    <button type="button" class="view-btn active" id="list-view-btn">List</button>
+    <button type="button" class="view-btn" id="map-view-btn">Map</button>
+  </div>
+
+  <div class="view-toggle sort-toggle current-sort-toggle">
+    <button type="button" class="view-btn active" data-sort="newest">
+      Newest
+    </button>
+    <button type="button" class="view-btn" data-sort="price-asc">
+      Price ↑
+    </button>
+    <button type="button" class="view-btn" data-sort="price-desc">
+      Price ↓
+    </button>
+  </div>
+</div>
         </div>
 
         <div class="results-bar">{listingCount} listings found</div>
@@ -1030,6 +1058,9 @@ body.is-map-mode .bottom-refine-cta {
                 data-image={image}
                 data-images={JSON.stringify(listing?.images || [])}
                 data-price={formatPrice(listing.price)}
+                data-sort-index={index}
+data-raw-price={String(listing?.price || 0)}
+data-listed-at={String(listing?.listed_at || listing?.created_at || "")}
                 data-address={listing.address}
                 data-meta={`${listing.beds || "-"} bed · ${listing.baths || "-"} bath`}
                 data-beds={String(listing?.beds || "-")}
@@ -1499,6 +1530,94 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   border: 1px solid rgba(24,22,20,0.16);
 }
 
+.modal-intent-primary,
+.modal-intent-secondary,
+.refine-chip,
+.intent-like-tag {
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-intent-primary::before,
+.modal-intent-secondary::before,
+.refine-chip::before,
+.intent-like-tag::before {
+  content: "✦";
+  display: inline-flex;
+  margin-right: 7px;
+  transform: scale(0.9);
+  opacity: 0.55;
+}
+
+.modal-intent-primary:hover::before,
+.modal-intent-secondary:hover::before,
+.refine-chip:hover::before,
+.intent-like-tag:hover::before {
+  animation: iconPulse 0.7s ease;
+  opacity: 1;
+}
+
+.modal-intent-primary.is-selected,
+.modal-intent-secondary.is-selected,
+.refine-chip.active,
+.intent-like-tag.active {
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.modal-intent-primary.is-selected::after,
+.modal-intent-secondary.is-selected::after,
+.refine-chip.active::after,
+.intent-like-tag.active::after {
+  content: " ✓";
+  font-weight: 900;
+}
+
+@keyframes iconPulse {
+  0% { transform: scale(0.9); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(0.9); }
+}
+
+#preview-sheet #decision-love-btn,
+#preview-sheet #decision-maybe-btn,
+#preview-sheet #decision-pass-btn {
+  position: relative !important;
+  overflow: visible !important;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+#preview-sheet #decision-love-btn:hover,
+#preview-sheet #decision-maybe-btn:hover,
+#preview-sheet #decision-pass-btn:hover {
+  transform: translateY(-2px);
+}
+
+#preview-sheet #decision-love-btn.is-selected,
+#preview-sheet #decision-maybe-btn.is-selected,
+#preview-sheet #decision-pass-btn.is-selected {
+  background: #181614 !important;
+  color: #ffffff !important;
+  border-color: #181614 !important;
+  box-shadow:
+    0 0 0 4px rgba(255, 77, 0, 0.2),
+    0 16px 36px rgba(24,22,20,0.18) !important;
+  transform: translateY(-2px);
+}
+
+#preview-sheet #decision-love-btn.is-selected::after,
+#preview-sheet #decision-maybe-btn.is-selected::after,
+#preview-sheet #decision-pass-btn.is-selected::after {
+  content: "✓";
+  display: inline-flex;
+  margin-left: 9px;
+  font-weight: 900;
+}
+
 #preview-sheet .modal-intent-summary.is-refining {
   min-height: 420px;
   display: flex;
@@ -1533,6 +1652,28 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   100% {
     transform: translateX(280%);
   }
+}
+.current-controls-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.current-controls-row .view-toggle {
+  margin-top: 0;
+}
+.current-sort-toggle {
+  flex-direction: row !important;
+}
+
+.current-sort-toggle .view-btn {
+  display: inline-flex;
+}
+
+.current-sort-toggle .view-btn + .view-btn {
+  border-left: 1px solid var(--line);
+  border-top: 0 !important;
 }
     </style>
 
@@ -1882,6 +2023,54 @@ const shouldShow = matchesArea && matchesPrice;
     applyAreaFilter(activeArea);
   });
 });
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-sort]");
+
+  if (!button) return;
+
+  const sort = button.dataset.sort || "recommended";
+  const grid = document.querySelector(".grid");
+
+  if (!grid) return;
+
+  document.querySelectorAll("[data-sort]").forEach((btn) => {
+    btn.classList.toggle("active", btn === button);
+  });
+
+  const cards = Array.from(grid.querySelectorAll(".original-card"));
+
+  cards.sort((a, b) => {
+    if (sort === "price-asc") {
+      return Number(a.dataset.rawPrice || 0) - Number(b.dataset.rawPrice || 0);
+    }
+
+    if (sort === "price-desc") {
+      return Number(b.dataset.rawPrice || 0) - Number(a.dataset.rawPrice || 0);
+    }
+
+    if (sort === "newest") {
+      return (
+        new Date(b.dataset.listedAt || 0).getTime() -
+        new Date(a.dataset.listedAt || 0).getTime()
+      );
+    }
+
+    return Number(a.dataset.sortIndex || 0) - Number(b.dataset.sortIndex || 0);
+  });
+
+  cards.forEach((card) => {
+    grid.appendChild(card);
+  });
+
+  const activeAreaButton = document.querySelector(".area-filter.active");
+  const activeArea = activeAreaButton?.dataset.areaFilter || "all";
+
+  applyAreaFilter(activeArea);
+
+  if (googleMap && intentMapEl && !intentMapEl.hidden) {
+    initIntentGoogleMap();
+  }
+});
     </script>
 
     <script is:inline>
@@ -2029,8 +2218,7 @@ if (viewed.has(address) || viewedKeys.has(key)) {
         return Math.max(...prices, 0);
       }
 
-      function createRefinedListingCard(listing) {
-        const normalizePhotoUrl = (url) => {
+function createRefinedListingCard(listing, index = 0) {        const normalizePhotoUrl = (url) => {
           const value = String(url || "").trim();
 
           if (!value) return "";
@@ -2070,13 +2258,14 @@ const alreadyViewed =
             data-image="${image}"
             data-images='${JSON.stringify(listing.images || [])}'
             data-price="${listing.price_text || ""}"
-            data-address="${listing.address || ""}"
-            data-meta="${listing.beds || "-"} bed · ${listing.baths || "-"} bath"
+            data-raw-price="${String(listing.price || listing.raw_price || listing.price_text || "").replace(/[^0-9]/g, "")}"
+data-sort-index="${index}"
+data-listed-at="${listing.listed_at || listing.created_at || listing.updated_at || ""}"
+data-address="${listing.address || ""}"            data-meta="${listing.beds || "-"} bed · ${listing.baths || "-"} bath"
             data-beds="${listing.beds || "-"}"
             data-baths="${listing.baths || "-"}"
             data-sqft="${listing.sqft || ""}"
-            data-type="${listing.property_type || listing.normalized_type || "Home"}"
-            data-year="${listing.year_built || ""}"
+data-type="${listing.normalized_type || listing.property_type || listing.type || document.querySelector('.stat-card:nth-child(2) .stat-value')?.textContent || "Home"}"            data-year="${listing.year_built || ""}"
             data-dom="${listing.days_on_market || listing.dom || ""}"
             data-description="${String(listing.description || "").replace(/"/g, "&quot;")}"
             data-liked-tags="[]"
@@ -2310,9 +2499,23 @@ interruptCard.style.display = "none";
     This is your refined match set.
   </div>
 
-<div class="view-toggle refined-view-toggle">
-  <button type="button" class="view-btn active" id="refined-list-btn">Refined List</button>
-  <button type="button" class="view-btn" id="refined-map-btn">Refined Map</button>
+<div class="refined-controls-row">
+  <div class="view-toggle refined-view-toggle">
+    <button type="button" class="view-btn active" id="refined-list-btn">Refined List</button>
+    <button type="button" class="view-btn" id="refined-map-btn">Refined Map</button>
+  </div>
+
+  <div class="view-toggle refined-view-toggle refined-sort-toggle">
+    <button type="button" class="view-btn" data-refined-sort="newest">
+      Newest
+    </button>
+    <button type="button" class="view-btn" data-refined-sort="price-asc">
+      Price ↑
+    </button>
+    <button type="button" class="view-btn" data-refined-sort="price-desc">
+      Price ↓
+    </button>
+  </div>
 </div>
 
 <div id="refined-intent-map" class="intent-map refined-intent-map" hidden></div>
@@ -2320,8 +2523,7 @@ interruptCard.style.display = "none";
 <div class="refined-results-grid">
               ${
                 listings.length
-                  ? listings.map(createRefinedListingCard).join("")
-                  : `<div class="refined-section-copy">No stronger matches found yet.</div>`
+? listings.map((listing, index) => createRefinedListingCard(listing, index)).join("")                  : `<div class="refined-section-copy">No stronger matches found yet.</div>`
               }
            </div>
 
@@ -2411,8 +2613,7 @@ document.addEventListener("click", async (event) => {
     if (moreListings.length) {
       grid.insertAdjacentHTML(
         "beforeend",
-        moreListings.map(createRefinedListingCard).join("")
-      );
+moreListings.map((listing, index) => createRefinedListingCard(listing, index)).join("")      );
     }
 
     if (hasMoreAgain) {
@@ -2477,6 +2678,45 @@ mapViewBtn?.classList.remove("active");
 
 window.setTimeout(() => {
 initRefinedGoogleMap("refined");}, 80);
+});
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-refined-sort]");
+
+  if (!button) return;
+
+  const sort = button.dataset.refinedSort || "newest";
+  const refinedResults = document.getElementById("refined-results");
+  const grid = refinedResults?.querySelector(".refined-results-grid");
+
+  if (!grid) return;
+
+  refinedResults.querySelectorAll("[data-refined-sort]").forEach((btn) => {
+    btn.classList.toggle("active", btn === button);
+  });
+
+  const cards = Array.from(grid.querySelectorAll(".refined-card"));
+
+  cards.sort((a, b) => {
+    if (sort === "price-asc") {
+      return Number(a.dataset.rawPrice || 0) - Number(b.dataset.rawPrice || 0);
+    }
+
+    if (sort === "price-desc") {
+      return Number(b.dataset.rawPrice || 0) - Number(a.dataset.rawPrice || 0);
+    }
+
+   return (
+  new Date(b.dataset.listedAt || 0).getTime() -
+    new Date(a.dataset.listedAt || 0).getTime() ||
+  Number(a.dataset.sortIndex || 0) - Number(b.dataset.sortIndex || 0)
+);
+  });
+
+  cards.forEach((card) => grid.appendChild(card));
+
+  if (refinedGoogleMap) {
+    initRefinedGoogleMap("refined");
+  }
 });
       window.saveIntentPreferences = function () {
         const selectedLabels = Array.from(
@@ -2686,7 +2926,72 @@ function getCards() {
           sheet.setAttribute("aria-hidden", "true");
           document.body.style.overflow = "";
         }
+function preloadImages(urls = []) {
+  urls
+    .filter(Boolean)
+    .slice(0, 8)
+    .forEach((src) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = src;
+    });
+}
 
+function getCardPhotoUrls(card) {
+  if (!card) return [];
+
+  const normalizePhotoUrl = (url) => {
+    const value = String(url || "").trim();
+
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+
+    return `https://cdn.repliers.io/${value}`;
+  };
+
+  let rawImages = [];
+
+  try {
+    rawImages = JSON.parse(card.dataset.images || "[]");
+  } catch {
+    rawImages = [];
+  }
+
+  const urls = rawImages
+    .map((img) => {
+      if (typeof img === "string") return normalizePhotoUrl(img);
+
+      return normalizePhotoUrl(
+        img.highRes ||
+        img.mediumRes ||
+        img.lowRes ||
+        img.url ||
+        ""
+      );
+    })
+    .filter(Boolean);
+
+  return urls.length
+    ? urls
+    : [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
+}
+
+function preloadNearbyListingPhotos(currentCard) {
+  const cards = getCards();
+  const index = cards.indexOf(currentCard);
+
+  const nextCards = cards.slice(index + 1, index + 4);
+  const prevCard = cards[index - 1];
+
+  const urls = [
+    ...nextCards.flatMap((card) => getCardPhotoUrls(card).slice(0, 3)),
+    ...getCardPhotoUrls(prevCard).slice(0, 2),
+  ];
+
+  preloadImages(urls);
+}
         function renderCard(card) {
           const cards = getCards();
           const index = cards.indexOf(card);
@@ -2744,12 +3049,10 @@ function getCards() {
             if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
           }
 
-          renderActivePhoto();
+        renderActivePhoto();
 
-          activePhotoUrls.slice(1, 5).forEach((src) => {
-            const img = new Image();
-            img.src = src;
-          });
+preloadImages(activePhotoUrls.slice(1, 8));
+preloadNearbyListingPhotos(card);
 
      card.dataset.viewed = "true";
 saveViewedIntentAddress(card.dataset.address || "");
@@ -3017,7 +3320,18 @@ function showLeadCaptureForm() {
       </div>
     `;
 
-    setTimeout(closeSheet, 1200);
+    setTimeout(() => {
+  closeSheet();
+
+  const refinedAnchor =
+    document.getElementById("refined-results-anchor") ||
+    document.getElementById("refined-results");
+
+  refinedAnchor?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}, 1200);
   });
 
   document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
@@ -3112,19 +3426,23 @@ function showIntentSummaryCard() {
   Your preferences can be saved privately so your next batch keeps improving.
 </div>
       <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="summary-refine-btn">
-          Show better matches
-        </button>
+       <button type="button" class="modal-intent-primary" id="summary-refine-btn">
+  Show better matches
+</button>
 
-        <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
-          Keep browsing
-        </button>
+<button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
+  Compare nearby areas
+</button>
+
+<button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
+  Keep browsing
+</button>
       </div>
     </div>
   `;
 
-  document.getElementById("summary-refine-btn")?.addEventListener("click", () => {
-  const generatedChips = Array.from(
+document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");  const generatedChips = Array.from(
     document.querySelectorAll(
       ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
     )
@@ -3166,9 +3484,23 @@ setTimeout(() => {
   });
 }, 2200);
 });
+document.getElementById("summary-nearby-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");  showRefiningState(["Compare nearby areas"]);
 
-  document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", () => {
-    sheetSummary.classList.remove("open");
+  const nearbyChip = document.createElement("button");
+  nearbyChip.type = "button";
+  nearbyChip.className = "refine-chip generated-refine-chip";
+  nearbyChip.textContent = "Compare nearby areas";
+
+  setTimeout(() => {
+    closeSheet();
+
+    runIntentRefine(nearbyChip, { openFirstResult: true });
+  }, 1600);
+});
+
+document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");    sheetSummary.classList.remove("open");
     sheetContent.classList.add("open");
     goNext();
   });
@@ -3263,6 +3595,29 @@ if (decision === "love" || decision === "maybe") {
 }
 
 saveCurrentReaction();
+
+window.setTimeout(() => {
+  const sheetScroll =
+    document.querySelector("#preview-sheet .panel__view") ||
+    document.getElementById("sheet-content") ||
+    document.getElementById("preview-sheet");
+
+  const bottomNav =
+    document.querySelector("#preview-sheet .panel__nav-row") ||
+    document.getElementById("sheet-next-btn");
+
+  if (bottomNav) {
+    bottomNav.style.scrollMarginBottom = "120px";
+    bottomNav.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }
+
+  if (sheetScroll) {
+    sheetScroll.scrollTop = sheetScroll.scrollHeight;
+  }
+}, 180);
 }
 
         document.addEventListener("click", (event) => {

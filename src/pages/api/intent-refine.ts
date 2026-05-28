@@ -234,7 +234,7 @@ if (preferredMinPrice > 0) {
     };
 
     const stayInMatch = refineLabel.match(/stay in (.+)$/i);
-
+const wantsNearbyAreas = refineLabel.includes("nearby");
     if (stayInMatch?.[1]) {
       const rawAreas = stayInMatch[1]
         .toLowerCase()
@@ -377,7 +377,47 @@ if (preferredAvgPrice > 0 && listingPrice > 0) {
 if (lovedAreas.has(area)) score += 12;
 if (maybeAreas.has(area)) score += 6;
 if (preferredAreas.includes(area)) score += 16;
-if (passedAreas.has(area)) score -= 10;
+
+if (wantsNearbyAreas) {
+  const nearbyAreaGroups: Record<string, string[]> = {
+    "old city": [
+      "south nanaimo",
+      "central nanaimo",
+      "departure bay",
+    ],
+
+    "north nanaimo": [
+      "uplands",
+      "departure bay",
+      "hammond bay",
+    ],
+
+    "departure bay": [
+      "north nanaimo",
+      "uplands",
+      "central nanaimo",
+    ],
+
+    "south nanaimo": [
+      "old city",
+      "central nanaimo",
+    ],
+
+    "central nanaimo": [
+      "old city",
+      "departure bay",
+      "uplands",
+    ],
+  };
+
+  const nearbyAreas = preferredAreas.flatMap(
+    (a) => nearbyAreaGroups[a] || []
+  );
+
+  if (nearbyAreas.includes(area)) {
+    score += 10;
+  }
+}if (passedAreas.has(area)) score -= 10;
 
         return {
           listing,
