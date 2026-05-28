@@ -157,9 +157,10 @@ export const POST: APIRoute = async ({ request }) => {
         note,
         sms_image_url,
         agent_name,
-        agent:agent_id (
-          name
-        )
+       agent:agent_id (
+  name,
+  domain
+)
       `)
       .eq("shortlist_slug", shortlistSlug)
       .single();
@@ -171,8 +172,13 @@ export const POST: APIRoute = async ({ request }) => {
         "Chris Crump";
     }
 
-    const shortlistUrl = `${cleanBase}/shortlists/${shortlistSlug}`;
-    const introName = clientName ? `Hi ${clientName}, ` : "Hi, ";
+const agentDomain = String(shortlist?.agent?.domain || "").trim();
+
+const baseUrl = agentDomain
+  ? `https://${agentDomain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`
+  : cleanBase;
+
+const shortlistUrl = `${baseUrl}/shortlists/${shortlistSlug}`;    const introName = clientName ? `Hi ${clientName}, ` : "Hi, ";
     const senderLine = agentName ? ` - ${agentName}` : "";
 
     const savedSmsMessage = String(shortlist?.sms_message || "").trim();

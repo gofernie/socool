@@ -1,0 +1,485 @@
+---
+import { createClient } from "@supabase/supabase-js";
+
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const { data: reactions, error } = await supabase
+  .from("intent_listing_reactions")
+  .select("*")
+  .order("created_at", { ascending: false })
+  .limit(500);
+
+const rows = reactions || [];
+
+const { data: leads } = await supabase
+  .from("intent_leads")
+  .select("*")
+  .order("created_at", { ascending: false });
+
+const leadBySessionId = new Map(
+  (leads || []).map((lead) => [lead.session_id, lead])
+);
+
+const sessions = Object.values(
+  rows.reduce((acc, row) => {
+    const key = `${row.session_id}:${row.slug}`;
+
+    if (!acc[key]) {
+      acc[key] = {
+        session_id: row.session_id,
+        slug: row.slug,
+        city: row.city || "nanaimo",
+        last_activity: row.created_at,
+        reactions: [],
+        lead: leadBySessionId.get(row.session_id) || null,
+      };
+    }
+
+    acc[key].reactions.push(row);
+
+    if (new Date(row.created_at) > new Date(acc[key].last_activity)) {
+      acc[key].last_activity = row.created_at;
+    }
+
+    return acc;
+  }, {})
+);
+
+function fmtDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString();
+}
+
+function countDecision(reactions, decision) {
+  return reactions.filter((r) => r.decision === decision).length;
+}
+
+function byDecision(reactions, decision) {
+  return reactions.filter((r) => r.decision === decision);
+}
+
+function getTags(row) {
+  if (Array.isArray(row.liked_tags)) return row.liked_tags;
+
+  try {
+    return JSON.parse(row.liked_tags || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function parsePrice(value) {
+  return Number(
+    String(value || "")
+      .replace(/\$/g, "")
+      .replace(/,/g, "")
+      .trim()
+  ) || 0;
+}
+
+function avgPrice(rows) {
+  const prices = rows.map((r) => parsePrice(r.price)).filter((p) => p > 0);
+  if (!prices.length) return 0;
+
+  return Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
+}
+
+function priceRange(rows) {
+  const prices = rows.map((r) => parsePrice(r.price)).filter((p) => p > 0);
+  if (!prices.length) return "";
+
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+
+  if (min === max) return formatMoney(min);
+
+  return `${formatMoney(min)} - ${formatMoney(max)}`;
+}
+
+function formatMoney(price) {
+  if (!price) return "Unknown";
+  return `$${Number(price).toLocaleString()}`;
+}
+
+function inferPriceTrend(reactions) {
+  const loves = byDecision(reactions, "love");
+  const maybes = byDecision(reactions, "maybe");
+  const passes = byDecision(reactions, "pass");
+
+  const loveAvg = avgPrice(loves);
+  const maybeAvg = avgPrice(maybes);
+  const passAvg = avgPrice(passes);
+
+  if (loveAvg && passAvg && loveAvg > passAvg * 1.08) {
+    return `Buyer is leaning higher-budget. Loved listings average ${formatMoney(loveAvg)}, while passes average ${formatMoney(passAvg)}.`;
+  }
+
+  if (loveAvg && passAvg && loveAvg < passAvg * 0.92) {
+    return `Buyer may be value-sensitive. Loved listings average ${formatMoney(loveAvg)}, below passed listings at ${formatMoney(passAvg)}.`;
+  }
+
+  if (loveAvg) return `Loved-listing price centre is around ${formatMoney(loveAvg)}.`;
+  if (maybeAvg) return `Soft interest is clustering around ${formatMoney(maybeAvg)}.`;
+
+  return `Not enough price signal yet.`;
+}
+
+function inferSession(reactions) {
+  const loves = byDecision(reactions, "love");
+  const maybes = byDecision(reactions, "maybe");
+  const passes = byDecision(reactions, "pass");
+
+  const lovedAreas = [...new Set(loves.map((r) => r.area).filter(Boolean))];
+  const passedAreas = [...new Set(passes.map((r) => r.area).filter(Boolean))];
+
+  if (loves.length && passes.length) {
+    return `Loved ${lovedAreas.join(", ") || "one listing"} but passed on ${passedAreas.join(", ") || "another option"} - likely not choosing on price alone.`;
+  }
+
+  if (loves.length) return `Positive signal - this session has at least one strong match.`;
+  if (maybes.length && !loves.length) return `Interest is soft - buyer may need a better fit or more refined options.`;
+  if (passes.length && !loves.length && !maybes.length) return `Mostly negative signal - current page may not be matching their intent.`;
+
+  return `Not enough behaviour yet.`;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Intent Sessions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      body {
+        margin: 0;
+        background: #f4efe7;
+        color: #181614;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 18px 80px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2.4rem, 6vw, 5rem);
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+        font-weight: 500;
+      }
+
+      .lede {
+        margin: 0 0 28px;
+        color: rgba(24,22,20,0.65);
+        font-size: 1.05rem;
+      }
+
+      .session {
+        background: #fff;
+        border: 1px solid rgba(24,22,20,0.14);
+        border-radius: 22px;
+        padding: 22px;
+        margin-bottom: 18px;
+      }
+
+      .session-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: start;
+        margin-bottom: 18px;
+      }
+
+      .session-title {
+        font-weight: 900;
+        font-size: 1.1rem;
+      }
+
+      .session-meta {
+        color: rgba(24,22,20,0.62);
+        font-size: 0.9rem;
+        margin-top: 4px;
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .badge {
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 850;
+        background: #f4efe7;
+        border: 1px solid rgba(24,22,20,0.08);
+      }
+
+      .insight {
+        background: #fffaf1;
+        color: #181614;
+        border: 1px solid rgba(24,22,20,0.12);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+      }
+
+      .columns {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .col {
+        border: 1px solid rgba(24,22,20,0.12);
+        border-radius: 16px;
+        padding: 14px;
+        background: #fffaf1;
+      }
+
+      .col h3 {
+        margin: 0 0 12px;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .listing {
+        padding: 12px 0;
+        border-top: 1px solid rgba(24,22,20,0.12);
+      }
+
+      .listing:first-of-type {
+        border-top: 0;
+      }
+
+      .listing strong {
+        display: block;
+      }
+
+      .listing span {
+        display: block;
+        color: rgba(24,22,20,0.64);
+        font-size: 0.9rem;
+        margin-top: 3px;
+      }
+
+      .intent-open-btn {
+        display: inline-flex;
+        margin-top: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #fff;
+        color: #181614;
+        border: 1px solid rgba(24,22,20,0.16);
+        font: inherit;
+        font-size: 0.74rem;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .intent-open-btn:hover {
+        background: #f4efe7;
+        color: #181614;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #ffffff;
+        color: rgba(24,22,20,0.72);
+        border: 1px solid rgba(24,22,20,0.14);
+        font-size: 0.72rem;
+        font-weight: 750;
+        line-height: 1;
+        text-transform: capitalize;
+      }
+
+      .empty {
+        color: rgba(24,22,20,0.5);
+        font-size: 0.92rem;
+      }
+
+      @media (max-width: 800px) {
+        .session-head,
+        .columns {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>Intent sessions.</h1>
+      <p class="lede">
+        Anonymous buyer behaviour from intent pages - grouped by session and page.
+      </p>
+
+      {error && <p>Error loading sessions: {error.message}</p>}
+
+      {sessions.map((session) => {
+        const loves = byDecision(session.reactions, "love");
+        const maybes = byDecision(session.reactions, "maybe");
+        const passes = byDecision(session.reactions, "pass");
+        const city = session.city || "nanaimo";
+
+        return (
+          <article class="session">
+            <div class="session-head">
+              <div>
+                <div class="session-title">{session.slug}</div>
+                <div class="session-meta">
+                  {city} · {session.session_id}
+                </div>
+                <div class="session-meta">
+                  Last activity: {fmtDate(session.last_activity)}
+                </div>
+              </div>
+
+              <div class="badges">
+                <span class="badge">{session.reactions.length} reactions</span>
+                <span class="badge">{countDecision(session.reactions, "love")} loves</span>
+                <span class="badge">{countDecision(session.reactions, "maybe")} maybes</span>
+                <span class="badge">{countDecision(session.reactions, "pass")} passes</span>
+              </div>
+            </div>
+
+            <div class="insight">
+              {inferSession(session.reactions)}
+            </div>
+
+            <div style="margin-bottom:18px;padding:16px;border-radius:16px;background:#fffaf1;border:1px solid rgba(24,22,20,0.12);">
+              <div style="margin-bottom:8px;color:#ff4d00;font-size:0.72rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;">
+                Price signal
+              </div>
+
+              <div style="font-weight:850;margin-bottom:10px;">
+                {inferPriceTrend(session.reactions)}
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <span class="badge">Loved avg: {formatMoney(avgPrice(loves))}</span>
+                <span class="badge">Loved range: {priceRange(loves) || "Unknown"}</span>
+                <span class="badge">Maybe avg: {formatMoney(avgPrice(maybes))}</span>
+                <span class="badge">Pass avg: {formatMoney(avgPrice(passes))}</span>
+              </div>
+            </div>
+
+            {session.lead && (
+              <div style="margin-bottom:18px;padding:16px;border-radius:16px;background:#fff3e8;border:1px solid rgba(255,77,0,0.18);">
+                <div style="margin-bottom:8px;color:#ff4d00;font-size:0.72rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;">
+                  Lead captured
+                </div>
+
+                <div style="font-weight:800;">
+                  {session.lead.name || "Unnamed buyer"}
+                </div>
+
+                {session.lead.email && <div style="margin-top:4px;">{session.lead.email}</div>}
+                {session.lead.phone && <div style="margin-top:4px;">{session.lead.phone}</div>}
+              </div>
+            )}
+
+            <div class="columns">
+              <section class="col">
+                <h3>Loved</h3>
+
+                {loves.length ? loves.map((r) => (
+                  <div class="listing">
+                    <strong>{r.address}</strong>
+                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
+                    <span>{r.area}</span>
+
+                    <a
+                      class="intent-open-btn"
+href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
+                    >
+                      Open listing
+                    </a>
+
+                    {getTags(r).length > 0 && (
+                      <div class="tag-row">
+                        {getTags(r).map((tag) => (
+                          <span class="tag">{tag.replaceAll("_", " ")}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )) : <div class="empty">No loves yet.</div>}
+              </section>
+
+              <section class="col">
+                <h3>Kinda liked</h3>
+
+                {maybes.length ? maybes.map((r) => (
+                  <div class="listing">
+                    <strong>{r.address}</strong>
+                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
+                    <span>{r.area}</span>
+
+                    <a
+                      class="intent-open-btn"
+href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
+                    >
+                      Open listing
+                    </a>
+
+                    {getTags(r).length > 0 && (
+                      <div class="tag-row">
+                        {getTags(r).map((tag) => (
+                          <span class="tag">{tag.replaceAll("_", " ")}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )) : <div class="empty">No maybes yet.</div>}
+              </section>
+
+              <section class="col">
+                <h3>Not for me</h3>
+
+                {passes.length ? passes.map((r) => (
+                  <div class="listing">
+                    <strong>{r.address}</strong>
+                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
+                    <span>{r.area}</span>
+
+                    <a
+                      class="intent-open-btn"
+href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
+                    >
+                      Open listing
+                    </a>
+                  </div>
+                )) : <div class="empty">No passes yet.</div>}
+              </section>
+            </div>
+          </article>
+        );
+      })}
+    </main>
+  </body>
+</html>

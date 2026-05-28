@@ -20,6 +20,21 @@ function parsePrice(value: any) {
   return Number.isFinite(num) ? num : 0;
 }
 
+function normalizeText(value: any) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function topValue(values: string[]) {
+  const counts: Record<string, number> = {};
+
+  for (const value of values) {
+    if (!value || value === "unknown") continue;
+    counts[value] = (counts[value] || 0) + 1;
+  }
+
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { name } = await request.json();
@@ -51,66 +66,113 @@ export const POST: APIRoute = async ({ request }) => {
       .select("*")
       .eq("shortlist_send_id", latestSend.id);
 
-    const loved = (items || []).filter(
-      (i) =>
-        i.is_favourite === true ||
-        String(i.decision || "").toLowerCase().includes("love")
-    );
+    const originalItems = (items || []).filter((i) => {
+      const itemSource = normalizeText(i.source);
+      return itemSource !== "expand_search" && itemSource !== "refine_search";
+    });
 
-    const maybe = (items || []).filter((i) =>
-      String(i.decision || "").toLowerCase().includes("maybe")
-    );
-
-    const source = loved.length ? loved : maybe;
-
-    if (!source.length) {
+    if (!originalItems.length) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: "No preference signals yet"
+          error: "No original shortlist homes found"
         }),
         { status: 400 }
       );
     }
 
-    const prices = source
-      .map((i) => parsePrice(i.price_text))
+    const prices = originalItems
+      .map((i) => parsePrice(i.price_text || i.price))
       .filter(Boolean);
 
-    const avgPrice = Math.round(
-      prices.reduce((a, b) => a + b, 0) / prices.length
+    if (!prices.length) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "No usable prices found on original shortlist homes"
+        }),
+        { status: 400 }
+      );
+    }
+
+    const minSentPrice = Math.min(...prices);
+    const maxSentPrice = Math.max(...prices);
+
+    const minPrice = Math.max(0, Math.floor(minSentPrice * 0.9));
+    const maxPrice = Math.ceil(maxSentPrice * 1.15);
+
+   const city =
+  topValue(
+    originalItems.map((i) =>
+      normalizeText(i.normalized_city || i.city)
+    )
+  ) ||
+  normalizeText(latestSend.search_city);
+
+    const area = topValue(
+      originalItems.map((i) => normalizeText(i.normalized_area || i.area))
     );
 
-    const sample = source[0];
+    const type = topValue(
+      originalItems.map((i) =>
+        normalizeText(i.property_type || i.normalized_type || i.type)
+      )
+    );
 
-    const city =
-      sample.city ||
-      sample.normalized_city ||
-      "";
+    if (!city) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "No usable city found on original shortlist homes"
+        }),
+        { status: 400 }
+      );
+    }
 
-    const type =
-      sample.property_type ||
-      sample.type ||
-      "";
-
-    const minPrice = avgPrice - 75000;
-    const maxPrice = avgPrice + 75000;
-
-    const { data: listings } = await supabase
+    let query = supabase
       .from("listing_rows")
       .select("*")
-      .eq("normalized_city", String(city).toLowerCase())
+      .eq("status", "A")
+      .eq("normalized_city", city)
       .gte("price", minPrice)
       .lte("price", maxPrice)
-      .limit(20);
+      .order("listed_at", { ascending: false })
+      .limit(30);
+
+    if (area) {
+      query = query.eq("normalized_area", area);
+    }
+
+    if (type && type !== "land" && type !== "mobile") {
+      query = query.eq("normalized_type", type);
+    }
+
+    const { data: listings, error: listingsError } = await query;
+
+    if (listingsError) throw listingsError;
 
     const alreadySentIds = new Set(
-      (items || []).map((i) => String(i.repliers_listing_id || i.listing_id))
+      (items || [])
+        .flatMap((i) => [
+          String(i.repliers_listing_id || "").trim(),
+          String(i.listing_id || "").trim(),
+          String(i.mls_number || "").trim()
+        ])
+        .filter(Boolean)
     );
 
-    const freshListings = (listings || []).filter(
-      (l) => !alreadySentIds.has(String(l.id))
-    );
+    const freshListings = (listings || []).filter((l) => {
+      const rowId = String(l.id || "").trim();
+      const repliersId = String(l.repliers_listing_id || "").trim();
+      const mlsId = String(l.mls_number || "").trim();
+
+      return (
+        rowId &&
+        !alreadySentIds.has(rowId) &&
+        !alreadySentIds.has(repliersId) &&
+        !alreadySentIds.has(mlsId)
+      );
+    });
 
     if (!freshListings.length) {
       return new Response(
@@ -125,14 +187,12 @@ export const POST: APIRoute = async ({ request }) => {
     const topMatches = freshListings.slice(0, 5);
 
     for (const listing of topMatches) {
-      await supabase
-        .from("buyer_match_notifications")
-        .insert({
-          buyer_name: name,
-          buyer_phone: latestSend.client_phone,
-          shortlist_slug: latestSend.shortlist_slug,
-          listing_row_id: listing.id
-        });
+      await supabase.from("buyer_match_notifications").insert({
+        buyer_name: name,
+        buyer_phone: latestSend.client_phone,
+        shortlist_slug: latestSend.shortlist_slug,
+        listing_row_id: listing.id
+      });
     }
 
     const lines = topMatches.map(
@@ -141,7 +201,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
 
     const body =
-      `Hey ${name}, I found ${topMatches.length} new homes that line up with what you liked.\n\n` +
+      `Hey ${name}, I found ${topMatches.length} new homes that line up with what I sent you.\n\n` +
       `${lines.join("\n")}\n\n` +
       `Want me to send over more details or book a showing?`;
 

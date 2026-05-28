@@ -101,10 +101,47 @@
     .pill { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; background: rgba(24,22,20,0.06); color: rgba(24,22,20,0.6); }
 
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .action { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; background: var(--ink); color: #fff; font-size: 0.9rem; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .action { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 14px; padding: 8px 16px; background: var(--ink); color: #fff; font-size: 0.9rem; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
     .action:hover { background: #333; }
     .action.secondary { background: transparent; border: 1px solid var(--line); color: var(--muted); }
     .action.secondary:hover { background: #fafafa; }
+
+    .buyer-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 0;
+      background: transparent;
+      border-radius: 0;
+    }
+
+    .buyer-tabs .action {
+      flex: 1 1 118px;
+      min-width: 0;
+      min-height: 46px;
+      border-radius: 14px;
+      padding: 9px 12px;
+      text-align: center;
+      line-height: 1.15;
+      white-space: normal;
+    }
+
+    .buyer-tabs .tab-sms,
+    .buyer-tabs .better-matches {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .buyer-tabs .check-new-matches {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .buyer-tabs .view-activity {
+      background: #fff;
+      color: var(--muted);
+    }
 
     .detail { margin-top: 16px; padding: 16px; border-radius: 12px; background: rgba(24,22,20,0.03); border: 1px solid var(--line); }
     .detail-group + .detail-group { margin-top: 14px; }
@@ -143,6 +180,19 @@
       .buyer-summary { padding: 16px; }
       .buyer-expanded { padding: 0 16px 16px; }
       .action { width: 100%; }
+
+      .buyer-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .buyer-tabs .action {
+        width: 100%;
+        min-height: 44px;
+        border-radius: 12px;
+        font-size: 0.88rem;
+      }
     }
   </style>
 </head>
@@ -237,11 +287,11 @@ return `<div class="buyer-card" id="buyer-${buyerAnchor}" data-name="${safeName}
             ${b.stats.priceSignal ? `<div class="looking-for" style="margin-top:8px;">${escapeHtml(b.stats.priceSignal)}</div>` : ""}
             <div class="prompt ${prompt.className}">${prompt.text}</div>
             <div class="stats"><div class="pill ${buyerStatusClass(b)}">${buyerStatus(b)}</div><div class="pill ${move.className}">${move.text}</div>${missedOpportunity(b) ? `<div class="pill">⚠ Missed follow-up</div>` : ""}<div class="pill">${b.stats.shortlists||0} shortlist(s)</div></div>
-            <div class="buyer-tabs" style="display:flex;gap:4px;margin-top:14px;padding:4px;background:#f5f0ea;border-radius:999px;">
-  ${phone ? `<a class="action tab-sms" href="sms:${phone}?&body=${encodeURIComponent(textBody)}" style="flex:1;border-radius:999px;text-align:center;">📱 Text</a>` : ""}
-  <button class="action better-matches tab-btn" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}" style="flex:1;border-radius:999px;">✨ Suggest 3</button>
-  <button class="action check-new-matches tab-btn" type="button" data-name="${safeName}" style="flex:1;border-radius:999px;background:#1f7a45;">🆕 Check new</button>
-  <button class="action secondary view-activity tab-btn" type="button" style="flex:1;border-radius:999px;background:#fff;">📋 Reviewed</button>
+            <div class="buyer-tabs">
+  ${phone ? `<a class="action tab-sms" href="sms:${phone}?&body=${encodeURIComponent(textBody)}">📱 Text</a>` : ""}
+  <button class="action better-matches tab-btn" type="button" data-name="${safeName}" data-phone="${escapeHtml(phone)}">✨ Suggest 3</button>
+  <button class="action check-new-matches tab-btn" type="button" data-name="${safeName}">🆕 Check new</button>
+  <button class="action secondary view-activity tab-btn" type="button">📋 Reviewed</button>
 </div>
           </div>
         </div>`;
