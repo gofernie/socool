@@ -386,9 +386,135 @@ function inferSession(reactions) {
                 <span class="badge">Maybe avg: {formatMoney(avgPrice(maybes))}</span>
                 <span class="badge">Pass avg: {formatMoney(avgPrice(passes))}</span>
               </div>
-            </div>
+           </div>
 
-            {session.lead && (
+{(() => {
+  const loves = byDecision(session.reactions, "love");
+  const maybes = byDecision(session.reactions, "maybe");
+  const passes = byDecision(session.reactions, "pass");
+
+  const allTags = [
+    ...loves.flatMap((r) => getTags(r)),
+    ...maybes.flatMap((r) => getTags(r)),
+  ];
+
+  const tagCounts = {};
+
+  allTags.forEach((tag) => {
+    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+  });
+
+  const strongestTags = Object.entries(tagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+
+  const lovedAreas = {};
+
+  loves.forEach((r) => {
+    if (!r.area) return;
+    lovedAreas[r.area] = (lovedAreas[r.area] || 0) + 1;
+  });
+
+  const topAreas = Object.entries(lovedAreas)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const readiness =
+    Math.min(
+      100,
+      loves.length * 12 +
+      maybes.length * 5 +
+      session.reactions.length * 2
+    );
+
+  return (
+    <div
+      style="
+        margin-bottom:18px;
+        padding:20px;
+        border-radius:18px;
+        background:#fff;
+        border:1px solid rgba(24,22,20,0.12);
+      "
+    >
+      <div
+        style="
+          margin-bottom:8px;
+          color:#ff4d00;
+          font-size:0.72rem;
+          font-weight:900;
+          letter-spacing:.08em;
+          text-transform:uppercase;
+        "
+      >
+        Buyer Scout Report
+      </div>
+
+      <div
+        style="
+          font-size:1.4rem;
+          font-weight:900;
+          margin-bottom:14px;
+        "
+      >
+        Buyer Readiness: {readiness}/100
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+          gap:16px;
+        "
+      >
+        <div>
+          <strong>Searching</strong>
+          <div style="margin-top:6px;color:rgba(24,22,20,.68);">
+            {session.slug.replaceAll("-", " ")}
+          </div>
+        </div>
+
+        <div>
+          <strong>Strongest Preferences</strong>
+
+          <div style="margin-top:6px;">
+            {strongestTags.length
+              ? strongestTags.map(([tag]) => (
+                  <div>✓ {tag.replaceAll("_", " ")}</div>
+                ))
+              : <div>No clear preference yet</div>}
+          </div>
+        </div>
+
+        <div>
+          <strong>Top Areas</strong>
+
+          <div style="margin-top:6px;">
+            {topAreas.length
+              ? topAreas.map(([area]) => (
+                  <div>{area}</div>
+                ))
+              : <div>Still exploring</div>}
+          </div>
+        </div>
+
+        <div>
+          <strong>Suggested Action</strong>
+
+          <div style="margin-top:6px;color:rgba(24,22,20,.68);">
+            {loves.length >= 3
+              ? "Strong engagement. Send matching listings and invite for viewing."
+              : maybes.length >= 3
+              ? "Continue nurturing and surface stronger matches."
+              : "Gather more behaviour before outreach."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+})()}
+
+{session.lead && (
               <div style="margin-bottom:18px;padding:16px;border-radius:16px;background:#fff3e8;border:1px solid rgba(255,77,0,0.18);">
                 <div style="margin-bottom:8px;color:#ff4d00;font-size:0.72rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;">
                   Lead captured

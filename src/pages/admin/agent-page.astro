@@ -101,7 +101,6 @@ const slug = "chris-crump";
         line-height: 1.45;
       }
 
-      /* Template preview swatches */
       .template-options {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -208,12 +207,72 @@ const slug = "chris-crump";
         background: #f4efe7;
       }
 
+      .intent-pages-grid {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .intent-page-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 14px;
+        align-items: start;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(24,22,20,0.12);
+        background: white;
+      }
+
+      .intent-page-card input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-top: 4px;
+      }
+
+      .intent-page-meta strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.95rem;
+      }
+
+      .intent-page-meta p {
+        margin: 0;
+        color: rgba(24,22,20,0.62);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      .intent-page-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .intent-page-tags span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #f4efe7;
+        color: #6f5a38;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
       @media (max-width: 700px) {
         .grid-2 {
           grid-template-columns: 1fr;
         }
+
         .template-options {
           grid-template-columns: 1fr;
+        }
+
+        .intent-page-card {
+          grid-template-columns: auto 1fr;
         }
       }
     </style>
@@ -243,7 +302,6 @@ const slug = "chris-crump";
           <input name="city" />
         </div>
 
-        <!-- ===== TEMPLATE SELECTOR ===== -->
         <div class="card">
           <h2>Page template</h2>
           <p class="hint">Choose the visual style for this agent's landing page.</p>
@@ -278,7 +336,18 @@ const slug = "chris-crump";
             </label>
           </div>
         </div>
-        <!-- ===== END TEMPLATE SELECTOR ===== -->
+
+        <div class="card">
+          <h2>Intent pages</h2>
+
+          <p class="hint">
+            Choose which intent-driven buyer pages appear on the homepage.
+          </p>
+
+          <div id="intentPagesGrid" class="intent-pages-grid">
+            <p class="hint">Loading intent pages...</p>
+          </div>
+        </div>
 
         <div class="card">
           <h2>Hero</h2>
@@ -496,10 +565,12 @@ const slug = "chris-crump";
       </form>
     </main>
 
-    <script>
+    <script is:inline>
       const slug = "chris-crump";
       const form = document.getElementById("agentForm");
       const status = document.getElementById("status");
+
+      let intentPages = [];
 
       let filterOptions = {
         cities: [],
@@ -541,6 +612,7 @@ const slug = "chris-crump";
         newListingsMaxPrice: "",
         newListingsSort: "newest",
         newListingsLimit: "6",
+        enabledIntentPageSlugs: [],
         groups: [
           { title: "Condos", kicker: "Low-maintenance living", text: "Explore condo options from the latest listing data.", city: "", area: "", type: "condo", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=condo&sort=newest" },
           { title: "Single-family homes", kicker: "Room to grow", text: "Detached homes from the latest listing data.", city: "", area: "", type: "house", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=house&sort=newest" },
@@ -549,7 +621,6 @@ const slug = "chris-crump";
         ]
       };
 
-      // ── Template radio helper ──────────────────────────────────────
       function getSelectedTemplate() {
         const radios = form.querySelectorAll('input[name="template"]');
         for (const radio of radios) {
@@ -572,24 +643,35 @@ const slug = "chris-crump";
         link.href = template === "calm" ? "/agent-listings-calm" : "/agent-listings";
       }
 
-      // Update preview link whenever template selection changes
       form.querySelectorAll('input[name="template"]').forEach((radio) => {
         radio.addEventListener("change", () => updatePreviewLink(radio.value));
       });
 
-      // ── Filter helpers ─────────────────────────────────────────────
       function normalizeFilterValue(value) {
         return String(value || "").trim().toLowerCase();
       }
 
       function titleCase(value) {
-        return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+        return String(value || "")
+          .trim()
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase());
       }
 
       function optionValue(item) {
         if (!item) return "";
         if (typeof item === "object") {
-          return normalizeFilterValue(item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || item.label || "");
+          return normalizeFilterValue(
+            item.value ||
+              item.normalized_value ||
+              item.normalized_area ||
+              item.normalized_city ||
+              item.normalized_type ||
+              item.name ||
+              item.label ||
+              ""
+          );
         }
         return normalizeFilterValue(item);
       }
@@ -597,7 +679,17 @@ const slug = "chris-crump";
       function optionLabel(item) {
         if (!item) return "";
         if (typeof item === "object") {
-          return titleCase(item.label || item.display_name || item.name || item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || "");
+          return titleCase(
+            item.label ||
+              item.display_name ||
+              item.name ||
+              item.value ||
+              item.normalized_value ||
+              item.normalized_area ||
+              item.normalized_city ||
+              item.normalized_type ||
+              ""
+          );
         }
         return titleCase(item);
       }
@@ -605,13 +697,28 @@ const slug = "chris-crump";
       function uniqueOptions(items) {
         const seen = new Set();
         return (Array.isArray(items) ? items : [])
-          .map((item) => { const value = optionValue(item); return { value, label: optionLabel(item) || titleCase(value) }; })
-          .filter((item) => { if (!item.value || seen.has(item.value)) return false; seen.add(item.value); return true; })
+          .map((item) => {
+            const value = optionValue(item);
+            return {
+              value,
+              label: optionLabel(item) || titleCase(value)
+            };
+          })
+          .filter((item) => {
+            if (!item.value || seen.has(item.value)) return false;
+            seen.add(item.value);
+            return true;
+          })
           .sort((a, b) => a.label.localeCompare(b.label));
       }
 
       function getPrimaryCity() {
-        return normalizeFilterValue(form.elements.newListingsCity?.value) || normalizeFilterValue(form.elements.city?.value) || normalizeFilterValue(filterOptions.cities?.[0]?.value);
+        return (
+          normalizeFilterValue(form.elements.newListingsCity?.value) ||
+          normalizeFilterValue(form.elements.city?.value) ||
+          normalizeFilterValue(filterOptions.cities?.[0]?.value) ||
+          "nanaimo"
+        );
       }
 
       function buildExploreHref(group) {
@@ -619,12 +726,14 @@ const slug = "chris-crump";
         const city = normalizeFilterValue(group.city);
         const area = normalizeFilterValue(group.area);
         const type = normalizeFilterValue(group.type);
+
         if (city) params.set("city", city);
         if (area) params.set("area", area);
         if (type) params.set("type", type);
         if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
         if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
         if (group.sort) params.set("sort", group.sort);
+
         const query = params.toString();
         return query ? `/explore?${query}` : "/explore";
       }
@@ -634,20 +743,99 @@ const slug = "chris-crump";
           const res = await fetch(url);
           if (!res.ok) return null;
           return await res.json();
-        } catch { return null; }
+        } catch {
+          return null;
+        }
+      }
+
+      async function loadIntentPages(selected = []) {
+        const city = normalizeFilterValue(form.elements.city?.value) || "nanaimo";
+
+        const json = await fetchJsonSafe(
+          `/api/intent-pages?city=${encodeURIComponent(city)}`
+        );
+
+        intentPages = Array.isArray(json?.pages) ? json.pages : [];
+
+        renderIntentPages(selected);
+      }
+
+      function renderIntentPages(selected = []) {
+        const grid = document.getElementById("intentPagesGrid");
+
+        if (!grid) return;
+
+        if (!intentPages.length) {
+          grid.innerHTML = `<p class="hint">No published intent pages found for this city.</p>`;
+          return;
+        }
+
+        grid.innerHTML = intentPages
+          .map((page) => {
+            const checked = selected.includes(page.slug);
+
+            return `
+              <label class="intent-page-card">
+                <input
+                  type="checkbox"
+                  class="intent-page-checkbox"
+                  value="${page.slug}"
+                  ${checked ? "checked" : ""}
+                />
+
+                <div class="intent-page-meta">
+                  <strong>${page.hero_heading || page.slug}</strong>
+
+                  <p>${page.intro_copy || ""}</p>
+
+                  <div class="intent-page-tags">
+                    ${
+                      page.property_type
+                        ? `<span>${page.property_type}</span>`
+                        : ""
+                    }
+
+                    ${
+                      page.lifestyle_angle
+                        ? `<span>${String(page.lifestyle_angle).replaceAll("_", " ")}</span>`
+                        : ""
+                    }
+
+                    ${
+                      page.price_max
+                        ? `<span>Under $${Number(page.price_max).toLocaleString()}</span>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              </label>
+            `;
+          })
+          .join("");
       }
 
       async function loadFilterOptions() {
         status.textContent = "Loading listing filters...";
+
         const filtersJson = await fetchJsonSafe("/api/listing-filters");
+
         if (filtersJson) {
           filterOptions.cities = uniqueOptions(filtersJson.cities || []);
           filterOptions.types = uniqueOptions(filtersJson.types || filtersJson.propertyTypes || []);
+
           const areasByCity = filtersJson.areasByCity || {};
-          filterOptions.areasByCity = Object.fromEntries(Object.entries(areasByCity).map(([city, areas]) => [normalizeFilterValue(city), uniqueOptions(areas)]));
+
+          filterOptions.areasByCity = Object.fromEntries(
+            Object.entries(areasByCity).map(([city, areas]) => [
+              normalizeFilterValue(city),
+              uniqueOptions(areas)
+            ])
+          );
+
           status.textContent = "";
           return;
         }
+
         filterOptions.cities = [];
         filterOptions.types = [];
         filterOptions.areasByCity = {};
@@ -657,19 +845,34 @@ const slug = "chris-crump";
       function populateCitySelects() {
         Array.from(document.querySelectorAll(".city-select")).forEach((select) => {
           const current = normalizeFilterValue(select.value) || getPrimaryCity();
-          select.innerHTML = [`<option value="">Any city</option>`, ...filterOptions.cities.map((city) => `<option value="${city.value}" ${city.value === current ? "selected" : ""}>${city.label}</option>`)].join("");
+
+          select.innerHTML = [
+            `<option value="">Any city</option>`,
+            ...filterOptions.cities.map((city) =>
+              `<option value="${city.value}" ${city.value === current ? "selected" : ""}>${city.label}</option>`
+            )
+          ].join("");
         });
       }
 
       function populateTypeSelects() {
         Array.from(document.querySelectorAll(".type-select")).forEach((select) => {
           const current = normalizeFilterValue(select.value);
-          select.innerHTML = [`<option value="">Any type</option>`, ...filterOptions.types.map((type) => `<option value="${type.value}" ${type.value === current ? "selected" : ""}>${type.label}</option>`)].join("");
+
+          select.innerHTML = [
+            `<option value="">Any type</option>`,
+            ...filterOptions.types.map((type) =>
+              `<option value="${type.value}" ${type.value === current ? "selected" : ""}>${type.label}</option>`
+            )
+          ].join("");
         });
       }
 
       function getCityForAreaSelect(areaSelect) {
-        if (areaSelect.name === "newListingsArea") return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
+        if (areaSelect.name === "newListingsArea") {
+          return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
+        }
+
         const groupNum = areaSelect.name.match(/\d+/)?.[0];
         return normalizeFilterValue(form.elements[`group${groupNum}City`]?.value || getPrimaryCity());
       }
@@ -679,7 +882,13 @@ const slug = "chris-crump";
           const current = normalizeFilterValue(select.value);
           const city = getCityForAreaSelect(select);
           const areas = filterOptions.areasByCity[city] || [];
-          select.innerHTML = [`<option value="">Any area</option>`, ...areas.map((area) => `<option value="${area.value}" ${area.value === current ? "selected" : ""}>${area.label}</option>`)].join("");
+
+          select.innerHTML = [
+            `<option value="">Any area</option>`,
+            ...areas.map((area) =>
+              `<option value="${area.value}" ${area.value === current ? "selected" : ""}>${area.label}</option>`
+            )
+          ].join("");
         });
       }
 
@@ -691,31 +900,56 @@ const slug = "chris-crump";
 
       function fillForm(data) {
         const savedGroups = Array.isArray(data?.groups) ? data.groups : [];
+
         const mergedGroups = [1, 2, 3, 4].map((_, index) => {
           const saved = savedGroups[index] || {};
           const fallback = defaults.groups[index] || {};
-          const isBlank = !saved.kicker && !saved.title && !saved.text && !saved.href && !saved.city && !saved.area && !saved.type && !saved.minPrice && !saved.maxPrice;
+
+          const isBlank =
+            !saved.kicker &&
+            !saved.title &&
+            !saved.text &&
+            !saved.href &&
+            !saved.city &&
+            !saved.area &&
+            !saved.type &&
+            !saved.minPrice &&
+            !saved.maxPrice;
+
           return isBlank ? fallback : { ...fallback, ...saved };
         });
 
-        const merged = { ...defaults, ...(data || {}), groups: mergedGroups };
+        const merged = {
+          ...defaults,
+          ...(data || {}),
+          groups: mergedGroups
+        };
 
-        // Set template radio buttons
         setSelectedTemplate(merged.template || "brutal");
 
         Object.entries(merged).forEach(([key, value]) => {
-          if (key === "groups" || key === "template") return;
+          if (key === "groups" || key === "template" || key === "enabledIntentPageSlugs") return;
+
           const field = form.elements[key];
+
           if (!field) return;
-          if (key === "city" || key === "newListingsCity" || key === "newListingsArea" || key === "newListingsType") {
+
+          if (
+            key === "city" ||
+            key === "newListingsCity" ||
+            key === "newListingsArea" ||
+            key === "newListingsType"
+          ) {
             field.value = normalizeFilterValue(value);
             return;
           }
+
           field.value = value || "";
         });
 
         [1, 2, 3, 4].forEach((num) => {
           const group = merged.groups[num - 1] || {};
+
           form.elements[`group${num}Kicker`].value = group.kicker || "";
           form.elements[`group${num}Title`].value = group.title || "";
           form.elements[`group${num}Text`].value = group.text || "";
@@ -740,16 +974,30 @@ const slug = "chris-crump";
         const res = await fetch(`/api/agent-page?slug=${encodeURIComponent(slug)}`);
         const json = await res.json();
         const data = json?.data || defaults;
+
         fillForm(data);
+
+        await loadIntentPages(data?.enabledIntentPageSlugs || []);
+
         await loadFilterOptions();
         populateDropdowns();
+
         fillForm(data);
         populateDropdowns();
+
+        await loadIntentPages(data?.enabledIntentPageSlugs || []);
       }
 
-      form.addEventListener("change", (event) => {
+      form.addEventListener("change", async (event) => {
         if (event.target?.classList?.contains("city-select")) {
           populateAreaSelects();
+        }
+
+        if (event.target?.name === "city") {
+          await loadIntentPages(
+            Array.from(document.querySelectorAll(".intent-page-checkbox:checked"))
+              .map((el) => el.value)
+          );
         }
       });
 
@@ -760,23 +1008,28 @@ const slug = "chris-crump";
         const formData = new FormData(form);
         const data = normalizeSavedData(Object.fromEntries(formData.entries()));
 
-        // Capture template from radio (FormData handles it correctly since only checked radio is included)
         data.template = data.template || "brutal";
 
-        data.groups = [1, 2, 3, 4].map((num) => {
-          const group = {
-            kicker: data[`group${num}Kicker`] || "",
-            title: data[`group${num}Title`] || "",
-            text: data[`group${num}Text`] || "",
-            city: normalizeFilterValue(data[`group${num}City`]),
-            area: normalizeFilterValue(data[`group${num}Area`]),
-            type: normalizeFilterValue(data[`group${num}Type`]),
-            minPrice: data[`group${num}MinPrice`] || "",
-            maxPrice: data[`group${num}MaxPrice`] || "",
-            sort: data[`group${num}Sort`] || "newest"
-          };
-          return { ...group, href: buildExploreHref(group) };
-        }).filter((group) => group.title || group.text || group.href);
+        data.groups = [1, 2, 3, 4]
+          .map((num) => {
+            const group = {
+              kicker: data[`group${num}Kicker`] || "",
+              title: data[`group${num}Title`] || "",
+              text: data[`group${num}Text`] || "",
+              city: normalizeFilterValue(data[`group${num}City`]),
+              area: normalizeFilterValue(data[`group${num}Area`]),
+              type: normalizeFilterValue(data[`group${num}Type`]),
+              minPrice: data[`group${num}MinPrice`] || "",
+              maxPrice: data[`group${num}MaxPrice`] || "",
+              sort: data[`group${num}Sort`] || "newest"
+            };
+
+            return {
+              ...group,
+              href: buildExploreHref(group)
+            };
+          })
+          .filter((group) => group.title || group.text || group.href);
 
         [1, 2, 3, 4].forEach((num) => {
           delete data[`group${num}Kicker`];
@@ -805,6 +1058,10 @@ const slug = "chris-crump";
         data.socialFeedUrl = data.socialFeedUrl || "";
         data.socialFeedEmbed = data.socialFeedEmbed || "";
 
+        data.enabledIntentPageSlugs = Array.from(
+          document.querySelectorAll(".intent-page-checkbox:checked")
+        ).map((el) => el.value);
+
         const res = await fetch("/api/agent-page", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -812,6 +1069,7 @@ const slug = "chris-crump";
         });
 
         const json = await res.json();
+
         status.textContent = json.ok ? "Saved." : json.error || "Save failed.";
       });
 

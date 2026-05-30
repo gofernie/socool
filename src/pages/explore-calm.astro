@@ -1,6 +1,7 @@
 ---
 import { createClient } from "@supabase/supabase-js";
-
+import ShortlistReviewModal from "../components/ShortlistReviewModal.astro";
+import IntentModalController from "../components/IntentModalController.astro";
 export const prerender = false;
 
 const supabase = createClient(
@@ -10,7 +11,7 @@ const supabase = createClient(
 
 const url = Astro.url;
 
-const city = url.searchParams.get("city") || "";
+const city = url.searchParams.get("city") || "nanaimo";
 const area = url.searchParams.get("area") || "";
 const type = url.searchParams.get("type") || "";
 const minPrice = Number(url.searchParams.get("minPrice") || 0);
@@ -93,7 +94,7 @@ let listings: any[] = [];
 let errorMessage = "";
 
 try {
-  let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(48);
+let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16);
 
   if (city) query = query.eq("normalized_city", clean(city));
 
@@ -179,137 +180,72 @@ try {
       /* ========== HERO ========== */
 
       .hero {
-        padding: 80px 0 60px;
-        background: var(--surface);
+        position: relative;
+        min-height: 360px;
+        padding: 56px 0 46px;
+        background:
+          linear-gradient(90deg, rgba(253,252,250,0.98) 0%, rgba(253,252,250,0.92) 42%, rgba(253,252,250,0.42) 62%, rgba(253,252,250,0.02) 100%),
+url("https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1800&q=80");        background-size: cover;
+        background-position: center right;
         border-bottom: 1px solid var(--line);
       }
 
       .hero__inner {
-        display: grid;
-        grid-template-columns: 1.3fr 0.7fr;
-        gap: 80px;
-        align-items: center;
+        display: block;
       }
 
       .eyebrow {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        margin: 0 0 20px;
+        gap: 10px;
+        margin: 0 0 18px;
         color: var(--accent);
         font-size: 0.72rem;
-        font-weight: 600;
+        font-weight: 850;
         letter-spacing: 0.12em;
         text-transform: uppercase;
       }
 
       .eyebrow::before {
         content: "";
-        width: 20px;
+        width: 28px;
         height: 1px;
-        background: var(--accent-light);
+        background: var(--accent);
       }
 
       h1 {
+        max-width: 560px;
         font-family: var(--f-display);
-        font-size: clamp(3rem, 6vw, 5.5rem);
-        font-weight: 400;
-        line-height: 1.08;
-        letter-spacing: -0.02em;
+        font-size: clamp(3.4rem, 6.6vw, 6rem);
+        font-weight: 500;
+        line-height: 0.92;
+        letter-spacing: -0.06em;
         color: var(--ink);
-        margin: 0 0 20px;
+        margin: 0 0 22px;
       }
 
       h1 em {
-        font-style: italic;
-        color: var(--accent);
+        font-style: normal;
+        color: inherit;
       }
 
       .hero-desc {
         color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.7;
-        max-width: 440px;
-        font-weight: 300;
+        font-size: 1.1rem;
+        line-height: 1.55;
+        max-width: 520px;
+        font-weight: 500;
       }
-
-      /* ========== HERO META CARD ========== */
 
       .hero__meta {
-        background: var(--surface-warm);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--line-warm);
-        overflow: hidden;
-        box-shadow: 0 4px 24px rgba(28, 25, 23, 0.07);
-      }
-
-      .hero__meta-body {
-        padding: 28px 28px 20px;
-      }
-
-      .hero__meta-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 12px;
-        color: var(--accent);
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-
-      .hero__meta-label::before {
-        content: "";
-        width: 16px;
-        height: 1px;
-        background: var(--accent-light);
-      }
-
-      .hero__meta-desc {
-        color: var(--muted);
-        font-size: 0.88rem;
-        line-height: 1.6;
-        font-weight: 300;
-      }
-
-      .hero-stats {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        border-top: 1px solid var(--line-warm);
-      }
-
-      .hero-stat {
-        padding: 20px 28px;
-        border-right: 1px solid var(--line-warm);
-      }
-
-      .hero-stat:last-child { border-right: 0; }
-
-      .hero-stat__label {
-        display: block;
-        font-size: 0.65rem;
-        font-weight: 600;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--soft);
-        margin-bottom: 6px;
-      }
-
-      .hero-stat__value {
-        display: block;
-        font-family: var(--f-display);
-        font-size: 2.4rem;
-        font-weight: 400;
-        line-height: 1;
-        letter-spacing: -0.02em;
-        color: var(--ink);
+        display: none;
       }
 
       /* ========== MAIN SECTION ========== */
 
-      .section {
-        padding: 60px 0 100px;
+           .section {
+        padding: 28px 0 100px;
+        background: #fffdf9;
       }
 
       /* ========== BACK LINK ========== */
@@ -334,70 +270,101 @@ try {
         transform: translateY(-1px);
       }
 
-      /* ========== SECTION HEAD ========== */
+      /* ========== TOOLBAR / RESULTS HEADER ========== */
 
-      .section-head {
+      .explore-toolbar {
         display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 32px;
-        padding-bottom: 24px;
-        margin-bottom: 28px;
-        border-bottom: 1px solid var(--line-warm);
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 26px;
       }
 
-      .section-head h2 {
-        margin: 0;
-        font-family: var(--f-display);
-        font-size: clamp(2rem, 4vw, 3.2rem);
-        font-weight: 400;
-        line-height: 1.1;
-        letter-spacing: -0.02em;
+      .view-pill {
+        display: inline-flex;
+        padding: 4px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line-warm);
+        box-shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
+      }
+
+      .view-pill__btn {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
         color: var(--ink);
+        min-height: 40px;
+        padding: 0 18px;
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 850;
+        cursor: pointer;
       }
 
-      .section-head h2 em {
-        font-style: italic;
-        color: var(--accent);
+      .view-pill__btn.active {
+        background: #eadcc9;
       }
 
-      .count {
-        flex-shrink: 0;
-        color: var(--soft);
-        font-size: 0.72rem;
+      .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 22px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line-warm);
+        box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+        color: var(--ink);
+        font-size: 0.88rem;
+        font-weight: 850;
+      }
+
+      .sort-pill {
+        margin-left: auto;
+      }
+
+      .results-heading {
+        margin: 0 0 18px;
+      }
+
+      .results-heading h2 {
+        margin: 0 0 4px;
+        font-family: var(--f-display);
+        font-size: 1.7rem;
         font-weight: 600;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        white-space: nowrap;
+        letter-spacing: -0.035em;
       }
 
-      /* ========== GRID ========== */
-
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        list-style: none;
-        padding: 0;
+      .results-heading p {
         margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        font-weight: 700;
       }
+      /* ========== GRID / INTENT CARDS ========== */
 
-      /* ========== CARD ========== */
+   .grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
 
       .card {
-        appearance: none;
-        display: flex;
-        flex-direction: column;
-        width: 100%;
         background: var(--surface);
-        border: 1px solid var(--line-warm);
         border-radius: var(--radius-lg);
         overflow: hidden;
-        text-align: left;
-        cursor: pointer;
+        border: 1px solid var(--line-warm);
         color: inherit;
-        padding: 0;
+        display: block;
+        cursor: pointer;
         transition: all 0.28s var(--ease);
+        box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
       }
 
       .card:hover {
@@ -406,70 +373,119 @@ try {
         border-color: var(--accent-light);
       }
 
-      .card__image {
-        width: 100%;
-        height: 220px;
-        background: linear-gradient(135deg, var(--accent-bg), var(--line-warm));
-        background-size: cover;
-        background-position: center;
-        flex-shrink: 0;
-        transition: opacity 0.28s var(--ease);
+      .card {
+  position: relative;
+}
+
+.card::before {
+  content: "♡";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  color: #8a5529;
+  font-size: 1.45rem;
+  font-weight: 800;
+  box-shadow: 0 8px 22px rgba(28, 25, 23, 0.14);
+}
+
+.card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.card-image-wrap {
+  position: relative;
+}
+
+.new-badge {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  z-index: 2;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: #b87934;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-body {
+  padding: 16px 16px 18px;
+  background: #fff;
+}
+
+.price {
+  font-size: 1.34rem;
+  line-height: 1.1;
+  font-weight: 950;
+  margin-bottom: 8px;
+  letter-spacing: -0.035em;
+}
+
+.address {
+  margin-bottom: 2px;
+  color: var(--ink);
+  line-height: 1.35;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.card-city {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  font-weight: 750;
+}
+
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.meta svg {
+  width: 15px;
+  height: 15px;
+  color: #9a5b25;
+}
+
+      .card-decision-badge {
+        display: inline-flex;
+        width: fit-content;
+        margin-top: 14px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
-      .card__body {
-        padding: 20px 22px 24px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+      .card-decision-badge[hidden] {
+        display: none;
       }
-
-      .price {
-        display: block;
-        font-family: var(--f-display);
-        font-size: 1.6rem;
-        font-weight: 500;
-        line-height: 1;
-        letter-spacing: -0.02em;
-        color: var(--ink);
-        margin-bottom: 8px;
-      }
-
-      .address {
-        margin: 0 0 10px;
-        color: var(--muted);
-        font-size: 0.88rem;
-        line-height: 1.4;
-        font-weight: 300;
-      }
-
-      .meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 12px;
-        color: var(--soft);
-        font-size: 0.78rem;
-        font-weight: 500;
-        margin-bottom: 10px;
-      }
-
-      .meta span + span::before {
-        content: "·";
-        margin-right: 12px;
-      }
-
-      .desc {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.84rem;
-        line-height: 1.6;
-        font-weight: 300;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        flex: 1;
-      }
-
       /* ========== EMPTY STATE ========== */
 
       .empty {
@@ -483,151 +499,14 @@ try {
         font-weight: 300;
       }
 
-      /* ========== MODAL ========== */
-
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(28, 25, 23, 0.6);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s var(--ease);
-        z-index: 800;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-
-      .modal-overlay.open { opacity: 1; pointer-events: auto; }
-
-      .panel {
-        position: fixed;
-        left: 50%;
-        top: 0;
-        width: min(920px, calc(100vw - 40px));
-        max-height: 100vh;
-        background: var(--surface);
-        z-index: 900;
-        overflow: hidden;
-        transform: translate(-50%, -110%);
-        transition: transform 0.45s var(--ease);
-        display: flex;
-        flex-direction: column;
-        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-        box-shadow: 0 24px 80px rgba(28, 25, 23, 0.2);
-      }
-
-      .panel.open { transform: translate(-50%, 0); }
-      .panel__grab { display: none; }
-
-      .panel__progress-track { height: 3px; background: var(--line); overflow: hidden; }
-      .panel__progress-bar { height: 100%; width: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-light)); }
-
-      .panel__header {
-        padding: 18px 28px;
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        align-items: center;
-        gap: 14px;
-        background: var(--surface);
-        border-bottom: 1px solid var(--line);
-      }
-
-      .panel__position { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
-      .panel__header-actions { display: flex; align-items: center; gap: 10px; }
-
-      .panel__top-btn, .panel__close, .panel__next-btn {
-        appearance: none;
-        height: 38px;
-        padding: 0 16px;
-        border-radius: 999px;
-        border: 1.5px solid var(--line-warm);
-        background: var(--surface);
-        color: var(--ink-soft);
-        cursor: pointer;
-        font: inherit;
-        font-size: 0.8rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s var(--ease);
-      }
-
-      .panel__top-btn:hover, .panel__close:hover, .panel__next-btn:hover { background: var(--ink); border-color: var(--ink); color: white; }
-      .panel__top-btn:disabled, .panel__next-btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
-      .panel__close { width: 38px; padding: 0; }
-      .panel__view { overflow-y: auto; flex: 1; }
-      .panel__image-stage { position: relative; background: var(--line); }
-      .panel__image { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
-
-      .panel__photo-count {
-        position: absolute; right: 16px; bottom: 16px; z-index: 2;
-        background: rgba(28, 25, 23, 0.75); color: white;
-        padding: 6px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
-      }
-
-      .photo-nav {
-        position: absolute; top: 50%; z-index: 3; transform: translateY(-50%);
-        width: 40px; height: 40px; border-radius: 999px;
-        border: 1.5px solid rgba(255,255,255,0.7);
-        background: rgba(28, 25, 23, 0.5); color: white;
-        font-size: 1.5rem; line-height: 1; cursor: pointer;
-        transition: all 0.2s var(--ease);
-      }
-
-      .photo-nav:hover { background: rgba(28, 25, 23, 0.85); }
-      .photo-nav--prev { left: 16px; }
-      .photo-nav--next { right: 16px; }
-      .photo-nav:disabled { opacity: 0.25; cursor: default; }
-
-      .panel__body { padding: 36px 40px 44px; }
-      .panel__price { font-family: var(--f-display); font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: var(--ink); margin: 0 0 10px; }
-      .panel__address { font-size: 1.2rem; color: var(--muted); line-height: 1.4; margin: 0 0 16px; font-weight: 300; }
-      .panel__meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; color: var(--ink-soft); font-size: 0.9rem; font-weight: 500; }
-
-      .panel__intelligence {
-        display: inline-flex; align-items: center; gap: 8px;
-        min-height: 36px; padding: 8px 16px;
-        background: var(--accent-bg); border: 1px solid var(--accent-light);
-        border-radius: 999px; color: var(--accent);
-        font-size: 0.8rem; font-weight: 600; margin-bottom: 20px;
-      }
-
-      .panel__intelligence::before { content: "✦"; }
-
-      .panel__detail-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 20px; color: var(--muted); font-size: 0.85rem; font-weight: 400; }
-      .panel__detail-row span + span::before { content: "·"; margin-right: 16px; color: var(--soft); }
-      .panel__highlights { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
-
-      .panel__highlight-chip {
-        display: inline-flex; align-items: center; min-height: 32px; padding: 6px 14px;
-        background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-light);
-        border-radius: 999px; font-size: 0.75rem; font-weight: 600;
-      }
-
-      .panel__section-title { margin: 0 0 10px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-light); }
-      .panel__desc { font-size: 0.95rem; line-height: 1.75; color: var(--muted); margin: 0 0 28px; font-weight: 300; }
-      .panel__cta-row { display: flex; justify-content: center; margin: 8px 0 20px; }
-
-      .panel__sms-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        min-height: 48px; padding: 0 32px;
-        background: var(--accent); color: white;
-        font-size: 0.88rem; font-weight: 600;
-        border-radius: 999px; border: 2px solid var(--accent);
-        transition: all 0.22s var(--ease);
-      }
-
-      .panel__sms-btn:hover { background: var(--ink); border-color: var(--ink); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(28,25,23,0.18); }
-      .panel__nav-row { display: flex; justify-content: center; gap: 12px; }
 
       /* ========== RESPONSIVE ========== */
 
-      @media (max-width: 1100px) {
-        .shell { width: calc(100% - 60px); }
-        .hero__inner { grid-template-columns: 1fr; gap: 48px; }
-        .grid { grid-template-columns: repeat(2, 1fr); }
-      }
+  @media (max-width: 1100px) {
+  .shell { width: calc(100% - 60px); }
+  .hero__inner { grid-template-columns: 1fr; gap: 48px; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
 
       @media (max-width: 768px) {
         .hero { padding: 60px 0 48px; }
@@ -639,12 +518,7 @@ try {
         .shell { width: calc(100% - 32px); }
         .grid { grid-template-columns: 1fr; }
         .hero-stats { grid-template-columns: 1fr 1fr; }
-        .panel { left: 0; right: 0; width: 100%; max-height: 100svh; border-radius: 0; transform: translateY(-110%); }
-        .panel.open { transform: translateY(0); }
-        .panel__grab { display: flex; justify-content: center; align-items: center; padding: 10px 0 6px; background: var(--surface); }
-        .panel__grab::before { content: ""; width: 40px; height: 4px; background: var(--line-warm); border-radius: 999px; }
-        .panel__header-actions { display: none; }
-        .panel__body { padding: 24px 20px 32px; }
+           /* Modal styles come from ShortlistReviewModal.astro */
       }
     </style>
 
@@ -658,57 +532,51 @@ try {
     })}></script>
   </head>
 
-  <body>
-    <header class="hero">
+<body
+  data-intent-page-id="homepage"
+  data-city={city || "nanaimo"}
+  data-slug="homepage"
+>  <header class="hero">
       <div class="shell hero__inner">
         <div>
-          <p class="eyebrow">Explore homes</p>
-          <h1>
-            {city || "Curated"}
-            <em>{type ? type.replace(/-/g, " ") : "listings."}</em>
-          </h1>
-          <p class="hero-desc">
-            {groupLabel
-              ? `A focused group of homes: ${groupLabel}.`
-              : "Listings pulled from the current market."}
-          </p>
+         <p class="eyebrow">Homes worth watching</p>
+
+<h1>
+  Discover homes in
+  <br />
+  {city || "Nanaimo"}.
+</h1>
+
+<p class="hero-desc">
+  Hand-picked properties that match your goals,
+  your lifestyle, and the way you want to live.
+</p>
         </div>
 
-        <aside class="hero__meta">
-          <div class="hero__meta-body">
-            <span class="hero__meta-label">Market snapshot</span>
-            <p class="hero__meta-desc">
-              {city ? `Active listings in ${city}${type ? ` · ${type}` : ""}${maxPrice ? ` · under $${maxPrice}k` : ""}` : "Listings pulled from the current market."}
-            </p>
-          </div>
-          <div class="hero-stats">
-            <div class="hero-stat">
-              <span class="hero-stat__label">Found</span>
-              <span class="hero-stat__value">{listings.length}</span>
-            </div>
-            <div class="hero-stat">
-              <span class="hero-stat__label">Market</span>
-              <span class="hero-stat__value">{city || "All"}</span>
-            </div>
-          </div>
-        </aside>
+       
       </div>
     </header>
 
     <main class="section">
       <div class="shell">
-        <nav aria-label="Page navigation">
-          <a class="back" href="/agent-listings-calm">← Back to agent page</a>
-        </nav>
+             <div class="explore-toolbar">
+          <div class="view-pill">
+            <button type="button" class="view-pill__btn active">☷ List</button>
+            <button type="button" class="view-pill__btn">⌖ Map</button>
+          </div>
 
-        <div class="section-head">
-          <h2>
-            {type
-              ? <>{listings.length} <em>{type.replace(/-/g, " ")}s</em> in {city || "this area"}.</>
-              : <>{listings.length} homes in <em>{city || "this area"}.</em></>
-            }
-          </h2>
-          <div class="count">{listings.length} {listings.length === 1 ? "home" : "homes"} found</div>
+          <div class="filter-pill">⌖ {city || "Nanaimo"}⌄</div>
+          <div class="filter-pill">{type ? getListingPropertyType({ normalized_type: type }) : "All Types"}⌄</div>
+          <div class="filter-pill">{maxPrice ? `Under $${maxPrice}k` : "Any Price"}⌄</div>
+          <div class="filter-pill">Any Beds⌄</div>
+          <div class="filter-pill">More Filters⌄</div>
+
+          <div class="filter-pill sort-pill">Newest first ⇅</div>
+        </div>
+
+        <div class="results-heading">
+          <h2>{listings.length} homes found</h2>
+          <p>Updated just now</p>
         </div>
 
         {errorMessage && <div class="empty">{errorMessage}</div>}
@@ -733,21 +601,33 @@ try {
 
               return (
                 <li style="display:contents;">
-                  <button
-                    type="button"
-                    class="card listing-modal-trigger"
-                    data-price={price}
-                    data-address={address}
-                    data-image={image}
+<article
+  class="card original-card"
+  data-item-id={String(listing?.id || listing?.mls_number || "")}
+  data-card-id={String(listing?.id || listing?.mls_number || "")}
+  data-listing-id={String(listing?.id || listing?.mls_number || "")}
+ data-price={price}
+data-raw-price={String(listing?.price || 0)}
+data-listed-at={String(listing?.listed_at || listing?.created_at || "")}
+                data-address={address}
+data-meta={`${beds || "-"} bed · ${baths || "-"} bath`}
+data-image={image}
                     data-images={JSON.stringify(images)}
                     data-beds={String(beds)}
                     data-baths={String(baths)}
                     data-sqft={String(sqft)}
                     data-description={description}
                     data-property-type={propertyType}
+                    data-type={String(listing?.normalized_type || listing?.property_type || type || "Home")}
                     data-year={String(getListingYearBuilt(listing))}
                     data-lot-size={String(getListingLotSize(listing))}
                     data-area={String(getListingArea(listing))}
+                    data-liked-tags="[]"
+data-is-favourite="false"
+data-decision=""
+data-lat={listing?.lat || ""}
+data-lng={listing?.lng || ""}
+data-city={String(listing?.normalized_city || listing?.city || city || "")}
                     data-highlights={JSON.stringify([
                       propertyType.toLowerCase().includes("condo") ? "Open outlook" : "",
                       description.toLowerCase().includes("parking") ? "Parking included" : "",
@@ -756,25 +636,26 @@ try {
                     data-mls={mls}
                     aria-label={`${price} — ${address}`}
                   >
-                    <div
-                      class="card__image"
-                      role="img"
-                      aria-label={`Photo of ${address}`}
-                      style={image ? `background-image:url('${image}');` : ""}
-                    ></div>
-                    <div class="card__body">
-                      <strong class="price">{price}</strong>
-                      <p class="address">{address}</p>
-                      <div class="meta">
-                        <span>{propertyType}</span>
-                        <span>{beds} Bed</span>
-                        <span>{baths} Bath</span>
-                        {sqft ? <span>{sqft} Sq Ft</span> : null}
-                      </div>
-                      <p class="desc">{description}</p>
-                    </div>
-                  </button>
-                </li>
+                  <div class="card-image-wrap">
+  <img src={image || "https://placehold.co/800x600?text=Listing"} alt={address || "Listing"} />
+  <span class="new-badge">New</span>
+</div>
+
+<div class="card-body">
+  <div class="price">{price}</div>
+  <div class="address">{address}</div>
+  <div class="card-city">{city || "Nanaimo"}, BC</div>
+
+  <div class="meta">
+    <span>🛏 {beds || "-"} bd</span>
+    <span>🛁 {baths || "-"} ba</span>
+    {sqft && <span>↗ {Number(sqft).toLocaleString()} sq ft</span>}
+  </div>
+
+  <div class="card-decision-badge" hidden></div>
+</div>
+                 </article>
+</li>
               );
             })}
           </ol>
@@ -782,184 +663,46 @@ try {
       </div>
     </main>
 
-    <div class="modal-overlay" id="listing-modal-overlay"></div>
+<ShortlistReviewModal />
+<IntentModalController />
 
-    <aside class="panel" id="listing-modal" aria-hidden="true">
-      <div class="panel__grab" aria-hidden="true"></div>
-      <div class="panel__progress-track"><div class="panel__progress-bar"></div></div>
-      <div class="panel__header">
-        <div class="panel__position" id="listing-modal-position">Listing preview</div>
-        <div class="panel__header-actions">
-          <button class="panel__top-btn" id="listing-modal-prev" type="button">← Previous</button>
-          <button class="panel__top-btn" id="listing-modal-next" type="button">Next →</button>
-        </div>
-        <button class="panel__close" id="listing-modal-close" type="button" aria-label="Close">✕</button>
-      </div>
-      <div class="panel__view" id="listing-modal-scroll">
-        <div class="panel__image-stage">
-          <img id="listing-modal-image" class="panel__image" src="https://placehold.co/800x600?text=Listing" alt="" loading="eager" decoding="async" />
-          <button type="button" class="photo-nav photo-nav--prev" id="listing-photo-prev">‹</button>
-          <button type="button" class="photo-nav photo-nav--next" id="listing-photo-next">›</button>
-          <div class="panel__photo-count" id="listing-photo-count">1 / 1 photos</div>
-        </div>
-        <div class="panel__body">
-          <h2 class="panel__price" id="listing-modal-price">—</h2>
-          <p class="panel__address" id="listing-modal-address">Address</p>
-          <div class="panel__meta" id="listing-modal-meta">—</div>
-          <div class="panel__intelligence" id="listing-modal-intelligence">Fresh listing worth a closer look</div>
-          <div class="panel__detail-row" id="listing-modal-detail-row"></div>
-          <div class="panel__highlights" id="listing-modal-highlights"></div>
-          <div>
-            <h3 class="panel__section-title">Description</h3>
-            <p class="panel__desc" id="listing-modal-description">A quiet preview of this property.</p>
-          </div>
-          <div class="panel__cta-row">
-            <a class="panel__sms-btn" id="listing-modal-sms" href="#">Request info / showing →</a>
-          </div>
-          <div class="panel__nav-row">
-            <button class="panel__next-btn" id="listing-modal-bottom-prev" type="button">← Previous</button>
-            <button class="panel__next-btn" id="listing-modal-bottom-next" type="button">Next →</button>
-          </div>
-        </div>
-      </div>
-    </aside>
+<style is:global>
+  #preview-sheet .decision-btn.is-selected {
+    background: #1f1b18 !important;
+    border-color: #f0c6b3 !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 4px rgba(240, 198, 179, 0.75), 0 14px 34px rgba(17, 14, 9, 0.14) !important;
+    animation: intentDecisionPulse 0.7s ease-out !important;
+  }
 
-    <script is:inline>
-      function initExploreModal() {
-        const modal = document.getElementById("listing-modal");
-        const overlay = document.getElementById("listing-modal-overlay");
-        const closeBtn = document.getElementById("listing-modal-close");
-        const imageEl = document.getElementById("listing-modal-image");
-        const priceEl = document.getElementById("listing-modal-price");
-        const addressEl = document.getElementById("listing-modal-address");
-        const metaEl = document.getElementById("listing-modal-meta");
-        const descEl = document.getElementById("listing-modal-description");
-        const positionEl = document.getElementById("listing-modal-position");
-        const intelligenceEl = document.getElementById("listing-modal-intelligence");
-        const detailRowEl = document.getElementById("listing-modal-detail-row");
-        const highlightsEl = document.getElementById("listing-modal-highlights");
-        const smsEl = document.getElementById("listing-modal-sms");
-        const photoCountEl = document.getElementById("listing-photo-count");
-        const photoPrevBtn = document.getElementById("listing-photo-prev");
-        const photoNextBtn = document.getElementById("listing-photo-next");
-        const prevListingBtn = document.getElementById("listing-modal-prev");
-        const nextListingBtn = document.getElementById("listing-modal-next");
-        const bottomPrevListingBtn = document.getElementById("listing-modal-bottom-prev");
-        const bottomNextListingBtn = document.getElementById("listing-modal-bottom-next");
-        const scrollArea = document.getElementById("listing-modal-scroll");
+  #preview-sheet .decision-btn.is-selected::after {
+    content: "✓";
+    margin-left: 8px;
+    font-weight: 900;
+  }
 
-        if (!modal || !overlay) return;
-        if (modal.dataset.initialized === "true") return;
-        modal.dataset.initialized = "true";
+  #preview-sheet .chip::before,
+  #preview-sheet .feedback-pill::before,
+  #preview-sheet .intent-like-tag::before {
+    content: "✦";
+    color: #8d8a84;
+    font-size: 0.72rem;
+  }
 
-        let activePhotos = [], activePhotoIndex = 0, allCards = [], activeIndex = -1;
+  #preview-sheet .chip.active,
+  #preview-sheet .feedback-pill.active,
+  #preview-sheet .intent-like-tag.active {
+    background: #1f1b18 !important;
+    border-color: #1f1b18 !important;
+    color: #fff !important;
+  }
 
-        function parseImages(value, fallback) {
-          try { const parsed = JSON.parse(value || "[]"); const images = Array.isArray(parsed) ? parsed.filter(Boolean) : []; return Array.from(new Set([fallback, ...images].filter(Boolean))); }
-          catch { return fallback ? [fallback] : []; }
-        }
-
-        function preloadImage(src) { if (!src) return; const img = new Image(); img.src = src; }
-
-        function renderPhoto() {
-          if (!imageEl) return;
-          imageEl.src = activePhotos[activePhotoIndex] || "https://placehold.co/800x600?text=Listing";
-          preloadImage(activePhotos[activePhotoIndex + 1]);
-          preloadImage(activePhotos[activePhotoIndex - 1]);
-          if ("requestIdleCallback" in window) { window.requestIdleCallback(() => activePhotos.slice(8).forEach(preloadImage)); } else { setTimeout(() => activePhotos.slice(8).forEach(preloadImage), 800); }
-          if (photoCountEl) photoCountEl.textContent = `${activePhotoIndex + 1} / ${Math.max(activePhotos.length, 1)} photos`;
-          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
-          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotos.length - 1;
-        }
-
-        function updateNavButtons() {
-          [prevListingBtn, bottomPrevListingBtn].forEach(b => { if (b) b.disabled = activeIndex <= 0; });
-          [nextListingBtn, bottomNextListingBtn].forEach(b => { if (b) b.disabled = activeIndex >= allCards.length - 1; });
-        }
-
-        function buildNote(card) {
-          const desc = String(card.dataset.description || "").toLowerCase();
-          const pt = String(card.dataset.propertyType || "").toLowerCase();
-          const beds = Number(card.dataset.beds || 0);
-          const baths = Number(card.dataset.baths || 0);
-          const sqft = Number(String(card.dataset.sqft || "").replace(/[^0-9.]/g, ""));
-          const isCondo = pt.includes("condo") || pt.includes("apartment");
-          const isHouse = pt.includes("house") || pt.includes("detached") || pt.includes("single family");
-          const isTownhouse = pt.includes("townhouse") || pt.includes("townhome") || pt.includes("row");
-          const hasView = /ocean view|water view|harbour view|harbor view|lake view|mountain view|city view|panoramic view/.test(desc);
-          const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
-          const hasSuite = /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
-          const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
-          const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
-          if (isCondo) { if (sqft >= 900 && outdoor) return "Feels bigger than most condos"; if (isUpdated) return "Move-in ready condo"; if (hasParking) return "Convenient everyday setup"; return "Low-maintenance living"; }
-          if (isTownhouse) { if (beds >= 3 && outdoor) return "Great layout for everyday living"; if (hasParking) return "Practical townhome setup"; return "Balanced space and value"; }
-          if (isHouse) { if (hasView && hasSuite) return "Views and income potential"; if (beds >= 4 && baths >= 3) return "Checks the boxes for a growing family"; if (hasSuite) return "Flexible layout with suite"; if (hasView) return "Nice outlook from main living"; return "Solid detached option"; }
-          if (hasView) return "Open outlook worth noting";
-          if (isUpdated) return "Updated features stand out";
-          return "Worth a closer look";
-        }
-
-        function openModal(card, resetIndex = true) {
-          if (resetIndex) { allCards = Array.from(document.querySelectorAll(".listing-modal-trigger")); activeIndex = allCards.indexOf(card); }
-          const image = card.dataset.image || "";
-          const address = card.dataset.address || "Address available";
-          const mls = card.dataset.mls || "";
-          activePhotos = parseImages(card.dataset.images || "[]", image);
-          activePhotoIndex = 0;
-          if (priceEl) priceEl.textContent = card.dataset.price || "Price on request";
-          if (addressEl) addressEl.textContent = address;
-          if (imageEl) imageEl.alt = address;
-          if (descEl) descEl.textContent = card.dataset.description || "A quiet preview of this property.";
-          if (positionEl) positionEl.textContent = mls ? `MLS ${mls}` : "Listing preview";
-          if (intelligenceEl) intelligenceEl.textContent = buildNote(card);
-          if (detailRowEl) {
-            const details = [card.dataset.propertyType, card.dataset.area, card.dataset.year ? `Built ${card.dataset.year}` : "", card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""].filter(Boolean);
-            detailRowEl.innerHTML = details.map(i => `<span>${i}</span>`).join("");
-          }
-          if (highlightsEl) {
-            let h = []; try { h = JSON.parse(card.dataset.highlights || "[]"); } catch {}
-            highlightsEl.innerHTML = h.map(i => `<span class="panel__highlight-chip">${i}</span>`).join("");
-          }
-          if (metaEl) metaEl.textContent = [card.dataset.beds ? `${card.dataset.beds} Bed` : "", card.dataset.baths ? `${card.dataset.baths} Bath` : "", card.dataset.sqft ? `${card.dataset.sqft} Sq Ft` : ""].filter(Boolean).join(" • ");
-          if (smsEl) {
-            const msg = `Hi, I'd like more info or a showing for ${address}${mls ? ` MLS ${mls}` : ""}.`;
-            smsEl.href = `mailto:?subject=Listing Inquiry&body=${encodeURIComponent(msg)}`;
-          }
-          renderPhoto();
-          updateNavButtons();
-          modal.classList.add("open");
-          overlay.classList.add("open");
-          modal.setAttribute("aria-hidden", "false");
-          document.body.classList.add("modal-open");
-          requestAnimationFrame(() => { if (scrollArea) scrollArea.scrollTop = 0; });
-        }
-
-        function closeModal() {
-          modal.classList.remove("open");
-          overlay.classList.remove("open");
-          modal.setAttribute("aria-hidden", "true");
-          document.body.classList.remove("modal-open");
-        }
-
-        document.addEventListener("click", (e) => { const trigger = e.target.closest(".listing-modal-trigger"); if (!trigger) return; e.preventDefault(); e.stopPropagation(); openModal(trigger); });
-        closeBtn?.addEventListener("click", closeModal);
-        overlay?.addEventListener("click", closeModal);
-        photoPrevBtn?.addEventListener("click", () => { if (activePhotoIndex > 0) { activePhotoIndex--; renderPhoto(); } });
-        photoNextBtn?.addEventListener("click", () => { if (activePhotoIndex < activePhotos.length - 1) { activePhotoIndex++; renderPhoto(); } });
-        prevListingBtn?.addEventListener("click", () => { if (activeIndex > 0) { activeIndex--; openModal(allCards[activeIndex], false); } });
-        nextListingBtn?.addEventListener("click", () => { if (activeIndex < allCards.length - 1) { activeIndex++; openModal(allCards[activeIndex], false); } });
-        bottomPrevListingBtn?.addEventListener("click", () => { if (activeIndex > 0) { activeIndex--; openModal(allCards[activeIndex], false); } });
-        bottomNextListingBtn?.addEventListener("click", () => { if (activeIndex < allCards.length - 1) { activeIndex++; openModal(allCards[activeIndex], false); } });
-        document.addEventListener("keydown", (e) => {
-          if (!modal.classList.contains("open")) return;
-          if (e.key === "Escape") closeModal();
-          if (e.key === "ArrowLeft") { if (activePhotoIndex > 0) { activePhotoIndex--; renderPhoto(); } }
-          if (e.key === "ArrowRight") { if (activePhotoIndex < activePhotos.length - 1) { activePhotoIndex++; renderPhoto(); } }
-        });
-      }
-
-      if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", initExploreModal, { once: true }); } else { initExploreModal(); }
-      document.addEventListener("astro:page-load", initExploreModal);
-    </script>
+  @keyframes intentDecisionPulse {
+    0% { transform: scale(0.98); }
+    55% { transform: scale(1.025); }
+    100% { transform: scale(1); }
+  }
+</style>
+  
   </body>
 </html>

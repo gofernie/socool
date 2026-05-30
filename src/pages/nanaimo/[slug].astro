@@ -1,7 +1,7 @@
 ---
 import { createClient } from "@supabase/supabase-js";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
-
+import IntentModalController from "../../components/IntentModalController.astro";
 export const prerender = false;
 
 const supabase = createClient(
@@ -95,13 +95,45 @@ const priceLabel = page.price_max
     ? `${formatPrice(page.price_min)}+`
     : "Live market";
 
-const priceExpansionOne = page.price_max
-  ? formatPrice(Number(page.price_max) + 50000)
-  : "";
+const priceDirectionLabels = page.price_max
+  ? [
+      "Show lower-priced options",
+      `Show up to ${formatPrice(Number(page.price_max) + 50000)}`,
+      `Show up to ${formatPrice(Number(page.price_max) + 100000)}`,
+      "Stay close to this budget",
+    ]
+  : [
+      "Show lower-priced options",
+      "Show mid-range options",
+      "Show premium options",
+      "Show best value",
+    ];
 
-const priceExpansionTwo = page.price_max
-  ? formatPrice(Number(page.price_max) + 100000)
-  : "";
+const defaultFeatureDirectionsByType: Record<string, string[]> = {
+  condo: ["Better layout", "More modern", "Walkability", "Views"],
+  house: ["Better layout", "Larger yard", "Garage space", "Suite potential"],
+  townhouse: ["Better layout", "Garage space", "Outdoor space", "Better value"],
+  mobile: ["Better value", "Updated", "Parking", "Outdoor space"],
+};
+
+const savedFeatureLabels = features.map((feature) =>
+  feature
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+);
+
+const fallbackFeatureLabels =
+  defaultFeatureDirectionsByType[String(page.property_type || "house").toLowerCase()] ||
+  ["Better layout", "More modern", "Better value", "Outdoor space"];
+
+const featureDirectionLabels = Array.from(
+  new Set([
+    ...savedFeatureLabels,
+    ...fallbackFeatureLabels,
+    "Better value",
+    "More modern",
+  ])
+);
 ---
 
 <html lang="en">
@@ -109,25 +141,33 @@ const priceExpansionTwo = page.price_max
     <meta charset="utf-8" />
     <title>{page.seo_title}</title>
     <meta name="description" content={page.intro_copy} />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" />
     <style>
-      :root {
-        --bg: #f4efe7;
-        --surface: #ffffff;
-        --surface-soft: #fffaf1;
-        --ink: #181614;
-        --muted: rgba(24, 22, 20, 0.62);
-        --line: rgba(24, 22, 20, 0.14);
-        --accent: #ff4d00;
-        --accent-soft: rgba(255, 77, 0, 0.1);
-        --hero-bg: #0a0a0a;
-        --hero-ink: #ffffff;
-        --hero-muted: rgba(255, 255, 255, 0.68);
-        --radius-lg: 18px;
-        --radius-md: 18px;
-        --serif: Georgia, "Times New Roman", serif;
-        --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+   :root {
+        --bg: #f5f2ed;
+        --surface: #fdfcfa;
+        --surface-soft: #f9f6f1;
+        --ink: #1c1917;
+        --ink-soft: #3d3935;
+        --muted: #6b6560;
+        --soft: #9c9590;
+        --line: #e8e3dc;
+        --line-warm: #ddd8d0;
+        --accent: #8b6f47;
+        --accent-light: #c4a882;
+        --accent-soft: #f7f0e6;
+        --hero-bg: #fdfcfa;
+        --hero-ink: #1c1917;
+        --hero-muted: #6b6560;
+        --radius-lg: 20px;
+        --radius-md: 12px;
+        --serif: "Lora", Georgia, serif;
+        --sans: "Nunito Sans", system-ui, sans-serif;
+        --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
 
       * {
@@ -145,40 +185,53 @@ const priceExpansionTwo = page.price_max
         color: inherit;
       }
 
-      .page {
-        max-width: 1220px;
-        margin: 0 auto;
-        padding: 24px 20px 100px;
-      }
+    .page {
+  width: 100%;
+  margin: 0;
+  padding: 0 0 100px;
+}
 
-      .intent-hero {
-        position: relative;
-        overflow: hidden;
-        background: var(--hero-bg);
-        color: var(--hero-ink);
-        border-radius: 24px;
-        padding: clamp(34px, 5vw, 58px);
-        margin-bottom: 22px;
-      }
+.intent-content-shell {
+  width: min(1400px, calc(100% - 80px));
+  margin: 0 auto;
+  padding-top: 28px;
+}
 
-      .intent-hero::before {
+.intent-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 360px;
+  padding: 56px 0 46px;
+  margin-bottom: 0;
+  background:
+    linear-gradient(90deg, rgba(253,252,250,0.98) 0%, rgba(253,252,250,0.92) 42%, rgba(253,252,250,0.42) 62%, rgba(253,252,250,0.02) 100%),
+    url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1800&q=80");
+  background-size: cover;
+  background-position: center right;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+     .intent-hero::before {
         content: "";
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(circle at top right, var(--accent-soft), transparent 34%),
-          linear-gradient(135deg, rgba(255,255,255,0.08), transparent 35%);
+          radial-gradient(circle at top right, rgba(139,111,71,0.12), transparent 36%),
+          linear-gradient(135deg, rgba(196,168,130,0.1), transparent 40%);
         pointer-events: none;
       }
 
-      .hero-inner {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr);
-        gap: 34px;
-        align-items: end;
-      }
+  .hero-inner {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(1400px, calc(100% - 80px));
+  margin: 0 auto;
+  max-width: none;
+}
 
       .eyebrow {
         display: inline-flex;
@@ -194,34 +247,35 @@ const priceExpansionTwo = page.price_max
         color: var(--hero-muted);
       }
 
-      .intent-hero h1 {
-        max-width: 800px;
-        margin: 0;
-        font-family: var(--serif);
-        font-size: clamp(3rem, 8vw, 6.8rem);
-        line-height: 0.88;
-        letter-spacing: -0.075em;
-        font-weight: 500;
-      }
+     .intent-hero h1 {
+  max-width: 760px;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(3.8rem, 7vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  font-weight: 500;
+}
 
-      .accent-dot {
-        color: var(--accent);
-      }
+.accent-dot {
+  color: var(--accent);
+}
 
-      .hero-copy {
-        max-width: 760px;
-        margin: 22px 0 0;
-        color: var(--hero-muted);
-        font-size: clamp(1rem, 1.8vw, 1.22rem);
-        line-height: 1.55;
-      }
+.hero-copy {
+  max-width: 760px;
+  margin: 22px 0 0;
+  color: var(--hero-muted);
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  line-height: 1.55;
+}
 
-      .hero-side-card {
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 18px;
-        padding: 22px;
-        backdrop-filter: blur(12px);
+ .hero-side-card {
+        align-self: end;
+        background: rgba(253, 252, 250, 0.82);
+        border: 1px solid var(--line-warm);
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 18px 50px rgba(28, 25, 23, 0.08);
       }
 
       .hero-side-card strong {
@@ -239,72 +293,158 @@ const priceExpansionTwo = page.price_max
         line-height: 1.55;
       }
 
-      .hero-stats {
+      .hero-side-card,
+.hero-stats,
+.pill-row {
+  display: none;
+}
+
+  .hero-stats {
+        position: relative;
+        z-index: 1;
         display: grid;
         grid-template-columns: repeat(3, minmax(0,1fr));
         gap: 14px;
-        margin-top: 34px;
+        margin-top: 40px;
       }
 
       .stat-card {
-        position: relative;
-        z-index: 1;
-        background: rgba(255,255,255,0.07);
-        border: 1px solid rgba(255,255,255,0.16);
-        border-radius: 16px;
-        padding: 18px;
+        background: rgba(253, 252, 250, 0.78);
+        border: 1px solid var(--line-warm);
+        border-radius: 20px;
+        padding: 22px 24px;
+        box-shadow: 0 10px 32px rgba(28, 25, 23, 0.06);
       }
 
       .stat-value {
-        font-size: 1.45rem;
-        font-weight: 850;
-        margin-bottom: 6px;
+        font-family: var(--serif);
+        font-size: clamp(1.75rem, 2.8vw, 2.4rem);
+        line-height: 1;
+        font-weight: 500;
+        margin-bottom: 8px;
         text-transform: capitalize;
+        letter-spacing: -0.04em;
       }
 
       .stat-label {
-        color: var(--hero-muted);
-        font-size: .88rem;
+        color: var(--muted);
+        font-size: .82rem;
+        font-weight: 600;
       }
 
-      .pill-row {
+     .pill-row {
         position: relative;
         z-index: 1;
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
-        margin-top: 24px;
+        margin-top: 18px;
       }
 
       .pill {
-        padding: 8px 14px;
+        padding: 8px 13px;
         border-radius: 999px;
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.16);
-        color: var(--hero-muted);
-        font-size: 0.84rem;
+        background: var(--accent-soft);
+        border: 1px solid var(--line-warm);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 700;
         text-transform: capitalize;
       }
 
-      .market-context {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0,1fr));
-        gap: 18px;
-        margin-bottom: 34px;
-      }
+     .market-context {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
 
-      .context-card {
-        background: var(--surface);
-        border: 1px solid var(--line);
-        border-radius: var(--radius-lg);
-        padding: 22px;
-      }
+.intent-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 26px;
+}
 
-      .context-card h3 {
-        margin: 0 0 16px;
-        font-size: 1.15rem;
-        letter-spacing: -0.03em;
-      }
+.intent-controls .view-toggle {
+  margin: 0;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
+}
+
+.intent-controls .view-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.intent-controls .view-btn + .view-btn {
+  border-left: 0;
+}
+
+.intent-controls .view-btn.active {
+  background: #eadcc9;
+  color: var(--ink);
+}
+
+.intent-controls select,
+.intent-controls .clear-filter {
+  min-height: 44px;
+  padding: 0 34px 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+}
+
+.intent-controls select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 180px;
+  padding-right: 46px !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%),
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  background-position:
+    calc(100% - 22px) 19px,
+    calc(100% - 16px) 19px;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.area-filter-select,
+.price-filter-select {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+  cursor: pointer;
+}
+
+     .context-card {
+  display: contents;
+}
+
+     .context-card h3 {
+  display: none;
+}
 
       .context-links {
         display: flex;
@@ -403,10 +543,10 @@ const priceExpansionTwo = page.price_max
       }
 
       .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 18px;
-      }
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
 
     .grid.map-hidden {
   display: none;
@@ -416,25 +556,34 @@ body.is-map-mode .bottom-refine-cta {
   display: none;
 }
 
-      .card {
-        background: var(--surface);
-        border-radius: 16px;
+  .card {
+         background: #fff;
+        border-radius: var(--radius-lg);
         overflow: hidden;
-        border: 1px solid var(--line);
+        border: 1px solid var(--line-warm);
         color: inherit;
         display: block;
         cursor: pointer;
-        transition: transform 0.16s ease, box-shadow 0.16s ease;
+        transition: all 0.28s var(--ease);
+        box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
       }
 
       .card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 14px 34px rgba(24, 22, 20, 0.12);
+        transform: translateY(-4px);
+        box-shadow: 0 16px 48px rgba(28, 25, 23, 0.1);
+        border-color: var(--accent-light);
       }
 
-      .card img {
-        width: 100%;
-        aspect-ratio: 16 / 10;
+      .grid > article[hidden],
+.grid > aside[hidden],
+.grid > section[hidden],
+.grid > div[hidden] {
+  display: none !important;
+}
+
+   .card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
         object-fit: cover;
         display: block;
       }
@@ -442,6 +591,46 @@ body.is-map-mode .bottom-refine-cta {
       .card-body {
         padding: 16px;
       }
+
+     .card-decision-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card-decision-badge[hidden] {
+  display: none;
+}
+
+.card-decision-badge.is-love {
+  background: rgba(255, 77, 0, 0.14);
+  color: #ff4d00;
+}
+
+.card-decision-badge.is-maybe {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.72);
+}
+
+.card-decision-badge.is-pass {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.56);
+}
+
+.card.is-passed {
+  opacity: 0.32;
+  filter: grayscale(0.55);
+}
+
+.card.is-passed:hover {
+  opacity: 0.65;
+}
 
       .price {
         font-size: 1.36rem;
@@ -460,73 +649,75 @@ body.is-map-mode .bottom-refine-cta {
         color: var(--muted);
       }
 
-      .interrupt-card {
-        grid-column: 1 / -1;
-        position: relative;
-        overflow: hidden;
-        background: var(--hero-bg);
-        color: var(--hero-ink);
-        border-radius: 22px;
-        padding: clamp(22px, 4vw, 34px);
-      }
+     .interrupt-card {
+  grid-column: 1 / -1;
+  margin: 12px 0 18px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06);
+}
 
-      .interrupt-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(circle at top right, rgba(255, 77, 0, 0.22), transparent 36%),
-          linear-gradient(135deg, rgba(255,255,255,0.08), transparent 42%);
-        pointer-events: none;
-      }
+.interrupt-card::before {
+  display: none;
+}
 
-      .interrupt-inner {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-        gap: 24px;
-        align-items: center;
-      }
+.interrupt-inner {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 28px;
+  align-items: center;
+}
 
-      .interrupt-kicker {
-        display: inline-flex;
-        margin-bottom: 12px;
-        color: var(--accent);
-        font-size: 0.78rem;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
+.interrupt-kicker {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-      .interrupt-card h3 {
-        margin: 0;
-        font-family: var(--serif);
-        font-size: clamp(2rem, 4vw, 4rem);
-        line-height: 0.95;
-        letter-spacing: -0.055em;
-        font-weight: 500;
-      }
+.interrupt-card h3 {
+  max-width: 420px;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 3.2vw, 3.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  font-weight: 500;
+}
 
-      .interrupt-card p {
-        margin: 14px 0 0;
-        color: var(--hero-muted);
-        line-height: 1.55;
-      }
+.interrupt-card p {
+  max-width: 420px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
 
-      .interrupt-groups {
-        display: grid;
-        gap: 16px;
-      }
+.interrupt-groups {
+  display: grid;
+  gap: 12px;
+}
 
-      .interrupt-group-label {
-        margin-bottom: 8px;
-        color: rgba(255,255,255,0.56);
-        font-size: 0.82rem;
-        font-weight: 850;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
+.interrupt-group-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--line-warm);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: none;
+}
+
+.interrupt-group-label {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
       .interrupt-options {
         display: flex;
@@ -595,11 +786,11 @@ body.is-map-mode .bottom-refine-cta {
         margin-bottom: 12px;
       }
 
-      .refine-chip {
+ .refine-chip {
         appearance: none;
-        border: 1px solid rgba(255,255,255,0.2);
-        background: rgba(255,255,255,0.08);
-        color: var(--hero-ink);
+        border: 1px solid var(--line-warm);
+        background: var(--surface);
+        color: var(--ink);
         padding: 10px 16px;
         border-radius: 999px;
         cursor: pointer;
@@ -620,7 +811,7 @@ body.is-map-mode .bottom-refine-cta {
         pointer-events: none;
       }
 
-      .generated-refine-chip {
+    .generated-refine-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -628,9 +819,9 @@ body.is-map-mode .bottom-refine-cta {
   min-height: 38px;
   padding: 10px 15px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: var(--hero-ink);
+  background: var(--surface);
+  border: 1px solid var(--line-warm);
+  color: var(--ink);
   font: inherit;
   font-size: 0.88rem;
   font-weight: 750;
@@ -721,14 +912,54 @@ body.is-map-mode .bottom-refine-cta {
         margin-bottom: 6px;
       }
 
-      @media (max-width: 800px) {
+@media (max-width: 800px) {
         .page {
-          padding: 14px 14px 80px;
+          width: 100vw;
+          max-width: none;
+          margin: 0;
+          padding: 0 0 80px;
+        }
+
+        .intent-hero {
+          width: 100vw;
+          margin: 0 0 22px;
+          border-left: 0;
+          border-right: 0;
+        }
+
+           .market-context,
+        .section-head,
+        .intent-map,
+        .grid,
+        .cta {
+          width: 100vw;
+          margin-left: 0;
+          margin-right: 0;
+        }
+
+        .context-card,
+        .cta {
+          border-left: 0;
+          border-right: 0;
+          border-radius: 0;
+        }
+
+        .section-head {
+          padding: 0 18px;
+        }
+
+        .grid {
+          padding: 0 18px;
         }
 
         .hero-inner,
         .market-context {
           grid-template-columns: 1fr;
+        }
+
+                .intent-hero {
+          border-radius: 0 0 28px 28px;
+          padding: 34px 24px;
         }
 
         .interrupt-inner {
@@ -888,6 +1119,12 @@ body.is-map-mode .bottom-refine-cta {
 #refined-results .refined-controls-row .view-toggle {
   margin: 0 !important;
 }
+
+.intent-hero .hero-side-card,
+.intent-hero .hero-stats,
+.intent-hero .pill-row {
+  display: none !important;
+}
     </style>
   </head>
 
@@ -944,92 +1181,48 @@ body.is-map-mode .bottom-refine-cta {
             <div class="pill">{feature.replaceAll("_", " ")}</div>
           ))}
         </div>
-      </section>
+   </section>
 
-      <section class="market-context">
-        <div class="context-card">
-          <h3>Popular areas for this search</h3>
+<div class="intent-content-shell">
 
-          <div class="context-links">
-            <button type="button" class="area-filter active" data-area-filter="all">
-              All areas
-            </button>
-
-            <button type="button" class="area-filter" data-area-filter="north nanaimo">
-              North Nanaimo
-            </button>
-
-            <button type="button" class="area-filter" data-area-filter="departure bay">
-              Departure Bay
-            </button>
-
-            <button type="button" class="area-filter" data-area-filter="hammond bay">
-              Hammond Bay
-            </button>
-
-            <button type="button" class="area-filter" data-area-filter="uplands">
-              Uplands
-            </button>
-          </div>
-        </div>
-
-        <div class="context-card">
-  <h3>Filter by price</h3>
-
-  <div class="context-links">
-    <button type="button" class="price-filter active" data-price-filter="all">
-      Any price
-    </button>
-
-   <button type="button" class="price-filter" data-price-filter="under-450">
-  Under $450k
-</button>
-
-<button type="button" class="price-filter" data-price-filter="450-650">
-  $450k–$650k
-</button>
-
-    <button type="button" class="price-filter" data-price-filter="650-850">
-      $650k–$850k
-    </button>
-
-  <button type="button" class="price-filter" data-price-filter="850-1100">
-  $850k–$1.1M
-</button>
-
-<button type="button" class="price-filter" data-price-filter="1100-plus">
-  $1.1M+
-</button>
+<section class="intent-controls">
+  <div class="view-toggle">
+    <button type="button" class="view-btn active" id="list-view-btn">☷ List</button>
+    <button type="button" class="view-btn" id="map-view-btn">✦ Map</button>
   </div>
-</div>
-      </section>
+
+  <select class="area-filter-select" aria-label="Filter by area">
+    <option value="all">All Areas</option>
+    <option value="north nanaimo">North Nanaimo</option>
+    <option value="departure bay">Departure Bay</option>
+    <option value="hammond bay">Hammond Bay</option>
+    <option value="uplands">Uplands</option>
+  </select>
+
+  <select class="price-filter-select" aria-label="Filter by price">
+    <option value="all">Any Price</option>
+    <option value="under-450">Under $450k</option>
+    <option value="450-650">$450k - $650k</option>
+    <option value="650-850">$650k - $850k</option>
+    <option value="850-1100">$850k - $1.1M</option>
+    <option value="1100-plus">$1.1M+</option>
+  </select>
+
+  <select class="sort-filter-select" aria-label="Sort listings">
+  <option value="newest">Newest first</option>
+  <option value="price-asc">Price low to high</option>
+  <option value="price-desc">Price high to low</option>
+</select>
+</section>
 
       <div class="section-head">
-        <div>
-          <h2>Current matches<span class="accent-dot">.</span></h2>
-
-         <div class="current-controls-row">
-  <div class="view-toggle">
-    <button type="button" class="view-btn active" id="list-view-btn">List</button>
-    <button type="button" class="view-btn" id="map-view-btn">Map</button>
+  <div>
+    <h2>Fresh homes worth a closer look.</h2>
+    <p class="section-subcopy">Updated just now</p>
   </div>
 
-  <div class="view-toggle sort-toggle current-sort-toggle">
-    <button type="button" class="view-btn active" data-sort="newest">
-      Newest
-    </button>
-    <button type="button" class="view-btn" data-sort="price-asc">
-      Price ↑
-    </button>
-    <button type="button" class="view-btn" data-sort="price-desc">
-      Price ↓
-    </button>
-  </div>
+  <div class="results-bar">{listingCount} listings found</div>
 </div>
-        </div>
-
-        <div class="results-bar">{listingCount} listings found</div>
-      </div>
 
       <div id="intent-map" class="intent-map" hidden></div>
 
@@ -1082,9 +1275,11 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
                 <div class="card-body">
                   <div class="price">{formatPrice(listing.price)}</div>
                   <div class="address">{listing.address}</div>
-                  <div class="meta">
-                    {listing.beds || "-"} bed · {listing.baths || "-"} bath
-                  </div>
+                <div class="meta">
+  {listing.beds || "-"} bed · {listing.baths || "-"} bath
+</div>
+
+<div class="card-decision-badge" hidden></div>
                 </div>
               </article>
 
@@ -1093,43 +1288,35 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
                   <aside class="interrupt-card" id="intent-interrupt-card">
                     <div class="interrupt-inner">
                       <div>
-<div class="interrupt-kicker">We’re learning your preferences</div>                        <h3>We’re starting to see a pattern.</h3>
-                       <p>
-  Your reactions are shaping the next set of homes.
-  Refine the direction manually - or let the system adapt automatically.
+<div class="interrupt-kicker">Shape this search</div>
+<h3>Want to steer the next few matches?</h3>
+<p>
+  Pick a direction to guide what shows up next, or keep browsing and react to homes as you go.
 </p>
                       </div>
 
-                      <div class="interrupt-groups">
-                        <div>
+                                           <div class="interrupt-groups">
+                        <div class="interrupt-group-card">
                           <div class="interrupt-group-label">Price direction</div>
-                          <div class="interrupt-options">
-                            {priceExpansionOne && (
+
+                                                 <div class="interrupt-options">
+                            {priceDirectionLabels.map((label) => (
                               <button type="button" class="refine-chip generated-refine-chip">
-                                Show up to {priceExpansionOne}
+                                {label}
                               </button>
-                            )}
-
-                            {priceExpansionTwo && (
-                              <button type="button" class="refine-chip">
-                                Show up to {priceExpansionTwo}
-                              </button>
-                            )}
-
-                            <button type="button" class="refine-chip">
-                              Stay close to this budget
-                            </button>
+                            ))}
                           </div>
                         </div>
 
-                        <div>
+                        <div class="interrupt-group-card">
                           <div class="interrupt-group-label">Feature direction</div>
-                          <div class="interrupt-options">
+
                           <div class="interrupt-options generated-chip-target">
-  <button type="button" class="refine-chip">
-    Learning your preferences...
-  </button>
-</div>
+                            {featureDirectionLabels.slice(0, 5).map((label) => (
+                              <button type="button" class="refine-chip generated-refine-chip">
+                                {label}
+                              </button>
+                            ))}
                           </div>
                         </div>
 
@@ -1149,7 +1336,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
         })}
       </section>
 
-<section class="cta bottom-refine-cta">        <h2>Want better matches?</h2>
+<section class="cta bottom-refine-cta">       <h2>Want better matches?</h2>
 
         <p>
           Pick what you would like to see more of. This starts turning a broad
@@ -1170,14 +1357,16 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
         <button type="button" class="cta-button" onclick="saveIntentPreferences()">
           Save Preferences
         </button>
-      </section>
+           </section>
+</div>
     </main>
 
     <ShortlistReviewModal />
+<IntentModalController />
 
     <style is:global>
 
-        .interrupt-options .generated-refine-chip,
+       .interrupt-options .generated-refine-chip,
 .refine-options .generated-refine-chip {
   appearance: none !important;
   display: inline-flex !important;
@@ -1187,9 +1376,9 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   min-height: 38px !important;
   padding: 10px 15px !important;
   border-radius: 999px !important;
-  background: rgba(255,255,255,0.08) !important;
-  border: 1px solid rgba(255,255,255,0.2) !important;
-  color: #ffffff !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line-warm) !important;
+  color: var(--ink) !important;
   font: inherit !important;
   font-size: 0.88rem !important;
   font-weight: 750 !important;
@@ -1200,9 +1389,9 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 .interrupt-options .generated-refine-chip.active,
 .refine-options .generated-refine-chip:hover,
 .refine-options .generated-refine-chip.active {
-  background: #ffffff !important;
-  color: #0a0a0a !important;
-  border-color: #ffffff !important;
+  background: var(--ink) !important;
+  color: #ffffff !important;
+  border-color: var(--ink) !important;
 }
         #preview-sheet #intent-like-tags {
   display: none !important;
@@ -1740,7 +1929,7 @@ let currentIntentMapBounds = null;
        const selector = mode === "refined" ? ".refined-card" : ".card";
 
 const cards = Array.from(document.querySelectorAll(selector)).filter((card) => {
-  return card.style.display !== "none";
+ return !card.hidden;
 });
 
         const points = cards
@@ -1928,150 +2117,119 @@ async function initRefinedGoogleMap(mode = "refined") {
       
     </script>
 
-    <script is:inline>
-      const areaButtons = document.querySelectorAll(".area-filter");
-const priceButtons = document.querySelectorAll(".price-filter");
-let activePriceFilter = "all";
+  <script is:inline>
+  const areaSelect = document.querySelector(".area-filter-select");
+  const priceSelect = document.querySelector(".price-filter-select");
+  const sortSelect = document.querySelector(".sort-filter-select");
+  let activePriceFilter = "all";
 
-      function applyAreaFilter(area) {
-        const cards = Array.from(document.querySelectorAll(".original-card"));
-        const resultsBar = document.querySelector(".results-bar");
+  function getCardPrice(card) {
+    return Number(card.dataset.rawPrice || "0");
+  }
 
-        let visibleCount = 0;
+  function applyFilters() {
+    const area = areaSelect?.value || "all";
+    activePriceFilter = priceSelect?.value || "all";
 
-        cards.forEach((card) => {
-          if (card.classList.contains("is-hidden-by-refine")) return;
+    const cards = Array.from(document.querySelectorAll(".original-card"));
+    const resultsBar = document.querySelector(".results-bar");
 
-          const cardArea = String(card.dataset.area || "").toLowerCase();
-const rawPrice = String(card.dataset.price || "")
-  .replace(/\$/g, "")
-  .replace(/,/g, "");
+    let visibleCount = 0;
 
-const price = Number(rawPrice || 0);
+    cards.forEach((card) => {
+      if (card.classList.contains("is-hidden-by-refine")) return;
 
-const matchesArea = area === "all" || cardArea === area;
+      const cardArea = String(card.dataset.area || "").toLowerCase();
+      const price = getCardPrice(card);
 
-const matchesPrice =
-  activePriceFilter === "all" ||
-  (activePriceFilter === "under-450" && price < 450000) ||
-  (activePriceFilter === "450-650" && price >= 450000 && price < 650000) ||
-  (activePriceFilter === "650-850" && price >= 650000 && price < 850000) ||
-(activePriceFilter === "850-1100" && price >= 850000 && price < 1100000) ||
-(activePriceFilter === "1100-plus" && price >= 1100000);
+      const matchesArea = area === "all" || cardArea === area;
 
-const shouldShow = matchesArea && matchesPrice;
-          card.style.display = shouldShow ? "" : "none";
+      const matchesPrice =
+        activePriceFilter === "all" ||
+        (activePriceFilter === "under-450" && price < 450000) ||
+        (activePriceFilter === "450-650" && price >= 450000 && price < 650000) ||
+        (activePriceFilter === "650-850" && price >= 650000 && price < 850000) ||
+        (activePriceFilter === "850-1100" && price >= 850000 && price < 1100000) ||
+        (activePriceFilter === "1100-plus" && price >= 1100000);
 
-          if (shouldShow) visibleCount += 1;
-        });
+      const shouldShow = matchesArea && matchesPrice;
 
-        const interruptCard = document.getElementById("intent-interrupt-card");
-        const refinedAnchor = document.getElementById("refined-results-anchor");
-        const refinedResults = document.getElementById("refined-results");
-        const visibleCards = cards.filter((card) => card.style.display !== "none");
-
-        if (interruptCard) {
-          interruptCard.style.display = visibleCards.length > 0 ? "" : "none";
-
-          const insertAfterCard = visibleCards[11] || visibleCards[visibleCards.length - 1];
-
-          if (insertAfterCard) {
-            insertAfterCard.after(interruptCard);
-
-            if (refinedAnchor) {
-              interruptCard.after(refinedAnchor);
-            }
-
-            if (refinedAnchor && refinedResults) {
-              refinedAnchor.after(refinedResults);
-            }
-          }
-        }
-
-        areaButtons.forEach((button) => {
-          button.classList.toggle("active", button.dataset.areaFilter === area);
-        });
-
-        if (resultsBar) {
-          resultsBar.textContent =
-            area === "all"
-              ? `${visibleCount} listings found`
-              : `${visibleCount} listings found in ${area}`;
-        }
-
-        if (googleMap && intentMapEl && !intentMapEl.hidden) {
-          initIntentGoogleMap();
-        }
-      }
-
-      areaButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          applyAreaFilter(button.dataset.areaFilter || "all");
-        });
-      });
-      priceButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    activePriceFilter = button.dataset.priceFilter || "all";
-
-    priceButtons.forEach((btn) => {
-      btn.classList.toggle("active", btn === button);
+     card.hidden = !shouldShow;
+card.style.display = "";
+      if (shouldShow) visibleCount += 1;
     });
 
-    const activeAreaButton = document.querySelector(".area-filter.active");
-    const activeArea = activeAreaButton?.dataset.areaFilter || "all";
+   const interruptCard = document.getElementById("intent-interrupt-card");
+const refinedAnchor = document.getElementById("refined-results-anchor");
+const refinedResults = document.getElementById("refined-results");
+const visibleCards = cards.filter((card) => !card.hidden);
 
-    applyAreaFilter(activeArea);
-  });
-});
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-sort]");
+if (interruptCard) {
+  const insertAfterCard = visibleCards[11] || null;
 
-  if (!button) return;
+  if (insertAfterCard) {
+    insertAfterCard.after(interruptCard);
 
-  const sort = button.dataset.sort || "recommended";
-  const grid = document.querySelector(".grid");
-
-  if (!grid) return;
-
-  document.querySelectorAll("[data-sort]").forEach((btn) => {
-    btn.classList.toggle("active", btn === button);
-  });
-
-  const cards = Array.from(grid.querySelectorAll(".original-card"));
-
-  cards.sort((a, b) => {
-    if (sort === "price-asc") {
-      return Number(a.dataset.rawPrice || 0) - Number(b.dataset.rawPrice || 0);
+    if (refinedAnchor) {
+      interruptCard.after(refinedAnchor);
+      refinedAnchor.hidden = false;
     }
 
-    if (sort === "price-desc") {
-      return Number(b.dataset.rawPrice || 0) - Number(a.dataset.rawPrice || 0);
+    if (refinedAnchor && refinedResults) {
+      refinedAnchor.after(refinedResults);
+      refinedResults.hidden = false;
     }
 
-    if (sort === "newest") {
+    interruptCard.hidden = false;
+    interruptCard.style.display = "";
+  } else {
+    interruptCard.hidden = true;
+    interruptCard.style.display = "";
+
+    if (refinedAnchor) refinedAnchor.hidden = true;
+    if (refinedResults && !refinedResults.innerHTML.trim()) {
+      refinedResults.hidden = true;
+    }
+  }
+}
+
+if (resultsBar) {
+  resultsBar.textContent = `${visibleCount} listings found`;
+}
+
+    if (googleMap && intentMapEl && !intentMapEl.hidden) {
+      initIntentGoogleMap();
+    }
+  }
+
+  function applySort() {
+    const sort = sortSelect?.value || "newest";
+    const grid = document.querySelector(".grid");
+    if (!grid) return;
+
+    const cards = Array.from(grid.querySelectorAll(".original-card"));
+
+    cards.sort((a, b) => {
+      if (sort === "price-asc") return getCardPrice(a) - getCardPrice(b);
+      if (sort === "price-desc") return getCardPrice(b) - getCardPrice(a);
+
       return (
         new Date(b.dataset.listedAt || 0).getTime() -
-        new Date(a.dataset.listedAt || 0).getTime()
+          new Date(a.dataset.listedAt || 0).getTime() ||
+        Number(a.dataset.sortIndex || 0) - Number(b.dataset.sortIndex || 0)
       );
-    }
+    });
 
-    return Number(a.dataset.sortIndex || 0) - Number(b.dataset.sortIndex || 0);
-  });
-
-  cards.forEach((card) => {
-    grid.appendChild(card);
-  });
-
-  const activeAreaButton = document.querySelector(".area-filter.active");
-  const activeArea = activeAreaButton?.dataset.areaFilter || "all";
-
-  applyAreaFilter(activeArea);
-
-  if (googleMap && intentMapEl && !intentMapEl.hidden) {
-    initIntentGoogleMap();
+    cards.forEach((card) => grid.appendChild(card));
+    applyFilters();
   }
-});
-    </script>
+
+  areaSelect?.addEventListener("change", applyFilters);
+  priceSelect?.addEventListener("change", applyFilters);
+  sortSelect?.addEventListener("change", applySort);
+
+  applySort();
+</script>
 
     <script is:inline>
 
@@ -2201,10 +2359,9 @@ if (viewed.has(address) || viewedKeys.has(key)) {
         return Array.from(document.querySelectorAll(".original-card"));
       }
 
-      function getVisibleCards() {
-        return getOriginalCards()
-          .filter((card) => card.style.display !== "none");
-      }
+   function getVisibleCards() {
+  return getOriginalCards().filter((card) => !card.hidden);
+}
 
       function getVisibleMaxPrice() {
         const prices = getVisibleCards().map((card) => {
@@ -2317,7 +2474,7 @@ color:#ff4d00;
   if (!Array.isArray(chips) || !chips.length) return;
 
 const containers = document.querySelectorAll(
-  ".interrupt-groups > div:nth-child(2) .interrupt-options, .refine-options"
+  ".generated-chip-target, .refine-options"
 );
   containers.forEach((container) => {
     if (!container) return;
@@ -2416,9 +2573,14 @@ refinedGoogleMarkers = [];
     Finding better matches...
   </div>
 
-  <div class="refined-section-copy">
-    Looking for homes matching "${label}"...
-  </div>
+ <div class="refined-section-copy" id="refined-reason-copy">
+  Showing homes shaped by your reactions, preferred areas, and price behaviour.
+</div>
+<div class="modal-intent-chip-row" style="justify-content:flex-start;margin:0 0 18px;">
+  <span class="modal-intent-chip">Based on your reactions</span>
+  <span class="modal-intent-chip">Similar price range</span>
+  <span class="modal-intent-chip">Same property type</span>
+</div>
 `;
 
         const visibleCards = getVisibleCards();
@@ -2619,15 +2781,13 @@ moreListings.map((listing, index) => createRefinedListingCard(listing, index)).j
     if (hasMoreAgain) {
       loadMoreBtn.dataset.nextOffset = String(nextOffsetAgain);
       loadMoreBtn.disabled = false;
-      loadMoreBtn.textContent = "Load more like this";
-    } else {
+loadMoreBtn.textContent = "Load 12 more like this";    } else {
       loadMoreBtn.remove();
     }
   } catch (error) {
     console.error(error);
     loadMoreBtn.disabled = false;
-    loadMoreBtn.textContent = "Load more like this";
-  }
+loadMoreBtn.textContent = "Load 12 more like this";  }
 });
 document.addEventListener("click", (event) => {
   const button = event.target.closest(
@@ -2770,1072 +2930,7 @@ document.addEventListener("click", (event) => {
     </script>
 
     <script is:inline>
-      function initIntentReviewModal() {
-        const sheet = document.getElementById("preview-sheet");
-        const overlay = document.getElementById("sheet-overlay");
-
-        if (!sheet || !overlay) return;
-
-        const sheetImage = document.getElementById("sheet-image");
-        const sheetPrice = document.getElementById("sheet-price");
-        const sheetAddress = document.getElementById("sheet-address");
-        const sheetMeta = document.getElementById("sheet-meta");
-        const sheetDescription = document.getElementById("sheet-description");
-        const sheetPosition = document.getElementById("sheet-position");
-        const sheetProgressBar = document.getElementById("sheet-progress-bar");
-        const closeBtn = document.getElementById("sheet-close-btn");
-        const sheetMapBtn = document.getElementById("sheet-map-btn");
-const sheetMiniMap = document.getElementById("sheet-mini-map");
-const sheetImageStage = document.querySelector(".panel__image-stage");
-
-let sheetMiniMapInstance = null;
-let sheetMiniMapMarker = null;
-        const nextBtn = document.getElementById("sheet-next-btn");
-        const prevBtn = document.getElementById("sheet-prev-btn");
-        const nextTopBtn = document.getElementById("sheet-next-top-btn");
-        const prevTopBtn = document.getElementById("sheet-prev-top-btn");
-
-        const loveBtn = document.getElementById("decision-love-btn");
-        const maybeBtn = document.getElementById("decision-maybe-btn");
-        const passBtn = document.getElementById("decision-pass-btn");
-        const feedback = document.getElementById("sheet-feedback");
-        let likeTagsEl = document.getElementById("intent-like-tags");
-
-function getLikeTagsForType(propertyType = "") {
-  const type = String(propertyType || "").toLowerCase();
-
-  if (type.includes("condo") || type.includes("apartment")) {
-    return [
-      ["layout", "Layout"],
-      ["views", "Views"],
-      ["building", "Building"],
-      ["amenities", "Amenities"],
-      ["walkability", "Walkability"],
-      ["modern", "Modern"],
-      ["value", "Value"],
-      ["area", "Location"],
-    ];
-  }
-
-  if (type.includes("town")) {
-    return [
-      ["layout", "Layout"],
-      ["garage", "Garage"],
-      ["yard", "Yard"],
-      ["storage", "Storage"],
-      ["modern", "Modern"],
-      ["value", "Value"],
-      ["area", "Area"],
-    ];
-  }
-
-  if (type.includes("mobile") || type.includes("manufactured")) {
-    return [
-      ["value", "Affordable"],
-      ["modern", "Updated"],
-      ["community", "Community"],
-      ["views", "Views"],
-      ["layout", "Layout"],
-      ["parking", "Parking"],
-      ["yard", "Yard"],
-    ];
-  }
-
-  return [
-    ["layout", "Layout"],
-    ["yard", "Yard"],
-    ["garage", "Garage"],
-    ["suite", "Suite potential"],
-    ["views", "Views"],
-    ["privacy", "Privacy"],
-    ["modern", "Modern"],
-    ["area", "Area"],
-  ];
-}
-
-if (!likeTagsEl && feedback) {
-  likeTagsEl = document.createElement("div");
-  likeTagsEl.id = "intent-like-tags";
-  feedback.after(likeTagsEl);
-}
-        const sheetContent = document.getElementById("sheet-content");
-        const sheetSummary = document.getElementById("sheet-summary");
-        const sheetPhotoCount = document.getElementById("sheet-photo-count");
-        const photoPrevBtn = document.getElementById("photo-prev-btn");
-        const photoNextBtn = document.getElementById("photo-next-btn");
-
-        let activePhotoUrls = [];
-        let activePhotoIndex = 0;
-        let photoSwipeStartX = 0;
-        let photoSwipeStartY = 0;
-
-let activeCard = null;
-let totalIntentReactions = 0;
-let positiveIntentReactions = 0;
-let hasShownIntentSummary = false;
-let refinedBrowseCount = 0;
-let hasShownSaveSearchCTA = false;
-
-        function cardIsInsideCurrentMap(card) {
-  if (!document.body.classList.contains("is-map-mode")) return true;
-  if (!currentIntentMapBounds) return true;
-
-  const lat = Number(card.dataset.lat || "");
-  const lng = Number(card.dataset.lng || "");
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-
-  return (
-    lat >= Number(currentIntentMapBounds.south) &&
-    lat <= Number(currentIntentMapBounds.north) &&
-    lng >= Number(currentIntentMapBounds.west) &&
-    lng <= Number(currentIntentMapBounds.east)
-  );
-}
-
-function getCards() {
-  return Array.from(document.querySelectorAll(".card")).filter((card) => {
-    return card.style.display !== "none" && cardIsInsideCurrentMap(card);
-  });
-}
-
-        function currentIndex() {
-          return getCards().indexOf(activeCard);
-        }
-
-      function openSheet(card) {
-  activeCard = card;
-  card.dataset.viewed = "true";
-  saveViewedIntentAddress(card.dataset.address || "");
-  saveViewedIntentListingKey(card);
-  updateViewedBadges();
-  renderCard(card);
-
-          sheetContent?.classList.add("open");
-          sheetSummary?.classList.remove("open");
-
-          sheet.classList.add("open");
-          overlay.classList.add("open");
-          sheet.setAttribute("aria-hidden", "false");
-          document.body.style.overflow = "hidden";
-        }
-
-        function closeSheet() {
-          sheet.classList.remove("open");
-          overlay.classList.remove("open");
-          sheet.setAttribute("aria-hidden", "true");
-          document.body.style.overflow = "";
-        }
-function preloadImages(urls = []) {
-  urls
-    .filter(Boolean)
-    .slice(0, 8)
-    .forEach((src) => {
-      const img = new Image();
-      img.decoding = "async";
-      img.loading = "eager";
-      img.src = src;
-    });
-}
-
-function getCardPhotoUrls(card) {
-  if (!card) return [];
-
-  const normalizePhotoUrl = (url) => {
-    const value = String(url || "").trim();
-
-    if (!value) return "";
-    if (value.startsWith("http://") || value.startsWith("https://")) return value;
-    if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
-
-    return `https://cdn.repliers.io/${value}`;
-  };
-
-  let rawImages = [];
-
-  try {
-    rawImages = JSON.parse(card.dataset.images || "[]");
-  } catch {
-    rawImages = [];
-  }
-
-  const urls = rawImages
-    .map((img) => {
-      if (typeof img === "string") return normalizePhotoUrl(img);
-
-      return normalizePhotoUrl(
-        img.highRes ||
-        img.mediumRes ||
-        img.lowRes ||
-        img.url ||
-        ""
-      );
-    })
-    .filter(Boolean);
-
-  return urls.length
-    ? urls
-    : [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
-}
-
-function preloadNearbyListingPhotos(currentCard) {
-  const cards = getCards();
-  const index = cards.indexOf(currentCard);
-
-  const nextCards = cards.slice(index + 1, index + 4);
-  const prevCard = cards[index - 1];
-
-  const urls = [
-    ...nextCards.flatMap((card) => getCardPhotoUrls(card).slice(0, 3)),
-    ...getCardPhotoUrls(prevCard).slice(0, 2),
-  ];
-
-  preloadImages(urls);
-}
-        function renderCard(card) {
-          const cards = getCards();
-          const index = cards.indexOf(card);
-          const total = cards.length;
-
-          const normalizePhotoUrl = (url) => {
-            const value = String(url || "").trim();
-
-            if (!value) return "";
-            if (value.startsWith("http://") || value.startsWith("https://")) return value;
-            if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
-
-            return `https://cdn.repliers.io/${value}`;
-          };
-
-          let rawImages = [];
-
-          try {
-            rawImages = JSON.parse(card.dataset.images || "[]");
-          } catch {
-            rawImages = [];
-          }
-
-          activePhotoUrls = rawImages
-            .map((img) => {
-              if (typeof img === "string") return normalizePhotoUrl(img);
-
-              return normalizePhotoUrl(
-                img.highRes ||
-                img.mediumRes ||
-                img.lowRes ||
-                img.url ||
-                ""
-              );
-            })
-            .filter(Boolean);
-
-          if (!activePhotoUrls.length) {
-            activePhotoUrls = [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
-          }
-
-          activePhotoIndex = 0;
-
-          function renderActivePhoto() {
-            if (!sheetImage || !activePhotoUrls.length) return;
-
-            sheetImage.src = activePhotoUrls[activePhotoIndex];
-            sheetImage.alt = card.dataset.address || "";
-
-            if (sheetPhotoCount) {
-              sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-            }
-
-            if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
-            if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
-          }
-
-        renderActivePhoto();
-
-preloadImages(activePhotoUrls.slice(1, 8));
-preloadNearbyListingPhotos(card);
-
-     card.dataset.viewed = "true";
-saveViewedIntentAddress(card.dataset.address || "");
-saveViewedIntentListingKey(card);
-updateViewedBadges();
-
-if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
-if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
-
-          if (sheetMeta) {
-            sheetMeta.innerHTML = `
-              <span class="panel__meta-item"><strong>${card.dataset.beds || "-"}</strong> <span class="panel__meta-label">Bed</span></span>
-              <span class="panel__meta-item"><strong>${card.dataset.baths || "-"}</strong> <span class="panel__meta-label">Bath</span></span>
-              ${
-                card.dataset.sqft
-                  ? `<span class="panel__meta-item"><strong>${card.dataset.sqft}</strong> <span class="panel__meta-label">Sq Ft</span></span>`
-                  : ""
-              }
-            `;
-          }
-
-          if (sheetDescription) {
-            sheetDescription.textContent = card.dataset.description || "";
-          }
-
-          if (sheetPosition) {
-            sheetPosition.textContent = `${index + 1} of ${total}`;
-          }
-
-          if (sheetProgressBar) {
-            sheetProgressBar.style.width = `${((index + 1) / Math.max(total, 1)) * 100}%`;
-          }
-
-          if (prevBtn) prevBtn.disabled = index <= 0;
-          if (prevTopBtn) prevTopBtn.disabled = index <= 0;
-
-          if (nextBtn) nextBtn.textContent = index >= total - 1 ? "Close" : "Next listing →";
-          if (nextTopBtn) nextTopBtn.textContent = index >= total - 1 ? "Close" : "Next →";
-
-          updateDecisionButtons(card);
-renderLikeTags(card);
-if (card.classList.contains("refined-card")) {
-  refinedBrowseCount += 1;
-}
-          if (sheetMiniMap) {
-  sheetMiniMap.hidden = true;
-  sheetMiniMap.style.display = "none";
-}
-
-if (sheetImageStage) {
-  sheetImageStage.classList.remove("is-hidden");
-}
-        }
-
-        function updateDecisionButtons(card) {
-          [loveBtn, maybeBtn, passBtn].forEach((btn) => btn?.classList.remove("is-selected"));
-
-          if (card.dataset.decision === "love") loveBtn?.classList.add("is-selected");
-          if (card.dataset.decision === "maybe") maybeBtn?.classList.add("is-selected");
-          if (card.dataset.decision === "pass") passBtn?.classList.add("is-selected");
-        }
-
-        function getActiveLikedTags() {
-  return Array.from(likeTagsEl?.querySelectorAll(".intent-like-tag.active") || [])
-    .map((btn) => btn.dataset.likeTag)
-    .filter(Boolean);
-}
-
-function renderLikeTags(card) {
-  if (!likeTagsEl) return;
-
-  const decision = card?.dataset.decision || "";
-  const shouldShow = decision === "love" || decision === "maybe";
-
-  likeTagsEl.classList.toggle("open", shouldShow);
-
-let savedTags = [];
-
-try {
-  savedTags = JSON.parse(card.dataset.likedTags || "[]");
-} catch {
-  savedTags = [];
-}
-
-const pagePropertyType =
-  document.querySelector(".stat-card:nth-child(2) .stat-value")?.textContent || "";
-
-const propertyType =
-  card?.dataset?.type ||
-  pagePropertyType ||
-  "";
-
-const tagOptions = getLikeTagsForType(propertyType);
-
-likeTagsEl.innerHTML = tagOptions
-  .map(([key, label]) => {
-    const activeClass = savedTags.includes(key) ? " active" : "";
-
-    return `
-      <button
-        type="button"
-        class="intent-like-tag${activeClass}"
-        data-like-tag="${key}"
-      >
-        ${label}
-      </button>
-    `;
-  })
-  .join("");
-}
-
-function saveCurrentReaction() {
-  if (!activeCard) return;
-
-  const likedTags = getActiveLikedTags();
-  activeCard.dataset.likedTags = JSON.stringify(likedTags);
-
-  fetch("/api/intent-listing-reaction", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      session_id: getIntentSessionId(),
-
-      intent_page_id: document.body.dataset.intentPageId,
-      city: document.body.dataset.city,
-      slug: document.body.dataset.slug,
-
-      listing_id:
-        activeCard.dataset.listingId ||
-        activeCard.dataset.itemId ||
-        "",
-
-      mls_number:
-        activeCard.dataset.mls || "",
-
-      address:
-        activeCard.dataset.address || "",
-
-      price:
-        activeCard.dataset.price || "",
-
-      beds:
-        activeCard.dataset.beds || "",
-
-      baths:
-        activeCard.dataset.baths || "",
-
-      sqft:
-        activeCard.dataset.sqft || "",
-
-      area:
-        activeCard.dataset.area || "",
-
-      decision: activeCard.dataset.decision || "",
-      liked_tags: likedTags,
-    }),
-  })
-    .then(async (res) => {
-      const json = await res.json();
-    console.log("REACTION SAVED", json);
-refreshBehaviourChips();
-    })
-    .catch((error) => {
-      console.error("Failed to save intent listing reaction:", error);
-    });
-}
-
-function showRefiningState(chips = []) {
-  if (!sheetSummary) return;
-
-  const chipHtml = chips.length
-    ? chips
-        .map((label) => {
-          return `<span class="modal-intent-chip">${label}</span>`;
-        })
-        .join("")
-    : "";
-
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary is-refining">
-      <div class="modal-intent-kicker">
-        Refining around what you liked
-      </div>
-
-      <h2>Finding stronger matches...</h2>
-
-      <p>
-        We’re adjusting the search around the homes, features,
-        and areas you responded to most positively.
-      </p>
-
-      <div class="modal-intent-chip-row">
-        ${chipHtml}
-      </div>
-
-      <div class="intent-refining-bar">
-        <span></span>
-      </div>
-    </div>
-  `;
-}
-
-function showLeadCaptureForm() {
-  if (!sheetContent || !sheetSummary) return;
-
-  sheetContent.classList.remove("open");
-  sheetSummary.classList.add("open");
-
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
-      <div class="modal-intent-kicker">Save your refined search</div>
-
-      <h2>Want new matches like these?</h2>
-
-      <p>
-        Leave your contact details and we’ll send better matches when similar homes appear.
-      </p>
-
-      <div style="max-width:420px;margin:0 auto 22px;display:grid;gap:10px;">
-        <input id="lead-name-input" placeholder="Name" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-        <input id="lead-email-input" placeholder="Email" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-        <input id="lead-phone-input" placeholder="Phone optional" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-      </div>
-
-      <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="lead-save-btn">
-          Send me better matches
-        </button>
-
-        <button type="button" class="modal-intent-secondary" id="lead-cancel-btn">
-          Keep browsing
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById("lead-save-btn")?.addEventListener("click", async () => {
-    const name = document.getElementById("lead-name-input")?.value || "";
-    const email = document.getElementById("lead-email-input")?.value || "";
-    const phone = document.getElementById("lead-phone-input")?.value || "";
-
-    await fetch("/api/intent-lead", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    name,
-    email,
-    phone,
-    session_id: getIntentSessionId(),
-    intent_page_id: document.body.dataset.intentPageId,
-    city: document.body.dataset.city,
-    slug: document.body.dataset.slug,
-  }),
-});
-
-    sheetSummary.innerHTML = `
-      <div class="modal-intent-summary">
-        <div class="modal-intent-kicker">Saved</div>
-        <h2>You’re all set.</h2>
-        <p>We’ll use this search direction to help send better matches.</p>
-      </div>
-    `;
-
-    setTimeout(() => {
-  closeSheet();
-
-  const refinedAnchor =
-    document.getElementById("refined-results-anchor") ||
-    document.getElementById("refined-results");
-
-  refinedAnchor?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
-}, 1200);
-  });
-
-  document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
-    sheetSummary.classList.remove("open");
-    sheetContent.classList.add("open");
-    goNext();
-  });
-}
-
-function showSaveSearchCTA() {
-  if (!sheetContent || !sheetSummary) return;
-
-  hasShownSaveSearchCTA = true;
-
-  sheetContent.classList.remove("open");
-  sheetSummary.classList.add("open");
-
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
-      <div class="modal-intent-kicker">Your refined search is ready</div>
-
-      <h2>Want to save this search?</h2>
-
-      <p>
-        We can save this direction and send you better matches when similar homes appear.
-      </p>
-
-      <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="save-search-lead-btn">
-          Save this search
-        </button>
-
-        <button type="button" class="modal-intent-secondary" id="save-search-keep-browsing-btn">
-          Keep browsing
-        </button>
-      </div>
-    </div>
-  `;
-
- document.getElementById("save-search-lead-btn")?.addEventListener("click", () => {
-  showLeadCaptureForm();
-});
-
-  document.getElementById("save-search-keep-browsing-btn")?.addEventListener("click", () => {
-    sheetSummary.classList.remove("open");
-    sheetContent.classList.add("open");
-    goNext();
-  });
-}
-
-function showIntentSummaryCard() {
-  if (!sheetContent || !sheetSummary) return;
-
-  hasShownIntentSummary = true;
-
- const generatedChips = Array.from(
-  document.querySelectorAll(
-    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-  )
-)
-    .map((chip) => chip.textContent.trim())
-    .filter(Boolean)
-    .slice(0, 4);
-
-  const chipHtml = generatedChips.length
-    ? generatedChips
-        .map((label) => `<span class="modal-intent-chip">${label}</span>`)
-        .join("")
-    : `
-      <span class="modal-intent-chip">Better matches</span>
-      <span class="modal-intent-chip">More homes like these</span>
-    `;
-
-  sheetContent.classList.remove("open");
-  sheetSummary.classList.add("open");
-
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
-      <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
-
-      <h2>Want us to narrow in on better matches?</h2>
-
-      <p>
-        Based on what you’ve liked so far, we can refine the next batch around
-        the features and areas you seem most drawn to.
-      </p>
-
-      <div class="modal-intent-chip-row">
-        ${chipHtml}
-      </div>
-<div class="modal-intent-save-copy">
-  Your preferences can be saved privately so your next batch keeps improving.
-</div>
-      <div class="modal-intent-actions">
-       <button type="button" class="modal-intent-primary" id="summary-refine-btn">
-  Show better matches
-</button>
-
-<button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
-  Compare nearby areas
-</button>
-
-<button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
-  Keep browsing
-</button>
-      </div>
-    </div>
-  `;
-
-document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");  const generatedChips = Array.from(
-    document.querySelectorAll(
-      ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-    )
-  )
-    .map((chip) => chip.textContent.trim())
-    .filter(Boolean)
-    .slice(0, 4);
-
-  showRefiningState(generatedChips);
-
- const generatedAreaLabels = Array.from(
-  document.querySelectorAll(
-    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-  )
-)
-  .map((chip) => chip.textContent.trim())
-  .filter((label) => /^stay in /i.test(label));
-
-const preferredAreas = generatedAreaLabels
-  .map((label) => label.replace(/^stay in /i, "").trim())
-  .filter(Boolean);
-
-const combinedAreaChip = document.createElement("button");
-combinedAreaChip.type = "button";
-combinedAreaChip.className = "refine-chip generated-refine-chip";
-combinedAreaChip.textContent =
-  preferredAreas.length > 1
-    ? `Stay in ${preferredAreas.join(" and ")}`
-    : generatedAreaLabels[0] || "Show better matches";
-
-setTimeout(() => {
-  closeSheet();
-
-  runIntentRefine(combinedAreaChip, { openFirstResult: true });
-
-  document.getElementById("intent-interrupt-card")?.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
-  });
-}, 2200);
-});
-document.getElementById("summary-nearby-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");  showRefiningState(["Compare nearby areas"]);
-
-  const nearbyChip = document.createElement("button");
-  nearbyChip.type = "button";
-  nearbyChip.className = "refine-chip generated-refine-chip";
-  nearbyChip.textContent = "Compare nearby areas";
-
-  setTimeout(() => {
-    closeSheet();
-
-    runIntentRefine(nearbyChip, { openFirstResult: true });
-  }, 1600);
-});
-
-document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");    sheetSummary.classList.remove("open");
-    sheetContent.classList.add("open");
-    goNext();
-  });
-}
-
-        function goNext() {
-          const cards = getCards();
-          const index = currentIndex();
-if (
-  hasShownIntentSummary &&
-  !hasShownSaveSearchCTA &&
-  refinedBrowseCount >= 5
-) {
-  showSaveSearchCTA();
-  return;
-}
-       if (
-  !hasShownIntentSummary &&
-  (
-    (totalIntentReactions >= 6 && positiveIntentReactions >= 2) ||
-    positiveIntentReactions >= 4
-  )
-) {
-  showIntentSummaryCard();
-  return;
-}
-
-if (
-  !hasShownIntentSummary &&
-  totalIntentReactions >= 10 &&
-  positiveIntentReactions >= 2
-) {
-  showIntentSummaryCard();
-  return;
-}
-
-if (
-  !hasShownIntentSummary &&
-  totalIntentReactions >= 10 &&
-  positiveIntentReactions >= 2
-) {
-  showIntentSummaryCard();
-  return;
-}
-
-if (index >= cards.length - 1) {
-  closeSheet();
-  return;
-}
-
-          activeCard = cards[index + 1];
-          renderCard(activeCard);
-          sheet.scrollTop = 0;
-        }
-
-        function goPrev() {
-          const cards = getCards();
-          const index = currentIndex();
-
-          if (index <= 0) return;
-
-          activeCard = cards[index - 1];
-          renderCard(activeCard);
-          sheet.scrollTop = 0;
-        }
-
-        function saveIntentDecision(decision) {
-  if (!activeCard) return;
-
-  activeCard.dataset.decision = decision;
-
-  if (decision === "pass") {
-    activeCard.dataset.likedTags = "[]";
-  }
-
-  updateDecisionButtons(activeCard);
-  renderLikeTags(activeCard);
-
-  if (feedback) {
-    feedback.textContent =
-      decision === "love"
-        ? "Saved: Love this - what stood out?"
-        : decision === "maybe"
-          ? "Saved: Kinda like - what should we keep?"
-          : "Saved: Not for me";
-  }
-
-totalIntentReactions += 1;
-
-if (decision === "love" || decision === "maybe") {
-  positiveIntentReactions += 1;
-}
-
-saveCurrentReaction();
-
-window.setTimeout(() => {
-  const sheetScroll =
-    document.querySelector("#preview-sheet .panel__view") ||
-    document.getElementById("sheet-content") ||
-    document.getElementById("preview-sheet");
-
-  const bottomNav =
-    document.querySelector("#preview-sheet .panel__nav-row") ||
-    document.getElementById("sheet-next-btn");
-
-  if (bottomNav) {
-    bottomNav.style.scrollMarginBottom = "120px";
-    bottomNav.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }
-
-  if (sheetScroll) {
-    sheetScroll.scrollTop = sheetScroll.scrollHeight;
-  }
-}, 180);
-}
-
-        document.addEventListener("click", (event) => {
-          const card = event.target.closest(".card");
-
-          if (!card) return;
-          if (event.target.closest("button, a, input, textarea, select")) return;
-
-          openSheet(card);
-        });
-
-        closeBtn?.addEventListener("click", closeSheet);
-       sheetMapBtn?.addEventListener("click", async () => {
-  if (!activeCard || !sheetMiniMap) return;
-
-  const mapIsOpen = !sheetMiniMap.hidden;
-
-  if (mapIsOpen) {
-    sheetMiniMap.hidden = true;
-    sheetMiniMap.style.display = "none";
-
-    if (sheetImageStage) {
-      sheetImageStage.classList.remove("is-hidden");
-    }
-
-    if (sheetMapBtn) {
-      sheetMapBtn.textContent = "Map";
-    }
-
-    return;
-  }
-
-  const point = getCardLatLng(activeCard);
-
-  if (!point) {
-    sheetMiniMap.hidden = false;
-    sheetMiniMap.style.display = "block";
-
-    if (sheetMapBtn) {
-      sheetMapBtn.textContent = "Pictures";
-    }
-
-    sheetMiniMap.innerHTML =
-      "<p style='padding:16px;color:#6b6560;'>No map location available for this listing.</p>";
-
-    return;
-  }
-
-  if (sheetImageStage) {
-    sheetImageStage.classList.add("is-hidden");
-  }
-
-  sheetMiniMap.hidden = false;
-  sheetMiniMap.style.display = "block";
-
-  if (sheetMapBtn) {
-    sheetMapBtn.textContent = "Pictures";
-  }
-
-  try {
-    await loadGoogleMaps();
-  } catch (error) {
-    console.error("Google Maps failed to load:", error);
-
-    sheetMiniMap.innerHTML =
-      "<p style='padding:16px;color:#6b6560;'>Map could not load.</p>";
-
-    return;
-  }
-
-  sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
-    center: point,
-    zoom: 15,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-  });
-
-  if (sheetMiniMapMarker) {
-    sheetMiniMapMarker.setMap(null);
-  }
-
-  sheetMiniMapMarker = new google.maps.Marker({
-    position: point,
-    map: sheetMiniMapInstance,
-    title: activeCard.dataset.address || "Listing",
-  });
-
-  window.setTimeout(() => {
-    google.maps.event.trigger(sheetMiniMapInstance, "resize");
-    sheetMiniMapInstance.setCenter(point);
-  }, 120);
-});
-        overlay?.addEventListener("click", closeSheet);
-        nextBtn?.addEventListener("click", goNext);
-        nextTopBtn?.addEventListener("click", goNext);
-        prevBtn?.addEventListener("click", goPrev);
-        prevTopBtn?.addEventListener("click", goPrev);
-
-        loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
-        maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
-        passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
-        likeTagsEl?.addEventListener("click", (event) => {
-  const tagBtn = event.target.closest(".intent-like-tag");
-
-  if (!tagBtn || !activeCard) return;
-
-  tagBtn.classList.toggle("active");
-
-  activeCard.dataset.likedTags = JSON.stringify(getActiveLikedTags());
-
-  saveCurrentReaction();
-});
-
-        photoPrevBtn?.addEventListener("click", (event) => {
-          event.stopPropagation();
-
-          if (activePhotoIndex <= 0) return;
-
-          activePhotoIndex -= 1;
-
-          if (sheetImage) {
-            sheetImage.src = activePhotoUrls[activePhotoIndex];
-
-            const nextPreload = activePhotoUrls[activePhotoIndex + 1];
-
-            if (nextPreload) {
-              const img = new Image();
-              img.src = nextPreload;
-            }
-          }
-
-          if (sheetPhotoCount) {
-            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-          }
-
-          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
-          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
-        });
-
-        function showActivePhoto() {
-          if (!sheetImage || !activePhotoUrls.length) return;
-
-          sheetImage.src = activePhotoUrls[activePhotoIndex];
-
-          if (sheetPhotoCount) {
-            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-          }
-
-          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
-          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
-        }
-
-        sheetImage?.addEventListener("touchstart", (event) => {
-          photoSwipeStartX = event.changedTouches[0].screenX;
-          photoSwipeStartY = event.changedTouches[0].screenY;
-        }, { passive: true });
-
-        sheetImage?.addEventListener("touchend", (event) => {
-          const dx = event.changedTouches[0].screenX - photoSwipeStartX;
-          const dy = event.changedTouches[0].screenY - photoSwipeStartY;
-
-          if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
-
-          if (dx < 0 && activePhotoIndex < activePhotoUrls.length - 1) {
-            activePhotoIndex += 1;
-            showActivePhoto();
-          }
-
-          if (dx > 0 && activePhotoIndex > 0) {
-            activePhotoIndex -= 1;
-            showActivePhoto();
-          }
-        }, { passive: true });
-
-        photoNextBtn?.addEventListener("click", (event) => {
-          event.stopPropagation();
-
-          if (activePhotoIndex >= activePhotoUrls.length - 1) return;
-
-          activePhotoIndex += 1;
-
-          if (sheetImage) {
-            sheetImage.src = activePhotoUrls[activePhotoIndex];
-          }
-
-          if (sheetPhotoCount) {
-            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-          }
-
-          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
-          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
-        });
-
-        let sheetSwipeStartX = 0;
-        let sheetSwipeStartY = 0;
-
-        sheet?.addEventListener("touchstart", (event) => {
-          if (event.target.closest(".panel__image-stage")) return;
-
-          sheetSwipeStartX = event.changedTouches[0].screenX;
-          sheetSwipeStartY = event.changedTouches[0].screenY;
-        }, { passive: true });
-
-        sheet?.addEventListener("touchend", (event) => {
-          if (event.target.closest(".panel__image-stage")) return;
-
-          const dx = event.changedTouches[0].screenX - sheetSwipeStartX;
-          const dy = event.changedTouches[0].screenY - sheetSwipeStartY;
-
-          if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy)) return;
-
-          if (dx < 0) goNext();
-          if (dx > 0) goPrev();
-        }, { passive: true });
-      }
-
-     initIntentReviewModal();
+     
 
 window.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
@@ -3893,5 +2988,6 @@ window.addEventListener("DOMContentLoaded", () => {
 }, 150);
 });
     </script>
+  
   </body>
 </html>

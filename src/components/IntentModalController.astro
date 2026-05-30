@@ -1,0 +1,1232 @@
+ <script is:inline>function initIntentReviewModal() {
+        const sheet = document.getElementById("preview-sheet");
+        const overlay = document.getElementById("sheet-overlay");
+
+        if (!sheet || !overlay) return;
+
+        const sheetImage = document.getElementById("sheet-image");
+        const sheetPrice = document.getElementById("sheet-price");
+        const sheetAddress = document.getElementById("sheet-address");
+        const sheetMeta = document.getElementById("sheet-meta");
+        const sheetDescription = document.getElementById("sheet-description");
+        const sheetPosition = document.getElementById("sheet-position");
+        const sheetProgressBar = document.getElementById("sheet-progress-bar");
+        const closeBtn = document.getElementById("sheet-close-btn");
+        const sheetMapBtn = document.getElementById("sheet-map-btn");
+const sheetMiniMap = document.getElementById("sheet-mini-map");
+const sheetImageStage = document.querySelector(".panel__image-stage");
+
+let sheetMiniMapInstance = null;
+let sheetMiniMapMarker = null;
+        const nextBtn = document.getElementById("sheet-next-btn");
+        const prevBtn = document.getElementById("sheet-prev-btn");
+        const nextTopBtn = document.getElementById("sheet-next-top-btn");
+        const prevTopBtn = document.getElementById("sheet-prev-top-btn");
+
+        const loveBtn = document.getElementById("decision-love-btn");
+        const maybeBtn = document.getElementById("decision-maybe-btn");
+        const passBtn = document.getElementById("decision-pass-btn");
+        const feedback = document.getElementById("sheet-feedback");
+        let likeTagsEl = document.getElementById("intent-like-tags");
+
+function getLikeTagsForType(propertyType = "") {
+  const type = String(propertyType || "").toLowerCase();
+
+  if (type.includes("condo") || type.includes("apartment")) {
+    return [
+      ["layout", "Layout"],
+      ["views", "Views"],
+      ["building", "Building"],
+      ["amenities", "Amenities"],
+      ["walkability", "Walkability"],
+      ["modern", "Modern"],
+      ["value", "Value"],
+      ["area", "Location"],
+    ];
+  }
+
+  if (type.includes("town")) {
+    return [
+      ["layout", "Layout"],
+      ["garage", "Garage"],
+      ["yard", "Yard"],
+      ["storage", "Storage"],
+      ["modern", "Modern"],
+      ["value", "Value"],
+      ["area", "Area"],
+    ];
+  }
+
+  if (type.includes("mobile") || type.includes("manufactured")) {
+    return [
+      ["value", "Affordable"],
+      ["modern", "Updated"],
+      ["community", "Community"],
+      ["views", "Views"],
+      ["layout", "Layout"],
+      ["parking", "Parking"],
+      ["yard", "Yard"],
+    ];
+  }
+
+  return [
+    ["layout", "Layout"],
+    ["yard", "Yard"],
+    ["garage", "Garage"],
+    ["suite", "Suite potential"],
+    ["views", "Views"],
+    ["privacy", "Privacy"],
+    ["modern", "Modern"],
+    ["area", "Area"],
+  ];
+}
+
+if (!likeTagsEl) {
+  likeTagsEl = document.createElement("div");
+  likeTagsEl.id = "intent-like-tags";
+
+  const decisionWrap = document.querySelector("#preview-sheet .decision-wrap");
+
+  if (decisionWrap) {
+    decisionWrap.after(likeTagsEl);
+  } else if (feedback) {
+    feedback.after(likeTagsEl);
+  }
+}
+        const sheetContent = document.getElementById("sheet-content");
+        const sheetSummary = document.getElementById("sheet-summary");
+        const sheetPhotoCount = document.getElementById("sheet-photo-count");
+        const photoPrevBtn = document.getElementById("photo-prev-btn");
+        const photoNextBtn = document.getElementById("photo-next-btn");
+
+        let activePhotoUrls = [];
+        let activePhotoIndex = 0;
+        let photoSwipeStartX = 0;
+        let photoSwipeStartY = 0;
+
+let activeCard = null;
+let totalIntentReactions = 0;
+let positiveIntentReactions = 0;
+let hasShownIntentSummary = false;
+let refinedBrowseCount = 0;
+let hasShownSaveSearchCTA = false;
+let saveSearchDismissedAtCardKey = null;
+let isExitSaveSearchPrompt = false;
+let hasDismissedSaveSearchCTA = false;
+
+const SAVE_SEARCH_RESHOW_AFTER = 10;
+
+    function cardIsInsideCurrentMap(card) {
+  if (!document.body.classList.contains("is-map-mode")) return true;
+
+  const bounds = window.currentIntentMapBounds;
+
+  if (!bounds) return true;
+  const lat = Number(card.dataset.lat || "");
+  const lng = Number(card.dataset.lng || "");
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+  return (
+    lat >= Number(bounds.south) &&
+    lat <= Number(bounds.north) &&
+    lng >= Number(bounds.west) &&
+    lng <= Number(bounds.east)
+  );
+}
+
+function getCards() {
+  return Array.from(document.querySelectorAll(".card")).filter((card) => {
+    return card.style.display !== "none" && cardIsInsideCurrentMap(card);
+  });
+}
+
+        function currentIndex() {
+  return getCards().indexOf(activeCard);
+}
+
+function getCardKey(card) {
+  return String(
+    card?.dataset?.listingId ||
+    card?.dataset?.mls ||
+    card?.dataset?.itemId ||
+    card?.dataset?.address ||
+    ""
+  ).trim().toLowerCase();
+}
+
+      function openSheet(card) {
+  activeCard = card;
+  card.dataset.viewed = "true";
+window.saveViewedIntentAddress?.(card.dataset.address || "");
+window.saveViewedIntentListingKey?.(card);
+window.updateViewedBadges?.();
+  renderCard(card);
+
+          sheetContent?.classList.add("open");
+          sheetSummary?.classList.remove("open");
+
+          sheet.classList.add("open");
+          overlay.classList.add("open");
+          sheet.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+        }
+
+      function closeSheet(options = {}) {
+  const currentCardKey = getCardKey(activeCard);
+
+  if (
+    !options.force &&
+    hasDismissedSaveSearchCTA &&
+    saveSearchDismissedAtCardKey &&
+    currentCardKey &&
+    currentCardKey !== saveSearchDismissedAtCardKey
+  ) {
+    showSaveSearchCTA({
+      kicker: "Before you go",
+      title: "Want to save this search direction?",
+      body: "You can keep browsing later, and we’ll help your agent spot better matches.",
+      isExitPrompt: true,
+    });
+
+    return;
+  }
+
+  sheet.classList.remove("open");
+  overlay.classList.remove("open");
+  sheet.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+function preloadImages(urls = []) {
+  urls
+    .filter(Boolean)
+   .slice(0, 18)
+    .forEach((src) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = src;
+    });
+}
+
+function getCardPhotoUrls(card) {
+  if (!card) return [];
+
+  const normalizePhotoUrl = (url) => {
+    const value = String(url || "").trim();
+
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+
+    return `https://cdn.repliers.io/${value}`;
+  };
+
+  let rawImages = [];
+
+  try {
+    rawImages = JSON.parse(card.dataset.images || "[]");
+  } catch {
+    rawImages = [];
+  }
+
+  const urls = rawImages
+    .map((img) => {
+      if (typeof img === "string") return normalizePhotoUrl(img);
+
+      return normalizePhotoUrl(
+        img.highRes ||
+        img.mediumRes ||
+        img.lowRes ||
+        img.url ||
+        ""
+      );
+    })
+    .filter(Boolean);
+
+  return urls.length
+    ? urls
+    : [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
+}
+
+function preloadNearbyListingPhotos(currentCard) {
+  const cards = getCards();
+  const index = cards.indexOf(currentCard);
+
+  const nextCards = cards.slice(index + 1, index + 4);
+  const prevCard = cards[index - 1];
+
+  const urls = [
+    ...nextCards.flatMap((card) => getCardPhotoUrls(card).slice(0, 3)),
+    ...getCardPhotoUrls(prevCard).slice(0, 2),
+  ];
+
+  preloadImages(urls);
+}
+        function renderCard(card) {
+          const cards = getCards();
+          const index = cards.indexOf(card);
+          const total = cards.length;
+
+          const normalizePhotoUrl = (url) => {
+            const value = String(url || "").trim();
+
+            if (!value) return "";
+            if (value.startsWith("http://") || value.startsWith("https://")) return value;
+            if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
+
+            return `https://cdn.repliers.io/${value}`;
+          };
+
+          let rawImages = [];
+
+          try {
+            rawImages = JSON.parse(card.dataset.images || "[]");
+          } catch {
+            rawImages = [];
+          }
+
+          activePhotoUrls = rawImages
+            .map((img) => {
+              if (typeof img === "string") return normalizePhotoUrl(img);
+
+              return normalizePhotoUrl(
+                img.highRes ||
+                img.mediumRes ||
+                img.lowRes ||
+                img.url ||
+                ""
+              );
+            })
+            .filter(Boolean);
+
+          if (!activePhotoUrls.length) {
+            activePhotoUrls = [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
+          }
+
+          activePhotoIndex = 0;
+
+          function renderActivePhoto() {
+            if (!sheetImage || !activePhotoUrls.length) return;
+
+            sheetImage.src = activePhotoUrls[activePhotoIndex];
+            sheetImage.alt = card.dataset.address || "";
+
+            if (sheetPhotoCount) {
+              sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+            }
+
+            if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+            if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
+          }
+
+        renderActivePhoto();
+
+preloadImages(activePhotoUrls.slice(1, 28));
+
+window.setTimeout(() => {
+  preloadImages(activePhotoUrls.slice(28, 42));
+}, 450);
+
+window.setTimeout(() => {
+  preloadImages(activePhotoUrls.slice(42));
+}, 1200);
+
+preloadNearbyListingPhotos(card);
+
+     card.dataset.viewed = "true";
+window.saveViewedIntentAddress?.(card.dataset.address || "");
+window.saveViewedIntentListingKey?.(card);
+window.updateViewedBadges?.();
+
+if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
+if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
+
+          if (sheetMeta) {
+            sheetMeta.innerHTML = `
+              <span class="panel__meta-item"><strong>${card.dataset.beds || "-"}</strong> <span class="panel__meta-label">Bed</span></span>
+              <span class="panel__meta-item"><strong>${card.dataset.baths || "-"}</strong> <span class="panel__meta-label">Bath</span></span>
+              ${
+                card.dataset.sqft
+                  ? `<span class="panel__meta-item"><strong>${card.dataset.sqft}</strong> <span class="panel__meta-label">Sq Ft</span></span>`
+                  : ""
+              }
+            `;
+          }
+
+          if (sheetDescription) {
+            sheetDescription.textContent = card.dataset.description || "";
+          }
+
+          if (sheetPosition) {
+            sheetPosition.textContent = `${index + 1} of ${total}`;
+          }
+
+          if (sheetProgressBar) {
+            sheetProgressBar.style.width = `${((index + 1) / Math.max(total, 1)) * 100}%`;
+          }
+
+          if (prevBtn) prevBtn.disabled = index <= 0;
+          if (prevTopBtn) prevTopBtn.disabled = index <= 0;
+
+          if (nextBtn) nextBtn.textContent = index >= total - 1 ? "Close" : "Next listing →";
+          if (nextTopBtn) nextTopBtn.textContent = index >= total - 1 ? "Close" : "Next →";
+
+          updateDecisionButtons(card);
+renderLikeTags(card);
+if (card.classList.contains("refined-card")) {
+  refinedBrowseCount += 1;
+}
+          if (sheetMiniMap) {
+  sheetMiniMap.hidden = true;
+  sheetMiniMap.style.display = "none";
+}
+
+if (sheetImageStage) {
+  sheetImageStage.classList.remove("is-hidden");
+}
+        }
+function updateCardDecisionBadge(card) {
+  if (!card) return;
+
+  let badge = card.querySelector(".card-decision-badge");
+
+  if (!badge) {
+    const cardBody = card.querySelector(".card-body");
+    if (!cardBody) return;
+
+    badge = document.createElement("div");
+    badge.className = "card-decision-badge";
+    badge.hidden = true;
+    cardBody.appendChild(badge);
+  }
+
+  const decision = card.dataset.decision || "";
+
+badge.classList.remove("is-love", "is-maybe", "is-pass");
+  if (decision === "love") {
+    badge.hidden = false;
+    badge.textContent = "❤️ Loved";
+    badge.classList.add("is-love");
+  } else if (decision === "maybe") {
+    badge.hidden = false;
+    badge.textContent = "👌 Kinda liked";
+    badge.classList.add("is-maybe");
+} else if (decision === "pass") {
+  badge.hidden = false;
+  badge.textContent = "✕ Not for me";
+  badge.classList.add("is-pass");
+} else {
+  badge.hidden = true;
+  badge.textContent = "";
+}
+
+  card.classList.toggle("is-passed", decision === "pass");
+}
+        function updateDecisionButtons(card) {
+          [loveBtn, maybeBtn, passBtn].forEach((btn) => btn?.classList.remove("is-selected"));
+
+          if (card.dataset.decision === "love") loveBtn?.classList.add("is-selected");
+          if (card.dataset.decision === "maybe") maybeBtn?.classList.add("is-selected");
+          if (card.dataset.decision === "pass") passBtn?.classList.add("is-selected");
+        }
+
+        function getActiveLikedTags() {
+  return Array.from(likeTagsEl?.querySelectorAll(".intent-like-tag.active") || [])
+    .map((btn) => btn.dataset.likeTag)
+    .filter(Boolean);
+}
+
+function renderLikeTags(card) {
+  if (!likeTagsEl) return;
+
+  const decision = card?.dataset.decision || "";
+  const shouldShow = decision === "love" || decision === "maybe";
+
+  likeTagsEl.classList.toggle("open", shouldShow);
+
+let savedTags = [];
+
+try {
+  savedTags = JSON.parse(card.dataset.likedTags || "[]");
+} catch {
+  savedTags = [];
+}
+
+const pagePropertyType =
+  document.querySelector(".stat-card:nth-child(2) .stat-value")?.textContent || "";
+
+const propertyType =
+  card?.dataset?.type ||
+  pagePropertyType ||
+  "";
+
+const tagOptions = getLikeTagsForType(propertyType);
+
+likeTagsEl.innerHTML = tagOptions
+  .map(([key, label]) => {
+    const activeClass = savedTags.includes(key) ? " active" : "";
+
+    return `
+      <button
+        type="button"
+        class="intent-like-tag${activeClass}"
+        data-like-tag="${key}"
+      >
+        ${label}
+      </button>
+    `;
+  })
+  .join("");
+}
+function getSharedIntentSessionId() {
+  if (typeof window.getIntentSessionId === "function") {
+    return window.getSharedIntentSessionId();
+  }
+
+  const key = "intent_session_id";
+  let value = window.localStorage.getItem(key);
+
+  if (!value) {
+    value =
+      window.crypto?.randomUUID?.() ||
+      `intent_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    window.localStorage.setItem(key, value);
+  }
+
+  return value;
+}
+function saveCurrentReaction() {
+  if (!activeCard) return;
+
+  const likedTags = getActiveLikedTags();
+  activeCard.dataset.likedTags = JSON.stringify(likedTags);
+
+  fetch("/api/intent-listing-reaction", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      session_id: getSharedIntentSessionId(),
+
+      intent_page_id: document.body.dataset.intentPageId,
+      city: document.body.dataset.city,
+      slug: document.body.dataset.slug,
+
+      listing_id:
+        activeCard.dataset.listingId ||
+        activeCard.dataset.itemId ||
+        "",
+
+      mls_number:
+        activeCard.dataset.mls || "",
+
+      address:
+        activeCard.dataset.address || "",
+
+      price:
+        activeCard.dataset.price || "",
+
+      beds:
+        activeCard.dataset.beds || "",
+
+      baths:
+        activeCard.dataset.baths || "",
+
+      sqft:
+        activeCard.dataset.sqft || "",
+
+      area:
+        activeCard.dataset.area || "",
+
+      decision: activeCard.dataset.decision || "",
+      liked_tags: likedTags,
+    }),
+  })
+    .then(async (res) => {
+      const json = await res.json();
+    console.log("REACTION SAVED", json);
+refreshBehaviourChips();
+    })
+    .catch((error) => {
+      console.error("Failed to save intent listing reaction:", error);
+    });
+}
+
+function showRefiningState(chips = []) {
+  if (!sheetSummary) return;
+
+  const chipHtml = chips.length
+    ? chips
+        .map((label) => {
+          return `<span class="modal-intent-chip">${label}</span>`;
+        })
+        .join("")
+    : "";
+
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary is-refining">
+      <div class="modal-intent-kicker">
+        Refining around what you liked
+      </div>
+
+      <h2>Finding stronger matches...</h2>
+
+      <p>
+        We’re adjusting the search around the homes, features,
+        and areas you responded to most positively.
+      </p>
+
+      <div class="modal-intent-chip-row">
+        ${chipHtml}
+      </div>
+
+      <div class="intent-refining-bar">
+        <span></span>
+      </div>
+    </div>
+  `;
+}
+
+function showLeadCaptureForm() {
+  if (!sheetContent || !sheetSummary) return;
+
+  sheetContent.classList.remove("open");
+  sheetSummary.classList.add("open");
+
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary">
+      <div class="modal-intent-kicker">Save your refined search</div>
+
+      <h2>Want new matches like these?</h2>
+
+      <p>
+        Leave your contact details and we’ll send better matches when similar homes appear.
+      </p>
+
+      <div style="max-width:420px;margin:0 auto 22px;display:grid;gap:10px;">
+        <input id="lead-name-input" placeholder="Name" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
+        <input id="lead-email-input" placeholder="Email" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
+        <input id="lead-phone-input" placeholder="Phone optional" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
+      </div>
+
+      <div class="modal-intent-actions">
+        <button type="button" class="modal-intent-primary" id="lead-save-btn">
+          Send me better matches
+        </button>
+
+        <button type="button" class="modal-intent-secondary" id="lead-cancel-btn">
+          Keep browsing
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("lead-save-btn")?.addEventListener("click", async () => {
+    const name = document.getElementById("lead-name-input")?.value || "";
+    const email = document.getElementById("lead-email-input")?.value || "";
+    const phone = document.getElementById("lead-phone-input")?.value || "";
+
+    await fetch("/api/intent-lead", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name,
+    email,
+    phone,
+    session_id: getSharedIntentSessionId(),
+    intent_page_id: document.body.dataset.intentPageId,
+    city: document.body.dataset.city,
+    slug: document.body.dataset.slug,
+  }),
+});
+
+    sheetSummary.innerHTML = `
+      <div class="modal-intent-summary">
+        <div class="modal-intent-kicker">Saved</div>
+        <h2>You’re all set.</h2>
+        <p>We’ll use this search direction to help send better matches.</p>
+      </div>
+    `;
+
+setTimeout(() => {
+  closeSheet({ force: true });
+
+  const refinedAnchor =
+    document.getElementById("refined-results") ||
+    document.getElementById("refined-results-anchor");
+
+  refinedAnchor?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}, 1200);
+  });
+
+  document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
+    sheetSummary.classList.remove("open");
+    sheetContent.classList.add("open");
+    goNext();
+  });
+}
+
+function showSaveSearchCTA(options = {}) {
+  if (!sheetContent || !sheetSummary) return;
+
+  hasShownSaveSearchCTA = true;
+  isExitSaveSearchPrompt = Boolean(options.isExitPrompt);
+
+  sheetContent.classList.remove("open");
+  sheetSummary.classList.add("open");
+
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary">
+      <div class="modal-intent-kicker">
+        ${options.kicker || "Your refined search is ready"}
+      </div>
+
+      <h2>${options.title || "Want to save this search?"}</h2>
+
+      <p>
+        ${options.body || "We can save this direction and send you better matches when similar homes appear."}
+      </p>
+
+      <div class="modal-intent-actions">
+        <button type="button" class="modal-intent-primary" id="save-search-lead-btn">
+          Save this search
+        </button>
+
+        <button type="button" class="modal-intent-secondary" id="save-search-keep-browsing-btn">
+          ${isExitSaveSearchPrompt ? "Not right now" : "Keep browsing"}
+        </button>
+      </div>
+    </div>
+  `;
+
+document.getElementById("save-search-lead-btn")?.addEventListener("click", () => {
+ saveSearchDismissedAtCardKey = null;
+hasDismissedSaveSearchCTA = false;
+  isExitSaveSearchPrompt = false;
+  hasShownSaveSearchCTA = true;
+
+  showLeadCaptureForm();
+});
+
+  document.getElementById("save-search-keep-browsing-btn")?.addEventListener("click", () => {
+ if (isExitSaveSearchPrompt) {
+  closeSheet({ force: true });
+
+  const refinedAnchor =
+    document.getElementById("refined-results") ||
+    document.getElementById("refined-results-anchor");
+
+  window.setTimeout(() => {
+    refinedAnchor?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 120);
+
+  return;
+}
+
+   saveSearchDismissedAtCardKey = getCardKey(activeCard);
+hasDismissedSaveSearchCTA = true;
+hasShownSaveSearchCTA = false;
+refinedBrowseCount = 0;
+
+sheetSummary.classList.remove("open");
+sheetContent.classList.add("open");
+
+goNext();
+  });
+}
+
+function showIntentSummaryCard() {
+  if (!sheetContent || !sheetSummary) return;
+
+  hasShownIntentSummary = true;
+
+ const generatedChips = Array.from(
+  document.querySelectorAll(
+    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
+  )
+)
+    .map((chip) => chip.textContent.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const chipHtml = generatedChips.length
+    ? generatedChips
+        .map((label) => `<span class="modal-intent-chip">${label}</span>`)
+        .join("")
+    : `
+      <span class="modal-intent-chip">Better matches</span>
+      <span class="modal-intent-chip">More homes like these</span>
+    `;
+
+  sheetContent.classList.remove("open");
+  sheetSummary.classList.add("open");
+
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary">
+      <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
+
+      <h2>Want us to narrow in on better matches?</h2>
+
+      <p>
+        Based on what you’ve liked so far, we can refine the next batch around
+        the features and areas you seem most drawn to.
+      </p>
+
+      <div class="modal-intent-chip-row">
+        ${chipHtml}
+      </div>
+<div class="modal-intent-save-copy">
+  Your preferences can be saved privately so your next batch keeps improving.
+</div>
+      <div class="modal-intent-actions">
+       <button type="button" class="modal-intent-primary" id="summary-refine-btn">
+  Show better matches
+</button>
+
+<button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
+  Compare nearby areas
+</button>
+
+<button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
+  Keep browsing
+</button>
+      </div>
+    </div>
+  `;
+
+document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");  const generatedChips = Array.from(
+    document.querySelectorAll(
+      ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
+    )
+  )
+    .map((chip) => chip.textContent.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  showRefiningState(generatedChips);
+
+ const generatedAreaLabels = Array.from(
+  document.querySelectorAll(
+    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
+  )
+)
+  .map((chip) => chip.textContent.trim())
+  .filter((label) => /^stay in /i.test(label));
+
+const preferredAreas = generatedAreaLabels
+  .map((label) => label.replace(/^stay in /i, "").trim())
+  .filter(Boolean);
+
+const combinedAreaChip = document.createElement("button");
+combinedAreaChip.type = "button";
+combinedAreaChip.className = "refine-chip generated-refine-chip";
+combinedAreaChip.textContent =
+  preferredAreas.length > 1
+    ? `Stay in ${preferredAreas.join(" and ")}`
+    : generatedAreaLabels[0] || "Show better matches";
+
+setTimeout(async () => {
+  closeSheet({ force: true });
+
+  await runIntentRefine(combinedAreaChip, { openFirstResult: true });
+
+  const refinedAnchor =
+    document.getElementById("refined-results") ||
+    document.getElementById("refined-results-anchor");
+
+  refinedAnchor?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}, 2200);
+});
+document.getElementById("summary-nearby-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");  showRefiningState(["Compare nearby areas"]);
+
+  const nearbyChip = document.createElement("button");
+  nearbyChip.type = "button";
+  nearbyChip.className = "refine-chip generated-refine-chip";
+  nearbyChip.textContent = "Compare nearby areas";
+
+  setTimeout(() => {
+    closeSheet();
+
+    runIntentRefine(nearbyChip, { openFirstResult: true });
+  }, 1600);
+});
+
+document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", (event) => {
+  event.currentTarget.classList.add("is-selected");    sheetSummary.classList.remove("open");
+    sheetContent.classList.add("open");
+    goNext();
+  });
+}
+
+        function goNext() {
+          const cards = getCards();
+          const index = currentIndex();
+if (
+  hasShownIntentSummary &&
+  !hasShownSaveSearchCTA &&
+  refinedBrowseCount >= 5 &&
+  !hasDismissedSaveSearchCTA
+) {
+  showSaveSearchCTA();
+  return;
+}
+
+if (
+  hasShownIntentSummary &&
+  !hasShownSaveSearchCTA &&
+  hasDismissedSaveSearchCTA &&
+  refinedBrowseCount >= SAVE_SEARCH_RESHOW_AFTER
+) {
+  showSaveSearchCTA({
+    kicker: "Still seeing good matches?",
+    title: "Want us to keep watching for homes like these?",
+    body: "We can save this direction and send better matches when similar homes appear.",
+  });
+
+  return;
+}
+       if (
+  !hasShownIntentSummary &&
+  (
+    (totalIntentReactions >= 6 && positiveIntentReactions >= 2) ||
+    positiveIntentReactions >= 4
+  )
+) {
+  showIntentSummaryCard();
+  return;
+}
+
+if (
+  !hasShownIntentSummary &&
+  totalIntentReactions >= 10 &&
+  positiveIntentReactions >= 2
+) {
+  showIntentSummaryCard();
+  return;
+}
+
+if (
+  !hasShownIntentSummary &&
+  totalIntentReactions >= 10 &&
+  positiveIntentReactions >= 2
+) {
+  showIntentSummaryCard();
+  return;
+}
+
+if (index >= cards.length - 1) {
+  closeSheet();
+  return;
+}
+
+          activeCard = cards[index + 1];
+          renderCard(activeCard);
+          sheet.scrollTop = 0;
+        }
+
+        function goPrev() {
+          const cards = getCards();
+          const index = currentIndex();
+
+          if (index <= 0) return;
+
+          activeCard = cards[index - 1];
+          renderCard(activeCard);
+          sheet.scrollTop = 0;
+        }
+
+        function saveIntentDecision(decision) {
+  if (!activeCard) return;
+
+  activeCard.dataset.decision = decision;
+updateCardDecisionBadge(activeCard);
+  if (decision === "pass") {
+    activeCard.dataset.likedTags = "[]";
+  }
+
+  updateDecisionButtons(activeCard);
+  renderLikeTags(activeCard);
+
+  if (feedback) {
+    feedback.textContent =
+      decision === "love"
+        ? "Saved: Love this - what stood out?"
+        : decision === "maybe"
+          ? "Saved: Kinda like - what should we keep?"
+          : "Saved: Not for me";
+  }
+
+totalIntentReactions += 1;
+
+if (decision === "love" || decision === "maybe") {
+  positiveIntentReactions += 1;
+}
+
+saveCurrentReaction();
+
+window.setTimeout(() => {
+  const sheetScroll =
+    document.querySelector("#preview-sheet .panel__view") ||
+    document.getElementById("sheet-content") ||
+    document.getElementById("preview-sheet");
+
+  const bottomNav =
+    document.querySelector("#preview-sheet .panel__nav-row") ||
+    document.getElementById("sheet-next-btn");
+
+  if (bottomNav) {
+    bottomNav.style.scrollMarginBottom = "120px";
+    bottomNav.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }
+
+  if (sheetScroll) {
+    sheetScroll.scrollTop = sheetScroll.scrollHeight;
+  }
+}, 180);
+}
+
+       document.addEventListener("click", (event) => {
+  const card = event.target.closest(".card");
+
+  if (!card) return;
+
+  const interactive = event.target.closest("button, a, input, textarea, select");
+
+  if (interactive && interactive !== card) return;
+
+  openSheet(card);
+});
+
+        closeBtn?.addEventListener("click", closeSheet);
+       sheetMapBtn?.addEventListener("click", async () => {
+  if (!activeCard || !sheetMiniMap) return;
+
+  const mapIsOpen = !sheetMiniMap.hidden;
+
+  if (mapIsOpen) {
+    sheetMiniMap.hidden = true;
+    sheetMiniMap.style.display = "none";
+
+    if (sheetImageStage) {
+      sheetImageStage.classList.remove("is-hidden");
+    }
+
+    if (sheetMapBtn) {
+      sheetMapBtn.textContent = "Map";
+    }
+
+    return;
+  }
+
+  const point = getCardLatLng(activeCard);
+
+  if (!point) {
+    sheetMiniMap.hidden = false;
+    sheetMiniMap.style.display = "block";
+
+    if (sheetMapBtn) {
+      sheetMapBtn.textContent = "Pictures";
+    }
+
+    sheetMiniMap.innerHTML =
+      "<p style='padding:16px;color:#6b6560;'>No map location available for this listing.</p>";
+
+    return;
+  }
+
+  if (sheetImageStage) {
+    sheetImageStage.classList.add("is-hidden");
+  }
+
+  sheetMiniMap.hidden = false;
+  sheetMiniMap.style.display = "block";
+
+  if (sheetMapBtn) {
+    sheetMapBtn.textContent = "Pictures";
+  }
+
+  try {
+    await loadGoogleMaps();
+  } catch (error) {
+    console.error("Google Maps failed to load:", error);
+
+    sheetMiniMap.innerHTML =
+      "<p style='padding:16px;color:#6b6560;'>Map could not load.</p>";
+
+    return;
+  }
+
+  sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
+    center: point,
+    zoom: 15,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+  });
+
+  if (sheetMiniMapMarker) {
+    sheetMiniMapMarker.setMap(null);
+  }
+
+  sheetMiniMapMarker = new google.maps.Marker({
+    position: point,
+    map: sheetMiniMapInstance,
+    title: activeCard.dataset.address || "Listing",
+  });
+
+  window.setTimeout(() => {
+    google.maps.event.trigger(sheetMiniMapInstance, "resize");
+    sheetMiniMapInstance.setCenter(point);
+  }, 120);
+});
+        overlay?.addEventListener("click", closeSheet);
+        nextBtn?.addEventListener("click", goNext);
+        nextTopBtn?.addEventListener("click", goNext);
+        prevBtn?.addEventListener("click", goPrev);
+        prevTopBtn?.addEventListener("click", goPrev);
+
+        loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
+        maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
+        passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
+        likeTagsEl?.addEventListener("click", (event) => {
+  const tagBtn = event.target.closest(".intent-like-tag");
+
+  if (!tagBtn || !activeCard) return;
+
+  tagBtn.classList.toggle("active");
+
+  activeCard.dataset.likedTags = JSON.stringify(getActiveLikedTags());
+
+  saveCurrentReaction();
+});
+
+        photoPrevBtn?.addEventListener("click", (event) => {
+          event.stopPropagation();
+
+          if (activePhotoIndex <= 0) return;
+
+          activePhotoIndex -= 1;
+
+          if (sheetImage) {
+            sheetImage.src = activePhotoUrls[activePhotoIndex];
+
+            const nextPreload = activePhotoUrls[activePhotoIndex + 1];
+
+            if (nextPreload) {
+              const img = new Image();
+              img.src = nextPreload;
+            }
+          }
+
+          if (sheetPhotoCount) {
+            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+          }
+
+          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
+        });
+
+        function showActivePhoto() {
+          if (!sheetImage || !activePhotoUrls.length) return;
+
+          sheetImage.src = activePhotoUrls[activePhotoIndex];
+
+          if (sheetPhotoCount) {
+            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+          }
+
+          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
+        }
+
+        sheetImage?.addEventListener("touchstart", (event) => {
+          photoSwipeStartX = event.changedTouches[0].screenX;
+          photoSwipeStartY = event.changedTouches[0].screenY;
+        }, { passive: true });
+
+        sheetImage?.addEventListener("touchend", (event) => {
+          const dx = event.changedTouches[0].screenX - photoSwipeStartX;
+          const dy = event.changedTouches[0].screenY - photoSwipeStartY;
+
+          if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+
+          if (dx < 0 && activePhotoIndex < activePhotoUrls.length - 1) {
+            activePhotoIndex += 1;
+            showActivePhoto();
+          }
+
+          if (dx > 0 && activePhotoIndex > 0) {
+            activePhotoIndex -= 1;
+            showActivePhoto();
+          }
+        }, { passive: true });
+
+        photoNextBtn?.addEventListener("click", (event) => {
+          event.stopPropagation();
+
+          if (activePhotoIndex >= activePhotoUrls.length - 1) return;
+
+          activePhotoIndex += 1;
+
+          if (sheetImage) {
+            sheetImage.src = activePhotoUrls[activePhotoIndex];
+          }
+
+          if (sheetPhotoCount) {
+            sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
+          }
+
+          if (photoPrevBtn) photoPrevBtn.disabled = activePhotoIndex === 0;
+          if (photoNextBtn) photoNextBtn.disabled = activePhotoIndex >= activePhotoUrls.length - 1;
+        });
+
+        let sheetSwipeStartX = 0;
+        let sheetSwipeStartY = 0;
+
+        sheet?.addEventListener("touchstart", (event) => {
+          if (event.target.closest(".panel__image-stage")) return;
+
+          sheetSwipeStartX = event.changedTouches[0].screenX;
+          sheetSwipeStartY = event.changedTouches[0].screenY;
+        }, { passive: true });
+
+        sheet?.addEventListener("touchend", (event) => {
+          if (event.target.closest(".panel__image-stage")) return;
+
+          const dx = event.changedTouches[0].screenX - sheetSwipeStartX;
+          const dy = event.changedTouches[0].screenY - sheetSwipeStartY;
+
+          if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy)) return;
+
+          if (dx < 0) goNext();
+          if (dx > 0) goPrev();
+        }, { passive: true });
+      }
+
+   
+
+     if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initIntentReviewModal);
+} else {
+  initIntentReviewModal();
+}
+</script>

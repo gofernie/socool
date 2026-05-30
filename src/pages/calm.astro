@@ -23,6 +23,28 @@ const {
 if (page.template !== "calm") {
   return Astro.redirect("/brutal");
 }
+
+const enabledIntentPageSlugs = Array.isArray(page.enabledIntentPageSlugs)
+  ? page.enabledIntentPageSlugs
+  : [];
+
+let intentPages = [];
+
+try {
+  const intentRes = await fetch(
+    `${Astro.url.origin}/api/intent-pages?city=${encodeURIComponent(String(agent.city || "nanaimo").toLowerCase())}`
+  );
+
+  const intentJson = await intentRes.json();
+
+  intentPages = Array.isArray(intentJson?.pages)
+    ? intentJson.pages.filter((intentPage) =>
+        enabledIntentPageSlugs.includes(intentPage.slug)
+      )
+    : [];
+} catch {
+  intentPages = [];
+}
 ---
 
 <html lang="en">
@@ -137,7 +159,58 @@ if (page.template !== "calm") {
       .group-card__link { display: inline-flex; align-items: center; gap: 6px; margin-top: 24px; font-size: 0.85rem; font-weight: 600; color: var(--accent); transition: gap 0.2s var(--ease); }
       .group-card__link::after { content: "→"; transition: transform 0.2s var(--ease); }
       .group-card:hover .group-card__link::after { transform: translateX(4px); }
+/* INTENT PAGES */
+.intent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
 
+.intent-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-warm);
+  padding: 26px;
+  min-height: 230px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.28s var(--ease);
+}
+
+.intent-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(28, 25, 23, 0.1);
+  border-color: var(--accent-light);
+}
+
+.intent-card__kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.intent-card__title {
+  font-family: var(--f-display);
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.intent-card__copy {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  font-weight: 300;
+}
+
+.intent-card__link {
+  margin-top: 22px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--accent);
+}
       /* CITY */
       .city-section { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 80px; align-items: start; }
       .city-section__title { font-family: var(--f-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 24px; }
@@ -226,8 +299,7 @@ if (page.template !== "calm") {
         .hero__grid, .bio-section { grid-template-columns: 1fr; gap: 48px; }
         .city-section { grid-template-columns: 1fr; gap: 40px; }
         .listing-grid { grid-template-columns: repeat(2, 1fr); }
-        .social-grid { grid-template-columns: repeat(2, 1fr); }
-        .section-head { grid-template-columns: 1fr; gap: 20px; }
+.social-grid, .intent-grid { grid-template-columns: repeat(2, 1fr); }        .section-head { grid-template-columns: 1fr; gap: 20px; }
         .stats-strip__inner { grid-template-columns: 1fr; }
         .stat-cell { border-right: 0; border-bottom: 1px solid var(--line); }
         .stat-cell:last-child { border-bottom: 0; }
@@ -235,8 +307,7 @@ if (page.template !== "calm") {
 
       @media (max-width: 700px) {
         .shell { width: calc(100% - 32px); }
-        .group-grid, .listing-grid, .social-grid { grid-template-columns: 1fr; }
-        .hero { padding: 48px 0 40px; }
+.group-grid, .listing-grid, .social-grid, .intent-grid { grid-template-columns: 1fr; }        .hero { padding: 48px 0 40px; }
         .footer__inner { flex-direction: column; text-align: center; }
         .footer__disclaimer { text-align: center; }
         .panel { left: 0; right: 0; width: 100%; max-height: 100svh; border-radius: 0; transform: translateY(-110%); }
@@ -358,7 +429,46 @@ if (page.template !== "calm") {
             ))}
           </div>
         </div>
-      </section>
+          </section>
+
+      {intentPages.length > 0 && (
+        <section class="section section--alt">
+          <div class="shell">
+            <div class="section-head">
+              <div>
+                <p class="section-label">Buyer intent pages</p>
+                <h2 class="section-title">Search by what matters.</h2>
+              </div>
+
+              <p class="section-intro">
+                Explore focused search paths based on lifestyle, property type, price point, and buyer priorities.
+              </p>
+            </div>
+
+            <div class="intent-grid">
+              {intentPages.map((intentPage) => (
+                <a class="intent-card" href={`/nanaimo/${intentPage.slug}`}>
+                  <div>
+                    <div class="intent-card__kicker">
+                      {String(intentPage.property_type || "Search").replaceAll("_", " ")}
+                    </div>
+
+                    <h3 class="intent-card__title">
+                      {intentPage.hero_heading}
+                    </h3>
+
+                    <p class="intent-card__copy">
+                      {intentPage.intro_copy}
+                    </p>
+                  </div>
+
+                  <span class="intent-card__link">View search →</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section class="section section--alt">
         <div class="shell city-section">

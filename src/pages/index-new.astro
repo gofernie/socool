@@ -1,0 +1,2046 @@
+---
+import { createClient } from "@supabase/supabase-js";
+import ShortlistReviewModal from "../components/ShortlistReviewModal.astro";
+import IntentModalController from "../components/IntentModalController.astro";
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+const url = Astro.url;
+
+const city = url.searchParams.get("city") || "nanaimo";
+const area = url.searchParams.get("area") || "";
+const type = url.searchParams.get("type") || "";
+const minPrice = Number(url.searchParams.get("minPrice") || 0);
+const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
+const sort = url.searchParams.get("sort") || "newest";
+
+const clean = (value: any) =>
+  String(value || "")
+    .toLowerCase()
+    .trim();
+
+const getListingMls = (listing: any) =>
+  String(
+    listing.mls_number ||
+      listing.mlsNumber ||
+      listing.id ||
+      listing.repliers_listing_id ||
+      listing.raw?.mlsNumber ||
+      listing.raw?.id ||
+      ""
+  ).replace(/[^0-9]/g, "");
+
+const getListingPrice = (listing: any) => {
+  const num = Number(listing.price ?? listing.listPrice ?? listing.priceNumber ?? 0);
+  if (Number.isFinite(num) && num > 1000) return `$${Math.round(num).toLocaleString()}`;
+  return listing.price_text || listing.priceText || "Price on request";
+};
+
+const getListingAddress = (listing: any) =>
+  listing.address ||
+  listing.full_address ||
+  listing.addressText ||
+  listing.addressObj?.streetAddress ||
+  [listing.addressObj?.streetNumber, listing.addressObj?.streetName, listing.addressObj?.streetSuffix]
+    .filter(Boolean)
+    .join(" ") ||
+  "Address available";
+
+const normalizeListingImageUrl = (value: any) => {
+  if (!value) return "";
+  const raw = typeof value === "string" ? value : value.highRes || value.mediumRes || value.lowRes || value.url || value.src || value.href || value.path || "";
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+  if (cleaned.startsWith("/vreb/")) return `https://cdn.repliers.io${cleaned}`;
+  return cleaned;
+};
+
+const getListingImage = (listing: any) => {
+  const image = listing.image_url || listing.image || listing.photo || listing.images?.[0] || listing.images?.[1] || listing.raw?.images?.[0] || listing.raw?.images?.[1] || listing.raw?.images?.[0]?.url || listing.raw?.images?.[1]?.url;
+  return normalizeListingImageUrl(image);
+};
+
+const getListingImages = (listing: any) => {
+  const rawImages = listing.images || listing.photo_urls || listing.photos || listing.raw?.images || [];
+  const images = Array.isArray(rawImages)
+    ? rawImages.map((img: any) => typeof img === "string" ? normalizeListingImageUrl(img) : normalizeListingImageUrl(img.highRes || img.mediumRes || img.lowRes || img.url || img.src || img.href || img.path || "")).filter(Boolean)
+    : [];
+  const firstImage = getListingImage(listing);
+  return Array.from(new Set([firstImage, ...images].filter(Boolean)));
+};
+
+const getListingBeds = (listing: any) => listing.beds || listing.bedrooms || listing.details?.numBedrooms || listing.raw?.details?.numBedrooms || 0;
+const getListingBaths = (listing: any) => listing.baths || listing.bathrooms || listing.details?.numBathrooms || listing.raw?.details?.numBathrooms || 0;
+const getListingSqft = (listing: any) => listing.sqft || listing.square_feet || listing.squareFeet || listing.details?.sqft || listing.details?.squareFeet || listing.raw?.details?.sqft || listing.raw?.details?.squareFeet || "";
+const getListingDescription = (listing: any) => listing.description || listing.publicRemarks || listing.remarks || listing.details?.description || listing.details?.publicRemarks || listing.details?.remarks || listing.raw?.description || listing.raw?.publicRemarks || listing.raw?.remarks || listing.raw?.details?.description || listing.raw?.details?.publicRemarks || listing.raw?.details?.remarks || "A quiet preview of this property.";
+const getListingYearBuilt = (listing: any) => listing.year_built || listing.yearBuilt || listing.details?.yearBuilt || listing.raw?.details?.yearBuilt || "";
+const getListingLotSize = (listing: any) => listing.lot_size || listing.lotSize || listing.details?.lotSize || listing.raw?.details?.lotSize || "";
+const getListingArea = (listing: any) => listing.normalized_area || listing.area || listing.neighborhood || listing.addressObj?.neighborhood || listing.address?.neighborhood || listing.details?.area || listing.details?.subArea || listing.raw?.address?.neighborhood || listing.raw?.details?.area || listing.raw?.details?.subArea || "";
+const getListingPropertyType = (listing: any) => String(listing.normalized_type || listing.property_type || listing.propertyType || listing.type || listing.details?.propertyType || listing.raw?.details?.propertyType || "Home").replace(/[_-]+/g, " ").replace(/\b\w/g, (char: string) => char.toUpperCase());
+const buildFilterUrl = (updates: Record<string, string | number | null>) => {
+  const params = new URLSearchParams();
+
+  params.set("city", city || "nanaimo");
+
+  if (area) params.set("area", area);
+  if (type) params.set("type", type);
+  if (minPrice) params.set("minPrice", String(minPrice));
+  if (maxPrice) params.set("maxPrice", String(maxPrice));
+  if (sort && sort !== "newest") params.set("sort", sort);
+
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value === null || value === "" || value === 0) {
+      params.delete(key);
+    } else {
+      params.set(key, String(value));
+    }
+  });
+
+  return `?${params.toString()}`;
+};
+const allIntentCollections = [
+  {
+    type: "condo",
+    title: "Ocean View Condos in Nanaimo",
+    href: "/nanaimo/ocean-view-condos",
+    description: "Explore Nanaimo condos with ocean view potential, coastal appeal, and low-maintenance living."
+  },
+  {
+    type: "condo",
+    title: "Nanaimo Condos for Downsizers",
+    href: "/nanaimo/downsizer-condos",
+    description: "Browse lower-maintenance Nanaimo condos that may appeal to downsizers looking for comfort and convenience."
+  },
+  {
+    type: "condo",
+    title: "Walkable Condos in Nanaimo",
+    href: "/nanaimo/walkable-condos",
+    description: "Explore Nanaimo condos close to amenities, services, parks, and daily conveniences."
+  },
+
+  {
+    type: "house",
+    title: "Investment Properties With Suites in Nanaimo",
+    href: "/nanaimo/investment-properties-with-suites",
+    description: "Browse Nanaimo homes with suite potential, rental flexibility, or income-producing possibilities."
+  },
+  {
+    type: "house",
+    title: "Updated Family Homes in Nanaimo",
+    href: "/nanaimo/updated-family-homes",
+    description: "Explore Nanaimo family homes with updated finishes, modern layouts, and move-in-ready appeal."
+  },
+  {
+    type: "house",
+    title: "Family Homes With Garages in Nanaimo",
+    href: "/nanaimo/family-homes-with-garages",
+    description: "Find Nanaimo homes with garage space, storage potential, and practical family layouts."
+  },
+  {
+    type: "house",
+    title: "Family Homes With Yards in Nanaimo",
+    href: "/nanaimo/family-homes-with-yards",
+    description: "Browse Nanaimo homes with outdoor space, yards, and family-friendly potential."
+  },
+  {
+    type: "house",
+    title: "Family Homes in Nanaimo Under $800K",
+    href: "/nanaimo/family-homes-under-800k",
+    description: "Explore Nanaimo homes that may work well for families with a price point under $800K."
+  }
+];
+let intentCollections = allIntentCollections;
+
+if (type === "condo") {
+  intentCollections = allIntentCollections.filter(
+    (c) => c.type === "condo"
+  );
+} else if (type === "house") {
+  intentCollections = allIntentCollections.filter(
+    (c) => c.type === "house"
+  );
+}
+const groupLabel = [
+  area || "",
+  type ? type.replace(/-/g, " ") : "",
+  maxPrice ? `under $${maxPrice}k` : "",
+  minPrice ? `over $${minPrice}k` : ""
+].filter(Boolean).join(" · ");
+
+let areaOptions: string[] = [];
+
+try {
+  const { data } = await supabase
+    .from("listing_rows")
+    .select("normalized_area")
+    .eq("status", "A")
+    .eq("normalized_city", clean(city || "nanaimo"))
+    .not("normalized_area", "is", null);
+
+ const allowedAreas = [
+  "north nanaimo",
+  "south nanaimo",
+  "central nanaimo",
+  "departure bay",
+  "hammond bay",
+  "uplands",
+  "old city",
+  "university district",
+  "chase river",
+  "cedar",
+  "pleasant valley",
+  "jingle pot",
+  "diver lake",
+  "brechin hill"
+];
+
+areaOptions = Array.from(
+  new Set((data || []).map((row: any) => row.normalized_area).filter(Boolean))
+)
+  .filter((area: string) => allowedAreas.includes(area))
+  .sort();
+} catch {}
+
+let listings: any[] = [];
+let errorMessage = "";
+
+try {
+let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(12);
+  if (city) query = query.eq("normalized_city", clean(city));
+
+  // Homepage discovery preloads a broad pool.
+  // Filters are applied client-side for instant UX.
+
+  if (sort === "price-low" || sort === "price-asc") query = query.order("price", { ascending: true });
+  else if (sort === "price-high" || sort === "price-desc") query = query.order("price", { ascending: false });
+  else if (sort === "beds-high") query = query.order("beds", { ascending: false });
+  else query = query.order("listed_at", { ascending: false });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  listings = data || [];
+
+  if (type === "condo") {
+    listings = listings.filter((listing: any) => {
+      const text = [listing.normalized_type, listing.property_type, listing.propertyType, listing.type, listing.details?.propertyType, listing.raw?.details?.propertyType, listing.description, listing.publicRemarks, listing.remarks].filter(Boolean).join(" ").toLowerCase();
+      return !text.includes("manufactured") && !text.includes("mobile") && !text.includes("modular") && !text.includes("park model") && !text.includes("mfd");
+    });
+  }
+} catch (error: any) {
+  errorMessage = error?.message || "Could not load listings.";
+}
+---
+
+<html lang="en">
+  <head>
+    <title>{city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale${maxPrice ? ` under $${maxPrice}k` : ""}` : "Explore homes for sale"} | {city || "Listings"}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={city ? `Browse ${listings.length} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale in ${city}${maxPrice ? ` under $${maxPrice}k` : ""}${minPrice ? ` over $${minPrice}k` : ""}. View photos, prices, and listing details.` : "Browse current homes for sale. View photos, prices, and listing details."} />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={Astro.url.href} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale` : "Explore homes for sale"} />
+    <meta property="og:url" content={Astro.url.href} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600&display=swap" rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg: #f5f2ed;
+        --surface: #fdfcfa;
+        --surface-warm: #f9f6f1;
+        --ink: #1c1917;
+        --ink-soft: #3d3935;
+        --muted: #6b6560;
+        --soft: #9c9590;
+        --line: #e8e3dc;
+        --line-warm: #ddd8d0;
+        --accent: #8b6f47;
+        --accent-light: #c4a882;
+        --accent-bg: #f7f0e6;
+
+        --f-display: "Lora", Georgia, serif;
+        --f-body: "Nunito Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+        --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        --radius: 12px;
+        --radius-lg: 20px;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 100%; overflow-x: hidden; }
+      body { font-family: var(--f-body); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+      body.modal-open { overflow: hidden; }
+      a { color: inherit; text-decoration: none; }
+      button { font: inherit; }
+
+      .shell { width: min(1400px, calc(100% - 80px)); margin: 0 auto; }
+
+      /* ========== HERO ========== */
+
+      .hero {
+        position: relative;
+        min-height: 360px;
+        padding: 56px 0 46px;
+        background:
+          linear-gradient(90deg, rgba(253,252,250,0.98) 0%, rgba(253,252,250,0.92) 42%, rgba(253,252,250,0.42) 62%, rgba(253,252,250,0.02) 100%),
+url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1800&q=80");        background-position: center right;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero__inner {
+        display: block;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 18px;
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 28px;
+        height: 1px;
+        background: var(--accent);
+      }
+
+      h1 {
+  max-width: 760px;
+        font-family: var(--f-display);
+        font-size: clamp(3.4rem, 6.6vw, 6rem);
+        font-weight: 500;
+       line-height: 1.03;
+        letter-spacing: -0.06em;
+        color: var(--ink);
+        margin: 0 0 28px;
+      }
+
+      h1 em {
+        font-style: normal;
+        color: inherit;
+      }
+
+      .hero-desc {
+        color: var(--muted);
+        font-size: 1.1rem;
+        line-height: 1.55;
+          max-width: 620px;
+        font-weight: 500;
+      }
+
+      .hero__meta {
+        display: none;
+      }
+
+      /* ========== MAIN SECTION ========== */
+
+           .section {
+        padding: 28px 0 100px;
+        background: #fffdf9;
+      }
+
+      /* ========== BACK LINK ========== */
+
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 36px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 8px 20px;
+        border-radius: 999px;
+        border: 1.5px solid var(--line-warm);
+        transition: all 0.2s var(--ease);
+      }
+
+      .back:hover {
+        border-color: var(--accent-light);
+        color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      /* ========== TOOLBAR / RESULTS HEADER ========== */
+
+      .explore-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 26px;
+      }
+
+      .view-pill {
+        display: inline-flex;
+        padding: 4px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line-warm);
+        box-shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
+      }
+
+      .view-pill__btn {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--ink);
+        min-height: 40px;
+        padding: 0 18px;
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      .view-pill__btn.active {
+        background: #eadcc9;
+      }
+
+      .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 22px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--line-warm);
+        box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+        color: var(--ink);
+        font-size: 0.88rem;
+        font-weight: 850;
+      }
+
+      .filter-pill.is-active {
+  background: #eadcc9;
+  border-color: #c4a882;
+}
+
+.filter-form {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.filter-select,
+.filter-apply,
+.filter-clear {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 850;
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+}
+
+.filter-select {
+  cursor: pointer;
+}
+
+.filter-apply {
+  background: #eadcc9;
+  cursor: pointer;
+}
+
+.filter-clear {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+      .sort-pill {
+        margin-left: auto;
+      }
+
+      .results-heading {
+        margin: 0 0 18px;
+      }
+
+      .results-heading h2 {
+        margin: 0 0 4px;
+        font-family: var(--f-display);
+        font-size: 1.7rem;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+      }
+
+      .results-heading p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        font-weight: 700;
+      }
+      /* ========== GRID / INTENT CARDS ========== */
+
+ .intent-map {
+  width: 100%;
+  height: 62vh;
+  min-height: 460px;
+  border: 1px solid var(--line-warm);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 22px;
+  background: #e8e4de;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grid > .card {
+  min-width: 0;
+  width: 100%;
+  height: auto;
+}
+
+.grid > .card .card-image-wrap {
+  width: 100%;
+  height: 190px;
+  overflow: hidden;
+  background: #eee8df;
+}
+
+.grid > .card .card-image-wrap img {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+.grid > .card .card-body {
+  display: block;
+  min-height: 128px;
+}
+
+
+
+.grid.map-hidden {
+  display: none;
+}
+
+.card {
+  background: #fff;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        border: 1px solid var(--line-warm);
+        color: inherit;
+        display: block;
+        cursor: pointer;
+        transition: all 0.28s var(--ease);
+        box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 48px rgba(28, 25, 23, 0.1);
+        border-color: var(--accent-light);
+      }
+
+      .card.is-passed {
+  opacity: 0.34;
+  filter: grayscale(0.55);
+}
+
+.card.is-passed:hover {
+  opacity: 0.62;
+}
+
+      .card {
+  position: relative;
+}
+
+
+
+.card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.card-image-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+
+
+.card-body {
+  position: relative;
+  padding: 14px 16px 14px;
+  background: #fff;
+  min-height: 128px;
+}
+
+.price {
+  font-size: 1.34rem;
+  line-height: 1.1;
+  font-weight: 950;
+  margin-bottom: 8px;
+  letter-spacing: -0.035em;
+}
+
+.price {
+  padding-right: 112px;
+}
+
+.address {
+  margin-bottom: 2px;
+  color: var(--ink);
+  line-height: 1.35;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.card-city {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  font-weight: 750;
+}
+
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.meta svg {
+  width: 15px;
+  height: 15px;
+  color: #9a5b25;
+}
+
+.card-decision-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-decision-badge.is-love {
+  background: rgba(255, 77, 0, 0.12);
+  color: #ff4d00;
+}
+
+.card-decision-badge.is-maybe {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.78);
+}
+
+.card-decision-badge.is-pass {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.45);
+}
+
+      .card-decision-badge[hidden] {
+        display: none;
+      }
+
+      .card-decision-badge.is-love {
+  background: rgba(255, 77, 0, 0.12);
+  color: #ff4d00;
+}
+
+.card-decision-badge.is-maybe {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.78);
+}
+
+.card-decision-badge.is-pass {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.45);
+}
+
+.home-load-more-btn {
+  display: block;
+  margin: 34px auto 54px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1px solid #181614;
+  background: #181614;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(24,22,20,0.14);
+}
+
+.home-load-more-btn:hover {
+  transform: translateY(-1px);
+}
+      /* ========== EMPTY STATE ========== */
+      .homepage-interruptor {
+  margin: 56px 0 70px;
+  padding: 22px 26px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 18px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.homepage-interruptor-copy strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 1rem;
+}
+
+.homepage-interruptor-copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.homepage-interruptor-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.interrupt-btn {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 12px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.interrupt-primary {
+  background: #181614;
+  color: #fff;
+}
+
+.interrupt-secondary {
+  background: #fff;
+}
+      
+      .intent-collections {
+        margin-top: 80px;
+      }
+
+      .intent-collections-head {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 40px;
+        margin-bottom: 34px;
+      }
+
+      .intent-collections-head h2 {
+        margin: 0;
+        font-family: var(--f-display);
+        font-size: clamp(2.6rem, 5vw, 4.5rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+        font-weight: 500;
+      }
+
+      .intent-collections-head p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .intent-collections-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0,1fr));
+        gap: 18px;
+      }
+
+      .intent-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 220px;
+        padding: 22px;
+        border-radius: 20px;
+        background: #fff;
+        border: 1px solid var(--line-warm);
+        transition: all 0.25s ease;
+      }
+
+      .intent-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--accent-light);
+        box-shadow: 0 14px 34px rgba(28,25,23,0.08);
+      }
+
+      .intent-type {
+        margin-bottom: 14px;
+        color: var(--accent);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .intent-card h3 {
+        margin: 0 0 12px;
+        font-family: var(--f-display);
+        font-size: 1.8rem;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        font-weight: 500;
+      }
+
+      .intent-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.7;
+      }
+
+      .intent-link {
+        margin-top: auto;
+        padding-top: 22px;
+        color: var(--accent);
+        font-weight: 800;
+      }
+
+
+      .empty {
+        padding: 80px 28px;
+        background: var(--surface);
+        border: 1px solid var(--line-warm);
+        border-radius: var(--radius-lg);
+        color: var(--muted);
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 300;
+      }
+
+
+      /* ========== RESPONSIVE ========== */
+
+  @media (max-width: 1100px) {
+  .shell { width: calc(100% - 60px); }
+  .hero__inner { grid-template-columns: 1fr; gap: 48px; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+      @media (max-width: 768px) {
+        .hero { padding: 60px 0 48px; }
+        .section { padding: 48px 0 80px; }
+        .section-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+      }
+
+      @media (max-width: 640px) {
+        .shell { width: calc(100% - 32px); }
+        .grid { grid-template-columns: 1fr; }
+        .intent-collections-head { grid-template-columns: 1fr; gap: 16px; }
+        .intent-collections-grid { grid-template-columns: 1fr; }        .hero-stats { grid-template-columns: 1fr 1fr; }
+           /* Modal styles come from ShortlistReviewModal.astro */
+      }
+
+
+
+    </style>
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": city ? `${city} ${type ? type.replace(/-/g, " ") + "s" : "homes"} for sale` : "Homes for sale",
+      "description": city ? `${listings.length} active listings in ${city}` : "Active real estate listings",
+      "numberOfItems": listings.length,
+      "url": Astro.url.href
+    })}></script>
+<script is:inline>
+  const savedHomeScrollY = sessionStorage.getItem("home_filter_scroll_y");
+
+  if (savedHomeScrollY) {
+    history.scrollRestoration = "manual";
+    document.documentElement.style.visibility = "hidden";
+  }
+</script>
+</head>
+
+<body
+  data-intent-page-id="homepage"
+  data-city={city || "nanaimo"}
+  data-slug="homepage"
+  data-google-maps-api-key={googleMapsApiKey}
+> <header class="hero">
+      <div class="shell hero__inner">
+        <div>
+         <p class="eyebrow">Homes worth watching</p>
+
+<h1>
+  Discover homes
+  <br />
+  in {(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())}.
+</h1>
+
+<p class="hero-desc">
+  Hand-picked properties that match your goals,
+  your lifestyle, and the way you want to live.
+</p>
+        </div>
+
+       
+      </div>
+    </header>
+
+    <main class="section">
+      <div class="shell">
+             <div class="explore-toolbar">
+          <div class="view-pill">
+           <button type="button" class="view-pill__btn active" id="list-view-btn">☷ List</button>
+<button type="button" class="view-pill__btn" id="map-view-btn">⌖ Map</button>
+          </div>
+              <form class="filter-form" method="get" id="home-filter-form">
+  <input type="hidden" name="city" value={city || "nanaimo"} />
+<select name="area" class="filter-select" aria-label="Area">
+  <option value="" selected={!area}>All Areas</option>
+  {areaOptions.map((areaOption) => (
+    <option value={areaOption} selected={area === areaOption}>
+      {areaOption.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
+    </option>
+  ))}
+</select>
+  <select name="type" class="filter-select" aria-label="Property type">
+    <option value="" selected={!type}>All Types</option>
+    <option value="house" selected={type === "house"}>Houses</option>
+    <option value="condo" selected={type === "condo"}>Condos</option>
+    <option value="townhouse" selected={type === "townhouse"}>Townhomes</option>
+    <option value="mobile" selected={type === "mobile"}>Mobiles</option>
+  </select>
+
+  <select name="maxPrice" class="filter-select" aria-label="Max price">
+    <option value="" selected={!maxPrice}>Any Price</option>
+    <option value="500" selected={maxPrice === 500}>Under $500k</option>
+    <option value="800" selected={maxPrice === 800}>Under $800k</option>
+    <option value="1200" selected={maxPrice === 1200}>Under $1.2M</option>
+  </select>
+
+  <select name="sort" class="filter-select" aria-label="Sort listings">
+    <option value="newest" selected={sort === "newest"}>Newest first</option>
+    <option value="price-low" selected={sort === "price-low"}>Price low to high</option>
+    <option value="price-high" selected={sort === "price-high"}>Price high to low</option>
+  </select>
+
+  <a href="?" class="filter-clear">Clear</a>
+</form>
+
+          </div>
+
+        <div class="results-heading">
+          <h2>Fresh homes worth a closer look.</h2>
+          <p>Updated just now</p>
+        </div>
+
+        {errorMessage && <div class="empty">{errorMessage}</div>}
+
+               {!errorMessage && listings.length === 0 && (
+          <div class="empty">No matching homes found yet.</div>
+        )}
+
+      {!errorMessage && listings.length > 0 && (
+  <>
+    <div id="intent-map" class="intent-map" hidden></div>
+
+<section class="grid" aria-label={`${listings.length} listings${city ? ` in ${city}` : ""}`}> {listings.map((listing: any) => {              const image = getListingImage(listing);
+              const address = getListingAddress(listing);
+              const price = getListingPrice(listing);
+              const beds = getListingBeds(listing);
+              const baths = getListingBaths(listing);
+              const sqft = getListingSqft(listing);
+              const mls = getListingMls(listing);
+              const propertyType = getListingPropertyType(listing);
+              const description = getListingDescription(listing);
+              const images = getListingImages(listing);
+
+              return (
+                                  <article
+                    class="card original-card"
+                    data-item-id={String(listing?.id || listing?.mls_number || "")}
+                    data-card-id={String(listing?.id || listing?.mls_number || "")}
+                    data-listing-id={String(listing?.id || listing?.mls_number || "")}
+                    data-price={price}
+                    data-raw-price={String(listing?.price || 0)}
+                    data-listed-at={String(listing?.listed_at || listing?.created_at || "")}
+                    data-address={address}
+                    data-meta={`${beds || "-"} bed · ${baths || "-"} bath`}
+                    data-image={image}
+                    data-images={JSON.stringify(images)}
+                    data-beds={String(beds)}
+                    data-baths={String(baths)}
+                    data-sqft={String(sqft)}
+                    data-description={description}
+                    data-property-type={propertyType}
+                    data-type={String(listing?.normalized_type || listing?.property_type || type || "Home")}
+                    data-year={String(getListingYearBuilt(listing))}
+                    data-lot-size={String(getListingLotSize(listing))}
+                    data-area={String(getListingArea(listing))}
+                    data-liked-tags="[]"
+                    data-is-favourite="false"
+                    data-decision=""
+                    data-lat={listing?.lat || ""}
+                    data-lng={listing?.lng || ""}
+                    data-city={String(listing?.normalized_city || listing?.city || city || "")}
+                    data-mls={mls}
+                    aria-label={`${price} — ${address}`}
+                  >
+               <div class="card-image-wrap">
+  <img src={image || "https://placehold.co/800x600?text=Listing"} alt={address || "Listing"} />
+</div>
+
+                    <div class="card-body">
+                      <div class="price">{price}</div>
+                      <div class="address">{address}</div>
+                      <div class="card-city">{city || "Nanaimo"}, BC</div>
+
+                      <div class="meta">
+                        <span>🛏 {beds || "-"} bd</span>
+                        <span>🛁 {baths || "-"} ba</span>
+                        {sqft && <span>↗ {Number(sqft).toLocaleString()} sq ft</span>}
+                      </div>
+
+                      <div class="card-decision-badge" hidden></div>
+                    </div>
+                                    </article>
+              );
+            })}
+                 </section>
+
+<div class="homepage-interruptor">
+  <div class="homepage-interruptor-copy">
+    <strong>Not seeing what you're looking for?</strong>
+    <p>
+      Refine your search or get new listings sent to you.
+    </p>
+  </div>
+
+  <div class="homepage-interruptor-actions">
+    <button class="interrupt-btn interrupt-secondary">
+      Refine My Search
+    </button>
+
+    <button class="interrupt-btn interrupt-primary">
+      Save Search
+    </button>
+  </div>
+</div>
+
+  </>
+)}
+
+        <section class="intent-collections">
+          <div class="intent-collections-head">
+            <h2>Search by what matters.</h2>
+
+            <p>
+              Explore focused search paths based on lifestyle,
+              property type, price point, and buyer priorities.
+            </p>
+          </div>
+
+                            <div class="intent-collections-grid">
+            {intentCollections.map((card) => (
+              <a href={card.href} class="intent-card">
+                <span class="intent-type">{card.type}</span>
+
+                <h3>{card.title}</h3>
+
+                <p>{card.description}</p>
+
+                <span class="intent-link">View search →</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+
+<ShortlistReviewModal />
+<IntentModalController />
+
+ <style is:global>
+
+  .grid > .card,
+.original-card {
+  cursor: pointer !important;
+}
+
+.grid > .card:hover,
+.original-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 16px 48px rgba(28, 25, 23, 0.1) !important;
+  border-color: var(--accent-light) !important;
+}
+
+  .grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.grid > .card {
+  min-width: 0 !important;
+  width: 100% !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--line-warm) !important;
+  box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04) !important;
+  cursor: pointer !important;
+  will-change: transform, box-shadow !important;
+  transition:
+    transform 0.28s var(--ease),
+    box-shadow 0.28s var(--ease),
+    border-color 0.28s var(--ease) !important;
+}
+
+.grid > .card .card-image-wrap {
+  width: 100% !important;
+  height: 190px !important;
+  overflow: hidden !important;
+}
+
+.grid > .card .card-image-wrap img {
+  display: block !important;
+  width: 100% !important;
+  height: 190px !important;
+  object-fit: cover !important;
+}
+
+.grid > .card .card-body {
+  position: relative !important;
+  padding: 14px 16px !important;
+  background: #fff !important;
+  min-height: 128px !important;
+}
+
+.grid > .card .price {
+  padding-right: 104px !important;
+}
+
+.grid > .card .card-decision-badge {
+  position: absolute !important;
+  top: 16px !important;
+  right: 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: fit-content !important;
+  margin: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 999px !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+.grid > .card .card-decision-badge[hidden] {
+  display: none !important;
+}
+
+.grid > .card .card-decision-badge.is-love {
+  background: rgba(255, 77, 0, 0.12) !important;
+  color: #ff4d00 !important;
+}
+
+.grid > .card .card-decision-badge.is-maybe {
+  background: rgba(24, 22, 20, 0.08) !important;
+  color: rgba(24, 22, 20, 0.72) !important;
+}
+
+.grid > .card .card-decision-badge.is-pass {
+  background: rgba(24, 22, 20, 0.08) !important;
+  color: rgba(24, 22, 20, 0.42) !important;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+       .interrupt-options .generated-refine-chip,
+.refine-options .generated-refine-chip {
+  appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-height: 38px !important;
+  padding: 10px 15px !important;
+  border-radius: 999px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line-warm) !important;
+  color: var(--ink) !important;
+  font: inherit !important;
+  font-size: 0.88rem !important;
+  font-weight: 750 !important;
+  cursor: pointer !important;
+}
+
+.interrupt-options .generated-refine-chip:hover,
+.interrupt-options .generated-refine-chip.active,
+.refine-options .generated-refine-chip:hover,
+.refine-options .generated-refine-chip.active {
+  background: var(--ink) !important;
+  color: #ffffff !important;
+  border-color: var(--ink) !important;
+}
+        #preview-sheet #intent-like-tags {
+  display: none !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+
+#preview-sheet #intent-like-tags.open {
+  display: flex !important;
+}
+
+#preview-sheet .intent-like-tag {
+  appearance: none !important;
+  border: 1px solid rgba(24,22,20,0.12) !important;
+  background: #ffffff !important;
+  color: #181614 !important;
+  border-radius: 999px !important;
+  padding: 10px 15px !important;
+  font: inherit !important;
+  font-size: 0.86rem !important;
+  font-weight: 850 !important;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(24,22,20,0.08);
+}
+
+#preview-sheet .intent-like-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(24,22,20,0.12);
+}
+
+#preview-sheet .intent-like-tag.active {
+  background: #181614 !important;
+  color: #ffffff !important;
+  border-color: #181614 !important;
+}
+    #preview-sheet button.panel__top-btn,
+#preview-sheet button.panel__next-btn,
+#preview-sheet button.panel__close,
+#preview-sheet button.panel__map-btn,
+#preview-sheet .panel__nav-row button,
+#preview-sheet .panel__header-actions button {
+  border-radius: 999px !important;
+  background: rgba(24,22,20,0.92) !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  color: #ffffff !important;
+  padding: 10px 16px !important;
+}
+
+#preview-sheet button.panel__top-btn:hover,
+#preview-sheet button.panel__next-btn:hover,
+#preview-sheet button.panel__close:hover,
+#preview-sheet button.panel__map-btn:hover,
+#preview-sheet .panel__nav-row button:hover,
+#preview-sheet .panel__header-actions button:hover {
+  background: #181614 !important;
+  border-color: #181614 !important;
+  color: #ffffff !important;
+}
+
+      #preview-sheet button.panel__top-btn:hover *,
+      #preview-sheet button.panel__next-btn:hover *,
+      #preview-sheet .panel__nav-row button:hover *,
+      #preview-sheet .panel__header-actions button:hover * {
+        color: #ffffff !important;
+      }
+
+      .refined-results {
+        grid-column: 1 / -1;
+        margin-top: 18px;
+      }
+
+      .refined-results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 18px;
+      }
+
+      .refined-results-grid .card {
+        background: var(--surface);
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        color: inherit;
+        display: block;
+        cursor: pointer;
+        transition: transform 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      .refined-results-grid .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 34px rgba(24, 22, 20, 0.12);
+      }
+
+      .refined-results-grid .card img {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+        display: block;
+      }
+
+      .refined-results-grid .card-body {
+        padding: 16px;
+      }
+
+      .refined-results-grid .price {
+        font-size: 1.36rem;
+        font-weight: 850;
+        margin-bottom: 6px;
+      }
+
+      .refined-results-grid .address {
+        margin-bottom: 10px;
+        color: var(--ink);
+        line-height: 1.35;
+      }
+
+      .refined-results-grid .meta {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      #refined-results .refined-mode-banner {
+  grid-column: 1 / -1;
+  margin: 0 0 28px;
+  padding: clamp(28px, 5vw, 48px);
+  border-radius: 28px;
+  background: #181614;
+  color: #ffffff;
+  box-shadow: 0 20px 50px rgba(24,22,20,0.18);
+}
+
+#refined-results .refined-mode-kicker {
+  margin-bottom: 12px;
+  color: #ff4d00;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#refined-results .refined-mode-banner h2 {
+  max-width: 760px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 6vw, 5.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.065em;
+  font-weight: 500;
+}
+
+#refined-results .refined-mode-banner p {
+  max-width: 640px;
+  margin: 18px 0 0;
+  color: rgba(255,255,255,0.72);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+#refined-results .refined-mode-banner .cta-button {
+  margin-top: 24px;
+  background: #ff4d00;
+  color: #ffffff;
+  border: 0;
+  padding: 14px 22px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+      .load-more-refined {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin: 22px auto 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: #ff4d00;
+  color: #ffffff;
+  border: 0;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.load-more-refined:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.refined-view-toggle {
+  grid-column: 1 / -1;
+  width: fit-content;
+  margin: 14px 0 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.refined-view-toggle .view-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.refined-view-toggle .view-btn + .view-btn {
+  border-left: 1px solid var(--line);
+}
+
+.refined-view-toggle .view-btn.active {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.refined-intent-map {
+  grid-column: 1 / -1;
+  display: block;
+  width: 100%;
+  height: 520px;
+  min-height: 420px;
+  margin: 0 0 22px;
+}
+
+.refined-intent-map[hidden] {
+  display: none;
+}
+
+#preview-sheet .modal-intent-summary {
+  padding: clamp(28px, 6vw, 56px);
+  text-align: center;
+}
+
+#preview-sheet .modal-intent-kicker {
+  color: #ff4d00;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+#preview-sheet .modal-intent-summary h2 {
+  max-width: 620px;
+  margin: 0 auto 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+  font-weight: 500;
+}
+
+#preview-sheet .modal-intent-summary p {
+  max-width: 560px;
+  margin: 0 auto 24px;
+  color: rgba(24,22,20,0.64);
+  line-height: 1.55;
+  font-size: 1rem;
+}
+
+#preview-sheet .modal-intent-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 28px;
+}
+
+#preview-sheet .modal-intent-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #fffaf1;
+  border: 1px solid rgba(24,22,20,0.12);
+  color: #181614;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+#preview-sheet .modal-intent-save-copy {
+  max-width: 520px;
+  margin: 0 auto 22px;
+  color: rgba(24,22,20,0.56);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+#preview-sheet .modal-intent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+#preview-sheet .modal-intent-primary,
+#preview-sheet .modal-intent-secondary {
+  appearance: none;
+  min-height: 46px;
+  padding: 13px 20px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#preview-sheet .modal-intent-primary {
+  background: #ff4d00;
+  color: #ffffff;
+  border: 1px solid #ff4d00;
+}
+
+#preview-sheet .modal-intent-secondary {
+  background: #ffffff;
+  color: #181614;
+  border: 1px solid rgba(24,22,20,0.16);
+}
+
+.modal-intent-primary,
+.modal-intent-secondary,
+.refine-chip,
+.intent-like-tag {
+  position: relative;
+  overflow: hidden;
+}
+
+.modal-intent-primary::before,
+.modal-intent-secondary::before,
+.refine-chip::before,
+.intent-like-tag::before {
+  content: "✦";
+  display: inline-flex;
+  margin-right: 7px;
+  transform: scale(0.9);
+  opacity: 0.55;
+}
+
+.modal-intent-primary:hover::before,
+.modal-intent-secondary:hover::before,
+.refine-chip:hover::before,
+.intent-like-tag:hover::before {
+  animation: iconPulse 0.7s ease;
+  opacity: 1;
+}
+
+.modal-intent-primary.is-selected,
+.modal-intent-secondary.is-selected,
+.refine-chip.active,
+.intent-like-tag.active {
+  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.modal-intent-primary.is-selected::after,
+.modal-intent-secondary.is-selected::after,
+.refine-chip.active::after,
+.intent-like-tag.active::after {
+  content: " ✓";
+  font-weight: 900;
+}
+
+@keyframes iconPulse {
+  0% { transform: scale(0.9); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(0.9); }
+}
+
+#preview-sheet #decision-love-btn,
+#preview-sheet #decision-maybe-btn,
+#preview-sheet #decision-pass-btn {
+  position: relative !important;
+  overflow: visible !important;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease !important;
+}
+
+#preview-sheet #decision-love-btn:hover,
+#preview-sheet #decision-maybe-btn:hover,
+#preview-sheet #decision-pass-btn:hover {
+  transform: translateY(-2px);
+}
+
+#preview-sheet #decision-love-btn.is-selected,
+#preview-sheet #decision-maybe-btn.is-selected,
+#preview-sheet #decision-pass-btn.is-selected {
+  background: #181614 !important;
+  color: #ffffff !important;
+  border-color: #181614 !important;
+  box-shadow:
+    0 0 0 4px rgba(255, 77, 0, 0.2),
+    0 16px 36px rgba(24,22,20,0.18) !important;
+  transform: translateY(-2px);
+}
+
+#preview-sheet #decision-love-btn.is-selected::after,
+#preview-sheet #decision-maybe-btn.is-selected::after,
+#preview-sheet #decision-pass-btn.is-selected::after {
+  content: "✓";
+  display: inline-flex;
+  margin-left: 9px;
+  font-weight: 900;
+}
+
+#preview-sheet .modal-intent-summary.is-refining {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+#preview-sheet .intent-refining-bar {
+  position: relative;
+  width: min(320px, 82%);
+  height: 10px;
+  margin: 10px auto 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(24,22,20,0.08);
+}
+
+#preview-sheet .intent-refining-bar span {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: #ff4d00;
+  animation: intentRefineLoad 2.2s ease-in-out infinite;
+}
+
+@keyframes intentRefineLoad {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(280%);
+  }
+}
+.current-controls-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.current-controls-row .view-toggle {
+  margin-top: 0;
+}
+.current-sort-toggle {
+  flex-direction: row !important;
+}
+
+.current-sort-toggle .view-btn {
+  display: inline-flex;
+}
+
+.current-sort-toggle .view-btn + .view-btn {
+  border-left: 1px solid var(--line);
+  border-top: 0 !important;
+}
+    </style>
+  
+<script is:inline>
+  const listViewBtn = document.getElementById("list-view-btn");
+  const mapViewBtn = document.getElementById("map-view-btn");
+  const intentMapEl = document.getElementById("intent-map");
+  const gridEl = document.querySelector(".grid");
+
+  let googleMap = null;
+  let googleMarkers = [];
+  let googleMapsLoadingPromise = null;
+
+  function loadGoogleMaps() {
+    if (window.google?.maps) return Promise.resolve();
+    if (googleMapsLoadingPromise) return googleMapsLoadingPromise;
+
+    const key = document.body.dataset.googleMapsApiKey;
+
+    if (!key) {
+      console.error("Missing PUBLIC_GOOGLE_MAPS_API_KEY");
+      return Promise.reject(new Error("Missing Google Maps API key"));
+    }
+
+    googleMapsLoadingPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector("script[data-google-maps-loader]");
+
+      if (existing) {
+        existing.addEventListener("load", resolve);
+        existing.addEventListener("error", reject);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.dataset.googleMapsLoader = "true";
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
+      script.async = true;
+      script.defer = true;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+
+    return googleMapsLoadingPromise;
+  }
+
+  function getCardLatLng(card) {
+    const lat = Number(card.dataset.lat || "");
+    const lng = Number(card.dataset.lng || "");
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (lat === 0 || lng === 0) return null;
+
+    return { lat, lng };
+  }
+
+  async function initIntentGoogleMap() {
+    if (!intentMapEl) return;
+
+   const cards = Array.from(document.querySelectorAll(".original-card")).filter((card) => {
+  const li = card.closest("li");
+return !li || li.style.display !== "none";});
+
+    const points = cards
+      .map((card) => ({
+        card,
+        point: getCardLatLng(card),
+      }))
+      .filter((item) => item.point);
+
+    if (!points.length) {
+      intentMapEl.innerHTML =
+        "<p style='padding:16px;color:#6b6560;'>No map locations available.</p>";
+      return;
+    }
+
+    try {
+      await loadGoogleMaps();
+    } catch (error) {
+      console.error("Google Maps failed to load:", error);
+      intentMapEl.innerHTML =
+        "<p style='padding:16px;color:#6b6560;'>Map could not load.</p>";
+      return;
+    }
+
+    if (!googleMap) {
+      googleMap = new google.maps.Map(intentMapEl, {
+        center: { lat: 49.1659, lng: -123.9401 },
+        zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+    }
+
+    googleMarkers.forEach((marker) => marker.setMap(null));
+    googleMarkers = [];
+
+    const bounds = new google.maps.LatLngBounds();
+    const infoWindow = new google.maps.InfoWindow();
+
+    points.forEach(({ card, point }) => {
+      const marker = new google.maps.Marker({
+        position: point,
+        map: googleMap,
+        title: card.dataset.address || "Listing",
+      });
+
+      marker.addListener("click", () => {
+        infoWindow.setContent(
+          `<strong>${card.dataset.price || "Listing"}</strong><br>${card.dataset.address || ""}`
+        );
+        infoWindow.open(googleMap, marker);
+        card.click();
+      });
+
+      googleMarkers.push(marker);
+      bounds.extend(point);
+    });
+
+    googleMap.fitBounds(bounds);
+
+    window.setTimeout(() => {
+      google.maps.event.trigger(googleMap, "resize");
+      googleMap.fitBounds(bounds);
+    }, 150);
+  }
+
+  listViewBtn?.addEventListener("click", () => {
+    if (intentMapEl) intentMapEl.hidden = true;
+    gridEl?.classList.remove("map-hidden");
+
+    listViewBtn.classList.add("active");
+    mapViewBtn?.classList.remove("active");
+  });
+
+  mapViewBtn?.addEventListener("click", () => {
+    if (intentMapEl) intentMapEl.hidden = false;
+    gridEl?.classList.add("map-hidden");
+
+    mapViewBtn.classList.add("active");
+    listViewBtn?.classList.remove("active");
+
+    requestAnimationFrame(() => {
+      initIntentGoogleMap();
+    });
+  });
+</script>
+  <script is:inline>
+  (() => {
+    const form = document.getElementById("home-filter-form");
+    const city = document.body.dataset.city || "nanaimo";
+    let homeOffset = 0;
+    let homeTotal = 0;
+    let homeLoading = false;
+
+    function esc(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+   function cardHtml(listing) {
+  const sqft = listing.sqft ? Number(listing.sqft).toLocaleString() : "";
+
+  return `
+    <article
+      class="card original-card"
+      data-item-id="${esc(listing.id)}"
+      data-card-id="${esc(listing.id)}"
+      data-listing-id="${esc(listing.id)}"
+      data-price="${esc(listing.price)}"
+      data-raw-price="${esc(listing.rawPrice)}"
+      data-listed-at="${esc(listing.listedAt)}"
+      data-address="${esc(listing.address)}"
+      data-meta="${esc(`${listing.beds || "-"} bed · ${listing.baths || "-"} bath`)}"
+      data-image="${esc(listing.image)}"
+      data-images='${esc(JSON.stringify(listing.images || []))}'
+      data-beds="${esc(listing.beds)}"
+      data-baths="${esc(listing.baths)}"
+      data-sqft="${esc(listing.sqft)}"
+      data-description="${esc(listing.description)}"
+      data-property-type="${esc(listing.propertyType)}"
+      data-type="${esc(listing.type)}"
+      data-year="${esc(listing.year)}"
+      data-lot-size="${esc(listing.lotSize)}"
+      data-area="${esc(listing.area)}"
+      data-liked-tags="[]"
+      data-is-favourite="false"
+      data-decision=""
+      data-lat="${esc(listing.lat)}"
+      data-lng="${esc(listing.lng)}"
+      data-city="${esc(listing.city)}"
+      data-mls="${esc(listing.mls)}"
+      aria-label="${esc(`${listing.price} — ${listing.address}`)}"
+    >
+      <div class="card-image-wrap">
+        <img src="${esc(listing.image || "https://placehold.co/800x600?text=Listing")}" alt="${esc(listing.address || "Listing")}" />
+      </div>
+
+      <div class="card-body">
+        <div class="price">${esc(listing.price)}</div>
+        <div class="address">${esc(listing.address)}</div>
+        <div class="card-city">${esc(listing.city || city)}, BC</div>
+
+        <div class="meta">
+          <span>🛏 ${esc(listing.beds || "-")} bd</span>
+          <span>🛁 ${esc(listing.baths || "-")} ba</span>
+          ${sqft ? `<span>↗ ${esc(sqft)} sq ft</span>` : ""}
+        </div>
+
+        <div class="card-decision-badge" hidden></div>
+      </div>
+    </article>
+  `;
+}
+
+    function getLoadMoreButton() {
+      let btn = document.getElementById("home-load-more");
+
+      if (!btn) {
+     const grid = document.querySelector(".grid");
+        btn = document.createElement("button");
+        btn.id = "home-load-more";
+        btn.className = "home-load-more-btn";
+        btn.textContent = "Load More Listings";
+        grid?.after(btn);
+
+        btn.addEventListener("click", () => {
+          homeOffset += 12;
+          fetchHomeListings({ append: true });
+        });
+      }
+
+      return btn;
+    }
+
+    async function fetchHomeListings({ append = false } = {}) {
+      if (homeLoading) return;
+      homeLoading = true;
+
+   const grid = document.querySelector(".grid");
+      const btn = getLoadMoreButton();
+
+      if (!form || !grid) {
+        homeLoading = false;
+        return;
+      }
+
+      if (!append) {
+        homeOffset = 0;
+        grid.style.opacity = "0.55";
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Loading...";
+
+      const params = new URLSearchParams();
+      params.set("city", city);
+      params.set("limit", "12");
+      params.set("offset", String(homeOffset));
+
+      const area = String(form.elements.area?.value || "").trim();
+      const type = String(form.elements.type?.value || "").trim();
+      const maxPrice = String(form.elements.maxPrice?.value || "").trim();
+      const sort = String(form.elements.sort?.value || "newest").trim();
+
+      if (area) params.set("area", area);
+      if (type) params.set("type", type);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+      if (sort) params.set("sort", sort);
+
+      try {
+        const res = await fetch(`/api/home-listings?${params.toString()}`);
+        const payload = await res.json();
+
+        if (!res.ok) {
+          throw new Error(payload?.error || "Could not load listings.");
+        }
+
+        const listings = payload.listings || [];
+        homeTotal = Number(payload.count || 0);
+
+        if (!append) {
+          grid.innerHTML = "";
+        }
+
+     if (append) {
+  grid.insertAdjacentHTML(
+    "beforeend",
+    listings.map(cardHtml).join("")
+  );
+} else {
+  grid.innerHTML = listings.map(cardHtml).join("");
+}
+
+        const shown = grid.children.length;
+
+        btn.style.display = shown < homeTotal ? "block" : "none";
+        btn.disabled = false;
+        btn.textContent = "Load More Listings";
+
+        if (typeof initIntentGoogleMap === "function") {
+          const map = document.getElementById("intent-map");
+          if (map && !map.hidden) initIntentGoogleMap();
+        }
+
+        window.dispatchEvent(new CustomEvent("intent:cards-updated"));
+      } catch (error) {
+        console.error(error);
+        btn.textContent = "Could not load listings";
+      } finally {
+        grid.style.opacity = "";
+        homeLoading = false;
+      }
+    }
+
+    form?.addEventListener("change", () => {
+      fetchHomeListings({ append: false });
+    });
+
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      fetchHomeListings({ append: false });
+    });
+
+    document.documentElement.style.visibility = "";
+  })();
+</script>
+  </body>
+</html>

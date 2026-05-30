@@ -46,6 +46,19 @@ export const POST: APIRoute = async ({ request }) => {
 
     const city = String(body.city || "").toLowerCase();
     const refineLabel = String(body.refine_label || "").toLowerCase();
+    const wantsLowerPrice =
+  refineLabel.includes("lower-priced") ||
+  refineLabel.includes("lower priced") ||
+  refineLabel.includes("best value");
+
+const wantsMidRange =
+  refineLabel.includes("mid-range") ||
+  refineLabel.includes("mid range");
+
+const wantsPremium =
+  refineLabel.includes("premium") ||
+  refineLabel.includes("higher budget") ||
+  refineLabel.includes("show up to");
     const sessionId = String(body.session_id || "");
     const slug = String(body.slug || "");
     let pageType = String(body.property_type || "").toLowerCase();
@@ -91,6 +104,7 @@ export const POST: APIRoute = async ({ request }) => {
     const visibleListings = Array.isArray(body.visible_listings)
       ? body.visible_listings
       : [];
+      const mapBounds = body.map_bounds || null;
 
    const excludeAddresses = visibleListings
   .map((item: any) => String(item.address || "").trim())
@@ -193,10 +207,34 @@ let query = supabase
       .eq("status", "A")
       .eq("normalized_city", city);
 
-    if (pageType) {
+     if (pageType) {
       console.log("REFINE LOCKED PROPERTY TYPE:", pageType);
       query = query.eq("normalized_type", pageType);
     }
+
+   const lowerCeiling =
+  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.55) : 700000;
+
+const midFloor =
+  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.55) : 700000;
+
+const midCeiling =
+  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.78) : 950000;
+
+const premiumFloor =
+  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.78) : 950000;
+
+if (wantsLowerPrice) {
+  query = query.lte("price", lowerCeiling);
+}
+
+if (wantsMidRange) {
+  query = query.gte("price", midFloor).lte("price", midCeiling);
+}
+
+if (wantsPremium) {
+  query = query.gte("price", premiumFloor);
+}
 
     let targetMaxPrice =
       visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 1.12) : 0;
@@ -211,19 +249,34 @@ let query = supabase
       targetMaxPrice = Number(explicitPriceMatch[1].replace(/,/g, ""));
     }
 
-    if (targetMaxPrice > 0) {
+if (
+  targetMaxPrice > 0 &&
+  !wantsLowerPrice &&
+  !wantsMidRange &&
+  !wantsPremium
+) {
   query = query.lte("price", targetMaxPrice);
 }
 
 // If the buyer is clearly liking higher-priced listings,
-// do not let refine fall way below that band.
-if (preferredMinPrice > 0) {
+// do not let refine fall way below that band unless they explicitly chose a price direction.
+if (
+  preferredMinPrice > 0 &&
+  !wantsLowerPrice &&
+  !wantsMidRange &&
+  !wantsPremium
+) {
   query = query.gte("price", Math.round(preferredMinPrice * 0.75));
 }
 
-    if (refineLabel.includes("show up to")) {
-      query = query.gt("price", visibleMaxPrice);
-    }
+      if (refineLabel.includes("show up to")) {
+  const match = refineLabel.match(/[\d,]+/);
+  const requestedMax = match ? Number(match[0].replace(/,/g, "")) : 0;
+
+  if (requestedMax > 0) {
+    query = query.lte("price", requestedMax);
+  }
+}
 
     const preferredFeatureLabels = {
       modern: refineLabel.includes("modern"),
@@ -280,6 +333,25 @@ const wantsNearbyAreas = refineLabel.includes("nearby");
     const { data, error } = await query
       .order("price", { ascending: false })
       .limit(120);
+      let filteredData = data || [];
+
+if (mapBounds) {
+  filteredData = filteredData.filter((listing) => {
+    const lat = Number(listing.lat || 0);
+    const lng = Number(listing.lng || 0);
+
+    if (!lat || !lng) return false;
+
+    return (
+      lat >= Number(mapBounds.south) &&
+      lat <= Number(mapBounds.north) &&
+      lng >= Number(mapBounds.west) &&
+      lng <= Number(mapBounds.east)
+    );
+  });
+
+  console.log("MAP FILTER", filteredData.length, "listings inside viewport");
+}
 
     if (error) {
       console.error(error);
@@ -301,7 +373,7 @@ const wantsNearbyAreas = refineLabel.includes("nearby");
       );
     }
 
-    const scoredAll = (data || [])
+    const scoredAll = filteredData
       .map((listing) => {
         const description = String(listing.description || "").toLowerCase();
         const area = String(
@@ -364,18 +436,31 @@ if (preferredAvgPrice > 0 && listingPrice > 0) {
   else if (priceDistanceRatio <= 0.15) score += 24;
   else if (priceDistanceRatio <= 0.25) score += 12;
 
-  // Strongly avoid dropping buyers far below the price band they liked.
-  if (preferredMinPrice > 0 && listingPrice < preferredMinPrice * 0.85) {
+   // Strongly avoid dropping buyers far below the price band they liked,
+  // unless they explicitly asked for a different price band.
+  if (
+    preferredMinPrice > 0 &&
+    !wantsLowerPrice &&
+    !wantsMidRange &&
+    !wantsPremium &&
+    listingPrice < preferredMinPrice * 0.85
+  ) {
     score -= 35;
   }
 
-  if (preferredMinPrice > 0 && listingPrice < preferredMinPrice * 0.7) {
+  if (
+    preferredMinPrice > 0 &&
+    !wantsLowerPrice &&
+    !wantsMidRange &&
+    !wantsPremium &&
+    listingPrice < preferredMinPrice * 0.7
+  ) {
     score -= 60;
   }
 }
 
-if (lovedAreas.has(area)) score += 12;
-if (maybeAreas.has(area)) score += 6;
+if (lovedAreas.has(area)) score += 35;
+if (maybeAreas.has(area)) score += 18;
 if (preferredAreas.includes(area)) score += 16;
 
 if (wantsNearbyAreas) {
@@ -433,8 +518,13 @@ if (wantsNearbyAreas) {
       return !excludeAddresses.includes(String(item.listing.address || "").trim());
     });
 
-    const scored = unviewedScored.length ? unviewedScored : scoredAll;
-
+   const scored =
+  unviewedScored.length >= 12
+    ? unviewedScored
+    : scoredAll;
+console.log("SCORED ALL", scoredAll.length);
+console.log("UNVIEWED", unviewedScored.length);
+console.log("FINAL", scored.length);
     const filtered = scored.map((item) => item.listing);
     const paged = filtered.slice(offset, offset + limit);
 
