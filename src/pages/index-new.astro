@@ -793,11 +793,31 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
         line-height: 1.7;
       }
 
-      .intent-collections-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0,1fr));
-        gap: 18px;
-      }
+     .intent-collections-grid,
+#intent-collections-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  gap: 18px !important;
+}
+
+#intent-collections-grid .intent-card {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 220px !important;
+  padding: 22px !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  border: 1px solid var(--line-warm) !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+#intent-collections-grid .intent-card h3,
+#intent-collections-grid .intent-card p,
+#intent-collections-grid .intent-type,
+#intent-collections-grid .intent-link {
+  text-decoration: none !important;
+}
 
       .intent-card {
         display: flex;
@@ -1038,8 +1058,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
                     <div class="card-body">
                       <div class="price">{price}</div>
                       <div class="address">{address}</div>
-                      <div class="card-city">{city || "Nanaimo"}, BC</div>
-
+<div class="card-city">{(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())}, BC</div>
                       <div class="meta">
                         <span>🛏 {beds || "-"} bd</span>
                         <span>🛁 {baths || "-"} ba</span>
@@ -1085,8 +1104,8 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
             </p>
           </div>
 
-                            <div class="intent-collections-grid">
-            {intentCollections.map((card) => (
+                            <div class="intent-collections-grid" id="intent-collections-grid">
+  {intentCollections.map((card) => (
               <a href={card.href} class="intent-card">
                 <span class="intent-type">{card.type}</span>
 
@@ -1105,7 +1124,68 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 <ShortlistReviewModal />
 <IntentModalController />
 
- <style is:global>
+  <style is:global>
+
+#intent-collections-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+#intent-collections-grid .intent-card {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 220px !important;
+  padding: 22px !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  border: 1px solid var(--line-warm) !important;
+  color: inherit !important;
+  text-decoration: none !important;
+  transition: all 0.25s ease !important;
+}
+
+#intent-collections-grid .intent-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: var(--accent-light) !important;
+  box-shadow: 0 14px 34px rgba(28,25,23,0.08) !important;
+}
+
+#intent-collections-grid .intent-type {
+  margin-bottom: 14px !important;
+  color: var(--accent) !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  text-decoration: none !important;
+}
+
+#intent-collections-grid .intent-card h3 {
+  margin: 0 0 12px !important;
+  font-family: var(--f-display) !important;
+  font-size: 1.8rem !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.04em !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+
+#intent-collections-grid .intent-card p {
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-size: 0.92rem !important;
+  line-height: 1.7 !important;
+  text-decoration: none !important;
+}
+
+#intent-collections-grid .intent-link {
+  margin-top: auto !important;
+  padding-top: 22px !important;
+  color: var(--accent) !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+}
 
   .grid > .card,
 .original-card {
@@ -1159,6 +1239,46 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   padding: 14px 16px !important;
   background: #fff !important;
   min-height: 128px !important;
+}
+
+.grid > .card .price {
+  font-size: 1.34rem !important;
+  line-height: 1.1 !important;
+  font-weight: 950 !important;
+  margin-bottom: 8px !important;
+  letter-spacing: -0.035em !important;
+  padding-right: 104px !important;
+}
+
+.grid > .card .address {
+  margin-bottom: 2px !important;
+  color: var(--ink) !important;
+  line-height: 1.35 !important;
+  font-size: 0.9rem !important;
+  font-weight: 850 !important;
+}
+
+.grid > .card .card-city {
+  margin-bottom: 14px !important;
+  color: var(--muted) !important;
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+}
+
+.grid > .card .meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+  font-size: 0.86rem !important;
+  color: var(--ink-soft) !important;
+  font-weight: 750 !important;
+}
+
+.grid > .card .meta span {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
 }
 
 .grid > .card .price {
@@ -1916,8 +2036,7 @@ return !li || li.style.display !== "none";});
       <div class="card-body">
         <div class="price">${esc(listing.price)}</div>
         <div class="address">${esc(listing.address)}</div>
-        <div class="card-city">${esc(listing.city || city)}, BC</div>
-
+<div class="card-city">${esc(String(listing.city || city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase()))}, BC</div>
         <div class="meta">
           <span>🛏 ${esc(listing.beds || "-")} bd</span>
           <span>🛁 ${esc(listing.baths || "-")} ba</span>
@@ -1937,8 +2056,20 @@ return !li || li.style.display !== "none";});
      const grid = document.querySelector(".grid");
         btn = document.createElement("button");
         btn.id = "home-load-more";
-        btn.className = "home-load-more-btn";
-        btn.textContent = "Load More Listings";
+       btn.className = "home-load-more-btn";
+btn.textContent = "Load More Listings";
+btn.style.display = "block";
+btn.style.margin = "34px auto 54px";
+btn.style.minHeight = "48px";
+btn.style.padding = "0 24px";
+btn.style.borderRadius = "999px";
+btn.style.border = "1px solid #181614";
+btn.style.background = "#181614";
+btn.style.color = "#ffffff";
+btn.style.font = "inherit";
+btn.style.fontWeight = "900";
+btn.style.cursor = "pointer";
+btn.style.boxShadow = "0 14px 32px rgba(24,22,20,0.14)";
         grid?.after(btn);
 
         btn.addEventListener("click", () => {
@@ -2020,7 +2151,9 @@ return !li || li.style.display !== "none";});
           if (map && !map.hidden) initIntentGoogleMap();
         }
 
-        window.dispatchEvent(new CustomEvent("intent:cards-updated"));
+  applySavedHomeDecisions();
+
+window.dispatchEvent(new CustomEvent("intent:cards-updated"));
       } catch (error) {
         console.error(error);
         btn.textContent = "Could not load listings";
@@ -2029,7 +2162,112 @@ return !li || li.style.display !== "none";});
         homeLoading = false;
       }
     }
+const HOME_INTENT_COLLECTIONS = [
+  {
+    type: "condo",
+    title: "Ocean View Condos in Nanaimo",
+    href: "/nanaimo/ocean-view-condos",
+    description: "Explore Nanaimo condos with ocean view potential, coastal appeal, and low-maintenance living."
+  },
+  {
+    type: "condo",
+    title: "Nanaimo Condos for Downsizers",
+    href: "/nanaimo/downsizer-condos",
+    description: "Browse lower-maintenance Nanaimo condos that may appeal to downsizers looking for comfort and convenience."
+  },
+  {
+    type: "condo",
+    title: "Walkable Condos in Nanaimo",
+    href: "/nanaimo/walkable-condos",
+    description: "Explore Nanaimo condos close to amenities, services, parks, and daily conveniences."
+  },
+  {
+    type: "house",
+    title: "Investment Properties With Suites in Nanaimo",
+    href: "/nanaimo/investment-properties-with-suites",
+    description: "Browse Nanaimo homes with suite potential, rental flexibility, or income-producing possibilities."
+  },
+  {
+    type: "house",
+    title: "Updated Family Homes in Nanaimo",
+    href: "/nanaimo/updated-family-homes",
+    description: "Explore Nanaimo family homes with updated finishes, modern layouts, and move-in-ready appeal."
+  },
+  {
+    type: "house",
+    title: "Family Homes With Garages in Nanaimo",
+    href: "/nanaimo/family-homes-with-garages",
+    description: "Find Nanaimo homes with garage space, storage potential, and practical family layouts."
+  },
+  {
+    type: "house",
+    title: "Family Homes With Yards in Nanaimo",
+    href: "/nanaimo/family-homes-with-yards",
+    description: "Browse Nanaimo homes with outdoor space, yards, and family-friendly potential."
+  },
+  {
+    type: "house",
+    title: "Family Homes in Nanaimo Under $800K",
+    href: "/nanaimo/family-homes-under-800k",
+    description: "Explore Nanaimo homes that may work well for families with a price point under $800K."
+  }
+];
 
+function renderHomeIntentCards() {
+  const wrap = document.getElementById("intent-collections-grid");
+  if (!wrap) return;
+
+  const cards = Array.from(document.querySelectorAll(".grid > .card"));
+  const visibleText = cards
+    .map((card) => `${card.dataset.type || ""} ${card.dataset.propertyType || ""}`)
+    .join(" ")
+    .toLowerCase();
+
+  let wanted = HOME_INTENT_COLLECTIONS;
+
+  const hasCondos = visibleText.includes("condo") || visibleText.includes("apartment");
+  const hasHouses = visibleText.includes("house") || visibleText.includes("single family");
+
+  if (hasCondos && !hasHouses) {
+    wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === "condo");
+  } else if (hasHouses && !hasCondos) {
+    wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === "house");
+  }
+
+  wrap.style.display = "grid";
+  wrap.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+  wrap.style.gap = "18px";
+
+  wrap.innerHTML = wanted.map((card) => `
+    <a
+      href="${esc(card.href)}"
+      class="intent-card"
+      style="display:flex;flex-direction:column;min-height:220px;padding:22px;border-radius:20px;background:#fff;border:1px solid var(--line-warm);color:inherit;text-decoration:none;transition:all .25s ease;"
+    >
+      <span style="margin-bottom:14px;color:var(--accent);font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;">
+        ${esc(card.type)}
+      </span>
+
+      <h3 style="margin:0 0 12px;font-family:var(--f-display);font-size:1.8rem;line-height:1.05;letter-spacing:-.04em;font-weight:500;text-decoration:none;color:inherit;">
+        ${esc(card.title)}
+      </h3>
+
+      <p style="margin:0;color:var(--muted);font-size:.92rem;line-height:1.7;text-decoration:none;">
+        ${esc(card.description)}
+      </p>
+
+      <span style="margin-top:auto;padding-top:22px;color:var(--accent);font-weight:800;text-decoration:none;">
+        View search →
+      </span>
+    </a>
+  `).join("");
+}
+
+renderHomeIntentCards();
+
+window.addEventListener("intent:cards-updated", () => {
+  renderHomeIntentCards();
+});
     form?.addEventListener("change", () => {
       fetchHomeListings({ append: false });
     });
@@ -2039,7 +2277,78 @@ return !li || li.style.display !== "none";});
       fetchHomeListings({ append: false });
     });
 
-    document.documentElement.style.visibility = "";
+   function getHomeDecisionKey(card) {
+  return card?.dataset?.listingId || card?.dataset?.cardId || card?.dataset?.itemId || "";
+}
+
+function saveHomeDecision(card) {
+  const key = getHomeDecisionKey(card);
+  if (!key) return;
+
+  const badge = card.querySelector(".card-decision-badge");
+  const text = String(badge?.textContent || "").trim();
+
+  const decision =
+    card.dataset.decision ||
+    (badge?.classList.contains("is-love") ? "love" : "") ||
+    (badge?.classList.contains("is-maybe") ? "maybe" : "") ||
+    (badge?.classList.contains("is-pass") ? "pass" : "");
+
+  if (!decision && !text) return;
+
+  sessionStorage.setItem(
+    `home_listing_decision_${key}`,
+    JSON.stringify({
+      decision,
+      text,
+      badgeClass: badge?.className || "",
+      isPassed: card.classList.contains("is-passed"),
+    })
+  );
+}
+
+function applySavedHomeDecisions() {
+  document.querySelectorAll(".grid > .card").forEach((card) => {
+    const key = getHomeDecisionKey(card);
+    if (!key) return;
+
+    const raw = sessionStorage.getItem(`home_listing_decision_${key}`);
+    if (!raw) return;
+
+    try {
+      const saved = JSON.parse(raw);
+      const badge = card.querySelector(".card-decision-badge");
+
+      card.dataset.decision = saved.decision || "";
+      card.classList.toggle("is-passed", !!saved.isPassed || saved.decision === "pass");
+
+      if (badge && saved.text) {
+        badge.hidden = false;
+        badge.textContent = saved.text;
+        badge.className = saved.badgeClass || "card-decision-badge";
+      }
+    } catch {}
+  });
+}
+
+const decisionObserver = new MutationObserver(() => {
+  document.querySelectorAll(".grid > .card").forEach(saveHomeDecision);
+});
+
+const homeGrid = document.querySelector(".grid");
+if (homeGrid) {
+  decisionObserver.observe(homeGrid, {
+    subtree: true,
+    attributes: true,
+    childList: true,
+    characterData: true,
+    attributeFilter: ["class", "hidden", "data-decision"],
+  });
+}
+
+applySavedHomeDecisions();
+
+document.documentElement.style.visibility = "";
   })();
 </script>
   </body>

@@ -581,25 +581,50 @@ body.is-map-mode .bottom-refine-cta {
   display: none !important;
 }
 
-   .card img {
+  .card-image-wrap {
   width: 100%;
-  aspect-ratio: 16 / 9;
-        object-fit: cover;
-        display: block;
-      }
+  height: 190px;
+  overflow: hidden;
+  background: #eee8df;
+}
 
-      .card-body {
-        padding: 16px;
-      }
+.card-image-wrap img,
+.card img {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
 
-     .card-decision-badge {
+.card-body {
+  position: relative;
+  padding: 14px 16px;
+  background: #fff;
+  min-height: 128px;
+}
+
+    .card-body {
+  position: relative;
+}
+
+.price {
+  padding-right: 104px;
+}
+
+.card-decision-badge {
+  position: absolute;
+  top: 16px;
+  right: 14px;
   display: inline-flex;
+  align-items: center;
+  gap: 5px;
   width: fit-content;
-  margin-top: 14px;
-  padding: 7px 11px;
+  margin: 0;
+  padding: 5px 9px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 900;
+  line-height: 1;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -632,22 +657,45 @@ body.is-map-mode .bottom-refine-cta {
   opacity: 0.65;
 }
 
-      .price {
-        font-size: 1.36rem;
-        font-weight: 850;
-        margin-bottom: 6px;
-      }
+     .price {
+  font-size: 1.34rem;
+  line-height: 1.1;
+  font-weight: 950;
+  margin-bottom: 8px;
+  letter-spacing: -0.035em;
+  padding-right: 104px;
+}
 
-      .address {
-        margin-bottom: 10px;
-        color: var(--ink);
-        line-height: 1.35;
-      }
+.address {
+  margin-bottom: 2px;
+  color: var(--ink);
+  line-height: 1.35;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
 
-      .meta {
-        font-size: 0.9rem;
-        color: var(--muted);
-      }
+.card-city {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  font-weight: 750;
+}
+
+.meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
 
      .interrupt-card {
   grid-column: 1 / -1;
@@ -1270,14 +1318,20 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
                 data-city={String(listing?.normalized_city || listing?.city || "nanaimo")}
                 data-area={String(listing?.normalized_area || listing?.area || "").toLowerCase()}
               >
-                <img src={image} alt={listing.address || "Listing"} />
-
-                <div class="card-body">
-                  <div class="price">{formatPrice(listing.price)}</div>
-                  <div class="address">{listing.address}</div>
-                <div class="meta">
-  {listing.beds || "-"} bed · {listing.baths || "-"} bath
+      <div class="card-image-wrap">
+  <img src={image} alt={listing.address || "Listing"} />
 </div>
+
+<div class="card-body">
+  <div class="price">{formatPrice(listing.price)}</div>
+  <div class="address">{listing.address}</div>
+  <div class="card-city">Nanaimo, BC</div>
+
+  <div class="meta">
+    <span>🛏 {listing.beds || "-"} bd</span>
+    <span>🛁 {listing.baths || "-"} ba</span>
+    {listing.sqft && <span>↗ {Number(listing.sqft).toLocaleString()} sq ft</span>}
+  </div>         
 
 <div class="card-decision-badge" hidden></div>
                 </div>
