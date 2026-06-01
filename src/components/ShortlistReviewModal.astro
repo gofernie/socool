@@ -142,9 +142,25 @@
 </button>
   </div>
 
-  <div class="panel__feedback" id="sheet-feedback"></div>
+<div class="panel__feedback" id="sheet-feedback"></div>
 
- <div class="decision-wrap">
+<div class="panel__engage" id="sheet-engage" hidden>
+  <div class="panel__engage-copy">
+    ❤️ Loved this home?
+  </div>
+
+  <div class="panel__engage-actions">
+    <button type="button" id="ask-question-btn">
+      Ask a Question
+    </button>
+
+    <button type="button" id="book-showing-btn">
+      Book a Showing
+    </button>
+  </div>
+</div>
+
+<div class="decision-wrap">
     <p class="decision-title">How does this one feel?</p>
 
     <div class="decision-actions">
@@ -918,6 +934,48 @@
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.panel__engage {
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid #eadfca;
+  border-radius: 18px;
+  background: #faf7f2;
+  text-align: center;
+  animation: chipGroupIn 0.28s ease both;
+}
+
+.panel__engage-copy {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.panel__engage-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.panel__engage-actions button {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  min-height: 42px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.panel__engage-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 
  .decision-wrap {

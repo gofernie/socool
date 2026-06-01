@@ -1,0 +1,403 @@
+---
+import { createClient } from "@supabase/supabase-js";
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const formData =
+  Astro.request.method === "POST" ? await Astro.request.formData() : null;
+
+if (formData?.get("_action") === "delete") {
+  const id = String(formData.get("id") || "");
+
+  if (id) {
+    await supabase.from("intent_page_features").delete().eq("intent_page_id", id);
+    await supabase.from("intent_pages").delete().eq("id", id);
+  }
+
+  return Astro.redirect("/admin/intent-pages");
+}
+
+const activeType = String(Astro.url.searchParams.get("type") || "");
+const activeKind = String(Astro.url.searchParams.get("kind") || "");
+const activeStatus = String(Astro.url.searchParams.get("status") || "");
+
+let pagesQuery = supabase
+  .from("intent_pages")
+  .select(`
+    *,
+    intent_page_features (
+      feature_key
+    )
+  `);
+
+if (activeType) {
+  pagesQuery = pagesQuery.eq("property_type", activeType);
+}
+
+if (activeKind) {
+  pagesQuery = pagesQuery.eq("lifestyle_angle", activeKind);
+}
+
+if (activeStatus === "published") {
+  pagesQuery = pagesQuery.eq("is_published", true);
+}
+
+if (activeStatus === "draft") {
+  pagesQuery = pagesQuery.eq("is_published", false);
+}
+
+const { data: pages, error } = await pagesQuery.order("created_at", {
+  ascending: false,
+});
+
+function titleCase(value: any) {
+  return String(value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatPrice(page: any) {
+  if (page.price_max) return `Under $${Number(page.price_max).toLocaleString()}`;
+  if (page.price_min) return `$${Number(page.price_min).toLocaleString()}+`;
+  return "Any price";
+}
+
+function pageTypeLabel(page: any) {
+  if (page.lifestyle_angle === "category") return "Category";
+  if (page.lifestyle_angle === "intent") return "Intent";
+  return page.intent_page_features?.length ? "Intent" : "Category";
+}
+
+function publicHref(page: any) {
+  return `/${page.city}/${page.slug}`;
+}
+---
+
+<html>
+  <head>
+    <title>Intent & Category Pages</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f4efe7;
+        color: #181614;
+      }
+
+      .shell {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 42px 0;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.3rem, 5vw, 4rem);
+        letter-spacing: -0.07em;
+        line-height: 0.95;
+      }
+
+      .intro {
+        max-width: 720px;
+        margin: 12px 0 0;
+        color: rgba(24,22,20,0.62);
+        line-height: 1.55;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      a,
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 0;
+        background: #181614;
+        color: #fff;
+        font: inherit;
+        font-weight: 900;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .secondary {
+        background: #fffaf1;
+        color: #181614;
+        border: 1px solid rgba(24,22,20,0.14);
+      }
+
+      .danger {
+        background: #fff;
+        color: #b42318;
+        border: 1px solid rgba(180,35,24,0.25);
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 18px;
+      }
+
+      .filter-pill {
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(24,22,20,0.14);
+        background: #fffaf1;
+        color: #181614;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .filter-pill.active,
+      .filter-pill:hover {
+        background: #181614;
+        color: white;
+        border-color: #181614;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .page-card {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 22px;
+        border-radius: 22px;
+        background: #fffaf1;
+        border: 1px solid rgba(24,22,20,0.12);
+      }
+
+      .page-card h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        letter-spacing: -0.04em;
+      }
+
+      .slug {
+        margin: 5px 0 0;
+        color: rgba(24,22,20,0.54);
+        font-size: 0.9rem;
+      }
+
+      .copy {
+        max-width: 720px;
+        margin: 10px 0 0;
+        color: rgba(24,22,20,0.66);
+        line-height: 1.5;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 13px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        background: #f4efe7;
+        color: #6f5a38;
+        font-size: 0.76rem;
+        font-weight: 850;
+      }
+
+      .tag.dark {
+        background: #181614;
+        color: #fff;
+      }
+
+      .tag.intent {
+        background: rgba(255,77,0,0.12);
+        color: #ff4d00;
+      }
+
+      .tag.published {
+        background: rgba(34, 139, 85, 0.12);
+        color: #1f7a4d;
+      }
+
+      .tag.draft {
+        background: rgba(24,22,20,0.08);
+        color: rgba(24,22,20,0.55);
+      }
+
+      .card-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        padding-top: 8px;
+        border-top: 1px solid rgba(24,22,20,0.08);
+      }
+
+      .empty {
+        padding: 24px;
+        border-radius: 22px;
+        background: #fffaf1;
+        border: 1px solid rgba(24,22,20,0.12);
+      }
+
+      .error {
+        color: #b42318;
+        font-weight: 800;
+      }
+
+      form {
+        margin: 0;
+      }
+
+      @media (max-width: 820px) {
+        .topbar,
+        .grid,
+        .page-card {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+
+        .card-actions {
+          justify-content: flex-start;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="shell">
+      <div class="topbar">
+        <div>
+          <h1>Intent & category pages</h1>
+          <p class="intro">
+            Manage all generated buyer-discovery pages. Category pages start broad;
+            intent pages start with feature filters.
+          </p>
+        </div>
+
+        <div class="actions">
+          <a href="/admin/intent-pages/new">+ Add new page</a>
+          <a class="secondary" href="/admin/agent-page">Agent editor</a>
+        </div>
+      </div>
+
+      <div class="filters">
+        <a class={`filter-pill ${!activeType && !activeKind && !activeStatus ? "active" : ""}`} href="/admin/intent-pages">All</a>
+
+        <a class={`filter-pill ${activeKind === "category" ? "active" : ""}`} href="/admin/intent-pages?kind=category">Category</a>
+        <a class={`filter-pill ${activeKind === "intent" ? "active" : ""}`} href="/admin/intent-pages?kind=intent">Intent</a>
+
+        <a class={`filter-pill ${activeStatus === "published" ? "active" : ""}`} href="/admin/intent-pages?status=published">Published</a>
+        <a class={`filter-pill ${activeStatus === "draft" ? "active" : ""}`} href="/admin/intent-pages?status=draft">Draft</a>
+
+        <a class={`filter-pill ${activeType === "house" ? "active" : ""}`} href="/admin/intent-pages?type=house">House</a>
+        <a class={`filter-pill ${activeType === "condo" ? "active" : ""}`} href="/admin/intent-pages?type=condo">Condo</a>
+        <a class={`filter-pill ${activeType === "townhouse" ? "active" : ""}`} href="/admin/intent-pages?type=townhouse">Townhouse</a>
+        <a class={`filter-pill ${activeType === "mobile" ? "active" : ""}`} href="/admin/intent-pages?type=mobile">Mobile</a>
+      </div>
+
+      {error && <p class="error">{error.message}</p>}
+
+      {!pages?.length && (
+        <div class="empty">
+          No matching intent or category pages.
+          <a href="/admin/intent-pages/new">Create a new page</a>
+        </div>
+      )}
+
+      <section class="grid">
+        {(pages || []).map((page) => {
+          const features = page.intent_page_features || [];
+
+          return (
+            <article class="page-card">
+              <div>
+                <h2>{page.hero_heading || titleCase(page.slug)}</h2>
+
+                <p class="slug">/{page.city}/{page.slug}</p>
+
+                {page.intro_copy && <p class="copy">{page.intro_copy}</p>}
+
+                <div class="tags">
+                  <span class={`tag ${pageTypeLabel(page) === "Intent" ? "intent" : "dark"}`}>
+                    {pageTypeLabel(page)}
+                  </span>
+
+                  <span class={`tag ${page.is_published === false ? "draft" : "published"}`}>
+                    {page.is_published === false ? "Draft" : "Published"}
+                  </span>
+
+                  <span class="tag">{titleCase(page.city)}</span>
+
+                  {page.area && <span class="tag">{titleCase(page.area)}</span>}
+
+                  {page.property_type && (
+                    <span class="tag">{titleCase(page.property_type)}</span>
+                  )}
+
+                  <span class="tag">{formatPrice(page)}</span>
+
+                  {features.length ? (
+                    features.map((feature) => (
+                      <span class="tag intent">{titleCase(feature.feature_key)}</span>
+                    ))
+                  ) : (
+                    <span class="tag">No feature filters</span>
+                  )}
+                </div>
+              </div>
+
+              <div class="card-actions">
+                <a class="secondary" href={publicHref(page)} target="_blank">
+                  Open
+                </a>
+
+                <a class="secondary" href={`/admin/intent-pages/${page.id}/edit`}>
+                  Edit
+                </a>
+
+                <form method="POST" onsubmit="return confirm('Delete this page? This cannot be undone.');">
+                  <input type="hidden" name="_action" value="delete" />
+                  <input type="hidden" name="id" value={page.id} />
+                  <button class="danger" type="submit">Delete</button>
+                </form>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </main>
+  </body>
+</html>

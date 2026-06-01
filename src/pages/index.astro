@@ -105,70 +105,121 @@ const buildFilterUrl = (updates: Record<string, string | number | null>) => {
 
   return `?${params.toString()}`;
 };
-const allIntentCollections = [
-  {
-    type: "condo",
-    title: "Ocean View Condos in Nanaimo",
-    href: "/nanaimo/ocean-view-condos",
-    description: "Explore Nanaimo condos with ocean view potential, coastal appeal, and low-maintenance living."
-  },
-  {
-    type: "condo",
-    title: "Nanaimo Condos for Downsizers",
-    href: "/nanaimo/downsizer-condos",
-    description: "Browse lower-maintenance Nanaimo condos that may appeal to downsizers looking for comfort and convenience."
-  },
-  {
-    type: "condo",
-    title: "Walkable Condos in Nanaimo",
-    href: "/nanaimo/walkable-condos",
-    description: "Explore Nanaimo condos close to amenities, services, parks, and daily conveniences."
-  },
+const { data: intentPageRows } = await supabase
+  .from("intent_pages")
+  .select(`
+    *,
+    intent_page_features (
+      feature_key
+    )
+  `)
+  .eq("city", clean(city || "nanaimo"))
+  .eq("is_published", true)
+  .order("created_at", { ascending: false });
 
-  {
-    type: "house",
-    title: "Investment Properties With Suites in Nanaimo",
-    href: "/nanaimo/investment-properties-with-suites",
-    description: "Browse Nanaimo homes with suite potential, rental flexibility, or income-producing possibilities."
-  },
-  {
-    type: "house",
-    title: "Updated Family Homes in Nanaimo",
-    href: "/nanaimo/updated-family-homes",
-    description: "Explore Nanaimo family homes with updated finishes, modern layouts, and move-in-ready appeal."
-  },
-  {
-    type: "house",
-    title: "Family Homes With Garages in Nanaimo",
-    href: "/nanaimo/family-homes-with-garages",
-    description: "Find Nanaimo homes with garage space, storage potential, and practical family layouts."
-  },
-  {
-    type: "house",
-    title: "Family Homes With Yards in Nanaimo",
-    href: "/nanaimo/family-homes-with-yards",
-    description: "Browse Nanaimo homes with outdoor space, yards, and family-friendly potential."
-  },
-  {
-    type: "house",
-    title: "Family Homes in Nanaimo Under $800K",
-    href: "/nanaimo/family-homes-under-800k",
-    description: "Explore Nanaimo homes that may work well for families with a price point under $800K."
+function shortenIntentTitle(title: string) {
+  const t = title.toLowerCase();
+
+  if (t.includes("first time buyers condos") && t.includes("500")) {
+    return "First-Time Buyer Condos Under $500K";
   }
-];
+
+  if (t.includes("first time buyers mobiles")) {
+    return "First-Time Buyer Mobile Homes";
+  }
+
+  if (t.includes("homes") && t.includes("1,000,000")) {
+    return "Homes Over $1M";
+  }
+
+  if (t.includes("ocean view condos")) {
+    return "Ocean View Condos";
+  }
+
+  if (t.includes("walkable condos")) {
+    return "Walkable Condos";
+  }
+
+  if (t.includes("downsizers")) {
+    return "Condos for Downsizers";
+  }
+
+  return title
+    .replace(/worth a closer look/gi, "")
+    .replace(/in nanaimo$/gi, "")
+    .replace(/^nanaimo\s+/i, "Nanaimo ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shortenIntentDescription(text: string, title = "") {
+  const t = title.toLowerCase();
+
+  if (t.includes("first-time buyer condos")) {
+    return "Affordable Nanaimo condos shaped around first-time buyers.";
+  }
+
+  if (t.includes("mobile homes")) {
+    return "Entry-level mobile homes for buyers looking for a practical starting point.";
+  }
+
+  if (t.includes("homes over")) {
+    return "Higher-end Nanaimo homes with more space, finish, and lifestyle upside.";
+  }
+
+  if (t.includes("nanaimo homes")) {
+    return "A broad look at active Nanaimo homes across different areas and price points.";
+  }
+
+  if (t.includes("townhomes")) {
+    return "Nanaimo townhomes for buyers who want more space without full detached-home upkeep.";
+  }
+
+  if (t.includes("ocean view")) {
+    return "Condos with ocean-view potential, coastal appeal, and low-maintenance living.";
+  }
+
+  if (t.includes("downsizers")) {
+    return "Lower-maintenance condos suited to comfort, convenience, and simpler living.";
+  }
+
+  if (t.includes("walkable")) {
+    return "Condos close to amenities, services, parks, and daily conveniences.";
+  }
+
+  return String(text || "")
+    .replace(/react to listings as you browse and the page will help surface better matches\.?/gi, "")
+    .replace(/browse active nanaimo /gi, "")
+    .replace(/explore nanaimo /gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const allIntentCollections = (intentPageRows || []).map((page: any) => ({
+  type: String(page.property_type || "").toLowerCase(),
+  title: shortenIntentTitle(page.hero_heading || page.slug),
+  href: `/${page.city}/${page.slug}`,
+description: shortenIntentDescription(page.intro_copy || "", shortenIntentTitle(page.hero_heading || page.slug)),  features: (page.intent_page_features || []).map((feature: any) => feature.feature_key),
+}));
+
 let intentCollections = allIntentCollections;
 
-if (type === "condo") {
+if (type) {
   intentCollections = allIntentCollections.filter(
-    (c) => c.type === "condo"
-  );
-} else if (type === "house") {
-  intentCollections = allIntentCollections.filter(
-    (c) => c.type === "house"
+    (card) => card.type === clean(type)
   );
 }
-const groupLabel = [
-  area || "",
+
+intentCollections = intentCollections.slice(0, 8);
+const propertyTypeOptions = Array.from(
+  new Set(
+    allIntentCollections
+      .map((card) => card.type)
+      .filter(Boolean)
+  )
+).sort();
+
+const groupLabel = [  area || "",
   type ? type.replace(/-/g, " ") : "",
   maxPrice ? `under $${maxPrice}k` : "",
   minPrice ? `over $${minPrice}k` : ""
@@ -458,6 +509,17 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 
 .filter-select {
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 46px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #181614 50%),
+    linear-gradient(135deg, #181614 50%, transparent 50%);
+  background-position:
+    calc(100% - 23px) 50%,
+    calc(100% - 17px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
 }
 
 .filter-apply {
@@ -719,17 +781,17 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   transform: translateY(-1px);
 }
       /* ========== EMPTY STATE ========== */
-      .homepage-interruptor {
+.homepage-interruptor {
   margin: 56px 0 70px;
   padding: 22px 26px;
   background: #fff;
   border: 1px solid var(--line-warm);
   border-radius: 18px;
 
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 24px;
+  gap: 20px 24px;
 }
 
 .homepage-interruptor-copy strong {
@@ -746,6 +808,43 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 .homepage-interruptor-actions {
   display: flex;
   gap: 12px;
+}
+
+.homepage-refine-panel {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-warm);
+}
+
+.homepage-refine-panel p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.homepage-refine-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.homepage-refine-chips button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.homepage-refine-chips button.active,
+.homepage-refine-chips button:hover {
+  background: #181614;
+  color: #fff;
+  border-color: #181614;
 }
 
 .interrupt-btn {
@@ -923,6 +1022,12 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
     document.documentElement.style.visibility = "hidden";
   }
 </script>
+
+<script
+  id="home-intent-collections-json"
+  type="application/json"
+  set:html={JSON.stringify(allIntentCollections)}
+></script>
 </head>
 
 <body
@@ -968,13 +1073,15 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
     </option>
   ))}
 </select>
-  <select name="type" class="filter-select" aria-label="Property type">
-    <option value="" selected={!type}>All Types</option>
-    <option value="house" selected={type === "house"}>Houses</option>
-    <option value="condo" selected={type === "condo"}>Condos</option>
-    <option value="townhouse" selected={type === "townhouse"}>Townhomes</option>
-    <option value="mobile" selected={type === "mobile"}>Mobiles</option>
-  </select>
+<select name="type" class="filter-select" aria-label="Property type">
+  <option value="" selected={!type}>All Types</option>
+
+  {propertyTypeOptions.map((propertyType) => (
+    <option value={propertyType} selected={type === propertyType}>
+      {propertyType.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
+    </option>
+  ))}
+</select>
 
   <select name="maxPrice" class="filter-select" aria-label="Max price">
     <option value="" selected={!maxPrice}>Any Price</option>
@@ -1081,14 +1188,26 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   </div>
 
   <div class="homepage-interruptor-actions">
-    <button class="interrupt-btn interrupt-secondary">
-      Refine My Search
-    </button>
+  <button class="interrupt-btn interrupt-secondary" id="refine-search-btn" type="button">
+  Refine My Search
+</button>
 
-    <button class="interrupt-btn interrupt-primary">
-      Save Search
-    </button>
+  <button class="interrupt-btn interrupt-primary" id="save-search-btn" type="button">
+  Save Search
+</button>
   </div>
+  <div class="homepage-refine-panel" id="homepage-refine-panel" hidden>
+  <p>What would make these listings better?</p>
+
+  <div class="homepage-refine-chips">
+    <button type="button" data-refine="views">Views</button>
+    <button type="button" data-refine="garage">Garage</button>
+    <button type="button" data-refine="yard">Yard</button>
+    <button type="button" data-refine="suite">Suite</button>
+    <button type="button" data-refine="updated">Updated</button>
+    <button type="button" data-refine="walkability">Walkable</button>
+  </div>
+</div>
 </div>
 
   </>
@@ -1106,7 +1225,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 
                             <div class="intent-collections-grid" id="intent-collections-grid">
   {intentCollections.map((card) => (
-              <a href={card.href} class="intent-card">
+              <a href={card.href} class="intent-card" data-type={card.type}>
                 <span class="intent-type">{card.type}</span>
 
                 <h3>{card.title}</h3>
@@ -2114,8 +2233,15 @@ btn.style.boxShadow = "0 14px 32px rgba(24,22,20,0.14)";
       if (area) params.set("area", area);
       if (type) params.set("type", type);
       if (maxPrice) params.set("maxPrice", maxPrice);
-      if (sort) params.set("sort", sort);
+if (sort) params.set("sort", sort);
 
+const refinements = Array.from(
+  document.querySelectorAll("#homepage-refine-panel [data-refine].active")
+).map((button) => button.dataset.refine).filter(Boolean);
+
+if (refinements.length) {
+  params.set("features", refinements.join(","));
+}
       try {
         const res = await fetch(`/api/home-listings?${params.toString()}`);
         const payload = await res.json();
@@ -2162,58 +2288,9 @@ window.dispatchEvent(new CustomEvent("intent:cards-updated"));
         homeLoading = false;
       }
     }
-const HOME_INTENT_COLLECTIONS = [
-  {
-    type: "condo",
-    title: "Ocean View Condos in Nanaimo",
-    href: "/nanaimo/ocean-view-condos",
-    description: "Explore Nanaimo condos with ocean view potential, coastal appeal, and low-maintenance living."
-  },
-  {
-    type: "condo",
-    title: "Nanaimo Condos for Downsizers",
-    href: "/nanaimo/downsizer-condos",
-    description: "Browse lower-maintenance Nanaimo condos that may appeal to downsizers looking for comfort and convenience."
-  },
-  {
-    type: "condo",
-    title: "Walkable Condos in Nanaimo",
-    href: "/nanaimo/walkable-condos",
-    description: "Explore Nanaimo condos close to amenities, services, parks, and daily conveniences."
-  },
-  {
-    type: "house",
-    title: "Investment Properties With Suites in Nanaimo",
-    href: "/nanaimo/investment-properties-with-suites",
-    description: "Browse Nanaimo homes with suite potential, rental flexibility, or income-producing possibilities."
-  },
-  {
-    type: "house",
-    title: "Updated Family Homes in Nanaimo",
-    href: "/nanaimo/updated-family-homes",
-    description: "Explore Nanaimo family homes with updated finishes, modern layouts, and move-in-ready appeal."
-  },
-  {
-    type: "house",
-    title: "Family Homes With Garages in Nanaimo",
-    href: "/nanaimo/family-homes-with-garages",
-    description: "Find Nanaimo homes with garage space, storage potential, and practical family layouts."
-  },
-  {
-    type: "house",
-    title: "Family Homes With Yards in Nanaimo",
-    href: "/nanaimo/family-homes-with-yards",
-    description: "Browse Nanaimo homes with outdoor space, yards, and family-friendly potential."
-  },
-  {
-    type: "house",
-    title: "Family Homes in Nanaimo Under $800K",
-    href: "/nanaimo/family-homes-under-800k",
-    description: "Explore Nanaimo homes that may work well for families with a price point under $800K."
-  }
-];
-
-function renderHomeIntentCards() {
+const HOME_INTENT_COLLECTIONS = JSON.parse(
+  document.getElementById("home-intent-collections-json")?.textContent || "[]"
+);function renderHomeIntentCards() {
   const wrap = document.getElementById("intent-collections-grid");
   if (!wrap) return;
 
@@ -2223,22 +2300,19 @@ function renderHomeIntentCards() {
     .join(" ")
     .toLowerCase();
 
-  let wanted = HOME_INTENT_COLLECTIONS;
+ let wanted = HOME_INTENT_COLLECTIONS;
 
-  const hasCondos = visibleText.includes("condo") || visibleText.includes("apartment");
-  const hasHouses = visibleText.includes("house") || visibleText.includes("single family");
+const selectedType = String(form?.elements?.type?.value || "").toLowerCase();
 
-  if (hasCondos && !hasHouses) {
-    wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === "condo");
-  } else if (hasHouses && !hasCondos) {
-    wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === "house");
-  }
+if (selectedType) {
+  wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === selectedType);
+}
 
   wrap.style.display = "grid";
   wrap.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
   wrap.style.gap = "18px";
 
-  wrap.innerHTML = wanted.map((card) => `
+wrap.innerHTML = wanted.slice(0, 8).map((card) => `
     <a
       href="${esc(card.href)}"
       class="intent-card"
@@ -2262,6 +2336,21 @@ function renderHomeIntentCards() {
     </a>
   `).join("");
 }
+
+const refineSearchBtn = document.getElementById("refine-search-btn");
+const homepageRefinePanel = document.getElementById("homepage-refine-panel");
+
+refineSearchBtn?.addEventListener("click", () => {
+  if (!homepageRefinePanel) return;
+  homepageRefinePanel.hidden = !homepageRefinePanel.hidden;
+});
+
+homepageRefinePanel?.querySelectorAll("[data-refine]").forEach((button) => {
+  button.addEventListener("click", () => {
+    button.classList.toggle("active");
+    fetchHomeListings({ append: false });
+  });
+});
 
 renderHomeIntentCards();
 

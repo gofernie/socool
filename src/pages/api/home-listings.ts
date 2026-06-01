@@ -175,6 +175,38 @@ const shapeListing = (listing: any) => {
   };
 };
 
+const FEATURE_TERMS: Record<string, string[]> = {
+  views: ["view", "views", "ocean view", "water view", "mountain view"],
+  garage: ["garage", "double garage", "attached garage", "shop"],
+  yard: ["yard", "fenced", "garden", "outdoor space", "backyard"],
+  suite: ["suite", "income", "mortgage helper", "secondary suite"],
+  updated: ["updated", "renovated", "modern", "turnkey"],
+  walkability: ["walkable", "walk to", "near shops", "close to amenities"],
+};
+
+function scoreListingForFeatures(listing: any, features: string[]) {
+  if (!features.length) return 0;
+
+  const text = [
+    listing.description,
+    listing.publicRemarks,
+    listing.remarks,
+    listing.address,
+    listing.normalized_area,
+    listing.area,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return features.reduce((score, feature) => {
+    const terms = FEATURE_TERMS[feature] || [feature];
+    const matched = terms.some((term) => text.includes(term));
+
+    return matched ? score + 20 : score;
+  }, 0);
+}
+
 export const GET: APIRoute = async ({ url }) => {
   const city = clean(url.searchParams.get("city") || "nanaimo");
   const area = clean(url.searchParams.get("area") || "");
@@ -182,8 +214,12 @@ export const GET: APIRoute = async ({ url }) => {
   const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
   const sort = clean(url.searchParams.get("sort") || "newest");
   const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
-  const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 12)));
+const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 12)));
 
+const features = clean(url.searchParams.get("features") || "")
+  .split(",")
+  .map((feature) => clean(feature))
+  .filter(Boolean);
   let query = supabase
     .from("listing_rows")
     .select("*", { count: "exact" })
@@ -202,7 +238,11 @@ export const GET: APIRoute = async ({ url }) => {
     query = query.order("listed_at", { ascending: false });
   }
 
+if (features.length) {
+  query = query.range(0, 199);
+} else {
   query = query.range(offset, offset + limit - 1);
+}
 
   const { data, error, count } = await query;
 
@@ -215,7 +255,16 @@ export const GET: APIRoute = async ({ url }) => {
 
   return new Response(
     JSON.stringify({
-      listings: (data || []).map(shapeListing),
+    listings: (features.length
+  ? (data || [])
+      .map((listing) => ({
+        listing,
+        score: scoreListingForFeatures(listing, features),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(offset, offset + limit)
+      .map((item) => shapeListing(item.listing))
+  : (data || []).map(shapeListing)),
       count: count || 0,
       offset,
       limit,

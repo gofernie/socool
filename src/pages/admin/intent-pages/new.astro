@@ -1,0 +1,664 @@
+---
+import { createClient } from "@supabase/supabase-js";
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+let message = "";
+
+const TEMPLATE_FEATURES = {
+  first_time_buyers: ["value", "updated", "walkability"],
+  downsizers: ["walkability", "updated", "views"],
+  family_homes: ["yard", "garage", "suite"],
+  ocean_view_homes: ["views"],
+  homes_with_suites: ["suite", "income", "mortgage_helper"],
+  luxury_homes: ["views", "garage", "updated"],
+  investment_properties: ["suite", "income", "value"],
+  waterfront: ["views", "waterfront"],
+  walkable_homes: ["walkability"],
+  updated_homes: ["updated"],
+};
+
+function clean(value: FormDataEntryValue | null) {
+  return String(value || "").trim();
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function titleCase(value: string) {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function pluralType(value: string) {
+  if (!value) return "Homes";
+  if (value === "house") return "Homes";
+  if (value === "mobile") return "Mobile Homes";
+  if (value === "condo") return "Condos";
+  if (value === "townhouse") return "Townhomes";
+  return `${titleCase(value)}s`;
+}
+
+function formatPriceLabel(priceMax: number | null, priceMin: number | null) {
+  if (priceMax) return `Under $${priceMax.toLocaleString()}`;
+  if (priceMin) return `$${priceMin.toLocaleString()}+`;
+  return "";
+}
+
+function getPricePreset(value: string) {
+  if (value === "under-500") return { price_min: null, price_max: 500000 };
+  if (value === "under-650") return { price_min: null, price_max: 650000 };
+  if (value === "under-800") return { price_min: null, price_max: 800000 };
+  if (value === "under-1000") return { price_min: null, price_max: 1000000 };
+  if (value === "800-plus") return { price_min: 800000, price_max: null };
+  if (value === "luxury") return { price_min: 1200000, price_max: null };
+
+  return { price_min: null, price_max: null };
+}
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+
+  const pageType = clean(form.get("page_type") || "category").toLowerCase();
+  const template = clean(form.get("template")).toLowerCase();
+  const city = clean(form.get("city") || "nanaimo").toLowerCase();
+  const area = clean(form.get("area")).toLowerCase();
+  const propertyType = clean(form.get("property_type")).toLowerCase();
+  const pricePreset = clean(form.get("price_preset"));
+
+  const { price_min, price_max } = getPricePreset(pricePreset);
+
+  const areaLabel = area ? titleCase(area) : titleCase(city);
+  const typeLabel = pluralType(propertyType);
+  const priceLabel = formatPriceLabel(price_max, price_min);
+  const templateLabel = titleCase(template);
+
+  const features =
+    pageType === "intent"
+      ? TEMPLATE_FEATURES[template as keyof typeof TEMPLATE_FEATURES] || []
+      : [];
+
+  const slugParts =
+    pageType === "category"
+      ? [area || city, propertyType ? pluralType(propertyType) : "homes", priceLabel]
+      : [area || city, template, propertyType ? pluralType(propertyType) : "", priceLabel];
+
+  const slug = slugify(slugParts.filter(Boolean).join(" "));
+
+  const heroHeading =
+    pageType === "category"
+      ? [areaLabel, typeLabel, priceLabel, "worth a closer look"]
+          .filter(Boolean)
+          .join(" ")
+      : [areaLabel, templateLabel.toLowerCase(), typeLabel.toLowerCase(), priceLabel, "worth a closer look"]
+          .filter(Boolean)
+          .join(" ");
+
+  const seoTitle =
+    pageType === "category"
+      ? [areaLabel, typeLabel, priceLabel].filter(Boolean).join(" ")
+      : [areaLabel, templateLabel, typeLabel, priceLabel].filter(Boolean).join(" ");
+
+  const introCopy =
+    pageType === "category"
+      ? [
+          `Browse active ${areaLabel} ${typeLabel.toLowerCase()}.`,
+          priceLabel ? `This page focuses on options ${priceLabel.toLowerCase()}.` : "",
+          `React to listings as you browse and the page will help surface better matches.`,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : [
+          `Browse active ${areaLabel} ${typeLabel.toLowerCase()} shaped around ${templateLabel.toLowerCase()}.`,
+          priceLabel ? `This page focuses on options ${priceLabel.toLowerCase()}.` : "",
+          `React to listings as you browse and the page will help surface better matches.`,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+  const { data: page, error } = await supabase
+    .from("intent_pages")
+    .insert({
+      slug,
+      city,
+      area,
+      property_type: propertyType || null,
+      price_min,
+      price_max,
+      hero_heading: heroHeading,
+      intro_copy: introCopy,
+      seo_title: seoTitle,
+      is_published: true,
+      lifestyle_angle: pageType,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    message = error.message;
+  } else {
+    if (features.length) {
+      await supabase.from("intent_page_features").insert(
+        features.map((feature) => ({
+          intent_page_id: page.id,
+          feature_key: feature,
+        }))
+      );
+    }
+
+    return Astro.redirect("/admin/agent-page");
+  }
+}
+---
+
+<html>
+  <head>
+    <title>Create Intent Page</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #f4efe7;
+        color: #181614;
+      }
+
+      .shell {
+        width: min(900px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 44px 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 44px;
+        letter-spacing: -0.06em;
+      }
+
+      .intro {
+        max-width: 680px;
+        margin: 10px 0 26px;
+        color: rgba(24, 22, 20, 0.62);
+        line-height: 1.55;
+      }
+
+   .admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 26px;
+}
+
+.admin-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(24,22,20,0.14);
+  background: #fffaf1;
+  color: #181614;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-nav a:hover,
+.admin-nav a.is-active {
+  background: #181614;
+  color: white;
+  border-color: #181614;
+}
+
+.card {
+  background: #fffaf1;
+  border: 1px solid rgba(24, 22, 20, 0.12);
+  border-radius: 24px;
+  padding: 24px;
+}
+
+label {
+  display: block;
+  margin: 18px 0 6px;
+  font-weight: 800;
+}
+
+      input,
+      select {
+        width: 100%;
+        padding: 13px 14px;
+        border: 1px solid rgba(24, 22, 20, 0.18);
+        border-radius: 14px;
+        font: inherit;
+        background: white;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .page-type-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      .page-type-option {
+        position: relative;
+        cursor: pointer;
+      }
+
+      .page-type-option input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .page-type-card {
+        min-height: 132px;
+        padding: 18px;
+        border-radius: 18px;
+        border: 2px solid rgba(24, 22, 20, 0.12);
+        background: white;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+      }
+
+      .page-type-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      .page-type-card span {
+        display: block;
+        color: rgba(24, 22, 20, 0.62);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      .page-type-option input:checked + .page-type-card {
+        border-color: #181614;
+        box-shadow: 0 0 0 4px rgba(24, 22, 20, 0.1);
+        transform: translateY(-1px);
+      }
+
+      .intent-only[hidden] {
+        display: none;
+      }
+
+      .preview-box {
+        margin-top: 24px;
+        padding: 22px;
+        border-radius: 20px;
+        background: white;
+        border: 1px solid rgba(24, 22, 20, 0.12);
+      }
+
+      .preview-kicker {
+        margin-bottom: 10px;
+        color: #ff4d00;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .preview-title {
+        margin: 0;
+        font-size: 1.45rem;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+
+      .preview-copy {
+        margin: 10px 0 16px;
+        color: rgba(24, 22, 20, 0.68);
+        line-height: 1.5;
+      }
+
+      .preview-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .preview-meta span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: #f4efe7;
+        color: #6f5a38;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      button,
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 0;
+        background: #181614;
+        color: white;
+        font: inherit;
+        font-weight: 900;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      a {
+        background: white;
+        color: #181614;
+        border: 1px solid rgba(24, 22, 20, 0.14);
+      }
+
+      .error {
+        color: #b42318;
+        font-weight: 800;
+      }
+
+      .hint {
+        margin: 8px 0 0;
+        color: rgba(24, 22, 20, 0.58);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 720px) {
+        .grid-2,
+        .page-type-grid {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 36px;
+        }
+      }
+    </style>
+  </head>
+
+<body>
+  <main class="shell">
+    <nav class="admin-nav">
+      <a href="/admin/intent-pages">All pages</a>
+      <a class="is-active" href="/admin/intent-pages/new">Create new</a>
+      <a href="/admin/agent-page">Agent editor</a>
+    </nav>
+
+    <h1>Create intent page</h1>
+
+      <p class="intro">
+        Create broad category-style pages or narrower buyer-intent pages from the same generator.
+        Both use the same public intent page experience, modal, reactions, refine chips, and agent intelligence.
+      </p>
+
+      {message && <p class="error">{message}</p>}
+
+      <form method="POST" class="card" id="intentForm">
+        <label>Page type</label>
+
+        <div class="page-type-grid">
+          <label class="page-type-option">
+            <input type="radio" name="page_type" value="category" checked />
+            <div class="page-type-card">
+              <strong>Category page</strong>
+              <span>
+                Broad doorway page. Uses city, area, property type, and price only.
+                No feature filters on initial load.
+              </span>
+            </div>
+          </label>
+
+          <label class="page-type-option">
+            <input type="radio" name="page_type" value="intent" />
+            <div class="page-type-card">
+              <strong>Intent page</strong>
+              <span>
+                More specific buyer-goal page. Adds feature filters like views, suites,
+                walkability, yards, or updated homes.
+              </span>
+            </div>
+          </label>
+        </div>
+
+        <div class="intent-only" id="intentTemplateBlock" hidden>
+          <label>Intent template</label>
+          <select name="template" id="templateSelect">
+            <option value="first_time_buyers">First-time buyers</option>
+            <option value="downsizers">Downsizers</option>
+            <option value="family_homes">Family homes</option>
+            <option value="ocean_view_homes">Ocean view homes</option>
+            <option value="homes_with_suites">Homes with suites</option>
+            <option value="luxury_homes">Luxury homes</option>
+            <option value="investment_properties">Investment properties</option>
+            <option value="waterfront">Waterfront</option>
+            <option value="walkable_homes">Walkable homes</option>
+            <option value="updated_homes">Updated homes</option>
+          </select>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>City</label>
+            <input name="city" id="cityInput" value="nanaimo" required />
+          </div>
+
+          <div>
+            <label>Area</label>
+            <input name="area" id="areaInput" placeholder="north nanaimo" />
+            <p class="hint">Leave blank for a city-wide page.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Property type</label>
+            <select name="property_type" id="typeSelect">
+              <option value="">Any</option>
+              <option value="house">House</option>
+              <option value="condo">Condo</option>
+              <option value="townhouse">Townhouse</option>
+              <option value="mobile">Mobile</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Price preset</label>
+            <select name="price_preset" id="priceSelect">
+              <option value="">Any price</option>
+              <option value="under-500">Under $500k</option>
+              <option value="under-650">Under $650k</option>
+              <option value="under-800">Under $800k</option>
+              <option value="under-1000">Under $1M</option>
+              <option value="800-plus">$800k+</option>
+              <option value="luxury">Luxury / $1.2M+</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-kicker" id="previewType">Category page</div>
+          <h2 class="preview-title" id="previewTitle">Nanaimo Homes</h2>
+          <p class="preview-copy" id="previewCopy">
+            Browse active Nanaimo homes. React to listings as you browse and the page will help surface better matches.
+          </p>
+
+          <div class="preview-meta">
+            <span id="previewSlug">nanaimo-homes</span>
+            <span id="previewFeatures">No starting feature filters</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit">Create page</button>
+          <a href="/admin/agent-page">Cancel</a>
+        </div>
+      </form>
+    </main>
+
+    <script is:inline>
+      const form = document.getElementById("intentForm");
+      const pageTypeInputs = Array.from(document.querySelectorAll('input[name="page_type"]'));
+
+      const intentTemplateBlock = document.getElementById("intentTemplateBlock");
+      const templateSelect = document.getElementById("templateSelect");
+      const cityInput = document.getElementById("cityInput");
+      const areaInput = document.getElementById("areaInput");
+      const typeSelect = document.getElementById("typeSelect");
+      const priceSelect = document.getElementById("priceSelect");
+
+      const previewType = document.getElementById("previewType");
+      const previewTitle = document.getElementById("previewTitle");
+      const previewCopy = document.getElementById("previewCopy");
+      const previewSlug = document.getElementById("previewSlug");
+      const previewFeatures = document.getElementById("previewFeatures");
+
+      const templateFeatures = {
+        first_time_buyers: ["value", "updated", "walkability"],
+        downsizers: ["walkability", "updated", "views"],
+        family_homes: ["yard", "garage", "suite"],
+        ocean_view_homes: ["views"],
+        homes_with_suites: ["suite", "income", "mortgage helper"],
+        luxury_homes: ["views", "garage", "updated"],
+        investment_properties: ["suite", "income", "value"],
+        waterfront: ["views", "waterfront"],
+        walkable_homes: ["walkability"],
+        updated_homes: ["updated"],
+      };
+
+      function getPageType() {
+        return pageTypeInputs.find((input) => input.checked)?.value || "category";
+      }
+
+      function titleCase(value) {
+        return String(value || "")
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+
+      function slugify(value) {
+        return String(value || "")
+          .toLowerCase()
+          .replace(/&/g, "and")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+      }
+
+      function pluralType(value) {
+        if (!value) return "Homes";
+        if (value === "house") return "Homes";
+        if (value === "mobile") return "Mobile Homes";
+        if (value === "condo") return "Condos";
+        if (value === "townhouse") return "Townhomes";
+        return `${titleCase(value)}s`;
+      }
+
+      function priceLabel(value) {
+        if (value === "under-500") return "Under $500k";
+        if (value === "under-650") return "Under $650k";
+        if (value === "under-800") return "Under $800k";
+        if (value === "under-1000") return "Under $1M";
+        if (value === "800-plus") return "$800k+";
+        if (value === "luxury") return "Luxury";
+        return "";
+      }
+
+      function updatePreview() {
+        const pageType = getPageType();
+        const template = templateSelect.value;
+        const city = cityInput.value || "nanaimo";
+        const area = areaInput.value || city;
+        const type = typeSelect.value;
+        const price = priceLabel(priceSelect.value);
+
+        const areaLabel = titleCase(area);
+        const typeLabel = pluralType(type);
+        const templateLabel = titleCase(template);
+
+        intentTemplateBlock.hidden = pageType !== "intent";
+
+        const title =
+          pageType === "category"
+            ? [areaLabel, typeLabel, price].filter(Boolean).join(" ")
+            : [areaLabel, templateLabel, typeLabel, price].filter(Boolean).join(" ");
+
+        const slug =
+          pageType === "category"
+            ? slugify([area, typeLabel, price].filter(Boolean).join(" "))
+            : slugify([area, template, typeLabel, price].filter(Boolean).join(" "));
+
+        const copy =
+          pageType === "category"
+            ? [
+                `Browse active ${areaLabel} ${typeLabel.toLowerCase()}.`,
+                price ? `This page focuses on options ${price.toLowerCase()}.` : "",
+                `React to listings as you browse and the page will help surface better matches.`,
+              ].filter(Boolean).join(" ")
+            : [
+                `Browse active ${areaLabel} ${typeLabel.toLowerCase()} shaped around ${templateLabel.toLowerCase()}.`,
+                price ? `This page focuses on options ${price.toLowerCase()}.` : "",
+                `React to listings as you browse and the page will help surface better matches.`,
+              ].filter(Boolean).join(" ");
+
+        previewType.textContent =
+          pageType === "category" ? "Category page" : "Intent page";
+
+        previewTitle.textContent = title;
+        previewCopy.textContent = copy;
+        previewSlug.textContent = slug;
+
+        if (pageType === "category") {
+          previewFeatures.textContent = "No starting feature filters";
+        } else {
+          const features = templateFeatures[template] || [];
+          previewFeatures.textContent = features.length
+            ? `Features: ${features.join(", ")}`
+            : "No starting feature filters";
+        }
+      }
+
+      [
+        ...pageTypeInputs,
+        templateSelect,
+        cityInput,
+        areaInput,
+        typeSelect,
+        priceSelect,
+      ].forEach((el) => {
+        el.addEventListener("input", updatePreview);
+        el.addEventListener("change", updatePreview);
+      });
+
+      updatePreview();
+    </script>
+  </body>
+</html>

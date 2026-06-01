@@ -70,13 +70,42 @@ const slug = "chris-crump";
         font-weight: 700;
       }
 
-      .card {
-        background: #fffaf1;
-        border: 1px solid rgba(24, 22, 20, 0.12);
-        border-radius: 24px;
-        padding: 22px;
-        margin-top: 22px;
-      }
+     .admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 26px;
+}
+
+.admin-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(24,22,20,0.14);
+  background: #fffaf1;
+  color: #181614;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-nav a:hover,
+.admin-nav a.is-active {
+  background: #181614;
+  color: white;
+  border-color: #181614;
+}
+
+.card {
+  background: #fffaf1;
+  border: 1px solid rgba(24, 22, 20, 0.12);
+  border-radius: 24px;
+  padding: 22px;
+  margin-top: 22px;
+}
 
       .group-editor {
         border-top: 1px solid rgba(24, 22, 20, 0.12);
@@ -278,10 +307,15 @@ const slug = "chris-crump";
     </style>
   </head>
 
-  <body>
-    <main class="shell">
-      <h1>Agent page editor</h1>
+ <body>
+  <main class="shell">
+    <nav class="admin-nav">
+      <a href="/admin/intent-pages">All pages</a>
+      <a href="/admin/intent-pages/new">Create new</a>
+      <a class="is-active" href="/admin/agent-page">Agent editor</a>
+    </nav>
 
+    <h1>Agent page editor</h1>
       <form id="agentForm">
         <div class="card">
           <h2>Agent</h2>
@@ -336,18 +370,21 @@ const slug = "chris-crump";
             </label>
           </div>
         </div>
+<div class="card">
+  <h2>Intent pages</h2>
 
-        <div class="card">
-          <h2>Intent pages</h2>
+  <p class="hint">
+    Choose which intent-driven buyer pages appear on the homepage.
+  </p>
 
-          <p class="hint">
-            Choose which intent-driven buyer pages appear on the homepage.
-          </p>
+  <a class="preview" href="/admin/intent-pages/new">
+    + Create new intent page
+  </a>
 
-          <div id="intentPagesGrid" class="intent-pages-grid">
-            <p class="hint">Loading intent pages...</p>
-          </div>
-        </div>
+  <div id="intentPagesGrid" class="intent-pages-grid">
+    <p class="hint">Loading intent pages...</p>
+  </div>
+</div>
 
         <div class="card">
           <h2>Hero</h2>

@@ -26,9 +26,11 @@ let sheetMiniMapMarker = null;
         const loveBtn = document.getElementById("decision-love-btn");
         const maybeBtn = document.getElementById("decision-maybe-btn");
         const passBtn = document.getElementById("decision-pass-btn");
-        const feedback = document.getElementById("sheet-feedback");
-        let likeTagsEl = document.getElementById("intent-like-tags");
-
+       const feedback = document.getElementById("sheet-feedback");
+const sheetEngage = document.getElementById("sheet-engage");
+const askQuestionBtn = document.getElementById("ask-question-btn");
+const bookShowingBtn = document.getElementById("book-showing-btn");
+let likeTagsEl = document.getElementById("intent-like-tags");
 function getLikeTagsForType(propertyType = "") {
   const type = String(propertyType || "").toLowerCase();
 
@@ -372,8 +374,12 @@ if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
           if (nextBtn) nextBtn.textContent = index >= total - 1 ? "Close" : "Next listing →";
           if (nextTopBtn) nextTopBtn.textContent = index >= total - 1 ? "Close" : "Next →";
 
-          updateDecisionButtons(card);
+     updateDecisionButtons(card);
 renderLikeTags(card);
+
+if (sheetEngage) {
+  sheetEngage.hidden = card.dataset.decision !== "love";
+}
 if (card.classList.contains("refined-card")) {
   refinedBrowseCount += 1;
 }
@@ -590,21 +596,17 @@ function showRefiningState(chips = []) {
   `;
 }
 
-function showLeadCaptureForm() {
-  if (!sheetContent || !sheetSummary) return;
+function showLeadCaptureForm(options = {}) {  if (!sheetContent || !sheetSummary) return;
 
   sheetContent.classList.remove("open");
   sheetSummary.classList.add("open");
 
   sheetSummary.innerHTML = `
     <div class="modal-intent-summary">
-      <div class="modal-intent-kicker">Save your refined search</div>
-
-      <h2>Want new matches like these?</h2>
-
+<div class="modal-intent-kicker">${options.kicker || "Save your refined search"}</div>
+<h2>${options.title || "Want new matches like these?"}</h2>
       <p>
-        Leave your contact details and we’ll send better matches when similar homes appear.
-      </p>
+${options.body || "Leave your contact details and we’ll send better matches when similar homes appear."}      </p>
 
       <div style="max-width:420px;margin:0 auto 22px;display:grid;gap:10px;">
         <input id="lead-name-input" placeholder="Name" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
@@ -614,8 +616,7 @@ function showLeadCaptureForm() {
 
       <div class="modal-intent-actions">
         <button type="button" class="modal-intent-primary" id="lead-save-btn">
-          Send me better matches
-        </button>
+${options.button || "Send me better matches"}        </button>
 
         <button type="button" class="modal-intent-secondary" id="lead-cancel-btn">
           Keep browsing
@@ -634,14 +635,26 @@ function showLeadCaptureForm() {
   headers: {
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({
+ body: JSON.stringify({
     name,
     email,
     phone,
+
+    source: options.kicker || "Save refined search",
+    message: options.note || "",
+
     session_id: getSharedIntentSessionId(),
     intent_page_id: document.body.dataset.intentPageId,
     city: document.body.dataset.city,
     slug: document.body.dataset.slug,
+
+    listing_id:
+      activeCard?.dataset?.listingId ||
+      activeCard?.dataset?.itemId ||
+      "",
+
+    mls_number: activeCard?.dataset?.mls || "",
+    address: activeCard?.dataset?.address || "",
   }),
 });
 
@@ -961,7 +974,11 @@ updateCardDecisionBadge(activeCard);
   }
 
   updateDecisionButtons(activeCard);
-  renderLikeTags(activeCard);
+ renderLikeTags(activeCard);
+
+if (sheetEngage) {
+  sheetEngage.hidden = decision !== "love";
+}
 
   if (feedback) {
     feedback.textContent =
@@ -1104,11 +1121,31 @@ window.setTimeout(() => {
         prevBtn?.addEventListener("click", goPrev);
         prevTopBtn?.addEventListener("click", goPrev);
 
-        loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
-        maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
-        passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
-        likeTagsEl?.addEventListener("click", (event) => {
-  const tagBtn = event.target.closest(".intent-like-tag");
+      loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
+maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
+passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
+
+askQuestionBtn?.addEventListener("click", () => {
+  showLeadCaptureForm({
+    kicker: "Ask a question",
+    title: "Want to ask about this home?",
+    body: "Leave your details and we’ll follow up about this property.",
+    button: "Ask about this home",
+    note: "I'm interested in this property and have a question.",
+  });
+});
+
+bookShowingBtn?.addEventListener("click", () => {
+  showLeadCaptureForm({
+    kicker: "Book a showing",
+    title: "Want to see this home?",
+    body: "Leave your details and we’ll help arrange a showing.",
+    button: "Book a showing",
+    note: "I'd like to arrange a showing for this property.",
+  });
+});
+
+likeTagsEl?.addEventListener("click", (event) => {  const tagBtn = event.target.closest(".intent-like-tag");
 
   if (!tagBtn || !activeCard) return;
 
