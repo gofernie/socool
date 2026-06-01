@@ -555,6 +555,17 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
         font-size: 0.92rem;
         font-weight: 700;
       }
+
+    .results-heading p.is-updating {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: #181614;
+  color: #fff;
+  font-weight: 900;
+}
       /* ========== GRID / INTENT CARDS ========== */
 
  .intent-map {
@@ -821,6 +832,54 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   margin: 0 0 12px;
   color: var(--muted);
   font-weight: 800;
+}
+
+.refine-update-note {
+  display: block;
+  cursor: pointer;
+  width: fit-content;
+  margin: 12px 0 14px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: #fff6e6;
+  border: 1px solid #d6c4aa;
+  color: #7a5b24;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: 0 0 0 0 rgba(214, 196, 170, 0.55);
+  animation:
+    refineNoteIn 0.22s ease,
+    refineNoteGlow 1.35s ease-in-out infinite;
+}
+
+.refine-update-note[hidden] {
+  display: none;
+}
+
+@keyframes refineNoteIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes refineNoteGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(214, 196, 170, 0.55);
+  }
+
+  55% {
+    box-shadow: 0 0 0 8px rgba(214, 196, 170, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 196, 170, 0);
+  }
 }
 
 .homepage-refine-chips {
@@ -1103,7 +1162,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 
         <div class="results-heading">
           <h2>Fresh homes worth a closer look.</h2>
-          <p>Updated just now</p>
+          <p id="results-update-note">Updated just now</p>
         </div>
 
         {errorMessage && <div class="empty">{errorMessage}</div>}
@@ -1197,9 +1256,12 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 </button>
   </div>
   <div class="homepage-refine-panel" id="homepage-refine-panel" hidden>
-  <p>What would make these listings better?</p>
-
-  <div class="homepage-refine-chips">
+<p>
+  Refine the listings above:
+ <div id="refine-update-note" class="refine-update-note" hidden>
+  Showing updated matches above ↑
+</div>
+</p>  <div class="homepage-refine-chips">
     <button type="button" data-refine="views">Views</button>
     <button type="button" data-refine="garage">Garage</button>
     <button type="button" data-refine="yard">Yard</button>
@@ -2345,10 +2407,39 @@ refineSearchBtn?.addEventListener("click", () => {
   homepageRefinePanel.hidden = !homepageRefinePanel.hidden;
 });
 
+let hasScrolledToListingsAfterRefine = false;
+
 homepageRefinePanel?.querySelectorAll("[data-refine]").forEach((button) => {
   button.addEventListener("click", () => {
     button.classList.toggle("active");
     fetchHomeListings({ append: false });
+const note = document.getElementById("refine-update-note");
+
+if (note) {
+  note.hidden = false;
+  note.textContent = "Showing updated matches above ↑";
+
+  note.onclick = () => {
+    document.querySelector(".results-heading")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  window.clearTimeout(window.homeResultsUpdateTimer);
+
+  window.homeResultsUpdateTimer = window.setTimeout(() => {
+    note.hidden = true;
+  }, 2800);
+}
+    if (!hasScrolledToListingsAfterRefine) {
+      hasScrolledToListingsAfterRefine = true;
+
+      document.querySelector(".results-heading")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
   });
 });
 
