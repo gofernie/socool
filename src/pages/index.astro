@@ -805,6 +805,21 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   gap: 20px 24px;
 }
 
+@media (max-width: 900px) {
+  .homepage-interruptor {
+    grid-template-columns: 1fr !important;
+  }
+
+  .homepage-interruptor-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .interrupt-btn {
+    width: 100% !important;
+  }
+}
+
 .homepage-interruptor-copy strong {
   display: block;
   margin-bottom: 4px;
@@ -954,8 +969,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
      .intent-collections-grid,
 #intent-collections-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
-  gap: 18px !important;
+grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)) !important;  gap: 18px !important;
 }
 
 #intent-collections-grid .intent-card {
@@ -1309,8 +1323,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 
 #intent-collections-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 18px !important;
+grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)) !important;  gap: 18px !important;
 }
 
 #intent-collections-grid .intent-card {
@@ -1382,8 +1395,7 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
 
   .grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 18px !important;
+grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)) !important;  gap: 18px !important;
 }
 
 .grid > .card {
@@ -1509,9 +1521,24 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr !important;
+  }
+
+  #intent-collections-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  #intent-collections-grid .intent-card {
+    width: 100% !important;
+    min-height: auto !important;
+  }
+
+  #intent-collections-grid .intent-card h3 {
+    font-size: 1.55rem !important;
   }
 }
 
@@ -2013,6 +2040,31 @@ url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fi
   border-left: 1px solid var(--line);
   border-top: 0 !important;
 }
+
+@media (max-width: 900px) {
+  .intent-collections {
+    overflow: visible !important;
+  }
+
+  #intent-collections-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+
+  #intent-collections-grid .intent-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #intent-collections-grid .intent-card p,
+  #intent-collections-grid .intent-card h3 {
+    overflow-wrap: anywhere !important;
+  }
+}
     </style>
   
 <script is:inline>
@@ -2370,16 +2422,12 @@ if (selectedType) {
   wanted = HOME_INTENT_COLLECTIONS.filter((card) => card.type === selectedType);
 }
 
-  wrap.style.display = "grid";
-  wrap.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
-  wrap.style.gap = "18px";
-
+  wrap.removeAttribute("style");
 wrap.innerHTML = wanted.slice(0, 8).map((card) => `
     <a
       href="${esc(card.href)}"
       class="intent-card"
-      style="display:flex;flex-direction:column;min-height:220px;padding:22px;border-radius:20px;background:#fff;border:1px solid var(--line-warm);color:inherit;text-decoration:none;transition:all .25s ease;"
-    >
+data-rendered-card="true"    >
       <span style="margin-bottom:14px;color:var(--accent);font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;">
         ${esc(card.type)}
       </span>
@@ -2446,6 +2494,10 @@ if (note) {
 renderHomeIntentCards();
 
 window.addEventListener("intent:cards-updated", () => {
+  renderHomeIntentCards();
+});
+
+window.addEventListener("resize", () => {
   renderHomeIntentCards();
 });
     form?.addEventListener("change", () => {
