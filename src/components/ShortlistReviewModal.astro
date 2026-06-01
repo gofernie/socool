@@ -271,14 +271,24 @@
     transition: width 0.32s ease;
   }
 
-  .panel__header {
-    padding: 14px 18px;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 10px;
-    background: #fff;
-  }
+.panel__header {
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+}
+
+.panel.is-engagement-mode #sheet-map-btn,
+.panel.is-engagement-mode #sheet-prev-top-btn,
+.panel.is-engagement-mode #sheet-next-top-btn {
+  display: none;
+}
+
+.panel.is-engagement-mode .panel__header {
+  grid-template-columns: 1fr auto;
+}
 
   .panel__position {
     font-size: 0.76rem;

@@ -67,7 +67,20 @@ function getPricePreset(value: string) {
 
   return { price_min: null, price_max: null };
 }
+let areaOptions: string[] = [];
 
+try {
+  const { data } = await supabase
+    .from("listing_rows")
+    .select("normalized_area")
+    .eq("status", "A")
+    .eq("normalized_city", "nanaimo")
+    .not("normalized_area", "is", null);
+
+  areaOptions = Array.from(
+    new Set((data || []).map((row: any) => row.normalized_area).filter(Boolean))
+  ).sort();
+} catch {}
 if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
 
@@ -235,22 +248,33 @@ label {
   margin: 18px 0 6px;
   font-weight: 800;
 }
+input,
+select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid rgba(24, 22, 20, 0.18);
+  border-radius: 14px;
+  font: inherit;
+  background: white;
+}
 
-      input,
-      select {
-        width: 100%;
-        padding: 13px 14px;
-        border: 1px solid rgba(24, 22, 20, 0.18);
-        border-radius: 14px;
-        font: inherit;
-        background: white;
-      }
+    .grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
 
-      .grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
+.grid-2 > div {
+  min-width: 0;
+}
+
+.grid-2 input,
+.grid-2 select {
+  width: 100%;
+  max-width: 100%;
+}
 
       .page-type-grid {
         display: grid;
@@ -472,8 +496,14 @@ label {
 
           <div>
             <label>Area</label>
-            <input name="area" id="areaInput" placeholder="north nanaimo" />
-            <p class="hint">Leave blank for a city-wide page.</p>
+<select name="area" id="areaInput">
+  <option value="">City-wide</option>
+  {areaOptions.map((area) => (
+    <option value={area}>
+      {area.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
+    </option>
+  ))}
+</select>            <p class="hint">Leave blank for a city-wide page.</p>
           </div>
         </div>
 

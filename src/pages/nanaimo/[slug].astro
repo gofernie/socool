@@ -37,6 +37,10 @@ let query = supabase
   .eq("status", "A")
   .eq("normalized_city", "nanaimo");
 
+if (page.area) {
+  query = query.eq("normalized_area", String(page.area).toLowerCase());
+}
+
 if (page.property_type) {
   query = query.eq("normalized_type", page.property_type);
 }
@@ -134,6 +138,31 @@ const featureDirectionLabels = Array.from(
     "More modern",
   ])
 );
+
+function titleCase(value = "") {
+  return String(value || "")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function buildSeoFallback(page: any) {
+  const area = titleCase(page.area || "Nanaimo");
+  const type = page.property_type || "homes";
+  const heading = page.hero_heading || `${area} ${type}`;
+
+  return {
+    heading: `About ${heading}`,
+    intro: `${area} continues to attract buyers searching for ${type} in Nanaimo. This area offers a range of housing opportunities and remains popular with buyers looking to balance lifestyle, location, and value.`,
+    body: `The listings shown above update automatically from the MLS® system and are filtered to match this search profile. As new homes come to market, this page helps surface opportunities that fit the search intent behind ${heading.toLowerCase()}.`,
+    long: `Buyers exploring ${area} often compare price, location, layout, outdoor space, and long-term potential. This page is designed to make that process easier by combining active listings with a guided discovery experience.
+
+As preferences become clearer through browsing and filtering, the page can help surface homes that may deserve closer consideration.`,
+  };
+}
+
+const seo = buildSeoFallback(page);
 ---
 
 <html lang="en">
@@ -141,7 +170,26 @@ const featureDirectionLabels = Array.from(
     <meta charset="utf-8" />
     <title>{page.seo_title}</title>
     <meta name="description" content={page.intro_copy} />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+{
+  Array.isArray(page.faq_json) && page.faq_json.length > 0 && (
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: page.faq_json.map((faq) => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: faq.answer,
+          },
+        })),
+      })}
+    />
+  )
+}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -555,6 +603,102 @@ const featureDirectionLabels = Array.from(
 body.is-map-mode .bottom-refine-cta {
   display: none;
 }
+
+
+
+.intent-seo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 34px;
+}
+
+@media (max-width: 800px) {
+  .intent-seo-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.intent-guide {
+  margin-top: 56px;
+  padding: 48px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 24px;
+}
+
+.intent-guide-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.intent-guide h2 {
+  margin: 0 0 32px;
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 4vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.intent-guide h3 {
+  margin: 28px 0 12px;
+  font-family: var(--serif);
+  font-size: 1.8rem;
+}
+
+.intent-guide-divider {
+  height: 1px;
+  background: var(--line-warm);
+  margin: 24px 0;
+}
+
+
+
+.intent-faq {
+  margin-top: 28px;
+  padding: 36px;
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  border-radius: 20px;
+}
+
+.intent-faq h2 {
+  margin: 0 0 20px;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.intent-faq details {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.intent-faq details:first-of-type {
+  border-top: 0;
+}
+
+.intent-faq summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.intent-faq p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+
+
+
+
+
 
   .card {
          background: #fff;
@@ -1337,9 +1481,9 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
                 </div>
               </article>
 
-              {index === 11 && (
-                <>
-                  <aside class="interrupt-card" id="intent-interrupt-card">
+{(index === 11 ||
+  (index === (listings || []).length - 1 && (listings || []).length < 12)) && (
+  <>                  <aside class="interrupt-card" id="intent-interrupt-card">
                     <div class="interrupt-inner">
                       <div>
 <div class="interrupt-kicker">Shape this search</div>
@@ -1390,28 +1534,60 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
         })}
       </section>
 
-<section class="cta bottom-refine-cta">       <h2>Want better matches?</h2>
+<section class="intent-guide">
+  <div class="intent-guide-label">
+    Buyer Guide
+  </div>
 
-        <p>
-          Pick what you would like to see more of. This starts turning a broad
-          search into a smarter shortlist-style recommendation path.
-        </p>
+  <h2>{page.seo_heading || seo.heading}</h2>
 
-        <div class="refine-options">
-          <button type="button" class="refine-chip">Better layout</button>
-          <button type="button" class="refine-chip">More modern</button>
-          <button type="button" class="refine-chip">Better value</button>
-          <button type="button" class="refine-chip">Larger yard</button>
-          <button type="button" class="refine-chip">Walkability</button>
-          <button type="button" class="refine-chip">Garage space</button>
-          <button type="button" class="refine-chip">Income potential</button>
-          <button type="button" class="refine-chip">Ocean views</button>
-        </div>
+  <div class="intent-seo-grid">
+    <div>
+      <p>{page.seo_intro || seo.intro}</p>
+      <p>{page.seo_body || seo.body}</p>
+    </div>
 
-        <button type="button" class="cta-button" onclick="saveIntentPreferences()">
-          Save Preferences
-        </button>
-           </section>
+    <div>
+      {(page.seo_long || seo.long)
+        .split("\n")
+        .filter((paragraph) => paragraph.trim().length > 0)
+        .map((paragraph) => (
+          <p>{paragraph}</p>
+        ))}
+    </div>
+  </div>
+
+  <div class="intent-guide-divider"></div>
+
+  <h3>About {titleCase(page.area || "Nanaimo")}</h3>
+
+  <p>
+    {page.neighbourhood_copy ||
+      `${titleCase(page.area || "Nanaimo")} is one of the Nanaimo areas buyers often compare when searching for homes that balance location, lifestyle, and value.`}
+  </p>
+
+  <h3>Local Market Snapshot</h3>
+
+  <p>
+    {page.market_commentary ||
+      `Active listings in this search can change quickly as new homes come to market and others sell.`}
+  </p>
+</section>
+
+{
+  Array.isArray(page.faq_json) && page.faq_json.length > 0 && (
+    <section class="intent-faq">
+      <h2>Frequently Asked Questions</h2>
+
+      {page.faq_json.map((faq) => (
+        <details>
+          <summary>{faq.question}</summary>
+          <p>{faq.answer}</p>
+        </details>
+      ))}
+    </section>
+  )
+}
 </div>
     </main>
 

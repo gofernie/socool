@@ -175,6 +175,7 @@ window.updateViewedBadges?.();
         }
 
       function closeSheet(options = {}) {
+  sheet.classList.remove("is-engagement-mode");
   const currentCardKey = getCardKey(activeCard);
 
   if (
@@ -265,7 +266,8 @@ function preloadNearbyListingPhotos(currentCard) {
 
   preloadImages(urls);
 }
-        function renderCard(card) {
+ function renderCard(card) {
+  sheet.classList.remove("is-engagement-mode");
           const cards = getCards();
           const index = cards.indexOf(card);
           const total = cards.length;
@@ -680,7 +682,8 @@ setTimeout(() => {
 }, 1200);
   });
 
-  document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
+document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
+    sheet.classList.remove("is-engagement-mode");
     sheetSummary.classList.remove("open");
     sheetContent.classList.add("open");
     goNext();
@@ -1126,6 +1129,8 @@ maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
 passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
 
 askQuestionBtn?.addEventListener("click", () => {
+  sheet.classList.add("is-engagement-mode");
+
   showLeadCaptureForm({
     kicker: "Ask a question",
     title: "Want to ask about this home?",
@@ -1136,6 +1141,8 @@ askQuestionBtn?.addEventListener("click", () => {
 });
 
 bookShowingBtn?.addEventListener("click", () => {
+  sheet.classList.add("is-engagement-mode");
+
   showLeadCaptureForm({
     kicker: "Book a showing",
     title: "Want to see this home?",
