@@ -1,0 +1,192 @@
+---
+type Props = {
+  listing: any;
+  image: string;
+};
+
+const { listing, image } = Astro.props;
+
+const price = `$${Number(listing.price || 0).toLocaleString()}`;
+const address = listing.address || "Address available";
+const beds = listing.beds || 0;
+const baths = listing.baths || 0;
+const sqft = listing.sqft || "";
+const city = listing.normalized_city || listing.city || "nanaimo";
+const cityLabel = String(city).replace(/\b\w/g, (char) => char.toUpperCase());
+---
+
+<article
+  class="card original-card"
+  data-item-id={String(listing.id || listing.mls_number || "")}
+  data-card-id={String(listing.id || listing.mls_number || "")}
+  data-listing-id={String(listing.id || listing.mls_number || "")}
+  data-price={price}
+  data-raw-price={String(listing.price || 0)}
+  data-address={address}
+  data-meta={`${beds || "-"} bed · ${baths || "-"} bath`}
+  data-image={image}
+  data-images={JSON.stringify([image].filter(Boolean))}
+  data-beds={String(beds || "")}
+  data-baths={String(baths || "")}
+  data-sqft={String(sqft || "")}
+  data-description={listing.description || ""}
+  data-property-type={listing.property_type || listing.normalized_type || "Home"}
+  data-type={listing.normalized_type || listing.property_type || "Home"}
+  data-area={listing.normalized_area || listing.area || ""}
+  data-liked-tags="[]"
+  data-is-favourite="false"
+  data-decision=""
+  data-lat={listing.lat || ""}
+  data-lng={listing.lng || ""}
+  data-city={city}
+  data-mls={listing.mls_number || ""}
+>
+  <div class="card-image-wrap">
+    <img
+      src={image || "https://placehold.co/800x600?text=Listing"}
+      alt={address}
+    />
+  </div>
+
+  <div class="card-body">
+ <div class="price-row">
+  <div class="price">{price}</div>
+  <div class="card-decision-badge" hidden></div>
+</div>
+
+<div class="address">{address}</div>
+
+    <div class="card-city">{cityLabel}, BC</div>
+
+    <div class="meta">
+ <span>{beds || "-"} bd</span>
+<span>{baths || "-"} ba</span>
+{sqft && <span>{Number(sqft).toLocaleString()} sq ft</span>}</div>
+
+    
+  </div>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--line-warm);
+    color: inherit;
+    display: block;
+    cursor: pointer;
+    transition: all 0.28s var(--ease);
+    box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(28, 25, 23, 0.1);
+    border-color: var(--accent-light);
+  }
+
+  .card-image-wrap {
+    width: 100%;
+    height: 190px;
+    overflow: hidden;
+    background: #eee8df;
+  }
+
+  .card-image-wrap img {
+    display: block;
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+  }
+
+  .card-body {
+    position: relative;
+    padding: 14px 16px;
+    background: #fff;
+    min-height: 128px;
+  }
+
+.price {
+  font-size: 1.34rem;
+  line-height: 1.1;
+  font-weight: 950;
+  letter-spacing: -0.035em;
+}
+
+  .address {
+    margin-bottom: 2px;
+    color: var(--ink);
+    line-height: 1.35;
+    font-size: 0.9rem;
+    font-weight: 850;
+  }
+
+  .card-city {
+    margin-bottom: 14px;
+    color: var(--muted);
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    font-weight: 750;
+  }
+
+  .meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+.card-decision-badge {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+  .card-decision-badge[hidden] {
+    display: none;
+  }
+
+  .card-decision-badge.is-love {
+    background: rgba(255, 77, 0, 0.12);
+    color: #ff4d00;
+  }
+
+  .card-decision-badge.is-maybe {
+    background: rgba(24, 22, 20, 0.08);
+    color: rgba(24, 22, 20, 0.72);
+  }
+
+  .card-decision-badge.is-pass {
+    background: rgba(24, 22, 20, 0.08);
+    color: rgba(24, 22, 20, 0.42);
+  }
+
+  .price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+</style>

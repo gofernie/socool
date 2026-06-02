@@ -245,7 +245,29 @@ if (features.length) {
 }
 
   const { data, error, count } = await query;
+const filteredData = (data || []).filter((listing: any) => {    const text = [
+      listing.normalized_type,
+      listing.property_type,
+      listing.propertyType,
+      listing.type,
+      listing.details?.propertyType,
+      listing.raw?.details?.propertyType,
+      listing.description,
+      listing.publicRemarks,
+      listing.remarks,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
 
+    return (
+      !text.includes("manufactured") &&
+      !text.includes("mobile") &&
+      !text.includes("modular") &&
+      !text.includes("park model") &&
+      !text.includes("mfd")
+    );
+  });
   if (error) {
     return new Response(
       JSON.stringify({ error: error.message, listings: [], count: 0 }),
@@ -256,15 +278,28 @@ if (features.length) {
   return new Response(
     JSON.stringify({
     listings: (features.length
-  ? (data || [])
-      .map((listing) => ({
-        listing,
-        score: scoreListingForFeatures(listing, features),
-      }))
-      .sort((a, b) => b.score - a.score)
+  ? filteredData
+      .filter((listing) => {
+        const text = [
+          listing.description,
+          listing.publicRemarks,
+          listing.remarks,
+          listing.address,
+          listing.normalized_area,
+          listing.area,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return features.every((feature) => {
+          const terms = FEATURE_TERMS[feature] || [feature];
+          return terms.some((term) => text.includes(term));
+        });
+      })
       .slice(offset, offset + limit)
-      .map((item) => shapeListing(item.listing))
-  : (data || []).map(shapeListing)),
+      .map(shapeListing)
+  : filteredData.map(shapeListing)),
       count: count || 0,
       offset,
       limit,

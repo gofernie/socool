@@ -31,6 +31,14 @@ const { data: featureRows } = await supabase
 
 const features = (featureRows || []).map((f) => f.feature_key);
 
+const { data: areaIntentPages } = await supabase
+  .from("intent_pages")
+  .select("area, slug, hero_heading")
+  .eq("city", "nanaimo")
+  .eq("property_type", page.property_type)
+  .eq("is_published", true)
+  .not("area", "is", null)
+  .order("area", { ascending: true });
 let query = supabase
   .from("listing_rows")
   .select("*")
@@ -38,11 +46,42 @@ let query = supabase
   .eq("normalized_city", "nanaimo");
 
 if (page.area) {
-  query = query.eq("normalized_area", String(page.area).toLowerCase());
+  const normalizedPageArea = String(page.area)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+  query = query.eq("normalized_area", normalizedPageArea);
 }
 
-if (page.property_type) {
-  query = query.eq("normalized_type", page.property_type);
+const propertyTypeMap: Record<string, string> = {
+  home: "house",
+  homes: "house",
+  house: "house",
+  houses: "house",
+
+  condo: "condo",
+  condos: "condo",
+  apartment: "condo",
+  apartments: "condo",
+
+  townhome: "townhouse",
+  townhomes: "townhouse",
+  townhouse: "townhouse",
+  townhouses: "townhouse",
+
+  mobile: "mobile",
+  mobiles: "mobile",
+  manufactured: "mobile",
+  land: "land",
+};
+
+const normalizedPropertyType =
+  propertyTypeMap[String(page.property_type || "").toLowerCase()] ||
+  String(page.property_type || "").toLowerCase();
+
+if (normalizedPropertyType) {
+  query = query.eq("normalized_type", normalizedPropertyType);
 }
 
 if (page.price_min) {
@@ -61,20 +100,29 @@ const featureTerms: Record<string, string[]> = {
   views: ["ocean view", "water view", "view"],
 };
 
-for (const feature of features) {
-  const terms = featureTerms[feature];
-  if (!terms?.length) continue;
+// Feature terms are used for page context/refinement,
+// but should not hard-filter the initial listing set.
 
-  const orQuery = terms
-    .map((term) => `description.ilike.%${term}%`)
-    .join(",");
+console.log("INTENT QUERY DEBUG", {
+  slug,
+  pageArea: page.area,
+  propertyType: page.property_type,
+  normalizedPropertyType,
+  priceMin: page.price_min,
+  priceMax: page.price_max,
+});
 
-  query = query.or(orQuery);
-}
-
-const { data: listings } = await query
+const { data: listings, error: listingsError } = await query
   .order("price", { ascending: false })
   .limit(200);
+
+console.log("INTENT LISTINGS DEBUG", {
+  slug,
+  count: listings?.length || 0,
+  error: listingsError,
+});
+
+
 
 function formatPrice(price: number) {
   return `$${Number(price || 0).toLocaleString()}`;
@@ -1106,7 +1154,7 @@ body.is-map-mode .bottom-refine-cta {
 
 @media (max-width: 800px) {
         .page {
-          width: 100vw;
+          width: 100%;
           max-width: none;
           margin: 0;
           padding: 0 0 80px;
@@ -1140,8 +1188,15 @@ body.is-map-mode .bottom-refine-cta {
           padding: 0 18px;
         }
 
-        .grid {
-          padding: 0 18px;
+               .grid {
+          width: 100% !important;
+          padding: 0 18px !important;
+          grid-template-columns: 1fr !important;
+        }
+
+        .grid > .card {
+          width: 100% !important;
+          max-width: 100% !important;
         }
 
         .hero-inner,
@@ -1384,12 +1439,18 @@ body.is-map-mode .bottom-refine-cta {
   </div>
 
   <select class="area-filter-select" aria-label="Filter by area">
-    <option value="all">All Areas</option>
-    <option value="north nanaimo">North Nanaimo</option>
-    <option value="departure bay">Departure Bay</option>
-    <option value="hammond bay">Hammond Bay</option>
-    <option value="uplands">Uplands</option>
-  </select>
+  <option value="all">All Areas</option>
+
+{(areaIntentPages || [])
+  .filter((intentPage) => String(intentPage.area || "").trim())
+  .map((intentPage) => (    <option
+      value={`/nanaimo/${intentPage.slug}`}
+      selected={String(intentPage.area || "").toLowerCase() === String(page.area || "").toLowerCase()}
+    >
+      {titleCase(intentPage.area || "")}
+    </option>
+  ))}
+</select>
 
   <select class="price-filter-select" aria-label="Filter by price">
     <option value="all">Any Price</option>
@@ -2094,6 +2155,50 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   border-left: 1px solid var(--line);
   border-top: 0 !important;
 }
+
+@media (max-width: 900px) {
+  .intent-content-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .section-head,
+  .intent-controls {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .section-head,
+  .intent-controls,
+  .grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    padding: 0 !important;
+  }
+
+  .grid > .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .card-image-wrap,
+  .card-image-wrap img,
+  .card img {
+    height: 210px !important;
+  }
+}
     </style>
 
     <script is:inline>
@@ -2358,8 +2463,8 @@ async function initRefinedGoogleMap(mode = "refined") {
   }
 
   function applyFilters() {
-    const area = areaSelect?.value || "all";
-    activePriceFilter = priceSelect?.value || "all";
+    const areaValue = areaSelect?.value || "all";
+    const area = areaValue.startsWith("/") ? "all" : areaValue;    activePriceFilter = priceSelect?.value || "all";
 
     const cards = Array.from(document.querySelectorAll(".original-card"));
     const resultsBar = document.querySelector(".results-bar");
@@ -2453,8 +2558,16 @@ if (resultsBar) {
     cards.forEach((card) => grid.appendChild(card));
     applyFilters();
   }
+areaSelect?.addEventListener("change", () => {
+  const value = areaSelect.value;
 
-  areaSelect?.addEventListener("change", applyFilters);
+  if (value && value !== "all" && value.startsWith("/")) {
+    window.location.href = value;
+    return;
+  }
+
+  applyFilters();
+});
   priceSelect?.addEventListener("change", applyFilters);
   sortSelect?.addEventListener("change", applySort);
 

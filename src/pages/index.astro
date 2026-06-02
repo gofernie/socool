@@ -263,8 +263,7 @@ let listings: any[] = [];
 let errorMessage = "";
 
 try {
-let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(12);
-  if (city) query = query.eq("normalized_city", clean(city));
+let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16);  if (city) query = query.eq("normalized_city", clean(city));
 
   // Homepage discovery preloads a broad pool.
   // Filters are applied client-side for instant UX.
@@ -278,12 +277,31 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(12
   if (error) throw error;
   listings = data || [];
 
-  if (type === "condo") {
-    listings = listings.filter((listing: any) => {
-      const text = [listing.normalized_type, listing.property_type, listing.propertyType, listing.type, listing.details?.propertyType, listing.raw?.details?.propertyType, listing.description, listing.publicRemarks, listing.remarks].filter(Boolean).join(" ").toLowerCase();
-      return !text.includes("manufactured") && !text.includes("mobile") && !text.includes("modular") && !text.includes("park model") && !text.includes("mfd");
-    });
-  }
+  listings = listings.filter((listing: any) => {
+    const text = [
+      listing.normalized_type,
+      listing.property_type,
+      listing.propertyType,
+      listing.type,
+      listing.details?.propertyType,
+      listing.raw?.details?.propertyType,
+      listing.description,
+      listing.publicRemarks,
+      listing.remarks,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      !text.includes("manufactured") &&
+      !text.includes("mobile") &&
+      !text.includes("modular") &&
+      !text.includes("park model") &&
+      !text.includes("mfd")
+    );
+  });
+  listings = listings.slice(0, 8);
 } catch (error: any) {
   errorMessage = error?.message || "Could not load listings.";
 }
@@ -2306,7 +2324,7 @@ btn.style.boxShadow = "0 14px 32px rgba(24,22,20,0.14)";
         grid?.after(btn);
 
         btn.addEventListener("click", () => {
-          homeOffset += 12;
+          homeOffset += 8;
           fetchHomeListings({ append: true });
         });
       }
@@ -2336,7 +2354,7 @@ btn.style.boxShadow = "0 14px 32px rgba(24,22,20,0.14)";
 
       const params = new URLSearchParams();
       params.set("city", city);
-      params.set("limit", "12");
+      params.set("limit", "8");
       params.set("offset", String(homeOffset));
 
       const area = String(form.elements.area?.value || "").trim();

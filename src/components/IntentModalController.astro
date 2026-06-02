@@ -413,16 +413,16 @@ function updateCardDecisionBadge(card) {
 
 badge.classList.remove("is-love", "is-maybe", "is-pass");
   if (decision === "love") {
-    badge.hidden = false;
-    badge.textContent = "❤️ Loved";
-    badge.classList.add("is-love");
-  } else if (decision === "maybe") {
-    badge.hidden = false;
-    badge.textContent = "👌 Kinda liked";
-    badge.classList.add("is-maybe");
+  badge.hidden = false;
+  badge.textContent = "Loved";
+  badge.classList.add("is-love");
+} else if (decision === "maybe") {
+  badge.hidden = false;
+  badge.textContent = "Kinda liked";
+  badge.classList.add("is-maybe");
 } else if (decision === "pass") {
   badge.hidden = false;
-  badge.textContent = "✕ Not for me";
+  badge.textContent = "Not for me";
   badge.classList.add("is-pass");
 } else {
   badge.hidden = true;
