@@ -1,0 +1,1125 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import { supabase } from "../../../lib/supabase";
+import ListingCard from "../../../components/ListingCard.astro";
+import ShortlistReviewModal from "../../../components/ShortlistReviewModal.astro";
+import IntentModalController from "../../../components/IntentModalController.astro";
+import SiteNav from "../../../components/SiteNav.astro";
+import "../../../styles/intent-modal.css";
+import "../../../styles/area-page.css";
+import "../../../styles/page-hero.css";
+
+const agentRes = await supabase
+  .from("agent_pages")
+  .select("data")
+  .eq("slug", "chris-crump")
+  .single();
+
+console.log("agent data:", JSON.stringify(agentRes));
+
+const allRows = await supabase.from("agent_pages").select("slug");
+console.log("all slugs:", JSON.stringify(allRows));
+const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
+const areaSlug = Astro.params.area || "";const area = areaSlug.replace(/-/g, " ");
+
+const areaHeroImages = {
+  "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
+  "departure bay": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80",
+  "hammond bay": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1800&q=80",
+  "old city": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1800&q=80",
+  "central nanaimo": "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1800&q=80",
+  "south nanaimo": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=80",
+  "cedar": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1800&q=80",
+};
+
+const heroImage =
+  areaHeroImages[area] ||
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80";
+
+const areaContent = {
+  "brechin hill": {
+    heroIntro: "Brechin Hill is a central Nanaimo neighbourhood known for harbour access, condo options, character homes, marina proximity, and quick connections to downtown and Departure Bay.",
+    livingHeadline: "Harbour access, central convenience, and classic Nanaimo character",
+    livingCopy: "Brechin Hill is popular with buyers who want a central location, nearby waterfront access, condo options, and quick access to downtown, ferries, shopping, and services.",
+    schools: [
+      ["Cilaire Elementary", "Grades K-7  -  nearby"],
+      ["Brechin Elementary area schools", "Grades K-7  -  nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12  -  short drive"],
+      ["Wellington Secondary", "Grades 8-12  -  short drive"],
+    ],
+    amenities: [
+      ["Nanaimo Yacht Club", "nearby"],
+      ["Brooks Landing", "nearby"],
+      ["Departure Bay ferry", "short drive"],
+      ["Downtown Nanaimo", "short drive"],
+      ["Waterfront walkway", "short drive"],
+    ],
+    nearby: ["departure bay", "central nanaimo", "old city", "hammond bay", "north nanaimo"],
+  },
+  "diver lake": {
+    heroIntro: "Diver Lake offers a practical central Nanaimo location with parks, recreation, schools, shopping, and a mix of detached homes and townhomes.",
+    livingHeadline: "Parks, recreation, and everyday central Nanaimo convenience",
+    livingCopy: "Diver Lake works well for buyers who want central access, family-friendly streets, recreation facilities, shopping, and a practical location for commuting around Nanaimo.",
+    schools: [
+      ["Forest Park Elementary", "Grades K-7 · nearby"],
+      ["Rock City Elementary", "Grades K-7 · nearby"],
+      ["Wellington Secondary", "Grades 8-12 · nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Beban Park", "nearby"],
+      ["Diver Lake Park", "nearby"],
+      ["Country Club Centre", "short drive"],
+      ["Northfield Road services", "nearby"],
+      ["Oliver Woods Community Centre", "short drive"],
+    ],
+    nearby: ["uplands", "central nanaimo", "pleasant valley", "north nanaimo", "departure bay"],
+  },
+  "extension": {
+    heroIntro: "Extension offers a quieter south Nanaimo setting with rural edges, larger lots, forested surroundings, and convenient access to Chase River and Cedar.",
+    livingHeadline: "Quiet rural edges with access to south Nanaimo amenities",
+    livingCopy: "Extension appeals to buyers looking for more space, a quieter setting, treed lots, and a location that still connects back to south Nanaimo, Cedar, and highway routes.",
+    schools: [
+      ["Chase River Elementary", "Grades K-7 · short drive"],
+      ["Cedar Elementary", "Grades K-7 · short drive"],
+      ["John Barsby Secondary", "Grades 8-12 · short drive"],
+      ["Cedar Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Chase River shops", "short drive"],
+      ["Cedar Village", "short drive"],
+      ["Southgate Shopping Centre", "short drive"],
+      ["Trail access", "nearby"],
+      ["Highway access", "short drive"],
+    ],
+    nearby: ["chase river", "cedar", "south nanaimo", "university district", "old city"],
+  },
+  "jingle pot": {
+    heroIntro: "Jingle Pot is known for larger lots, rural-feeling pockets, family homes, acreages, and a quieter setting close to central Nanaimo amenities.",
+    livingHeadline: "Larger lots, rural pockets, and central access",
+    livingCopy: "Jingle Pot attracts buyers who want more space, privacy, workshops, gardens, and a semi-rural feel while still staying close to schools, shopping, and central Nanaimo routes.",
+    schools: [
+      ["Mountain View Elementary", "Grades K-7 · nearby"],
+      ["Rock City Elementary", "Grades K-7 · short drive"],
+      ["Wellington Secondary", "Grades 8-12 · short drive"],
+      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Jingle Pot Road services", "nearby"],
+      ["Beban Park", "short drive"],
+      ["Country Club Centre", "short drive"],
+      ["Westwood Lake", "short drive"],
+      ["Trail networks", "nearby"],
+    ],
+    nearby: ["north jingle pot", "diver lake", "uplands", "central nanaimo", "pleasant valley"],
+  },
+  "old city": {
+    heroIntro: "Old City is Nanaimo's historic downtown neighbourhood, known for character homes, walkability, harbour access, restaurants, shops, and urban convenience.",
+    livingHeadline: "Historic homes, downtown energy, and harbour access",
+    livingCopy: "Old City is ideal for buyers who value character, walkability, local restaurants, downtown services, harbourfront access, and a more urban Nanaimo lifestyle.",
+    schools: [
+      ["Pauline Haarer Elementary", "Grades K-7 · nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
+      ["Fairview Elementary", "Grades K-7 · short drive"],
+      ["John Barsby Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Downtown Nanaimo", "nearby"],
+      ["Harbourfront walkway", "nearby"],
+      ["Port Theatre", "nearby"],
+      ["Old City Quarter", "nearby"],
+      ["Seaplane terminal", "nearby"],
+    ],
+    nearby: ["central nanaimo", "brechin hill", "south nanaimo", "university district", "departure bay"],
+  },
+  "pleasant valley": {
+    heroIntro: "Pleasant Valley offers north-end convenience with residential streets, shopping access, parks, schools, and quick connections to North Nanaimo and Uplands.",
+    livingHeadline: "North-end convenience with parks, schools, and shopping nearby",
+    livingCopy: "Pleasant Valley is a practical choice for buyers who want access to north Nanaimo shopping, schools, parks, and commuter routes while staying in an established residential area.",
+    schools: [
+      ["Pleasant Valley Elementary", "Grades K-7 · nearby"],
+      ["Dover Bay Secondary", "Grades 8-12 · short drive"],
+      ["McGirr Elementary", "Grades K-7 · short drive"],
+      ["Randerson Ridge Elementary", "Grades K-7 · short drive"],
+    ],
+    amenities: [
+      ["Woodgrove Centre", "short drive"],
+      ["Superstore area shops", "short drive"],
+      ["Oliver Woods Community Centre", "short drive"],
+      ["North Nanaimo services", "nearby"],
+      ["Park and trail access", "nearby"],
+    ],
+    nearby: ["north nanaimo", "uplands", "diver lake", "hammond bay", "central nanaimo"],
+  },
+  "south nanaimo": {
+    heroIntro: "South Nanaimo offers value, family homes, investment options, schools, parks, and quick access to downtown, VIU, Chase River, and major routes.",
+    livingHeadline: "Value, convenience, and access to south Nanaimo amenities",
+    livingCopy: "South Nanaimo is popular with buyers looking for detached homes, investment potential, suites, schools, parks, and access to downtown, VIU, and highway routes.",
+    schools: [
+      ["John Barsby Secondary", "Grades 8-12 · nearby"],
+      ["Park Avenue Elementary", "Grades K-7 · nearby"],
+      ["Bayview Elementary", "Grades K-7 · nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["University Village", "nearby"],
+      ["Vancouver Island University", "nearby"],
+      ["Southgate Shopping Centre", "short drive"],
+      ["Downtown Nanaimo", "short drive"],
+      ["Highway access", "nearby"],
+    ],
+    nearby: ["chase river", "old city", "university district", "cedar", "central nanaimo"],
+  },
+  "university district": {
+    heroIntro: "University District is centred around Vancouver Island University and offers access to schools, recreation, parks, investment properties, and central Nanaimo amenities.",
+    livingHeadline: "VIU access, central convenience, and investment potential",
+    livingCopy: "University District appeals to buyers looking for proximity to VIU, rental potential, central access, parks, recreation, and a mix of older homes, suites, and infill housing.",
+    schools: [
+      ["Vancouver Island University", "Nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · nearby"],
+      ["Fairview Elementary", "Grades K-7 · nearby"],
+      ["John Barsby Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Vancouver Island University", "nearby"],
+      ["Nanaimo Aquatic Centre", "nearby"],
+      ["Nanaimo Ice Centre", "nearby"],
+      ["University Village", "short drive"],
+      ["Westwood Lake", "short drive"],
+    ],
+    nearby: ["old city", "south nanaimo", "central nanaimo", "chase river", "jingle pot"],
+  },
+  "uplands": {
+    heroIntro: "Uplands offers central-to-north Nanaimo convenience with established neighbourhoods, schools, shopping, parks, and quick access to both downtown and north-end amenities.",
+    livingHeadline: "Established neighbourhoods with central north-end convenience",
+    livingCopy: "Uplands is a strong fit for buyers who want a convenient Nanaimo location, access to shopping and services, nearby parks, and a practical connection to both central and north Nanaimo.",
+    schools: [
+      ["Uplands Park Elementary", "Grades K-7 · nearby"],
+      ["Wellington Secondary", "Grades 8-12 · nearby"],
+      ["Randerson Ridge Elementary", "Grades K-7 · short drive"],
+      ["Rock City Elementary", "Grades K-7 · short drive"],
+    ],
+    amenities: [
+      ["Country Club Centre", "nearby"],
+      ["Longwood Station", "nearby"],
+      ["Oliver Woods Community Centre", "short drive"],
+      ["Diver Lake Park", "short drive"],
+      ["North Nanaimo shopping", "short drive"],
+    ],
+    nearby: ["diver lake", "north nanaimo", "central nanaimo", "pleasant valley", "departure bay"],
+  },
+  "north nanaimo": {
+    heroIntro: "North Nanaimo is one of the city's most popular residential areas, known for ocean-view homes, newer subdivisions, shopping, schools, parks, and convenient access to north-end amenities.",
+    livingHeadline: "Ocean views, shopping, schools, and north-end convenience",
+    livingCopy: "North Nanaimo appeals to buyers who want established neighbourhoods, family-friendly streets, larger homes, views, and quick access to shopping, beaches, parks, and schools.",
+    schools: [
+      ["Dover Bay Secondary", "Grades 8-12 · nearby"],
+      ["McGirr Elementary", "Grades K-7 · nearby"],
+      ["Randerson Ridge Elementary", "Grades K-7 · nearby"],
+      ["Frank J. Ney Elementary", "Grades K-7 · short drive"],
+    ],
+    amenities: [
+      ["Woodgrove Centre", "nearby"],
+      ["Costco Nanaimo", "nearby"],
+      ["Oliver Woods Community Centre", "nearby"],
+      ["Pipers Lagoon Park", "short drive"],
+      ["Neck Point Park", "short drive"],
+    ],
+    nearby: ["hammond bay", "departure bay", "uplands", "pleasant valley", "central nanaimo"],
+  },
+  "hammond bay": {
+    heroIntro: "Hammond Bay is known for ocean-view homes, established neighbourhoods, waterfront parks, and some of Nanaimo's most desirable residential streets.",
+    livingHeadline: "Ocean views, parks, and established Nanaimo living",
+    livingCopy: "Hammond Bay appeals to buyers looking for larger homes, view properties, quiet residential streets, and quick access to some of Nanaimo's best coastal parks.",
+    schools: [
+      ["Frank J. Ney Elementary", "Grades K-7 · nearby"],
+      ["Hammond Bay Elementary", "Grades K-7 · nearby"],
+      ["Dover Bay Secondary", "Grades 8-12 · nearby"],
+      ["McGirr Elementary", "Grades K-7 · nearby"],
+    ],
+    amenities: [
+      ["Neck Point Park", "nearby"],
+      ["Pipers Lagoon Park", "nearby"],
+      ["Hammond Bay Road shops", "short drive"],
+      ["Woodgrove Centre", "short drive"],
+      ["Departure Bay Beach", "short drive"],
+    ],
+    nearby: ["departure bay", "north nanaimo", "brechin hill", "uplands", "central nanaimo"],
+  },
+  "departure bay": {
+    heroIntro: "Departure Bay offers beach access, ferry convenience, established homes, and a relaxed coastal setting close to central Nanaimo.",
+    livingHeadline: "Beachside convenience with classic Nanaimo character",
+    livingCopy: "Departure Bay is popular with buyers who want waterfront access, mature neighbourhoods, ferry access, and a central location without giving up a coastal feel.",
+    schools: [
+      ["Departure Bay Elementary", "Grades K-7 · nearby"],
+      ["Cilaire Elementary", "Grades K-7 · nearby"],
+      ["Wellington Secondary", "Grades 8-12 · nearby"],
+      ["Rock City Elementary", "Grades K-7 · nearby"],
+    ],
+    amenities: [
+      ["Departure Bay Beach", "nearby"],
+      ["BC Ferries terminal", "nearby"],
+      ["Brooks Landing", "short drive"],
+      ["Country Club Centre", "short drive"],
+      ["Beachfront parks", "nearby"],
+    ],
+    nearby: ["hammond bay", "brechin hill", "central nanaimo", "north nanaimo", "uplands"],
+  },
+  "chase river": {
+    heroIntro: "Chase River offers a quieter south Nanaimo setting with family homes, larger lots, trail access, and convenient connections to major routes.",
+    livingHeadline: "A quieter south Nanaimo setting with room to grow",
+    livingCopy: "Chase River is a practical option for buyers looking for detached homes, space, value, and easy access to schools, parks, shopping, and the highway.",
+    schools: [
+      ["Chase River Elementary", "Grades K-7 · nearby"],
+      ["John Barsby Secondary", "Grades 8-12 · nearby"],
+      ["Park Avenue Elementary", "Grades K-7 · nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
+    ],
+    amenities: [
+      ["Southgate Shopping Centre", "nearby"],
+      ["Chase River trails", "nearby"],
+      ["University Village", "short drive"],
+      ["Vancouver Island University", "short drive"],
+      ["Highway access", "nearby"],
+    ],
+    nearby: ["south nanaimo", "cedar", "university district", "old city", "central nanaimo"],
+  },
+  "cedar": {
+    heroIntro: "Cedar offers a rural-feeling Nanaimo lifestyle with larger lots, acreages, forested settings, and a quieter pace just south of the city.",
+    livingHeadline: "Acreages, privacy, and rural Nanaimo living",
+    livingCopy: "Cedar is popular with buyers who want more space, privacy, workshops, gardens, rural roads, and a quieter setting while still staying connected to Nanaimo.",
+    schools: [
+      ["Cedar Elementary", "Grades K-7 · nearby"],
+      ["Cedar Secondary", "Grades 8-12 · nearby"],
+      ["North Cedar Intermediate", "Grades 4-7 · nearby"],
+      ["Chase River Elementary", "Grades K-7 · short drive"],
+    ],
+    amenities: [
+      ["Cedar Village", "nearby"],
+      ["Cedar Farmers Market", "nearby"],
+      ["Cable Bay Trail", "short drive"],
+      ["Boat Harbour", "short drive"],
+      ["South Nanaimo shopping", "short drive"],
+    ],
+    nearby: ["chase river", "south nanaimo", "university district", "old city", "central nanaimo"],
+  },
+  "central nanaimo": {
+    heroIntro: "Central Nanaimo offers convenience, shopping, schools, recreation, and quick access to the waterfront, downtown, and major routes.",
+    livingHeadline: "Convenient, connected Nanaimo living",
+    livingCopy: "Central Nanaimo is one of the city's most practical areas for buyers who want access to services, schools, parks, transit, shopping, and the waterfront.",
+    schools: [
+      ["John Barsby Community School", "Grades K-12 · nearby"],
+      ["Nanaimo District Secondary", "Grades 8-12 · nearby"],
+      ["École Pauline Haarer Elementary", "Grades K-7 · nearby"],
+      ["Randerson Ridge Elementary", "Grades K-7 · nearby"],
+    ],
+    amenities: [
+      ["Country Club Centre", "short drive"],
+      ["Brooks Landing", "short drive"],
+      ["Nanaimo waterfront", "short drive"],
+      ["Hospital area services", "nearby"],
+      ["Vancouver Island University", "short drive"],
+    ],
+    nearby: ["brechin hill", "departure bay", "old city", "uplands", "north nanaimo"],
+  },
+};
+
+const content = areaContent[area] || {
+  heroIntro: `${areaSlug ? areaSlug.replace(/-/g, " ") : "This area"} offers a mix of Nanaimo real estate options for buyers comparing price, location, layout, and long-term value.`,
+  livingHeadline: "Convenient, connected Nanaimo living",
+  livingCopy: `${areaSlug ? areaSlug.replace(/-/g, " ") : "This area"} offers access to everyday amenities, parks, schools, shopping, and major routes across Nanaimo.`,
+  schools: [
+    ["Local elementary schools", "Nearby"],
+    ["Local secondary schools", "Nearby"],
+    ["Nanaimo school options", "Short drive"],
+    ["Community programs", "Nearby"],
+  ],
+  amenities: [
+    ["Shopping and services", "Nearby"],
+    ["Parks and trails", "Nearby"],
+    ["Transit connections", "Nearby"],
+    ["Restaurants and cafés", "Short drive"],
+    ["Recreation options", "Short drive"],
+  ],
+  nearby: ["central nanaimo", "north nanaimo", "departure bay", "hammond bay", "old city"],
+};
+
+const labelize = (value) =>
+  String(value || "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const { data: areaRows = [] } = await supabase
+  .from("listing_rows")
+  .select("normalized_area, normalized_type")
+  .eq("normalized_city", "nanaimo")
+  .not("normalized_area", "is", null);
+
+const areas = [...new Set(
+  areaRows
+    .map((row) => String(row.normalized_area || "").trim())
+    .filter((item) => item && item !== "unknown")
+)].sort((a, b) => a.localeCompare(b));
+
+const propertyTypes = [...new Set(
+  areaRows
+    .map((row) => String(row.normalized_type || "").trim())
+    .filter((item) => item && item !== "unknown")
+)].sort((a, b) => a.localeCompare(b));
+
+const { data: listings = [] } = await supabase
+  .from("listing_rows")
+  .select("*")
+  .eq("normalized_city", "nanaimo")
+  .eq("normalized_area", area)
+  .order("listed_at", { ascending: false });
+
+const normalizeListingImageUrl = (value) => {
+  if (!value) return "";
+  const raw = typeof value === "string"
+    ? value
+    : value.highRes || value.mediumRes || value.lowRes || value.url || "";
+  if (!raw) return "";
+  if (raw.startsWith("http")) return raw;
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+  return cleaned.startsWith("/vreb/") ? `https://cdn.repliers.io${cleaned}` : cleaned;
+};
+
+const getListingImage = (listing) =>
+  normalizeListingImageUrl(
+    listing.image_url ||
+      listing.images?.[0] ||
+      listing.raw?.images?.[0] ||
+      listing.raw?.images?.[0]?.url
+  );
+
+const prices = listings
+  .map((listing) => Number(listing.price || 0))
+  .filter((price) => price > 0)
+  .sort((a, b) => a - b);
+
+const avgPrice = prices.length > 0
+  ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length)
+  : 0;
+
+const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
+
+const houseCount = listings.filter((l) => l.normalized_type === "house").length;
+const condoCount = listings.filter((l) => l.normalized_type === "condo").length;
+const townhomeCount = listings.filter((l) => l.normalized_type === "townhouse").length;
+
+const listingCount = listings.length || 0;
+const housePercent = listingCount ? Math.round((houseCount / listingCount) * 100) : 0;
+const condoPercent = listingCount ? Math.round((condoCount / listingCount) * 100) : 0;
+const townhomePercent = listingCount ? Math.round((townhomeCount / listingCount) * 100) : 0;
+
+const priceBuckets = [
+  { label: "Under $500k", min: 0, max: 500000 },
+  { label: "$500k-$750k", min: 500000, max: 750000 },
+  { label: "$750k-$1M", min: 750000, max: 1000000 },
+  { label: "$1M-$1.5M", min: 1000000, max: 1500000 },
+  { label: "$1.5M+", min: 1500000, max: Infinity },
+];
+
+const mapListings = listings
+  .map((listing) => ({
+    id: listing.id,
+    address: listing.address || "",
+    price: Number(listing.price || 0),
+    beds: listing.beds || "",
+    baths: listing.baths || "",
+    lat: Number(listing.lat || 0),
+    lng: Number(listing.lng || 0),
+  }))
+  .filter((listing) => listing.lat && listing.lng);
+
+const mapCenter = mapListings.length > 0
+  ? {
+      lat: mapListings.reduce((sum, item) => sum + item.lat, 0) / mapListings.length,
+      lng: mapListings.reduce((sum, item) => sum + item.lng, 0) / mapListings.length,
+    }
+  : { lat: 49.1659, lng: -123.9401 };
+
+const chartData = {
+  priceLabels: priceBuckets.map((bucket) => bucket.label),
+  priceCounts: priceBuckets.map((bucket) =>
+    listings.filter((listing) => {
+      const price = Number(listing.price || 0);
+      return price >= bucket.min && price < bucket.max;
+    }).length
+  ),
+};
+---
+
+<Layout title={`${labelize(area)} Real Estate | Nanaimo`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional"
+    rel="stylesheet"
+    slot="head"
+  />
+
+  <script is:inline slot="head">
+    const savedAreaScrollY = sessionStorage.getItem("area_page_scroll_y");
+    if (savedAreaScrollY) {
+      history.scrollRestoration = "manual";
+      document.documentElement.style.visibility = "hidden";
+      window.addEventListener("DOMContentLoaded", () => {
+        window.scrollTo(0, Number(savedAreaScrollY));
+        sessionStorage.removeItem("area_page_scroll_y");
+        document.documentElement.style.visibility = "";
+      });
+    }
+  </script>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js" slot="head"></script>
+
+  <script is:inline<script is:inline define:vars={{ chartData, mapListings, mapCenter }}>
+    window.addEventListener("load", () => {
+      const areaFilter = document.getElementById("area-filter");
+      const sortFilter = document.getElementById("sort-filter");
+      const typeFilter = document.getElementById("type-filter");
+      const priceFilter = document.getElementById("price-filter");
+      const bedsFilter = document.getElementById("beds-filter");
+      const visibleCount = document.getElementById("visible-count");
+      const grid = document.querySelector(".listing-grid");
+      const showAllButton = document.getElementById("show-all-listings");
+      let showingAllListings = false;
+
+      document.querySelectorAll(".listing-card-wrap").forEach((wrap) => {
+        const card = wrap.querySelector("[data-card-id], [data-listing-id], .card");
+        if (!card) return;
+        card.dataset.lat = wrap.dataset.lat || "";
+        card.dataset.lng = wrap.dataset.lng || "";
+      });
+
+      function applyFilters() {
+        const type = typeFilter?.value || "all";
+        const priceRange = priceFilter?.value || "all";
+        const bedsMin = bedsFilter?.value || "all";
+        const sort = sortFilter?.value || "newest";
+
+        const cards = Array.from(document.querySelectorAll(".listing-card-wrap"));
+
+        cards.sort((a, b) => {
+          const priceA = Number(a.dataset.price || 0);
+          const priceB = Number(b.dataset.price || 0);
+          const bedsA = Number(a.dataset.beds || 0);
+          const bedsB = Number(b.dataset.beds || 0);
+          const listedA = new Date(a.dataset.listed || 0).getTime();
+          const listedB = new Date(b.dataset.listed || 0).getTime();
+          if (sort === "price-low") return priceA - priceB;
+          if (sort === "price-high") return priceB - priceA;
+          if (sort === "beds-high") return bedsB - bedsA;
+          return listedB - listedA;
+        });
+
+        let count = 0;
+        cards.forEach((card) => {
+          grid?.appendChild(card);
+          const cardType = card.dataset.type || "";
+          const price = Number(card.dataset.price || 0);
+          const beds = Number(card.dataset.beds || 0);
+          const matchesType = type === "all" || cardType === type;
+          const matchesPrice =
+            priceRange === "all" ||
+            (priceRange === "under-500" && price < 500000) ||
+            (priceRange === "500-750" && price >= 500000 && price < 750000) ||
+            (priceRange === "750-1000" && price >= 750000 && price < 1000000) ||
+            (priceRange === "1000-plus" && price >= 1000000);
+          const matchesBeds = bedsMin === "all" || beds >= Number(bedsMin);
+          const matchesFilters = matchesType && matchesPrice && matchesBeds;
+          const isExtraListing = card.classList.contains("is-extra-listing");
+          const hasActiveFilters = type !== "all" || priceRange !== "all" || bedsMin !== "all";
+          const show = matchesFilters && (showingAllListings || hasActiveFilters || !isExtraListing);
+          card.hidden = !show;
+          if (matchesFilters) count += 1;
+        });
+
+        if (visibleCount) visibleCount.textContent = String(count);
+      }
+
+      document.querySelectorAll(".area-browse-nav a").forEach((link) => {
+        let hasPrefetched = false;
+        function prefetchAreaPage() {
+          if (hasPrefetched) return;
+          hasPrefetched = true;
+          const href = link.getAttribute("href");
+          if (!href) return;
+          const preload = document.createElement("link");
+          preload.rel = "prefetch";
+          preload.href = href;
+          preload.as = "document";
+          document.head.appendChild(preload);
+        }
+        link.addEventListener("mouseenter", prefetchAreaPage);
+        link.addEventListener("focus", prefetchAreaPage);
+        link.addEventListener("touchstart", prefetchAreaPage, { passive: true });
+        link.addEventListener("click", () => {
+          sessionStorage.setItem("area_page_scroll_y", String(window.scrollY));
+        });
+      });
+
+      sortFilter?.addEventListener("change", applyFilters);
+      typeFilter?.addEventListener("change", () => {
+        if (priceFilter) priceFilter.value = "all";
+        if (bedsFilter) bedsFilter.value = "all";
+        applyFilters();
+      });
+      priceFilter?.addEventListener("change", applyFilters);
+      bedsFilter?.addEventListener("change", applyFilters);
+
+      showAllButton?.addEventListener("click", () => {
+        showingAllListings = true;
+        showAllButton.hidden = true;
+        applyFilters();
+        document.querySelector("#area-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      document.querySelectorAll("[data-filter-type]").forEach((card) => {
+        card.addEventListener("click", (e) => {
+          e.preventDefault();
+          const type = card.dataset.filterType || "all";
+          if (typeFilter) {
+            typeFilter.value = type;
+            if (priceFilter) priceFilter.value = "all";
+            if (bedsFilter) bedsFilter.value = "all";
+            applyFilters();
+            document.querySelector(".filter-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+
+      applyFilters();
+
+      if (window.L && document.getElementById("area-map")) {
+        const map = L.map("area-map", { scrollWheelZoom: false, dragging: true })
+          .setView([mapCenter.lat, mapCenter.lng], 12);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        const bounds = [];
+        mapListings.forEach((listing) => {
+          const marker = L.marker([listing.lat, listing.lng]).addTo(map);
+          const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
+          marker.bindPopup(`
+            <strong>${price}</strong><br />
+            ${listing.address}<br />
+            ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+          `);
+          bounds.push([listing.lat, listing.lng]);
+        });
+        if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24] });
+      }
+
+      // Chart.js — load dynamically so it's guaranteed ready before rendering
+      async function initChart() {
+        if (!window.Chart) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+          });
+        }
+        const canvas = document.getElementById("priceChart");
+        if (!canvas) return;
+        new Chart(canvas, {
+          type: "bar",
+          data: {
+            labels: chartData.priceLabels,
+            datasets: [{ label: "Listings", data: chartData.priceCounts }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+          },
+        });
+      }
+      initChart();
+    });
+  </script>
+
+  <SiteNav city="nanaimo" areas={areas} types={propertyTypes} showAreaNav={false} />
+
+<header class="page-hero" style={`--hero-image: url('${heroImage}')`}>
+  <div class="page-hero__inner">
+    <p class="page-hero__eyebrow">Nanaimo Area Guide</p>
+
+    <h1>{labelize(area)}<br />Real Estate</h1>
+
+    <p class="page-hero__copy">{content.heroIntro}</p>
+
+    <div class="page-hero__actions">
+      <a href="#area-listings">View all listings</a>
+      <a href="#area-insights">Get area insights</a>
+    </div>
+  </div>
+</header>
+
+ <nav class="area-browse-nav">
+    <div class="shell area-browse-nav__inner">
+      <span>Explore more Nanaimo areas</span>
+      {areas.slice(0, 5).map((item) => (
+        
+          <a class:list={{ active: item === area }}
+          href={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}
+        >
+          {labelize(item)}
+        </a>
+      ))}
+   
+   {areas.length > 5 && (
+        <select
+          id="area-nav-select"
+          onchange="if(this.value) window.location.href=this.value;"
+        >
+          <option value="">+{areas.length - 5} more areas</option>
+          {areas.slice(5).map((item) => (
+            <option
+              value={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}
+              selected={item === area}
+            >
+              {labelize(item)}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  </nav>
+
+  <main class="shell">
+
+    <section class="area-stats">
+      <a class="stat-card stat-card-link" href="#" data-filter-type="all">
+        <strong>{listings.length}</strong>
+        <span>Active Listings</span>
+      </a>
+      <div class="stat-card">
+        <strong>${avgPrice.toLocaleString()}</strong>
+        <span>Average Price</span>
+      </div>
+      <div class="stat-card">
+        <strong>${medianPrice.toLocaleString()}</strong>
+        <span>Median Price</span>
+      </div>
+      <a class="stat-card stat-card-link" href="#" data-filter-type="house">
+        <strong>{houseCount}</strong>
+        <span>Houses</span>
+      </a>
+      <a class="stat-card stat-card-link" href="#" data-filter-type="condo">
+        <strong>{condoCount}</strong>
+        <span>Condos</span>
+      </a>
+      <a class="stat-card stat-card-link" href="#" data-filter-type="townhouse">
+        <strong>{townhomeCount}</strong>
+        <span>Townhomes</span>
+      </a>
+    </section>
+
+    <section class="market-row" id="area-insights">
+      <article class="market-snapshot">
+        <span class="eyebrow">MARKET TAKEAWAY</span>
+        <h2>{labelize(area)} at a glance</h2>
+        <p class="market-takeaway">
+          {housePercent >= 65
+            ? `${labelize(area)} is strongly detached-home oriented, with houses making up about ${housePercent}% of active inventory.`
+            : condoPercent >= 35
+              ? `${labelize(area)} offers a more mixed market, with condos making up about ${condoPercent}% of current inventory.`
+              : `${labelize(area)} has a balanced mix of homes, condos, and townhomes for buyers to compare.`}
+        </p>
+        <ul class="market-points">
+          <li>{listings.length} active listings give buyers a current read on available inventory.</li>
+          <li>{housePercent}% of listings are houses, {condoPercent}% are condos, and {townhomePercent}% are townhomes.</li>
+          <li>The median price is ${medianPrice.toLocaleString()}, which is often the cleanest quick read on typical pricing.</li>
+          <li>
+            {condoCount === 0
+              ? "Condo inventory is very limited here, so low-maintenance buyers may need to compare nearby areas."
+              : "Buyers should compare property type, condition, location, layout, and long-term resale before judging value."}
+          </li>
+        </ul>
+      </article>
+
+      <section class="chart-card">
+        <div>
+          <span class="eyebrow">PRICE DISTRIBUTION</span>
+          <h2>Where {labelize(area)} Inventory Sits by Price</h2>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </section>
+    </section>
+
+    <section class="filter-bar">
+      <select id="area-filter">
+        <option value="">Current area: {labelize(area)}</option>
+        {areas
+          .filter((item) => item !== area)
+          .map((item) => (
+            <option value={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}>
+              {labelize(item)}
+            </option>
+          ))}
+      </select>
+      <select id="sort-filter">
+        <option value="newest">Newest first</option>
+        <option value="price-low">Price: low to high</option>
+        <option value="price-high">Price: high to low</option>
+        <option value="beds-high">Beds: most first</option>
+      </select>
+      <select id="type-filter">
+        <option value="all">All property types</option>
+        <option value="house">Houses</option>
+        <option value="condo">Condos</option>
+        <option value="townhouse">Townhomes</option>
+      </select>
+      <select id="price-filter">
+        <option value="all">Any price</option>
+        <option value="under-500">Under $500k</option>
+        <option value="500-750">$500k - $750k</option>
+        <option value="750-1000">$750k - $1M</option>
+        <option value="1000-plus">$1M+</option>
+      </select>
+      <select id="beds-filter">
+        <option value="all">Any beds</option>
+        <option value="2">2+ beds</option>
+        <option value="3">3+ beds</option>
+        <option value="4">4+ beds</option>
+      </select>
+      <div class="filter-count">
+        <span id="visible-count">{listings.length}</span> homes showing
+      </div>
+    </section>
+
+    <div class="listing-grid" id="area-listings">
+      {listings.map((listing, index) => (
+        <div
+          class:list={["listing-card-wrap", index >= 8 && "is-extra-listing"]}
+          data-type={listing.normalized_type || ""}
+          data-price={listing.price || 0}
+          data-beds={listing.beds || 0}
+          data-listed={listing.listed_at || ""}
+          data-lat={listing.lat || ""}
+          data-lng={listing.lng || ""}
+        >
+          <ListingCard listing={listing} image={getListingImage(listing)} />
+        </div>
+      ))}
+    </div>
+
+    <div class="view-all-wrap">
+      <button class="view-all-btn" id="show-all-listings" type="button">
+        Show all {listings.length} listings
+      </button>
+    </div>
+
+    <section class="area-extra">
+      <div class="living-card">
+        <div>
+          <p class="section-kicker">Living in {labelize(area)}</p>
+          <h2>{content.livingHeadline}</h2>
+          <p>{content.livingCopy}</p>
+          <div class="living-icons">
+            <div><strong>Location</strong><span>Easy access to nearby routes, shopping, schools, and everyday services.</span></div>
+            <div><strong>Homes</strong><span>A useful mix of detached homes, condos, townhomes, and area-specific property options.</span></div>
+            <div><strong>Lifestyle</strong><span>Parks, trails, beaches, recreation, and community amenities close to home.</span></div>
+            <div><strong>Buyer Fit</strong><span>A strong option for buyers comparing value, convenience, lifestyle, and long-term resale.</span></div>
+          </div>
+        </div>
+        <img src={heroImage} alt={`${labelize(area)} Nanaimo lifestyle`} />
+      </div>
+
+      <article class="market-snapshot buyer-notes-card">
+        <span class="eyebrow">BUYER NOTES</span>
+        <h2>What to Know About {labelize(area)}</h2>
+        <div class="buyer-notes-grid">
+          <div>
+            <strong>Best fit</strong>
+            <span>{content.livingCopy}</span>
+          </div>
+          <div>
+            <strong>Inventory mix</strong>
+            <span>
+              {houseCount >= condoCount && houseCount >= townhomeCount
+                ? "Most active inventory here is detached homes, so buyers looking for condos or townhomes may need to compare nearby areas."
+                : "Inventory is more mixed here, giving buyers a few different property styles to compare."}
+            </span>
+          </div>
+          <div>
+            <strong>Watch for</strong>
+            <span>Compare condition, layout, parking, outdoor space, strata costs, suite potential, and resale appeal before judging value.</span>
+          </div>
+          <div>
+            <strong>Nearby alternatives</strong>
+            <span>Also compare {content.nearby.slice(0, 3).map((item) => labelize(item)).join(", ")}.</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="info-grid">
+        <article class="info-card">
+          <h3>Schools Nearby</h3>
+          <ul>
+            {content.schools.map((school) => (
+              <li>
+                <span>{school[0]}</span>
+                <small>{school[1]}</small>
+              </li>
+            ))}
+          </ul>
+          <a href="#">View all schools</a>
+        </article>
+        <article class="info-card">
+          <h3>Shopping & Amenities</h3>
+          <ul>
+            {content.amenities.map((item) => (
+              <li>
+                <span>{item[0]}</span>
+                <small>{item[1]}</small>
+              </li>
+            ))}
+          </ul>
+          <a href="#">View all amenities</a>
+        </article>
+      </div>
+
+      <article class="map-card real-map-card">
+        <div class="map-card__label">
+          <strong>{labelize(area)}</strong>
+          <span>{mapListings.length} mapped listings</span>
+        </div>
+        <div id="area-map"></div>
+      </article>
+
+      <section class="nearby-areas">
+        <p class="section-kicker">Popular Nearby Areas</p>
+        <div class="nearby-grid">
+          {content.nearby
+            .filter((item) => item !== area && areas.includes(item))
+            .slice(0, 5)
+            .map((item) => (
+              <a class="nearby-card" href={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}>
+                <img src={areaHeroImages[item] || heroImage} alt={`${labelize(item)} real estate`} />
+                <strong>{labelize(item)}</strong>
+                <span>View listings</span>
+              </a>
+            ))}
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <section class="area-cta">
+    <div class="shell area-cta__inner">
+      <div>
+        <h2>Thinking of buying or selling in {labelize(area)}?</h2>
+        <p>Get expert local advice, market insights, and a free home evaluation.</p>
+      </div>
+      <div class="area-cta__actions">
+        <a href="/contact">Contact Chris Crump</a>
+        <a href="/home-evaluation">Free Home Evaluation</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <div>
+        <h2>CHRIS<br />CRUMP</h2>
+        <p>REAL ESTATE</p>
+      </div>
+      <div>
+        <strong>Quick Links</strong>
+        <a href="/nanaimo">Nanaimo Real Estate</a>
+        <a href="/nanaimo/areas">All Areas</a>
+        <a href="/buying">Buying</a>
+        <a href="/selling">Selling</a>
+      </div>
+      <div>
+        <strong>Resources</strong>
+        <a href="/">Home Search</a>
+        <a href="/buyers-guide">Buyers Guide</a>
+        <a href="/sellers-guide">Sellers Guide</a>
+        <a href="/market-reports">Market Reports</a>
+      </div>
+      <div>
+        <strong>Contact</strong>
+        <span>Chris Crump PREC*</span>
+        <span>250-744-3301</span>
+        <span>chris@chriscrump.com</span>
+      </div>
+    </div>
+  </footer>
+
+  <ShortlistReviewModal />
+  <IntentModalController />
+
+  <script is:inline define:vars={{ chartData, mapListings, mapCenter }}>
+    window.addEventListener("load", () => {
+      const areaFilter = document.getElementById("area-filter");
+      const sortFilter = document.getElementById("sort-filter");
+      const typeFilter = document.getElementById("type-filter");
+      const priceFilter = document.getElementById("price-filter");
+      const bedsFilter = document.getElementById("beds-filter");
+      const visibleCount = document.getElementById("visible-count");
+      const grid = document.querySelector(".listing-grid");
+      const showAllButton = document.getElementById("show-all-listings");
+      let showingAllListings = false;
+
+      document.querySelectorAll(".listing-card-wrap").forEach((wrap) => {
+        const card = wrap.querySelector("[data-card-id], [data-listing-id], .card");
+        if (!card) return;
+        card.dataset.lat = wrap.dataset.lat || "";
+        card.dataset.lng = wrap.dataset.lng || "";
+      });
+
+      function applyFilters() {
+        const type = typeFilter?.value || "all";
+        const priceRange = priceFilter?.value || "all";
+        const bedsMin = bedsFilter?.value || "all";
+        const sort = sortFilter?.value || "newest";
+
+        const cards = Array.from(document.querySelectorAll(".listing-card-wrap"));
+
+        cards.sort((a, b) => {
+          const priceA = Number(a.dataset.price || 0);
+          const priceB = Number(b.dataset.price || 0);
+          const bedsA = Number(a.dataset.beds || 0);
+          const bedsB = Number(b.dataset.beds || 0);
+          const listedA = new Date(a.dataset.listed || 0).getTime();
+          const listedB = new Date(b.dataset.listed || 0).getTime();
+          if (sort === "price-low") return priceA - priceB;
+          if (sort === "price-high") return priceB - priceA;
+          if (sort === "beds-high") return bedsB - bedsA;
+          return listedB - listedA;
+        });
+
+        let count = 0;
+        cards.forEach((card) => {
+          grid?.appendChild(card);
+          const cardType = card.dataset.type || "";
+          const price = Number(card.dataset.price || 0);
+          const beds = Number(card.dataset.beds || 0);
+          const matchesType = type === "all" || cardType === type;
+          const matchesPrice =
+            priceRange === "all" ||
+            (priceRange === "under-500" && price < 500000) ||
+            (priceRange === "500-750" && price >= 500000 && price < 750000) ||
+            (priceRange === "750-1000" && price >= 750000 && price < 1000000) ||
+            (priceRange === "1000-plus" && price >= 1000000);
+          const matchesBeds = bedsMin === "all" || beds >= Number(bedsMin);
+          const matchesFilters = matchesType && matchesPrice && matchesBeds;
+          const isExtraListing = card.classList.contains("is-extra-listing");
+          const hasActiveFilters = type !== "all" || priceRange !== "all" || bedsMin !== "all";
+          const show = matchesFilters && (showingAllListings || hasActiveFilters || !isExtraListing);
+          card.hidden = !show;
+          if (matchesFilters) count += 1;
+        });
+
+        if (visibleCount) visibleCount.textContent = String(count);
+      }
+
+      document.querySelectorAll(".area-browse-nav a").forEach((link) => {
+        let hasPrefetched = false;
+        function prefetchAreaPage() {
+          if (hasPrefetched) return;
+          hasPrefetched = true;
+          const href = link.getAttribute("href");
+          if (!href) return;
+          const preload = document.createElement("link");
+          preload.rel = "prefetch";
+          preload.href = href;
+          preload.as = "document";
+          document.head.appendChild(preload);
+        }
+        link.addEventListener("mouseenter", prefetchAreaPage);
+        link.addEventListener("focus", prefetchAreaPage);
+        link.addEventListener("touchstart", prefetchAreaPage, { passive: true });
+        link.addEventListener("click", () => {
+          sessionStorage.setItem("area_page_scroll_y", String(window.scrollY));
+        });
+      });
+
+      sortFilter?.addEventListener("change", applyFilters);
+      typeFilter?.addEventListener("change", () => {
+        if (priceFilter) priceFilter.value = "all";
+        if (bedsFilter) bedsFilter.value = "all";
+        applyFilters();
+      });
+      priceFilter?.addEventListener("change", applyFilters);
+      bedsFilter?.addEventListener("change", applyFilters);
+
+      showAllButton?.addEventListener("click", () => {
+        showingAllListings = true;
+        showAllButton.hidden = true;
+        applyFilters();
+        document.querySelector("#area-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      document.querySelectorAll("[data-filter-type]").forEach((card) => {
+        card.addEventListener("click", (e) => {
+          e.preventDefault();
+          const type = card.dataset.filterType || "all";
+          if (typeFilter) {
+            typeFilter.value = type;
+            if (priceFilter) priceFilter.value = "all";
+            if (bedsFilter) bedsFilter.value = "all";
+            applyFilters();
+            document.querySelector(".filter-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+
+      applyFilters();
+
+      if (window.L && document.getElementById("area-map")) {
+        const map = L.map("area-map", { scrollWheelZoom: false, dragging: true })
+          .setView([mapCenter.lat, mapCenter.lng], 12);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        const bounds = [];
+        mapListings.forEach((listing) => {
+          const marker = L.marker([listing.lat, listing.lng]).addTo(map);
+          const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
+          marker.bindPopup(`
+            <strong>${price}</strong><br />
+            ${listing.address}<br />
+            ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+          `);
+          bounds.push([listing.lat, listing.lng]);
+        });
+        if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24] });
+      }
+
+      if (window.Chart) {
+        new Chart(document.getElementById("priceChart"), {
+          type: "bar",
+          data: {
+            labels: chartData.priceLabels,
+            datasets: [{ label: "Listings", data: chartData.priceCounts }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false } },
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+          },
+        });
+      }
+    });
+  </script>
+</Layout>

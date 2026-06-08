@@ -1,4 +1,5 @@
 ---
+import AdminSidebar from "../../components/AdminSidebar.astro";
 import { createClient } from "@supabase/supabase-js";
 export const prerender = false;
 
@@ -81,223 +82,273 @@ function publicHref(page: any) {
 
 <html>
   <head>
-    <title>Intent & Category Pages</title>
-
+<title>Intent & Category Pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+   *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+      :root {
+        --bg: #f7f4ef;
+        --surface: #fff;
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --ink: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --radius: 16px;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
       body {
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f4efe7;
-        color: #181614;
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
       }
 
-      .shell {
-        width: min(1180px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 42px 0;
+      .page {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
       }
 
+      .main {
+        padding: 40px 48px 80px;
+        max-width: 1180px;
+        min-width: 0;
+      }
+
+      /* ── Page header ── */
       .topbar {
         display: flex;
-        align-items: end;
+        align-items: flex-end;
         justify-content: space-between;
         gap: 18px;
-        margin-bottom: 24px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
       }
 
-      h1 {
-        margin: 0;
-        font-size: clamp(2.3rem, 5vw, 4rem);
-        letter-spacing: -0.07em;
-        line-height: 0.95;
+      .topbar h1 {
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
       }
 
       .intro {
-        max-width: 720px;
-        margin: 12px 0 0;
-        color: rgba(24,22,20,0.62);
+        color: var(--muted);
+        margin-top: 6px;
+        font-size: 0.9rem;
         line-height: 1.55;
       }
 
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
+        flex-shrink: 0;
       }
 
-      a,
-      button {
+      /* ── Buttons ── */
+      .btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        padding: 0 16px;
+        gap: 7px;
+        padding: 11px 20px;
         border-radius: 999px;
-        border: 0;
-        background: #181614;
-        color: #fff;
+        border: 1px solid transparent;
         font: inherit;
-        font-weight: 900;
-        text-decoration: none;
+        font-size: 0.86rem;
+        font-weight: 700;
         cursor: pointer;
+        text-decoration: none;
+        transition: background 0.14s, color 0.14s, border-color 0.14s;
       }
 
-      .secondary {
-        background: #fffaf1;
-        color: #181614;
-        border: 1px solid rgba(24,22,20,0.14);
+      .btn--primary {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
       }
 
-      .danger {
-        background: #fff;
-        color: #b42318;
-        border: 1px solid rgba(180,35,24,0.25);
+      .btn--primary:hover { background: #333; border-color: #333; }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--border-strong);
       }
 
+      .btn--ghost:hover { background: rgba(24,22,20,0.05); }
+
+      .btn--danger {
+        background: transparent;
+        color: #b33;
+        border-color: rgba(180,35,24,0.25);
+      }
+
+      .btn--danger:hover { background: #fff6f6; }
+
+      /* ── Filter pills ── */
       .filters {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin: 0 0 18px;
+        gap: 6px;
+        margin-bottom: 20px;
       }
 
-      .filter-pill {
-        min-height: 34px;
+     .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
         padding: 0 12px;
         border-radius: 999px;
-        border: 1px solid rgba(24,22,20,0.14);
-        background: #fffaf1;
-        color: #181614;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
         font: inherit;
-        font-size: 0.82rem;
-        font-weight: 900;
+        font-size: 0.8rem;
+        font-weight: 700;
         cursor: pointer;
+        text-decoration: none;
+        transition: background 0.14s, color 0.14s, border-color 0.14s;
       }
 
       .filter-pill.active,
       .filter-pill:hover {
-        background: #181614;
-        color: white;
-        border-color: #181614;
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
       }
 
+      /* ── Grid ── */
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 10px;
       }
 
+      /* ── Page card ── */
       .page-card {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 16px;
-        padding: 22px;
-        border-radius: 22px;
-        background: #fffaf1;
-        border: 1px solid rgba(24,22,20,0.12);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 20px;
+        border-radius: var(--radius);
+        background: var(--surface);
+        border: 1px solid var(--border);
       }
 
       .page-card h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        letter-spacing: -0.04em;
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
       }
 
       .slug {
-        margin: 5px 0 0;
-        color: rgba(24,22,20,0.54);
-        font-size: 0.9rem;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.8rem;
       }
 
       .copy {
-        max-width: 720px;
-        margin: 10px 0 0;
-        color: rgba(24,22,20,0.66);
+        color: var(--muted);
+        font-size: 0.88rem;
         line-height: 1.5;
+        margin-top: 6px;
       }
 
+      /* ── Tags ── */
       .tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 7px;
-        margin-top: 13px;
+        gap: 5px;
+        margin-top: 10px;
       }
 
       .tag {
         display: inline-flex;
         align-items: center;
-        min-height: 26px;
-        padding: 0 9px;
+        min-height: 22px;
+        padding: 0 8px;
         border-radius: 999px;
-        background: #f4efe7;
-        color: #6f5a38;
-        font-size: 0.76rem;
-        font-weight: 850;
+        background: rgba(24,22,20,0.07);
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
       }
 
       .tag.dark {
-        background: #181614;
+        background: var(--ink);
         color: #fff;
       }
 
       .tag.intent {
-        background: rgba(255,77,0,0.12);
-        color: #ff4d00;
+        background: rgba(24,22,20,0.10);
+        color: var(--ink);
       }
 
       .tag.published {
-        background: rgba(34, 139, 85, 0.12);
-        color: #1f7a4d;
+        background: rgba(34,139,85,0.10);
+        color: #2d7a2d;
       }
 
       .tag.draft {
-        background: rgba(24,22,20,0.08);
-        color: rgba(24,22,20,0.55);
+        background: rgba(24,22,20,0.06);
+        color: var(--muted);
       }
 
+      /* ── Card actions ── */
       .card-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        justify-content: flex-start;
-        padding-top: 8px;
-        border-top: 1px solid rgba(24,22,20,0.08);
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        margin-top: auto;
       }
 
+      /* ── Empty / error ── */
       .empty {
         padding: 24px;
-        border-radius: 22px;
-        background: #fffaf1;
-        border: 1px solid rgba(24,22,20,0.12);
+        border-radius: var(--radius);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
       }
 
       .error {
-        color: #b42318;
-        font-weight: 800;
+        color: #b33;
+        font-weight: 700;
+        margin-bottom: 16px;
       }
 
-      form {
-        margin: 0;
-      }
+      form { margin: 0; }
 
-      @media (max-width: 820px) {
-        .topbar,
-        .grid,
-        .page-card {
-          grid-template-columns: 1fr;
-          display: grid;
-        }
-
-        .card-actions {
-          justify-content: flex-start;
-        }
+      @media (max-width: 860px) {
+        .page { grid-template-columns: 1fr; }
+        .main { padding: 24px 20px 60px; }
+        .topbar { flex-direction: column; align-items: flex-start; }
+        .grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
 
-  <body>
-    <main class="shell">
+ <body>
+  <div class="page">
+    <AdminSidebar active="pages" />
+
+    <main class="main">
       <div class="topbar">
         <div>
           <h1>Intent & category pages</h1>
@@ -307,9 +358,9 @@ function publicHref(page: any) {
           </p>
         </div>
 
-        <div class="actions">
-          <a href="/admin/intent-pages/new">+ Add new page</a>
-          <a class="secondary" href="/admin/agent-page">Agent editor</a>
+       <div class="actions">
+          <a class="btn btn--primary" href="/admin/intent-pages/new">+ Add new page</a>
+          <a class="btn btn--ghost" href="/admin/agent-page">Agent editor</a>
         </div>
       </div>
 
@@ -379,25 +430,19 @@ function publicHref(page: any) {
                 </div>
               </div>
 
-              <div class="card-actions">
-                <a class="secondary" href={publicHref(page)} target="_blank">
-                  Open
-                </a>
-
-                <a class="secondary" href={`/admin/intent-pages/${page.id}/edit`}>
-                  Edit
-                </a>
-
+             <div class="card-actions">
+<a class="btn btn--ghost" href={publicHref(page)} target="_blank">Open &nearr;</a>                <a class="btn btn--ghost" href={`/admin/intent-pages/${page.id}/edit`}>Edit</a>
                 <form method="POST" onsubmit="return confirm('Delete this page? This cannot be undone.');">
                   <input type="hidden" name="_action" value="delete" />
                   <input type="hidden" name="id" value={page.id} />
-                  <button class="danger" type="submit">Delete</button>
+                  <button class="btn btn--danger" type="submit">Delete</button>
                 </form>
               </div>
             </article>
           );
         })}
       </section>
-    </main>
-  </body>
+     </main>
+  </div>
+</body>
 </html>

@@ -18,6 +18,39 @@ const sheetImageStage = document.querySelector(".panel__image-stage");
 
 let sheetMiniMapInstance = null;
 let sheetMiniMapMarker = null;
+
+function getCardLatLng(card) {
+  const lat = parseFloat(card?.dataset?.lat || "");
+  const lng = parseFloat(card?.dataset?.lng || "");
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.maps) return resolve();
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const wait = setInterval(() => {
+        if (window.google?.maps) { clearInterval(wait); resolve(); }
+      }, 80);
+      return;
+    }
+   const key = document.body.dataset.googleMapsApiKey ||
+      document.querySelector("script[src*='maps.googleapis.com']") && "" ||
+      "";
+    if (!key) {
+      // key not on body — check if Maps already loaded via another script tag
+      if (window.google?.maps) return resolve();
+      return reject(new Error("Missing Google Maps API key"));
+    }
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
         const nextBtn = document.getElementById("sheet-next-btn");
         const prevBtn = document.getElementById("sheet-prev-btn");
         const nextTopBtn = document.getElementById("sheet-next-top-btn");
@@ -138,8 +171,15 @@ const SAVE_SEARCH_RESHOW_AFTER = 10;
 }
 
 function getCards() {
-  return Array.from(document.querySelectorAll(".card")).filter((card) => {
-    return card.style.display !== "none" && cardIsInsideCurrentMap(card);
+  return Array.from(document.querySelectorAll(".original-card")).filter((card) => {
+    const wrapper = card.closest(".listing-card-wrap");
+
+    return (
+      !card.hidden &&
+      card.style.display !== "none" &&
+      (!wrapper || !wrapper.hidden) &&
+      cardIsInsideCurrentMap(card)
+    );
   });
 }
 
@@ -188,7 +228,7 @@ window.updateViewedBadges?.();
     showSaveSearchCTA({
       kicker: "Before you go",
       title: "Want to save this search direction?",
-      body: "You can keep browsing later, and we’ll help your agent spot better matches.",
+      body: "You can keep browsing later, and we\u2019ll help your agent spot better matches.",
       isExitPrompt: true,
     });
 
@@ -373,11 +413,27 @@ if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
           if (prevBtn) prevBtn.disabled = index <= 0;
           if (prevTopBtn) prevTopBtn.disabled = index <= 0;
 
-          if (nextBtn) nextBtn.textContent = index >= total - 1 ? "Close" : "Next listing →";
-          if (nextTopBtn) nextTopBtn.textContent = index >= total - 1 ? "Close" : "Next →";
+         if (nextBtn) {
+  nextBtn.innerHTML =
+    index >= total - 1
+      ? "Close"
+      : 'Next listing <span aria-hidden="true">&rarr;</span>';
+}
 
-     updateDecisionButtons(card);
+if (nextTopBtn) {
+  nextTopBtn.innerHTML =
+    index >= total - 1
+      ? "Close"
+      : 'Next <span aria-hidden="true">&rarr;</span>';
+}
+updateDecisionButtons(card);
 renderLikeTags(card);
+
+sheet.classList.toggle(
+  "has-decision",
+  card.dataset.decision === "love" ||
+  card.dataset.decision === "maybe"
+);
 
 if (sheetEngage) {
   sheetEngage.hidden = card.dataset.decision !== "love";
@@ -392,6 +448,10 @@ if (card.classList.contains("refined-card")) {
 
 if (sheetImageStage) {
   sheetImageStage.classList.remove("is-hidden");
+}
+
+if (sheetMapBtn) {
+  sheetMapBtn.textContent = "Map";
 }
         }
 function updateCardDecisionBadge(card) {
@@ -488,7 +548,7 @@ likeTagsEl.innerHTML = tagOptions
   .join("");
 }
 function getSharedIntentSessionId() {
-  if (typeof window.getIntentSessionId === "function") {
+  if (typeof window.getSharedIntentSessionId === "function") {
     return window.getSharedIntentSessionId();
   }
 
@@ -519,7 +579,11 @@ function saveCurrentReaction() {
     body: JSON.stringify({
       session_id: getSharedIntentSessionId(),
 
-      intent_page_id: document.body.dataset.intentPageId,
+      intent_page_id: (() => {
+        const id = document.body.dataset.intentPageId || "";
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        return isUuid ? id : null;
+      })(),
       city: document.body.dataset.city,
       slug: document.body.dataset.slug,
 
@@ -556,7 +620,9 @@ function saveCurrentReaction() {
     .then(async (res) => {
       const json = await res.json();
     console.log("REACTION SAVED", json);
-refreshBehaviourChips();
+if (typeof refreshBehaviourChips === "function") {
+  refreshBehaviourChips();
+}
     })
     .catch((error) => {
       console.error("Failed to save intent listing reaction:", error);
@@ -603,26 +669,31 @@ function showLeadCaptureForm(options = {}) {  if (!sheetContent || !sheetSummary
   sheetContent.classList.remove("open");
   sheetSummary.classList.add("open");
 
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
-<div class="modal-intent-kicker">${options.kicker || "Save your refined search"}</div>
-<h2>${options.title || "Want new matches like these?"}</h2>
-      <p>
-${options.body || "Leave your contact details and we’ll send better matches when similar homes appear."}      </p>
+sheetSummary.innerHTML = `
+    <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:32px 24px;background:#f7f4ef;">
+      <div style="width:100%;max-width:480px;background:#fff;border-radius:24px;border:1px solid #e8e3dc;box-shadow:0 24px 60px rgba(0,0,0,0.10);padding:36px 32px;display:grid;gap:20px;">
 
-      <div style="max-width:420px;margin:0 auto 22px;display:grid;gap:10px;">
-        <input id="lead-name-input" placeholder="Name" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-        <input id="lead-email-input" placeholder="Email" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-        <input id="lead-phone-input" placeholder="Phone optional" style="padding:14px 16px;border-radius:999px;border:1px solid rgba(24,22,20,.16);font:inherit;" />
-      </div>
+        <div>
+          <div style="font-size:0.7rem;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#8b6f47;margin-bottom:10px;">${options.kicker || "Get in touch"}</div>
+          <h2 style="margin:0 0 8px;font-size:1.65rem;line-height:1.1;letter-spacing:-0.035em;font-weight:700;color:#181614;">${options.title || "Want new matches like these?"}</h2>
+          <p style="margin:0;color:#6b6560;font-size:0.95rem;line-height:1.6;">${options.body || "Leave your details and we\u2019ll follow up about this property."}</p>
+        </div>
 
-      <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="lead-save-btn">
-${options.button || "Send me better matches"}        </button>
+        <div style="display:grid;gap:10px;">
+          <input id="lead-name-input" placeholder="Name" style="width:100%;padding:13px 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;" />
+          <input id="lead-email-input" placeholder="Email" style="width:100%;padding:13px 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;" />
+          <input id="lead-phone-input" placeholder="Phone (optional)" style="width:100%;padding:13px 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;" />
+        </div>
 
-        <button type="button" class="modal-intent-secondary" id="lead-cancel-btn">
-          Keep browsing
-        </button>
+        <div style="display:grid;gap:10px;">
+          <button type="button" id="lead-save-btn" style="appearance:none;border:0;border-radius:999px;background:#181614;color:#fff;min-height:50px;padding:0 28px;font:inherit;font-size:0.95rem;font-weight:800;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,0.14);">
+            ${options.button || "Send me better matches"}
+          </button>
+          <button type="button" id="lead-cancel-btn" style="appearance:none;border:1px solid #ddd8d0;border-radius:999px;background:#fff;color:#6b6560;min-height:44px;padding:0 22px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;">
+            Keep browsing
+          </button>
+        </div>
+
       </div>
     </div>
   `;
@@ -646,7 +717,11 @@ ${options.button || "Send me better matches"}        </button>
     message: options.note || "",
 
     session_id: getSharedIntentSessionId(),
-    intent_page_id: document.body.dataset.intentPageId,
+    intent_page_id: (() => {
+  const id = document.body.dataset.intentPageId || "";
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  return isUuid ? id : null;
+})(),
     city: document.body.dataset.city,
     slug: document.body.dataset.slug,
 
@@ -662,9 +737,9 @@ ${options.button || "Send me better matches"}        </button>
 
     sheetSummary.innerHTML = `
       <div class="modal-intent-summary">
-        <div class="modal-intent-kicker">Saved</div>
-        <h2>You’re all set.</h2>
-        <p>We’ll use this search direction to help send better matches.</p>
+    <div class="modal-intent-kicker">Saved</div>
+        <h2>You\u2019re all set.</h2>
+        <p>We\u2019ll use this search direction to help send better matches.</p>
       </div>
     `;
 
@@ -788,35 +863,49 @@ function showIntentSummaryCard() {
   sheetContent.classList.remove("open");
   sheetSummary.classList.add("open");
 
+ const lovedCards = Array.from(document.querySelectorAll(".original-card"))
+    .filter((c) => c.dataset.decision === "love")
+    .slice(0, 4);
+
+  const likedTagLabels = Array.from(
+    document.querySelectorAll("#preview-sheet .intent-like-tag.active")
+  ).map((btn) => btn.textContent.trim()).filter(Boolean);
+
+  const thumbsHtml = lovedCards.length ? `
+    <div style="display:grid;grid-template-columns:repeat(${lovedCards.length},1fr);gap:8px;margin:0 0 20px;">
+      ${lovedCards.map((c) => `
+        <div style="border-radius:12px;overflow:hidden;aspect-ratio:4/3;background:#eee;">
+          <img src="${c.dataset.image || ""}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  const featureHtml = likedTagLabels.length ? `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;">
+      ${likedTagLabels.map((t) => `<span style="padding:6px 12px;border-radius:999px;background:#f3eadc;color:#6f4f1f;font-size:0.78rem;font-weight:800;border:1px solid #d6b57a;">+ ${t}</span>`).join("")}
+    </div>
+  ` : "";
+
   sheetSummary.innerHTML = `
     <div class="modal-intent-summary">
       <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
+      <h2>Want better matches like these?</h2>
 
-      <h2>Want us to narrow in on better matches?</h2>
+      ${thumbsHtml}
 
-      <p>
-        Based on what you’ve liked so far, we can refine the next batch around
-        the features and areas you seem most drawn to.
-      </p>
+  <p>You've reacted positively to ${lovedCards.length || "a few"} home${lovedCards.length !== 1 ? "s" : ""}. We can refine the next batch around what you seem drawn to.</p>
 
-      <div class="modal-intent-chip-row">
-        ${chipHtml}
+      ${featureHtml}
+
+      <div class="modal-intent-save-copy">
+        Your preferences can be saved privately so your next batch keeps improving.
       </div>
-<div class="modal-intent-save-copy">
-  Your preferences can be saved privately so your next batch keeps improving.
-</div>
+
       <div class="modal-intent-actions">
-       <button type="button" class="modal-intent-primary" id="summary-refine-btn">
-  Show better matches
-</button>
-
-<button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
-  Compare nearby areas
-</button>
-
-<button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
-  Keep browsing
-</button>
+        <button type="button" class="modal-intent-primary" id="summary-refine-btn">Show better matches</button>
+        <button type="button" class="modal-intent-secondary" id="summary-nearby-btn">Compare nearby areas</button>
+        <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">Keep browsing</button>
       </div>
     </div>
   `;
@@ -979,18 +1068,18 @@ updateCardDecisionBadge(activeCard);
   updateDecisionButtons(activeCard);
  renderLikeTags(activeCard);
 
+ sheet.classList.toggle(
+  "has-decision",
+  decision === "love" || decision === "maybe"
+);
+
 if (sheetEngage) {
   sheetEngage.hidden = decision !== "love";
 }
 
   if (feedback) {
-    feedback.textContent =
-      decision === "love"
-        ? "Saved: Love this - what stood out?"
-        : decision === "maybe"
-          ? "Saved: Kinda like - what should we keep?"
-          : "Saved: Not for me";
-  }
+  feedback.textContent = "";
+}
 
 totalIntentReactions += 1;
 
@@ -1001,31 +1090,16 @@ if (decision === "love" || decision === "maybe") {
 saveCurrentReaction();
 
 window.setTimeout(() => {
-  const sheetScroll =
-    document.querySelector("#preview-sheet .panel__view") ||
-    document.getElementById("sheet-content") ||
-    document.getElementById("preview-sheet");
-
-  const bottomNav =
-    document.querySelector("#preview-sheet .panel__nav-row") ||
-    document.getElementById("sheet-next-btn");
-
-  if (bottomNav) {
-    bottomNav.style.scrollMarginBottom = "120px";
-    bottomNav.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
+  const panelView = sheet.querySelector(".panel__view");
+  if (panelView) {
+    panelView.scrollTop = 999999;
   }
-
-  if (sheetScroll) {
-    sheetScroll.scrollTop = sheetScroll.scrollHeight;
-  }
-}, 180);
+  sheet.scrollTop = 999999;
+}, 600);
 }
 
-       document.addEventListener("click", (event) => {
-  const card = event.target.closest(".card");
+     document.addEventListener("click", (event) => {
+const card = event.target.closest(".original-card, .refined-card");
 
   if (!card) return;
 
@@ -1037,14 +1111,18 @@ window.setTimeout(() => {
 });
 
         closeBtn?.addEventListener("click", closeSheet);
-       sheetMapBtn?.addEventListener("click", async () => {
+sheetMapBtn?.addEventListener("click", async () => {
   if (!activeCard || !sheetMiniMap) return;
+
+ sheet.scrollTop = 0;
+  document.querySelector("#preview-sheet")?.scrollTo({ top: 0, behavior: "instant" });
 
   const mapIsOpen = !sheetMiniMap.hidden;
 
   if (mapIsOpen) {
     sheetMiniMap.hidden = true;
     sheetMiniMap.style.display = "none";
+    sheetMiniMap.innerHTML = "";
 
     if (sheetImageStage) {
       sheetImageStage.classList.remove("is-hidden");
@@ -1062,13 +1140,12 @@ window.setTimeout(() => {
   if (!point) {
     sheetMiniMap.hidden = false;
     sheetMiniMap.style.display = "block";
+    sheetMiniMap.innerHTML =
+      "<p style='padding:16px;color:#6b6560;'>No map location available for this listing.</p>";
 
     if (sheetMapBtn) {
       sheetMapBtn.textContent = "Pictures";
     }
-
-    sheetMiniMap.innerHTML =
-      "<p style='padding:16px;color:#6b6560;'>No map location available for this listing.</p>";
 
     return;
   }
@@ -1084,47 +1161,46 @@ window.setTimeout(() => {
     sheetMapBtn.textContent = "Pictures";
   }
 
-  try {
+ try {
     await loadGoogleMaps();
-  } catch (error) {
-    console.error("Google Maps failed to load:", error);
+
+    sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
+      center: point,
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+
+    sheetMiniMapMarker = new google.maps.Marker({
+      position: point,
+      map: sheetMiniMapInstance,
+      title: activeCard.dataset.address || "Listing",
+    });
+
+    window.setTimeout(() => {
+      google.maps.event.trigger(sheetMiniMapInstance, "resize");
+      sheetMiniMapInstance.setCenter(point);
+    }, 120);
+} catch (error) {
+    console.error("Map failed to load:", error);
+
+    const key = document.body.dataset.googleMapsApiKey || "(missing)";
+    const point2 = getCardLatLng(activeCard);
 
     sheetMiniMap.innerHTML =
-      "<p style='padding:16px;color:#6b6560;'>Map could not load.</p>";
-
-    return;
+      `<p style='padding:16px;color:#6b6560;font-size:12px;'>Map could not load.<br>Key: ${key.slice(0,12)}...<br>Point: ${JSON.stringify(point2)}<br>Error: ${error?.message}</p>`;
   }
-
-  sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
-    center: point,
-    zoom: 15,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-  });
-
-  if (sheetMiniMapMarker) {
-    sheetMiniMapMarker.setMap(null);
-  }
-
-  sheetMiniMapMarker = new google.maps.Marker({
-    position: point,
-    map: sheetMiniMapInstance,
-    title: activeCard.dataset.address || "Listing",
-  });
-
-  window.setTimeout(() => {
-    google.maps.event.trigger(sheetMiniMapInstance, "resize");
-    sheetMiniMapInstance.setCenter(point);
-  }, 120);
 });
+
+
         overlay?.addEventListener("click", closeSheet);
         nextBtn?.addEventListener("click", goNext);
         nextTopBtn?.addEventListener("click", goNext);
         prevBtn?.addEventListener("click", goPrev);
         prevTopBtn?.addEventListener("click", goPrev);
 
-      loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
+   loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
 maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
 passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
 
@@ -1132,10 +1208,9 @@ askQuestionBtn?.addEventListener("click", () => {
   sheet.classList.add("is-engagement-mode");
 
   showLeadCaptureForm({
-    kicker: "Ask a question",
+ kicker: "Ask a question",
     title: "Want to ask about this home?",
-    body: "Leave your details and we’ll follow up about this property.",
-    button: "Ask about this home",
+    body: "Leave your details and we\u2019ll follow up about this property.", button: "Ask about this home",
     note: "I'm interested in this property and have a question.",
   });
 });
@@ -1146,7 +1221,7 @@ bookShowingBtn?.addEventListener("click", () => {
   showLeadCaptureForm({
     kicker: "Book a showing",
     title: "Want to see this home?",
-    body: "Leave your details and we’ll help arrange a showing.",
+    body: "Leave your details and we\u2019ll help arrange a showing.",
     button: "Book a showing",
     note: "I'd like to arrange a showing for this property.",
   });

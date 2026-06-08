@@ -1,6 +1,6 @@
 ---
 import { createSupabaseServerClient } from "../lib/supabaseServer";
-
+import AdminSidebar from "../components/AdminSidebar.astro";
 const supabaseAuth = createSupabaseServerClient(Astro.cookies);
 
 const {
@@ -97,30 +97,32 @@ if (hasListingFilters) {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" />
-
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-      :root {
-        --bg: #f4efe7;
+     :root {
+        --bg: #f7f4ef;
         --surface: #ffffff;
         --card: #ffffff;
-        --card-warm: #f9f5f0;
-        --ink: #1a1917;
-        --ink-light: #1a1917;
-        --muted-light: #6b6b6b;
-        --muted-dark: #6b6b6b;
-        --line-dark: #dddddd;
-        --line-card: #efefef;
-        --accent: #8b6f47;
-        --accent-light: #8b6f47;
-        --accent-bg: #f5ece0;
-        --accent-dark: #6b5235;
-        --success: #1f7a45;
-        --success-bg: #edf7f1;
-        --danger: #8b1e1e;
+        --card-warm: #f7f4ef;
+        --ink: #181614;
+        --ink-light: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --muted-dark: rgba(24,22,20,0.52);
+        --muted-light: rgba(24,22,20,0.52);
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --line-dark: rgba(24,22,20,0.12);
+        --line-card: rgba(24,22,20,0.08);
+        --accent: #181614;
+        --accent-light: #181614;
+        --accent-bg: rgba(24,22,20,0.07);
+        --accent-dark: #333;
+        --success: #2d7a2d;
+        --success-bg: #edf7ed;
+        --danger: #b33;
         --danger-bg: #fff6f6;
-        --f-display: "Lora", Georgia, serif;
-        --f-body: "Nunito Sans", system-ui, sans-serif;
+        --f-display: "Instrument Serif", Georgia, serif;
+        --f-body: "DM Sans", system-ui, sans-serif;
         --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
         --radius: 16px;
       }
@@ -128,85 +130,33 @@ if (hasListingFilters) {
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html { scrollbar-gutter: stable; }
 
-      html, body {
+    body {
         font-family: var(--f-body);
         background: var(--bg);
         color: var(--ink);
         font-size: 15px;
         line-height: 1.5;
-        -webkit-font-smoothing: antialiased;
       }
 
       a { color: inherit; text-decoration: none; }
       button { font: inherit; }
 
       /* ── PAGE ── */
-      .page {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 24px 24px 280px;
-      }
+   .page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
 
-      /* ── TOPBAR ── */
-      .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-      }
+.main {
+  padding: 40px 48px 280px;
+  max-width: 1200px;
+}
 
-      .brand-head { display: flex; flex-direction: column; gap: 6px; }
-
-      .page-logo { display: block; width: 220px; max-width: 60vw; height: 36px; object-fit: contain; object-position: left center; }
-
-      .subtle { color: var(--muted-dark); font-size: 0.88rem; }
-
-      .logout-form { margin: 0; }
-
-      .logout-btn {
-        border: 1px solid var(--line-dark);
-        background: #fff;
-        color: var(--ink);
-        border-radius: 999px;
-        padding: 9px 18px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s;
-      }
-
-      .logout-btn:hover { background: #fafafa; }
-
-      /* ── NAV ── */
-      .admin-nav {
-        display: inline-flex;
-        gap: 4px;
-        padding: 5px;
-        background: #fff;
-        border: 1px solid var(--line-dark);
-        border-radius: 999px;
-        margin-bottom: 24px;
-      }
-
-      .admin-nav a {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 7px 18px;
-        border-radius: 999px;
-        color: var(--muted-dark);
-        font-size: 0.82rem;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        transition: all 0.2s ease;
-        text-decoration: none;
-      }
-
-      .admin-nav a:hover { color: var(--ink); background: #f5f5f5; }
-      .admin-nav a.active { background: var(--ink); color: #fff; }
-
+      .subtle { color: var(--muted-dark); font-size: 0.88rem; }/* sidebar styles live in AdminSidebar.astro */
       /* ── FILTERS ── */
       .filters {
         background: #fff;
@@ -823,34 +773,12 @@ if (hasListingFilters) {
     </style>
   </head>
 
-  <body data-shortlist-slug={shortlistSlug}>
-    <main class="page">
-      <div class="topbar">
-        <div class="brand-head">
-          <img
-src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-862ea1563e00/card"
-            alt="Logo"
-            class="page-logo"
-            width="220"
-            height="36"
-          />
-          <p class="subtle">
-            {shortlistSlug
-              ? "Add more homes to this shortlist or remove existing ones."
-              : "Select homes, then create a clean client shortlist."}
-          </p>
-        </div>
+<body data-shortlist-slug={shortlistSlug}>
+  <div class="page">
+   <AdminSidebar active="listings" />
 
-        <form method="post" action="/api/auth/logout" class="logout-form">
-          <button type="submit" class="logout-btn">Log out</button>
-        </form>
-      </div>
-
-      <nav class="admin-nav">
-        <a href="/admin/buyers">Buyers</a>
-        <a href="/shortlists">Shortlists</a>
-        <a href="/listings" class="active">Listings</a>
-      </nav>
+    <main class="main">
+     
 
       <form class="filters" method="get" action="/listings">
         {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
@@ -1029,9 +957,10 @@ src="https://imagedelivery.net/Az3x6Ld2gouPPtikaqezkQ/7e9bec6d-9f98-48ad-253e-86
           {error && <div class="error">There was a problem loading listings.</div>}
         </div>
       )}
-    </main>
+       </main>
+  </div>
 
-    <div class="sheet-overlay" id="sheet-overlay"></div>
+<div class="sheet-overlay" id="sheet-overlay"></div>
 
     <aside class="sheet" id="preview-sheet" aria-hidden="true" aria-label="Listing preview">
       <div class="sheet-handle"></div>

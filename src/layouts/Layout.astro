@@ -1,23 +1,86 @@
+---
+interface Props {
+  title?: string;
+  accentColor?: string;
+}
+const { title, accentColor = "#2f6f73" } = Astro.props;
+---
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
-	</head>
-	<body>
-		<slot />
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+   <title>{title ?? "Astro Basics"}</title>
+<script define:vars={{ accentColor }} is:inline>
+      document.documentElement.style.setProperty("--accent", accentColor);
+    </script>
+  </head>
+
+  <body>
+    <slot />
+  </body>
 </html>
 
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
+<style is:global>
+  :root {
+   /* Derived colours */
+    --accent-light: color-mix(in srgb, var(--accent) 35%, white);
+    --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+
+    /* Theme-aware surfaces */
+--bg: color-mix(in srgb, var(--accent) 2%, #faf9f7);
+    /* Cards & sections */
+    --card-bg: #ffffff;
+    --card-soft: color-mix(in srgb, var(--accent) 4%, white);
+--section-bg: color-mix(in srgb, var(--accent) 1%, #fdfcfb);
+    /* Typography */
+    --ink: #1c1917;
+    --muted: #6b6560;
+
+    /* Borders */
+    --line: color-mix(in srgb, var(--accent) 10%, #dcdcdc);
+    --line-warm: color-mix(in srgb, var(--accent) 16%, #d0d0d0);
+  }
+
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  button,
+  select,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  .accent-bg {
+    background: var(--accent);
+    color: white;
+  }
+
+  .accent-text {
+    color: var(--accent);
+  }
+
+  .accent-soft {
+    background: var(--accent-soft);
+  }
 </style>

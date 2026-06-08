@@ -1,5 +1,6 @@
 ---
 import { createClient } from "@supabase/supabase-js";
+import AdminSidebar from "../../components/AdminSidebar.astro";
 
 export const prerender = false;
 
@@ -154,189 +155,358 @@ function inferSession(reactions) {
     <meta charset="utf-8" />
     <title>Intent Sessions</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+      :root {
+        --bg: #f7f4ef;
+        --surface: #fff;
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --ink: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --accent: #181614;
+        --radius: 16px;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
       body {
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
         margin: 0;
-        background: #f4efe7;
-        color: #181614;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
-      main {
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 28px 18px 80px;
+      .page {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
       }
 
-      h1 {
-        margin: 0 0 8px;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(2.4rem, 6vw, 5rem);
-        line-height: 0.92;
-        letter-spacing: -0.06em;
-        font-weight: 500;
+     
+      /* ── Main ── */
+      .main {
+        padding: 40px 48px 80px;
+        max-width: 1000px;
       }
 
-      .lede {
-        margin: 0 0 28px;
-        color: rgba(24,22,20,0.65);
-        font-size: 1.05rem;
+      .page-header {
+        margin-bottom: 32px;
       }
 
+      .page-header h1 {
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        margin: 0 0 6px;
+      }
+
+      .page-header p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0;
+      }
+
+      /* ── Session cards ── */
       .session {
-        background: #fff;
-        border: 1px solid rgba(24,22,20,0.14);
-        border-radius: 22px;
-        padding: 22px;
-        margin-bottom: 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+        overflow: hidden;
       }
 
-      .session-head {
+      .session-trigger {
+        width: 100%;
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        gap: 18px;
-        align-items: start;
-        margin-bottom: 18px;
+        padding: 18px 22px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        gap: 16px;
+      }
+
+      .session-trigger:hover { background: rgba(24,22,20,0.02); }
+
+      .session.is-open { background: #edeae3; }
+
+      .session-trigger-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .session-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+        font-size: 0.7rem;
+        font-weight: 900;
+        flex-shrink: 0;
+        color: var(--ink);
       }
 
       .session-title {
-        font-weight: 900;
-        font-size: 1.1rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--ink);
       }
 
       .session-meta {
-        color: rgba(24,22,20,0.62);
-        font-size: 0.9rem;
-        margin-top: 4px;
+        font-size: 0.76rem;
+        color: var(--muted);
+        margin-top: 1px;
       }
+
+      .session-chevron {
+        width: 20px;
+        height: 20px;
+        color: var(--muted);
+        transition: transform 0.22s ease;
+        flex-shrink: 0;
+      }
+
+      .session.is-open .session-chevron { transform: rotate(180deg); }
+
+      .session-body {
+        display: none;
+        padding: 0 22px 22px;
+        border-top: 1px solid var(--border);
+      }
+
+      .session.is-open .session-body { display: block; }
 
       .badges {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
       }
 
       .badge {
-        padding: 7px 11px;
+        padding: 5px 10px;
         border-radius: 999px;
-        font-size: 0.82rem;
-        font-weight: 850;
-        background: #f4efe7;
-        border: 1px solid rgba(24,22,20,0.08);
+        font-size: 0.76rem;
+        font-weight: 700;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+
+      /* ── Inner blocks ── */
+      .block {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
+
+      .block-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
       }
 
       .insight {
-        background: #fffaf1;
-        color: #181614;
-        border: 1px solid rgba(24,22,20,0.12);
-        border-radius: 16px;
+        margin-top: 16px;
         padding: 14px 16px;
-        margin-bottom: 18px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        font-size: 0.9rem;
+        color: var(--ink);
       }
 
       .columns {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
+        gap: 12px;
+        margin-top: 16px;
       }
 
       .col {
-        border: 1px solid rgba(24,22,20,0.12);
-        border-radius: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         padding: 14px;
-        background: #fffaf1;
+        background: var(--surface);
       }
 
-      .col h3 {
-        margin: 0 0 12px;
-        font-size: 0.9rem;
+      .col summary {
+        cursor: pointer;
+        list-style: none;
+        font-size: 0.76rem;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .col summary::-webkit-details-marker { display: none; }
+      .col summary::after { content: " +"; }
+      .col[open] summary::after { content: " −"; }
+
+      .col h3 {
+        margin: 0 0 10px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
       }
 
       .listing {
-        padding: 12px 0;
-        border-top: 1px solid rgba(24,22,20,0.12);
+        padding: 10px 0;
+        border-top: 1px solid var(--border);
+        font-size: 0.88rem;
       }
 
-      .listing:first-of-type {
-        border-top: 0;
-      }
-
-      .listing strong {
-        display: block;
-      }
-
-      .listing span {
-        display: block;
-        color: rgba(24,22,20,0.64);
-        font-size: 0.9rem;
-        margin-top: 3px;
-      }
+      .listing:first-of-type { border-top: 0; }
+      .listing strong { display: block; font-size: 0.9rem; }
+      .listing span { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
 
       .intent-open-btn {
         display: inline-flex;
-        margin-top: 8px;
-        padding: 6px 10px;
+        margin-top: 6px;
+        padding: 5px 10px;
         border-radius: 999px;
-        background: #fff;
-        color: #181614;
-        border: 1px solid rgba(24,22,20,0.16);
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--border-strong);
         font: inherit;
-        font-size: 0.74rem;
-        font-weight: 800;
+        font-size: 0.72rem;
+        font-weight: 700;
         cursor: pointer;
         text-decoration: none;
+        transition: background 0.14s;
       }
 
-      .intent-open-btn:hover {
-        background: #f4efe7;
-        color: #181614;
-      }
+      .intent-open-btn:hover { background: var(--bg); }
 
       .tag-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 8px;
+        gap: 5px;
+        margin-top: 7px;
       }
 
       .tag {
         display: inline-flex;
         align-items: center;
-        padding: 5px 9px;
+        padding: 4px 8px;
         border-radius: 999px;
-        background: #ffffff;
-        color: rgba(24,22,20,0.72);
-        border: 1px solid rgba(24,22,20,0.14);
-        font-size: 0.72rem;
-        font-weight: 750;
-        line-height: 1;
+        background: var(--bg);
+        color: var(--muted);
+        border: 1px solid var(--border);
+        font-size: 0.68rem;
+        font-weight: 700;
         text-transform: capitalize;
       }
 
       .empty {
-        color: rgba(24,22,20,0.5);
-        font-size: 0.92rem;
+        color: var(--muted);
+        font-size: 0.88rem;
+        padding: 8px 0;
       }
 
-      @media (max-width: 800px) {
-        .session-head,
-        .columns {
-          grid-template-columns: 1fr;
-          display: grid;
-        }
+      .readiness-score {
+        font-family: var(--font-display);
+        font-size: 2.8rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.04em;
+        margin-bottom: 4px;
       }
+
+      .readiness-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+
+      .scout-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+      }
+
+      .scout-cell strong {
+        display: block;
+        font-size: 0.8rem;
+        margin-bottom: 4px;
+      }
+
+      .scout-cell div {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .next-move {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 0.88rem;
+      }
+
+      .next-move strong {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .lead-block {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
+
+      .lead-block .block-label { color: #2d7a2d; }
+@media (max-width: 860px) {
+  .page { grid-template-columns: 1fr; }
+  .main { padding: 24px 20px 60px; }
+  .columns { grid-template-columns: 1fr; }
+}
     </style>
   </head>
 
   <body>
-    <main>
-      <h1>Intent sessions.</h1>
-      <p class="lede">
-        Anonymous buyer behaviour from intent pages - grouped by session and page.
-      </p>
+    <div class="page">
+   <AdminSidebar active="sessions" />
+
+      <main class="main">
+        <div class="page-header">
+          <h1>Intent sessions</h1>
+          <p>Anonymous buyer behaviour from intent pages — grouped by session and page.</p>
+        </div>
 
       {error && <p>Error loading sessions: {error.message}</p>}
 
@@ -347,34 +517,31 @@ function inferSession(reactions) {
         const city = session.city || "nanaimo";
 
         return (
-          <article class="session">
-            <div class="session-head">
-              <div>
-                <div class="session-title">{session.slug}</div>
-                <div class="session-meta">
-                  {city} · {session.session_id}
-                </div>
-                <div class="session-meta">
-                  Last activity: {fmtDate(session.last_activity)}
+       <article class="session">
+            <button type="button" class="session-trigger">
+              <div class="session-trigger-left">
+                <div class="session-icon">{countDecision(session.reactions, "love")}♥</div>
+                <div>
+                  <div class="session-title">{session.slug}</div>
+                  <div class="session-meta">{city} · Last active: {fmtDate(session.last_activity)}</div>
                 </div>
               </div>
-
               <div class="badges">
                 <span class="badge">{session.reactions.length} reactions</span>
                 <span class="badge">{countDecision(session.reactions, "love")} loves</span>
-                <span class="badge">{countDecision(session.reactions, "maybe")} maybes</span>
-                <span class="badge">{countDecision(session.reactions, "pass")} passes</span>
+                <span class="badge">{countDecision(session.reactions, "maybe")} maybe</span>
+                <span class="badge">{countDecision(session.reactions, "pass")} pass</span>
               </div>
-            </div>
+              <svg class="session-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
 
+            <div class="session-body">
             <div class="insight">
               {inferSession(session.reactions)}
             </div>
 
-            <div style="margin-bottom:18px;padding:16px;border-radius:16px;background:#fffaf1;border:1px solid rgba(24,22,20,0.12);">
-              <div style="margin-bottom:8px;color:#ff4d00;font-size:0.72rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;">
-                Price signal
-              </div>
+         <div class="block">
+              <div class="block-label">Price signal</div>
 
               <div style="font-weight:850;margin-bottom:10px;">
                 {inferPriceTrend(session.reactions)}
@@ -428,113 +595,51 @@ function inferSession(reactions) {
     );
 
   return (
-    <div
-      style="
-        margin-bottom:18px;
-        padding:20px;
-        border-radius:18px;
-        background:#fff;
-        border:1px solid rgba(24,22,20,0.12);
-      "
-    >
-      <div
-        style="
-          margin-bottom:8px;
-          color:#ff4d00;
-          font-size:0.72rem;
-          font-weight:900;
-          letter-spacing:.08em;
-          text-transform:uppercase;
-        "
-      >
-        Buyer Scout Report
-      </div>
-
-      <div
-        style="
-          font-size:1.4rem;
-          font-weight:900;
-          margin-bottom:14px;
-        "
-      >
-        Buyer Readiness: {readiness}/100
-      </div>
-
-      <div
-        style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-          gap:16px;
-        "
-      >
-        <div>
-          <strong>Searching</strong>
-          <div style="margin-top:6px;color:rgba(24,22,20,.68);">
-            {session.slug.replaceAll("-", " ")}
+   <div class="block">
+        <div class="block-label">Buyer Scout Report</div>
+        <div class="readiness-score">{readiness}/100</div>
+        <div class="readiness-label">Buyer Readiness</div>
+        <div class="scout-grid">
+          <div class="scout-cell">
+            <strong>Searching</strong>
+            <div>{(session.slug || "").replaceAll("-", " ")}</div>
+          </div>
+          <div class="scout-cell">
+            <strong>Target Price</strong>
+            <div>{priceRange(loves) || "Unknown"}</div>
+          </div>
+          <div class="scout-cell">
+            <strong>Strongest Preferences</strong>
+            <div>{strongestTags.length ? strongestTags.map(([tag]) => <div>✓ {tag.replaceAll("_", " ")}</div>) : <div>No clear preference yet</div>}</div>
+          </div>
+          <div class="scout-cell">
+            <strong>Top Areas</strong>
+            <div>{topAreas.length ? topAreas.map(([area]) => <div>{area}</div>) : <div>Still exploring</div>}</div>
           </div>
         </div>
-
-        <div>
-          <strong>Strongest Preferences</strong>
-
-          <div style="margin-top:6px;">
-            {strongestTags.length
-              ? strongestTags.map(([tag]) => (
-                  <div>✓ {tag.replaceAll("_", " ")}</div>
-                ))
-              : <div>No clear preference yet</div>}
-          </div>
-        </div>
-
-        <div>
-          <strong>Top Areas</strong>
-
-          <div style="margin-top:6px;">
-            {topAreas.length
-              ? topAreas.map(([area]) => (
-                  <div>{area}</div>
-                ))
-              : <div>Still exploring</div>}
-          </div>
-        </div>
-
-        <div>
-          <strong>Suggested Action</strong>
-
-          <div style="margin-top:6px;color:rgba(24,22,20,.68);">
-            {loves.length >= 3
-              ? "Strong engagement. Send matching listings and invite for viewing."
-              : maybes.length >= 3
-              ? "Continue nurturing and surface stronger matches."
-              : "Gather more behaviour before outreach."}
-          </div>
+        <div class="next-move">
+          <strong>Suggested Next Move</strong>
+          {loves.length >= 3 ? "Book showing for top 3 matches." : maybes.length >= 3 ? "Refine search and surface stronger matches." : "Gather more behaviour."}
         </div>
       </div>
-    </div>
   );
 })()}
 
 {session.lead && (
-              <div style="margin-bottom:18px;padding:16px;border-radius:16px;background:#fff3e8;border:1px solid rgba(255,77,0,0.18);">
-                <div style="margin-bottom:8px;color:#ff4d00;font-size:0.72rem;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;">
-                  Lead captured
-                </div>
-
-                <div style="font-weight:800;">
-                  {session.lead.name || "Unnamed buyer"}
-                </div>
-
-                {session.lead.email && <div style="margin-top:4px;">{session.lead.email}</div>}
-                {session.lead.phone && <div style="margin-top:4px;">{session.lead.phone}</div>}
+              <div class="lead-block">
+                <div class="block-label">Lead captured</div>
+                <div style="font-weight:700;">{session.lead.name || "Unnamed buyer"}</div>
+                {session.lead.email && <div style="color:var(--muted);margin-top:4px;">{session.lead.email}</div>}
+                {session.lead.phone && <div style="color:var(--muted);margin-top:4px;">{session.lead.phone}</div>}
               </div>
             )}
 
             <div class="columns">
-              <section class="col">
-                <h3>Loved</h3>
-
-                {loves.length ? loves.map((r) => (
-                  <div class="listing">
+        <details class="col">
+<summary>Loved Listings ({loves.length})</summary>
+{loves.length ? loves.slice(0, 10).map((r) => (
+  
+  <div class="listing">
                     <strong>{r.address}</strong>
                     <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
                     <span>{r.area}</span>
@@ -555,13 +660,19 @@ href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || 
                     )}
                   </div>
                 )) : <div class="empty">No loves yet.</div>}
-              </section>
+                {loves.length > 10 && (
+  <div class="empty">
+    + {loves.length - 10} more loved listings
+  </div>
+)}
+              </details>
 
-              <section class="col">
-                <h3>Kinda liked</h3>
-
-                {maybes.length ? maybes.map((r) => (
-                  <div class="listing">
+              <details class="col">
+<h3>
+  <a href={`/${city}/${session.slug}?intent=maybe`}>
+    Kinda Liked ({maybes.length})
+  </a>
+</h3>{maybes.length ? maybes.slice(0, 10).map((r) => (                  <div class="listing">
                     <strong>{r.address}</strong>
                     <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
                     <span>{r.area}</span>
@@ -581,13 +692,21 @@ href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || 
                       </div>
                     )}
                   </div>
-                )) : <div class="empty">No maybes yet.</div>}
-              </section>
+             )) : <div class="empty">No maybes yet.</div>}
+
+{maybes.length > 10 && (
+  <div class="empty">
+    + {maybes.length - 10} more kinda liked listings
+  </div>
+)}
+</section>
 
               <section class="col">
-                <h3>Not for me</h3>
-
-                {passes.length ? passes.map((r) => (
+<h3>
+  <a href={`/${city}/${session.slug}?intent=pass`}>
+    Passed ({passes.length})
+  </a>
+</h3>              {passes.length ? passes.slice(0, 10).map((r) => (
                   <div class="listing">
                     <strong>{r.address}</strong>
                     <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
@@ -600,12 +719,29 @@ href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || 
                       Open listing
                     </a>
                   </div>
-                )) : <div class="empty">No passes yet.</div>}
-              </section>
+           )) : <div class="empty">No passes yet.</div>}
+
+{passes.length > 10 && (
+  <div class="empty">
+    + {passes.length - 10} more passed listings
+  </div>
+)}
+</section>
             </div>
+         </div>
           </article>
         );
       })}
-    </main>
+</main>
+    </div>
+
+    <script>
+      document.querySelectorAll(".session-trigger").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const session = btn.closest(".session");
+          session.classList.toggle("is-open");
+        });
+      });
+    </script>
   </body>
 </html>

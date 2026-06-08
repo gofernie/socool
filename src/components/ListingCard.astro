@@ -5,7 +5,33 @@ type Props = {
 };
 
 const { listing, image } = Astro.props;
+const normalizeListingImageUrl = (value: any) => {
+  if (!value) return "";
 
+  const raw =
+    typeof value === "string"
+      ? value
+      : value.highRes ||
+        value.mediumRes ||
+        value.lowRes ||
+        value.url ||
+        value.src ||
+        value.href ||
+        value.path ||
+        "";
+
+  if (!raw) return "";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+
+  const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
+
+  if (cleaned.startsWith("/vreb/")) {
+    return `https://cdn.repliers.io${cleaned}`;
+  }
+
+  return cleaned;
+};
 const price = `$${Number(listing.price || 0).toLocaleString()}`;
 const address = listing.address || "Address available";
 const beds = listing.beds || 0;
@@ -25,8 +51,27 @@ const cityLabel = String(city).replace(/\b\w/g, (char) => char.toUpperCase());
   data-address={address}
   data-meta={`${beds || "-"} bed · ${baths || "-"} bath`}
   data-image={image}
-  data-images={JSON.stringify([image].filter(Boolean))}
-  data-beds={String(beds || "")}
+data-images={JSON.stringify(
+  [
+    ...(Array.isArray(listing.images)
+      ? listing.images.map((img) =>
+          typeof img === "string"
+            ? normalizeListingImageUrl(img)
+            : normalizeListingImageUrl(
+                img?.highRes ||
+                  img?.mediumRes ||
+                  img?.lowRes ||
+                  img?.url ||
+                  img?.src ||
+                  img?.href ||
+                  img?.path ||
+                  ""
+              )
+        )
+      : []),
+    image,
+  ].filter(Boolean)
+)}  data-beds={String(beds || "")}
   data-baths={String(baths || "")}
   data-sqft={String(sqft || "")}
   data-description={listing.description || ""}
@@ -111,17 +156,17 @@ const cityLabel = String(city).replace(/\b\w/g, (char) => char.toUpperCase());
 .price {
   font-size: 1.34rem;
   line-height: 1.1;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: -0.035em;
 }
 
-  .address {
-    margin-bottom: 2px;
-    color: var(--ink);
-    line-height: 1.35;
-    font-size: 0.9rem;
-    font-weight: 850;
-  }
+.address {
+  margin-bottom: 2px;
+  color: var(--ink);
+  line-height: 1.35;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
 
   .card-city {
     margin-bottom: 14px;
@@ -131,13 +176,13 @@ const cityLabel = String(city).replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
   .meta {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    font-size: 0.86rem;
-    color: var(--ink-soft);
-    font-weight: 750;
-  }
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
 
   .meta span {
     display: inline-flex;
@@ -156,7 +201,7 @@ const cityLabel = String(city).replace(/\b\w/g, (char) => char.toUpperCase());
   padding: 5px 9px;
   border-radius: 999px;
   font-size: 0.66rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0.05em;
   text-transform: uppercase;

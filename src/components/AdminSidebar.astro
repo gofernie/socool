@@ -1,0 +1,113 @@
+---
+const { active = "" } = Astro.props;
+
+const navItems = [
+  { key: "pages", label: "All pages", href: "/admin/intent-pages" },
+  { key: "new-page", label: "+ Create intent page", href: "/admin/intent-pages/new" },
+  { key: "agent", label: "Agent editor", href: "/admin/agent-page" },
+  { key: "sessions", label: "Intent sessions", href: "/admin/intent-sessions" },
+  { key: "shortlists", label: "Shortlists", href: "/shortlists" },
+  { key: "create-shortlist", label: "Create shortlist", href: "/listings" },
+];
+---
+
+<aside class="sidebar">
+  <div class="sidebar__logo">
+    Agent Editor
+    <small>Chris Crump</small>
+  </div>
+
+  {navItems.map((item) => (
+    <a href={item.href} class:list={[{ active: active === item.key }]}>
+      {item.label}
+    </a>
+  ))}
+  <slot />
+</aside>
+
+<style>
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    background: #181614;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 20px;
+    gap: 6px;
+    overflow-y: auto;
+  }
+
+  .sidebar__logo {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-size: 1.3rem;
+    color: #fff;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    line-height: 1.1;
+  }
+
+  .sidebar__logo small {
+    display: block;
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.42);
+    margin-top: 4px;
+  }
+
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: auto;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: transparent;
+    color: rgba(255,255,255,0.58);
+    text-decoration: none;
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-size: 0.84rem;
+    font-weight: 500;
+  }
+
+  .sidebar a:hover {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+  }
+
+  .sidebar a.active {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+  }
+
+    :global(.sidebar__section-links) {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  :global(.sidebar__section-links a) {
+    font-size: 0.78rem;
+    padding: 7px 12px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  :global(.sidebar__section-links a:hover) {
+    color: rgba(255,255,255,0.8);
+  }
+
+  :global(.sidebar__section-links a.active) {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border-left: 2px solid rgba(255,255,255,0.5);
+    padding-left: 10px;
+  }
+</style>

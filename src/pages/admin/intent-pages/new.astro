@@ -1,5 +1,6 @@
 ---
 import { createClient } from "@supabase/supabase-js";
+import AdminSidebar from "../../../components/AdminSidebar.astro";
 export const prerender = false;
 
 const supabase = createClient(
@@ -103,11 +104,10 @@ if (Astro.request.method === "POST") {
       ? TEMPLATE_FEATURES[template as keyof typeof TEMPLATE_FEATURES] || []
       : [];
 
-  const slugParts =
+ const slugParts =
     pageType === "category"
-      ? [area || city, propertyType ? pluralType(propertyType) : "homes", priceLabel]
-      : [area || city, template, propertyType ? pluralType(propertyType) : "", priceLabel];
-
+      ? [area || "homes", propertyType ? pluralType(propertyType) : "homes", priceLabel]
+      : [area || "homes", template, propertyType ? pluralType(propertyType) : "", priceLabel];
   const slug = slugify(slugParts.filter(Boolean).join(" "));
 
   const heroHeading =
@@ -140,7 +140,14 @@ if (Astro.request.method === "POST") {
         ]
           .filter(Boolean)
           .join(" ");
+const { data: existingPage } = await supabase
+  .from("intent_pages")
+  .select("id, city, slug")
+  .eq("slug", slug)
+  .maybeSingle();
 
+if (existingPage) {
+message = `A page with this URL already exists.||/${existingPage.city}/${existingPage.slug}||/admin/intent-pages/${existingPage.id}/edit`;} else {
   const { data: page, error } = await supabase
     .from("intent_pages")
     .insert({
@@ -171,116 +178,122 @@ if (Astro.request.method === "POST") {
       );
     }
 
-    return Astro.redirect("/admin/agent-page");
+return Astro.redirect("/admin/intent-pages");
   }
+}
 }
 ---
 
 <html>
   <head>
-    <title>Create Intent Page</title>
-
+   <title>Create Intent Page</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+     *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+      :root {
+        --bg: #f7f4ef;
+        --surface: #fff;
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --ink: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --radius: 16px;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
       body {
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f4efe7;
-        color: #181614;
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
       }
 
-      .shell {
-        width: min(900px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 44px 0;
+      .page {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
       }
 
-      h1 {
-        margin: 0;
-        font-size: 44px;
-        letter-spacing: -0.06em;
+      .main {
+        padding: 40px 48px 80px;
+        max-width: 900px;
+        min-width: 0;
+      }
+
+      .page-header {
+        margin-bottom: 36px;
+      }
+
+      .page-header h1 {
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
       }
 
       .intro {
-        max-width: 680px;
-        margin: 10px 0 26px;
-        color: rgba(24, 22, 20, 0.62);
+        color: var(--muted);
+        margin-top: 6px;
+        font-size: 0.9rem;
         line-height: 1.55;
       }
 
-   .admin-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 26px;
-}
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+      }
 
-.admin-nav a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid rgba(24,22,20,0.14);
-  background: #fffaf1;
-  color: #181614;
-  font-size: 0.9rem;
-  font-weight: 900;
-  text-decoration: none;
-}
+      label {
+        display: block;
+        margin: 18px 0 6px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
 
-.admin-nav a:hover,
-.admin-nav a.is-active {
-  background: #181614;
-  color: white;
-  border-color: #181614;
-}
+      input,
+      select {
+        width: 100%;
+        max-width: 100%;
+        padding: 10px 13px;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.9rem;
+        background: var(--surface);
+        color: var(--ink);
+        transition: border-color 0.14s, box-shadow 0.14s;
+      }
 
-.card {
-  background: #fffaf1;
-  border: 1px solid rgba(24, 22, 20, 0.12);
-  border-radius: 24px;
-  padding: 24px;
-}
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
+      }
 
-label {
-  display: block;
-  margin: 18px 0 6px;
-  font-weight: 800;
-}
-input,
-select {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 13px 14px;
-  border: 1px solid rgba(24, 22, 20, 0.18);
-  border-radius: 14px;
-  font: inherit;
-  background: white;
-}
+      .grid-2 {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+      }
 
-    .grid-2 {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.grid-2 > div {
-  min-width: 0;
-}
-
-.grid-2 input,
-.grid-2 select {
-  width: 100%;
-  max-width: 100%;
-}
+      .grid-2 > div { min-width: 0; }
 
       .page-type-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        margin-top: 14px;
+        gap: 12px;
+        margin-top: 12px;
       }
 
       .page-type-option {
@@ -295,155 +308,179 @@ select {
       }
 
       .page-type-card {
-        min-height: 132px;
-        padding: 18px;
-        border-radius: 18px;
-        border: 2px solid rgba(24, 22, 20, 0.12);
-        background: white;
-        transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        min-height: 120px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        background: var(--surface);
+        transition: border-color 0.18s, box-shadow 0.18s;
       }
 
       .page-type-card strong {
         display: block;
-        margin-bottom: 8px;
-        font-size: 1rem;
+        margin-bottom: 6px;
+        font-size: 0.92rem;
+        font-weight: 700;
       }
 
       .page-type-card span {
         display: block;
-        color: rgba(24, 22, 20, 0.62);
-        font-size: 0.9rem;
+        color: var(--muted);
+        font-size: 0.84rem;
         line-height: 1.45;
       }
 
       .page-type-option input:checked + .page-type-card {
-        border-color: #181614;
-        box-shadow: 0 0 0 4px rgba(24, 22, 20, 0.1);
-        transform: translateY(-1px);
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.10);
       }
 
-      .intent-only[hidden] {
-        display: none;
-      }
+      .intent-only[hidden] { display: none; }
 
       .preview-box {
-        margin-top: 24px;
-        padding: 22px;
-        border-radius: 20px;
-        background: white;
-        border: 1px solid rgba(24, 22, 20, 0.12);
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
       }
 
       .preview-kicker {
-        margin-bottom: 10px;
-        color: #ff4d00;
-        font-size: 0.76rem;
-        font-weight: 900;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
       .preview-title {
         margin: 0;
-        font-size: 1.45rem;
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 400;
         line-height: 1.1;
-        letter-spacing: -0.04em;
+        letter-spacing: -0.03em;
       }
 
       .preview-copy {
-        margin: 10px 0 16px;
-        color: rgba(24, 22, 20, 0.68);
+        margin: 8px 0 14px;
+        color: var(--muted);
+        font-size: 0.88rem;
         line-height: 1.5;
       }
 
       .preview-meta {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
       .preview-meta span {
         display: inline-flex;
         align-items: center;
-        min-height: 28px;
-        padding: 0 10px;
+        min-height: 24px;
+        padding: 0 9px;
         border-radius: 999px;
-        background: #f4efe7;
-        color: #6f5a38;
-        font-size: 0.78rem;
-        font-weight: 800;
+        background: rgba(24,22,20,0.07);
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
       }
 
       .actions {
         display: flex;
         gap: 10px;
         margin-top: 24px;
+        padding-top: 22px;
+        border-top: 1px solid var(--border);
       }
 
-      button,
-      a {
+      .btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        min-height: 44px;
-        padding: 0 18px;
+        gap: 7px;
+        padding: 11px 20px;
         border-radius: 999px;
-        border: 0;
-        background: #181614;
-        color: white;
+        border: 1px solid transparent;
         font: inherit;
-        font-weight: 900;
+        font-size: 0.86rem;
+        font-weight: 700;
         cursor: pointer;
         text-decoration: none;
+        transition: background 0.14s, color 0.14s, border-color 0.14s;
       }
 
-      a {
-        background: white;
-        color: #181614;
-        border: 1px solid rgba(24, 22, 20, 0.14);
+     .btn--primary {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
       }
+
+      .btn--primary:hover { background: #333; border-color: #333; }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--border-strong);
+      }
+
+      .btn--ghost:hover { background: rgba(24,22,20,0.05); }
 
       .error {
-        color: #b42318;
-        font-weight: 800;
+        color: #b33;
+        font-weight: 700;
+        margin-bottom: 16px;
       }
 
       .hint {
-        margin: 8px 0 0;
-        color: rgba(24, 22, 20, 0.58);
-        font-size: 0.9rem;
-        line-height: 1.45;
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.4;
       }
 
-      @media (max-width: 720px) {
-        .grid-2,
-        .page-type-grid {
-          grid-template-columns: 1fr;
-        }
-
-        h1 {
-          font-size: 36px;
-        }
+      @media (max-width: 860px) {
+        .page { grid-template-columns: 1fr; }
+        .main { padding: 24px 20px 60px; }
+        .grid-2, .page-type-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
 
 <body>
-  <main class="shell">
-    <nav class="admin-nav">
-      <a href="/admin/intent-pages">All pages</a>
-      <a class="is-active" href="/admin/intent-pages/new">Create new</a>
-      <a href="/admin/agent-page">Agent editor</a>
-    </nav>
+  <div class="page">
+<AdminSidebar active="new-page" />
+    <main class="main">
 
-    <h1>Create intent page</h1>
+   <div class="page-header">
+        <h1>Create intent page</h1>
+        <p class="intro">
+          Create broad category-style pages or narrower buyer-intent pages from the same generator.
+          Both use the same public intent page experience, modal, reactions, refine chips, and agent intelligence.
+        </p>
+      </div>
 
-      <p class="intro">
-        Create broad category-style pages or narrower buyer-intent pages from the same generator.
-        Both use the same public intent page experience, modal, reactions, refine chips, and agent intelligence.
-      </p>
+    {message && (
+  <p class="error">
+    {message.split("||")[0]}
 
-      {message && <p class="error">{message}</p>}
+    {message.includes("||") && (
+      <>
+        {" "}
+        <a href={message.split("||")[1]} target="_blank">
+          Open page
+        </a>
+
+        {" | "}
+
+        <a href={message.split("||")[2]}>
+          Edit page
+        </a>
+      </>
+    )}
+  </p>
+)}
 
       <form method="POST" class="card" id="intentForm">
         <label>Page type</label>
@@ -489,9 +526,11 @@ select {
         </div>
 
         <div class="grid-2">
-          <div>
+        <div>
             <label>City</label>
-            <input name="city" id="cityInput" value="nanaimo" required />
+            <select name="city" id="cityInput">
+              <option value="nanaimo">Nanaimo</option>
+            </select>
           </div>
 
           <div>
@@ -546,9 +585,9 @@ select {
           </div>
         </div>
 
-        <div class="actions">
-          <button type="submit">Create page</button>
-          <a href="/admin/agent-page">Cancel</a>
+       <div class="actions">
+          <button type="submit" class="btn btn--primary">Create page</button>
+          <a href="/admin/agent-page" class="btn btn--ghost">Cancel</a>
         </div>
       </form>
     </main>
@@ -689,6 +728,72 @@ select {
       });
 
       updatePreview();
+    updatePreview();
+
+     async function loadCities() { // returns promise implicitly via async
+        try {
+          const res = await fetch("/api/listing-filters");
+          const json = await res.json();
+          const cities = Array.isArray(json?.cities) ? json.cities : [];
+          const select = document.getElementById("cityInput");
+          if (!select || !cities.length) return;
+          const current = select.value;
+          select.innerHTML = "";
+          cities.forEach((item) => {
+            const value = String(item?.value || item || "").trim().toLowerCase();
+            const label = item?.label || value.replace(/\b\w/g, (c) => c.toUpperCase());
+            if (!value) return;
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = label;
+            if (value === current) opt.selected = true;
+            select.appendChild(opt);
+          });
+          updatePreview();
+        } catch (err) {
+          console.error("Could not load cities:", err);
+        }
+      }
+
+      loadCities();
+
+      async function loadAreas(city) {
+        try {
+          const res = await fetch("/api/listing-filters");
+          const json = await res.json();
+          const areasByCity = json?.areasByCity || {};
+          const cityKey = Object.keys(areasByCity).find(
+            (k) => k.toLowerCase() === city.toLowerCase()
+          );
+          const areas = cityKey ? areasByCity[cityKey] : [];
+          const select = document.getElementById("areaInput");
+          if (!select) return;
+          select.innerHTML = `<option value="">City-wide</option>`;
+          areas.forEach((item) => {
+            const value = String(item?.value || item || "").trim().toLowerCase();
+            const label = item?.label || value.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+            if (!value) return;
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = label;
+            select.appendChild(opt);
+          });
+        } catch (err) {
+          console.error("Could not load areas:", err);
+        }
+      }
+
+      document.getElementById("cityInput")?.addEventListener("change", (e) => {
+        loadAreas(e.target.value);
+        updatePreview();
+      });
+
+      // Load areas for default city on page load
+      loadCities().then(() => {
+        const city = document.getElementById("cityInput")?.value || "nanaimo";
+        loadAreas(city);
+      });
     </script>
-  </body>
+  </div>
+</body>
 </html>

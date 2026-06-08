@@ -245,29 +245,7 @@ if (features.length) {
 }
 
   const { data, error, count } = await query;
-const filteredData = (data || []).filter((listing: any) => {    const text = [
-      listing.normalized_type,
-      listing.property_type,
-      listing.propertyType,
-      listing.type,
-      listing.details?.propertyType,
-      listing.raw?.details?.propertyType,
-      listing.description,
-      listing.publicRemarks,
-      listing.remarks,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return (
-      !text.includes("manufactured") &&
-      !text.includes("mobile") &&
-      !text.includes("modular") &&
-      !text.includes("park model") &&
-      !text.includes("mfd")
-    );
-  });
+const filteredData = data || [];
   if (error) {
     return new Response(
       JSON.stringify({ error: error.message, listings: [], count: 0 }),

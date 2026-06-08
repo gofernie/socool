@@ -1,9 +1,13 @@
 ---
 import { createClient } from "@supabase/supabase-js";
+import Layout from "../../layouts/Layout.astro";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../components/IntentModalController.astro";
-export const prerender = false;
+import SiteNav from "../../components/SiteNav.astro";
+import "../../styles/intent-modal.css";
+import "../../styles/page-hero.css";
 
+export const prerender = false;
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
@@ -12,12 +16,21 @@ const supabase = createClient(
 const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 const slug = Astro.params.slug || "";
+const city = Astro.params.city || "nanaimo";
+
+const agentRes = await supabase
+  .from("agent_pages")
+  .select("data")
+  .eq("slug", "chris-crump")
+  .single();
+
+const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
 
 const { data: page, error: pageError } = await supabase
   .from("intent_pages")
   .select("*")
   .eq("slug", slug)
-  .eq("city", "nanaimo")
+  .eq("city", city)
   .single();
 
 if (!page || pageError) {
@@ -30,12 +43,27 @@ const { data: featureRows } = await supabase
   .eq("intent_page_id", page.id);
 
 const features = (featureRows || []).map((f) => f.feature_key);
+const { data: navRows = [] } = await supabase
+  .from("listing_rows")
+  .select("normalized_area, normalized_type")
+  .eq("normalized_city", city)
+  .not("normalized_area", "is", null);
 
+const areas = [...new Set(
+  navRows
+    .map((row) => String(row.normalized_area || "").trim())
+    .filter((item) => item && item !== "unknown")
+)].sort((a, b) => a.localeCompare(b));
+
+const propertyTypes = [...new Set(
+  navRows
+    .map((row) => String(row.normalized_type || "").trim())
+    .filter((item) => item && item !== "unknown")
+)].sort((a, b) => a.localeCompare(b));
 const { data: areaIntentPages } = await supabase
   .from("intent_pages")
   .select("area, slug, hero_heading")
-  .eq("city", "nanaimo")
-  .eq("property_type", page.property_type)
+ .eq("city", city)
   .eq("is_published", true)
   .not("area", "is", null)
   .order("area", { ascending: true });
@@ -43,7 +71,7 @@ let query = supabase
   .from("listing_rows")
   .select("*")
   .eq("status", "A")
-  .eq("normalized_city", "nanaimo");
+  .eq("normalized_city", city);
 
 if (page.area) {
   const normalizedPageArea = String(page.area)
@@ -112,10 +140,61 @@ console.log("INTENT QUERY DEBUG", {
   priceMax: page.price_max,
 });
 
-const { data: listings, error: listingsError } = await query
+const { data: rawListings, error: listingsError } = await query
   .order("price", { ascending: false })
   .limit(200);
 
+let listings = rawListings || [];
+
+if (features.includes("waterfront")) {
+  listings = listings.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.address,
+      listing.normalized_area,
+      listing.area,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("waterfront") ||
+      text.includes("oceanfront") ||
+      text.includes("lakefront") ||
+      text.includes("shoreline") ||
+      text.includes("beachfront") ||
+      text.includes("walk-on waterfront") ||
+      text.includes("walk on waterfront") ||
+      text.includes("water's edge") ||
+      text.includes("waters edge") ||
+      text.includes("dock") ||
+      text.includes("moorage")
+    );
+  });
+}
+let filteredListings = listings || [];
+
+if (features.includes("waterfront")) {
+  filteredListings = filteredListings.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.address,
+      listing.area,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("waterfront") ||
+      text.includes("oceanfront") ||
+      text.includes("shoreline") ||
+      text.includes("beachfront") ||
+      text.includes("walk-on waterfront") ||
+      text.includes("dock") ||
+      text.includes("moorage")
+    );
+  });
+}
 console.log("INTENT LISTINGS DEBUG", {
   slug,
   count: listings?.length || 0,
@@ -201,27 +280,28 @@ function buildSeoFallback(page: any) {
   const heading = page.hero_heading || `${area} ${type}`;
 
   return {
-    heading: `About ${heading}`,
-    intro: `${area} continues to attract buyers searching for ${type} in Nanaimo. This area offers a range of housing opportunities and remains popular with buyers looking to balance lifestyle, location, and value.`,
-    body: `The listings shown above update automatically from the MLS® system and are filtered to match this search profile. As new homes come to market, this page helps surface opportunities that fit the search intent behind ${heading.toLowerCase()}.`,
-    long: `Buyers exploring ${area} often compare price, location, layout, outdoor space, and long-term potential. This page is designed to make that process easier by combining active listings with a guided discovery experience.
+    heading: `${heading} for Sale`,
+intro: `Browse active ${heading.toLowerCase()} currently available on the MLS®. Explore listings, compare options, and discover homes that match your goals and budget.`,    body: `${area} remains a popular destination for buyers looking for ${type}. Listings update automatically from the MLS® system, helping buyers monitor inventory, pricing, and new opportunities as they come to market.`,
+    long: `${area} offers a variety of housing opportunities that appeal to different lifestyles and budgets. Buyers often compare location, home style, amenities, outdoor space, and long-term value when evaluating available properties.
 
-As preferences become clearer through browsing and filtering, the page can help surface homes that may deserve closer consideration.`,
+This page combines active MLS® listings with interactive search tools that help surface homes worth a closer look. As new listings become available, inventory and pricing can change quickly, making it useful to revisit this page regularly.`,
   };
 }
 
 const seo = buildSeoFallback(page);
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>{page.seo_title}</title>
-    <meta name="description" content={page.intro_copy} />
+<Layout title={page.seo_title} accentColor={accentColor}>
+  <meta
+  name="description"
+  content={page.seo_intro || page.intro_copy}
+  slot="head"
+/>
 {
   Array.isArray(page.faq_json) && page.faq_json.length > 0 && (
     <script
       type="application/ld+json"
+      slot="head"
       set:html={JSON.stringify({
         "@context": "https://schema.org",
         "@type": "FAQPage",
@@ -237,28 +317,21 @@ const seo = buildSeoFallback(page);
     />
   )
 }
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" />
-    <style>
+<link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" slot="head" />
+
+  <style>
    :root {
-        --bg: #f5f2ed;
-        --surface: #fdfcfa;
-        --surface-soft: #f9f6f1;
-        --ink: #1c1917;
+        --surface-soft: color-mix(in srgb, var(--surface) 92%, var(--accent-soft));
         --ink-soft: #3d3935;
-        --muted: #6b6560;
         --soft: #9c9590;
-        --line: #e8e3dc;
-        --line-warm: #ddd8d0;
-        --accent: #8b6f47;
-        --accent-light: #c4a882;
-        --accent-soft: #f7f0e6;
-        --hero-bg: #fdfcfa;
-        --hero-ink: #1c1917;
-        --hero-muted: #6b6560;
+
+        --hero-bg: var(--surface);
+        --hero-ink: var(--ink);
+        --hero-muted: var(--muted);
+
         --radius-lg: 20px;
         --radius-md: 12px;
         --serif: "Lora", Georgia, serif;
@@ -293,77 +366,36 @@ const seo = buildSeoFallback(page);
   padding-top: 28px;
 }
 
-.intent-hero {
-  position: relative;
-  overflow: hidden;
-  min-height: 360px;
-  padding: 56px 0 46px;
-  margin-bottom: 0;
-  background:
-    linear-gradient(90deg, rgba(253,252,250,0.98) 0%, rgba(253,252,250,0.92) 42%, rgba(253,252,250,0.42) 62%, rgba(253,252,250,0.02) 100%),
-    url("https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1800&q=80");
-  background-size: cover;
-  background-position: center right;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: none;
-}
 
-     .intent-hero::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(circle at top right, rgba(139,111,71,0.12), transparent 36%),
-          linear-gradient(135deg, rgba(196,168,130,0.1), transparent 40%);
-        pointer-events: none;
-      }
 
-  .hero-inner {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: min(1400px, calc(100% - 80px));
-  margin: 0 auto;
-  max-width: none;
-}
+   
 
-      .eyebrow {
-        display: inline-flex;
-        margin-bottom: 18px;
-        padding: 7px 12px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.08);
-        border: 1px solid rgba(255,255,255,.18);
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-        color: var(--hero-muted);
-      }
 
-     .intent-hero h1 {
-  max-width: 760px;
-  margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(3.8rem, 7vw, 6rem);
-  line-height: 0.95;
-  letter-spacing: -0.06em;
-  font-weight: 500;
-}
+
+  
+
+
+
+
 
 .accent-dot {
   color: var(--accent);
 }
-
-.hero-copy {
-  max-width: 760px;
-  margin: 22px 0 0;
-  color: var(--hero-muted);
-  font-size: clamp(1rem, 1.8vw, 1.22rem);
-  line-height: 1.55;
+.hero-market-meta {
+  display: flex;
+  gap: 18px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
 }
+
+.hero-market-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 
  .hero-side-card {
         align-self: end;
@@ -456,83 +488,85 @@ const seo = buildSeoFallback(page);
   margin-bottom: 26px;
 }
 
+.intent-secondary-nav {
+  width: 100%;
+  background: #faf9f7;
+  border-top: 0;
+  border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+  box-shadow: none;
+}
+
+.intent-secondary-nav__inner {
+  width: min(1400px, calc(100% - 80px));
+  margin: 0 auto;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+}
+
 .intent-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin: 0 0 26px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+}
+
+.intent-controls .view-toggle,
+.intent-controls select {
+  height: 34px;
+  min-height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line-warm);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .intent-controls .view-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
   margin: 0;
-  padding: 4px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.08);
 }
 
 .intent-controls .view-btn {
-  min-height: 36px;
-  padding: 0 16px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 13px;
   border-radius: 999px;
-  color: var(--ink);
-  font-size: 0.88rem;
-}
-
-.intent-controls .view-btn + .view-btn {
-  border-left: 0;
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .intent-controls .view-btn.active {
-  background: #eadcc9;
-  color: var(--ink);
-}
-
-.intent-controls select,
-.intent-controls .clear-filter {
-  min-height: 44px;
-  padding: 0 34px 0 18px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
-  background: #fff;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 850;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
+  background: var(--accent);
+  color: #fff;
 }
 
 .intent-controls select {
   appearance: none;
   -webkit-appearance: none;
-  min-width: 180px;
-  padding-right: 46px !important;
+  min-width: 150px;
+  padding: 0 40px 0 15px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
   background-image:
     linear-gradient(45deg, transparent 50%, var(--ink) 50%),
     linear-gradient(135deg, var(--ink) 50%, transparent 50%);
   background-position:
-    calc(100% - 22px) 19px,
-    calc(100% - 16px) 19px;
+    calc(100% - 18px) 14px,
+    calc(100% - 12px) 14px;
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
 }
 
-.area-filter-select,
-.price-filter-select {
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
-  background: #fff;
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 850;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.07);
-  cursor: pointer;
-}
 
      .context-card {
   display: contents;
@@ -563,9 +597,9 @@ const seo = buildSeoFallback(page);
 
  .area-filter.active,
 .price-filter.active {
-        background: var(--ink);
-        color: white;
-        border-color: var(--ink);
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
       }
 
       .context-list {
@@ -623,9 +657,9 @@ const seo = buildSeoFallback(page);
         border-left: 1px solid var(--line);
       }
 
-      .view-btn.active {
-        background: var(--ink);
-        color: white;
+         .view-btn.active {
+        background: var(--accent);
+        color: #fff;
       }
 
       .intent-map {
@@ -635,12 +669,12 @@ const seo = buildSeoFallback(page);
         border-radius: 18px;
         overflow: hidden;
         margin-bottom: 22px;
-        background: #e8e4de;
+                background: var(--accent-soft);
       }
 
-      .grid {
+    .grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 18px;
 }
 
@@ -670,7 +704,7 @@ body.is-map-mode .bottom-refine-cta {
 .intent-guide {
   margin-top: 56px;
   padding: 48px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-warm);
   border-radius: 24px;
 }
@@ -708,7 +742,7 @@ body.is-map-mode .bottom-refine-cta {
 .intent-faq {
   margin-top: 28px;
   padding: 36px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-warm);
   border-radius: 20px;
 }
@@ -749,7 +783,7 @@ body.is-map-mode .bottom-refine-cta {
 
 
   .card {
-         background: #fff;
+         background: var(--surface);
         border-radius: var(--radius-lg);
         overflow: hidden;
         border: 1px solid var(--line-warm);
@@ -777,7 +811,7 @@ body.is-map-mode .bottom-refine-cta {
   width: 100%;
   height: 190px;
   overflow: hidden;
-  background: #eee8df;
+    background: var(--accent-soft);
 }
 
 .card-image-wrap img,
@@ -791,7 +825,7 @@ body.is-map-mode .bottom-refine-cta {
 .card-body {
   position: relative;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--surface);
   min-height: 128px;
 }
 
@@ -826,8 +860,8 @@ body.is-map-mode .bottom-refine-cta {
 }
 
 .card-decision-badge.is-love {
-  background: rgba(255, 77, 0, 0.14);
-  color: #ff4d00;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
 }
 
 .card-decision-badge.is-maybe {
@@ -892,7 +926,7 @@ body.is-map-mode .bottom-refine-cta {
      .interrupt-card {
   grid-column: 1 / -1;
   margin: 12px 0 18px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-warm);
   border-radius: 20px;
   padding: 26px;
@@ -1039,11 +1073,11 @@ body.is-map-mode .bottom-refine-cta {
         transition: all 0.15s ease;
       }
 
-      .refine-chip:hover,
+            .refine-chip:hover,
       .refine-chip.active {
-        background: var(--hero-ink);
-        color: var(--hero-bg);
-        border-color: var(--hero-ink);
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
       }
 
       .refine-chip.is-loading {
@@ -1071,9 +1105,9 @@ body.is-map-mode .bottom-refine-cta {
 
 .generated-refine-chip:hover,
 .generated-refine-chip.active {
-  background: var(--hero-ink);
-  color: var(--hero-bg);
-  border-color: var(--hero-ink);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
       .interrupt-card.is-refining {
@@ -1160,12 +1194,7 @@ body.is-map-mode .bottom-refine-cta {
           padding: 0 0 80px;
         }
 
-        .intent-hero {
-          width: 100vw;
-          margin: 0 0 22px;
-          border-left: 0;
-          border-right: 0;
-        }
+       
 
            .market-context,
         .section-head,
@@ -1188,10 +1217,9 @@ body.is-map-mode .bottom-refine-cta {
           padding: 0 18px;
         }
 
-               .grid {
+              .grid {
           width: 100% !important;
           padding: 0 18px !important;
-          grid-template-columns: 1fr !important;
         }
 
         .grid > .card {
@@ -1199,15 +1227,9 @@ body.is-map-mode .bottom-refine-cta {
           max-width: 100% !important;
         }
 
-        .hero-inner,
-        .market-context {
-          grid-template-columns: 1fr;
-        }
-
-                .intent-hero {
-          border-radius: 0 0 28px 28px;
-          padding: 34px 24px;
-        }
+   .market-context {
+  grid-template-columns: 1fr;
+}
 
         .interrupt-inner {
           grid-template-columns: 1fr;
@@ -1232,32 +1254,11 @@ body.is-map-mode .bottom-refine-cta {
         }
       }
 
-      .photo-nav:hover {
-        background: rgba(17,14,9,0.72) !important;
-        color: #fff !important;
-        border-color: rgba(255,255,255,0.9) !important;
-      }
+    
 
-      .panel__top-btn:hover,
-      .panel__next-btn:hover {
-        background: #181614 !important;
-        border-color: #181614 !important;
-        color: #fff !important;
-      }
+    
 
-      #preview-sheet .panel__top-btn:hover,
-      #preview-sheet .panel__next-btn:hover,
-      #preview-sheet button.panel__top-btn:hover,
-      #preview-sheet button.panel__next-btn:hover {
-        background: #181614 !important;
-        border-color: #181614 !important;
-        color: #ffffff !important;
-      }
-
-      #preview-sheet .panel__top-btn:hover *,
-      #preview-sheet .panel__next-btn:hover * {
-        color: #ffffff !important;
-      }
+   
 .refined-mode-banner {
   grid-column: 1 / -1;
   display: flex;
@@ -1267,8 +1268,8 @@ body.is-map-mode .bottom-refine-cta {
   margin: 0 0 18px;
   padding: 18px 20px;
   border-radius: 20px;
-  background: #181614;
-  color: #ffffff;
+  background: var(--accent);
+  color: #fff;
 }
 
 .refined-mode-banner strong {
@@ -1300,13 +1301,13 @@ body.is-map-mode .bottom-refine-cta {
   margin: 0 0 24px;
   padding: clamp(24px, 4vw, 38px);
   border-radius: 24px;
-  background: #181614;
-  color: #ffffff;
+    background: var(--accent);
+  color: #fff;
 }
 
 .refined-mode-kicker {
   margin-bottom: 10px;
-  color: #ff4d00;
+    color: var(--accent-light);
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -1340,8 +1341,8 @@ body.is-map-mode .bottom-refine-cta {
   margin: 0 0 10px !important;
   padding: 7px 11px !important;
   border-radius: 999px !important;
-  background: rgba(255, 77, 0, 0.14) !important;
-  color: #ff4d00 !important;
+  background: color-mix(in srgb, var(--accent) 14%, transparent) !important;
+color: var(--accent) !important;
   font-size: 0.72rem !important;
   font-weight: 900 !important;
   letter-spacing: 0.06em !important;
@@ -1367,106 +1368,76 @@ body.is-map-mode .bottom-refine-cta {
   margin: 0 !important;
 }
 
-.intent-hero .hero-side-card,
-.intent-hero .hero-stats,
-.intent-hero .pill-row {
-  display: none !important;
-}
-    </style>
-  </head>
 
-  <body
+    </style>
+
+  <div
     data-intent-page-id={page.id}
-    data-city="nanaimo"
+    data-city={city}
     data-slug={slug}
     data-google-maps-api-key={googleMapsApiKey}
   >
+<SiteNav city={city} areas={areas} types={propertyTypes} showAreaNav={false} />
     <main class="page">
-      <section class="intent-hero">
-        <div class="hero-inner">
-          <div>
-            <div class="eyebrow">Nanaimo intent search</div>
+  <header
+  class="page-hero"
+  style={`--hero-image: url('${page.hero_image_url || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80"}')`}
+>
+  <div class="page-hero__inner">
+<p class="page-hero__eyebrow">{city.charAt(0).toUpperCase() + city.slice(1)} Intent Search</p>
+    <h1>{page.hero_heading}</h1>
 
-            <h1>
-              {page.hero_heading}<span class="accent-dot">.</span>
-            </h1>
+  <p class="page-hero__copy">{page.intro_copy}</p>
 
-            <p class="hero-copy">{page.intro_copy}</p>
-          </div>
+<div class="hero-market-meta">
+  <span>{listingCount} active listings</span>
+  <span>Updated from MLS® data</span>
+</div>
 
-          <aside class="hero-side-card">
-            <strong>Search direction</strong>
-            <p>
-              Browse the current matches, then tell us what you want to see more of.
-              Your preferences help shape smarter follow-up recommendations.
-            </p>
-          </aside>
-        </div>
+    <div class="page-hero__actions">
+      <a href="#listings">View all listings</a>
+      <a href="#area-insights">Get area insights</a>
+    </div>
+  </div>
+</header>
 
-        <div class="hero-stats">
-          <div class="stat-card">
-            <div class="stat-value">{listingCount}</div>
-            <div class="stat-label">Active matches</div>
-          </div>
 
-          <div class="stat-card">
-            <div class="stat-value">{page.property_type}</div>
-            <div class="stat-label">Property type</div>
-          </div>
 
-          <div class="stat-card">
-            <div class="stat-value">{priceLabel}</div>
-            <div class="stat-label">Price direction</div>
-          </div>
-        </div>
+<nav class="intent-secondary-nav">
+  <div class="intent-secondary-nav__inner">
+    <section class="intent-controls">
+      <div class="view-toggle">
+        <button type="button" class="view-btn active" id="list-view-btn">☷ List</button>
+        <button type="button" class="view-btn" id="map-view-btn">✦ Map</button>
+      </div>
 
-        <div class="pill-row">
-          <div class="pill">Nanaimo</div>
-          <div class="pill">{page.property_type}</div>
+      <select class="price-filter-select" aria-label="Filter by price">
+        <option value="all">Any Price</option>
+        <option value="under-450">Under $450k</option>
+        <option value="450-650">$450k - $650k</option>
+        <option value="650-850">$650k - $850k</option>
+        <option value="850-1100">$850k - $1.1M</option>
+        <option value="1100-plus">$1.1M+</option>
+      </select>
 
-          {features.map((feature) => (
-            <div class="pill">{feature.replaceAll("_", " ")}</div>
-          ))}
-        </div>
-   </section>
+      <select class="sort-filter-select" aria-label="Sort listings">
+        <option value="newest">Newest first</option>
+        <option value="price-asc">Price low to high</option>
+        <option value="price-desc">Price high to low</option>
+      </select>
+
+      <select class="beds-filter-select" aria-label="Filter by beds">
+        <option value="all">Any beds</option>
+        <option value="1">1+ bed</option>
+        <option value="2">2+ beds</option>
+        <option value="3">3+ beds</option>
+        <option value="4">4+ beds</option>
+      </select>
+    </section>
+  </div>
+</nav>
 
 <div class="intent-content-shell">
-
-<section class="intent-controls">
-  <div class="view-toggle">
-    <button type="button" class="view-btn active" id="list-view-btn">☷ List</button>
-    <button type="button" class="view-btn" id="map-view-btn">✦ Map</button>
-  </div>
-
-  <select class="area-filter-select" aria-label="Filter by area">
-  <option value="all">All Areas</option>
-
-{(areaIntentPages || [])
-  .filter((intentPage) => String(intentPage.area || "").trim())
-  .map((intentPage) => (    <option
-      value={`/nanaimo/${intentPage.slug}`}
-      selected={String(intentPage.area || "").toLowerCase() === String(page.area || "").toLowerCase()}
-    >
-      {titleCase(intentPage.area || "")}
-    </option>
-  ))}
-</select>
-
-  <select class="price-filter-select" aria-label="Filter by price">
-    <option value="all">Any Price</option>
-    <option value="under-450">Under $450k</option>
-    <option value="450-650">$450k - $650k</option>
-    <option value="650-850">$650k - $850k</option>
-    <option value="850-1100">$850k - $1.1M</option>
-    <option value="1100-plus">$1.1M+</option>
-  </select>
-
-  <select class="sort-filter-select" aria-label="Sort listings">
-  <option value="newest">Newest first</option>
-  <option value="price-asc">Price low to high</option>
-  <option value="price-desc">Price high to low</option>
-</select>
-</section>
 
       <div class="section-head">
   <div>
@@ -1502,8 +1473,22 @@ body.is-map-mode .bottom-refine-cta {
                 data-listing-id={String(listing?.id || listing?.mls_number || "")}
                 data-mls={String(listing?.mls_number || listing?.id || "")}
                 data-image={image}
-                data-images={JSON.stringify(listing?.images || [])}
-                data-price={formatPrice(listing.price)}
+data-images={JSON.stringify(
+  [
+    ...(Array.isArray(listing?.images)
+      ? listing.images.map((img) =>
+          normalizeImageUrl(
+            img?.highRes ||
+              img?.mediumRes ||
+              img?.lowRes ||
+              img?.url ||
+              img
+          )
+        )
+      : []),
+    image,
+  ].filter(Boolean)
+)}                data-price={formatPrice(listing.price)}
                 data-sort-index={index}
 data-raw-price={String(listing?.price || 0)}
 data-listed-at={String(listing?.listed_at || listing?.created_at || "")}
@@ -1530,8 +1515,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 <div class="card-body">
   <div class="price">{formatPrice(listing.price)}</div>
   <div class="address">{listing.address}</div>
-  <div class="card-city">Nanaimo, BC</div>
-
+<div class="card-city">{city.charAt(0).toUpperCase() + city.slice(1)}, BC</div>
   <div class="meta">
     <span>🛏 {listing.beds || "-"} bd</span>
     <span>🛁 {listing.baths || "-"} ba</span>
@@ -1624,8 +1608,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 
   <p>
     {page.neighbourhood_copy ||
-      `${titleCase(page.area || "Nanaimo")} is one of the Nanaimo areas buyers often compare when searching for homes that balance location, lifestyle, and value.`}
-  </p>
+`${titleCase(page.area || titleCase(city))} is one of the ${titleCase(city)} areas buyers often compare when searching for homes that balance location, lifestyle, and value.`}  </p>
 
   <h3>Local Market Snapshot</h3>
 
@@ -1680,459 +1663,11 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 .interrupt-options .generated-refine-chip.active,
 .refine-options .generated-refine-chip:hover,
 .refine-options .generated-refine-chip.active {
-  background: var(--ink) !important;
-  color: #ffffff !important;
-  border-color: var(--ink) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
 }
-        #preview-sheet #intent-like-tags {
-  display: none !important;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin: 18px 0 6px;
-}
-
-#preview-sheet #intent-like-tags.open {
-  display: flex !important;
-}
-
-#preview-sheet .intent-like-tag {
-  appearance: none !important;
-  border: 1px solid rgba(24,22,20,0.12) !important;
-  background: #ffffff !important;
-  color: #181614 !important;
-  border-radius: 999px !important;
-  padding: 10px 15px !important;
-  font: inherit !important;
-  font-size: 0.86rem !important;
-  font-weight: 850 !important;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(24,22,20,0.08);
-}
-
-#preview-sheet .intent-like-tag:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(24,22,20,0.12);
-}
-
-#preview-sheet .intent-like-tag.active {
-  background: #181614 !important;
-  color: #ffffff !important;
-  border-color: #181614 !important;
-}
-    #preview-sheet button.panel__top-btn,
-#preview-sheet button.panel__next-btn,
-#preview-sheet button.panel__close,
-#preview-sheet button.panel__map-btn,
-#preview-sheet .panel__nav-row button,
-#preview-sheet .panel__header-actions button {
-  border-radius: 999px !important;
-  background: rgba(24,22,20,0.92) !important;
-  border: 1px solid rgba(255,255,255,0.14) !important;
-  color: #ffffff !important;
-  padding: 10px 16px !important;
-}
-
-#preview-sheet button.panel__top-btn:hover,
-#preview-sheet button.panel__next-btn:hover,
-#preview-sheet button.panel__close:hover,
-#preview-sheet button.panel__map-btn:hover,
-#preview-sheet .panel__nav-row button:hover,
-#preview-sheet .panel__header-actions button:hover {
-  background: #181614 !important;
-  border-color: #181614 !important;
-  color: #ffffff !important;
-}
-
-      #preview-sheet button.panel__top-btn:hover *,
-      #preview-sheet button.panel__next-btn:hover *,
-      #preview-sheet .panel__nav-row button:hover *,
-      #preview-sheet .panel__header-actions button:hover * {
-        color: #ffffff !important;
-      }
-
-      .refined-results {
-        grid-column: 1 / -1;
-        margin-top: 18px;
-      }
-
-      .refined-results-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 18px;
-      }
-
-      .refined-results-grid .card {
-        background: var(--surface);
-        border-radius: 16px;
-        overflow: hidden;
-        border: 1px solid var(--line);
-        color: inherit;
-        display: block;
-        cursor: pointer;
-        transition: transform 0.16s ease, box-shadow 0.16s ease;
-      }
-
-      .refined-results-grid .card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 14px 34px rgba(24, 22, 20, 0.12);
-      }
-
-      .refined-results-grid .card img {
-        width: 100%;
-        aspect-ratio: 16 / 10;
-        object-fit: cover;
-        display: block;
-      }
-
-      .refined-results-grid .card-body {
-        padding: 16px;
-      }
-
-      .refined-results-grid .price {
-        font-size: 1.36rem;
-        font-weight: 850;
-        margin-bottom: 6px;
-      }
-
-      .refined-results-grid .address {
-        margin-bottom: 10px;
-        color: var(--ink);
-        line-height: 1.35;
-      }
-
-      .refined-results-grid .meta {
-        font-size: 0.9rem;
-        color: var(--muted);
-      }
-
-      #refined-results .refined-mode-banner {
-  grid-column: 1 / -1;
-  margin: 0 0 28px;
-  padding: clamp(28px, 5vw, 48px);
-  border-radius: 28px;
-  background: #181614;
-  color: #ffffff;
-  box-shadow: 0 20px 50px rgba(24,22,20,0.18);
-}
-
-#refined-results .refined-mode-kicker {
-  margin-bottom: 12px;
-  color: #ff4d00;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-#refined-results .refined-mode-banner h2 {
-  max-width: 760px;
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.8rem, 6vw, 5.8rem);
-  line-height: 0.9;
-  letter-spacing: -0.065em;
-  font-weight: 500;
-}
-
-#refined-results .refined-mode-banner p {
-  max-width: 640px;
-  margin: 18px 0 0;
-  color: rgba(255,255,255,0.72);
-  font-size: 1rem;
-  line-height: 1.55;
-}
-
-#refined-results .refined-mode-banner .cta-button {
-  margin-top: 24px;
-  background: #ff4d00;
-  color: #ffffff;
-  border: 0;
-  padding: 14px 22px;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-      .load-more-refined {
-  grid-column: 1 / -1;
-  justify-self: center;
-  margin: 22px auto 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 24px;
-  border-radius: 999px;
-  background: #ff4d00;
-  color: #ffffff;
-  border: 0;
-  font: inherit;
-  font-weight: 850;
-  cursor: pointer;
-}
-
-.load-more-refined:disabled {
-  opacity: 0.65;
-  cursor: wait;
-}
-.refined-view-toggle {
-  grid-column: 1 / -1;
-  width: fit-content;
-  margin: 14px 0 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--surface);
-}
-
-.refined-view-toggle .view-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 9px 16px;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  color: var(--muted);
-}
-
-.refined-view-toggle .view-btn + .view-btn {
-  border-left: 1px solid var(--line);
-}
-
-.refined-view-toggle .view-btn.active {
-  background: var(--ink);
-  color: #ffffff;
-}
-
-.refined-intent-map {
-  grid-column: 1 / -1;
-  display: block;
-  width: 100%;
-  height: 520px;
-  min-height: 420px;
-  margin: 0 0 22px;
-}
-
-.refined-intent-map[hidden] {
-  display: none;
-}
-
-#preview-sheet .modal-intent-summary {
-  padding: clamp(28px, 6vw, 56px);
-  text-align: center;
-}
-
-#preview-sheet .modal-intent-kicker {
-  color: #ff4d00;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-}
-
-#preview-sheet .modal-intent-summary h2 {
-  max-width: 620px;
-  margin: 0 auto 16px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.4rem, 6vw, 4.4rem);
-  line-height: 0.92;
-  letter-spacing: -0.06em;
-  font-weight: 500;
-}
-
-#preview-sheet .modal-intent-summary p {
-  max-width: 560px;
-  margin: 0 auto 24px;
-  color: rgba(24,22,20,0.64);
-  line-height: 1.55;
-  font-size: 1rem;
-}
-
-#preview-sheet .modal-intent-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 auto 28px;
-}
-
-#preview-sheet .modal-intent-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: #fffaf1;
-  border: 1px solid rgba(24,22,20,0.12);
-  color: #181614;
-  font-size: 0.88rem;
-  font-weight: 850;
-}
-
-#preview-sheet .modal-intent-save-copy {
-  max-width: 520px;
-  margin: 0 auto 22px;
-  color: rgba(24,22,20,0.56);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-#preview-sheet .modal-intent-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-}
-
-#preview-sheet .modal-intent-primary,
-#preview-sheet .modal-intent-secondary {
-  appearance: none;
-  min-height: 46px;
-  padding: 13px 20px;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-#preview-sheet .modal-intent-primary {
-  background: #ff4d00;
-  color: #ffffff;
-  border: 1px solid #ff4d00;
-}
-
-#preview-sheet .modal-intent-secondary {
-  background: #ffffff;
-  color: #181614;
-  border: 1px solid rgba(24,22,20,0.16);
-}
-
-.modal-intent-primary,
-.modal-intent-secondary,
-.refine-chip,
-.intent-like-tag {
-  position: relative;
-  overflow: hidden;
-}
-
-.modal-intent-primary::before,
-.modal-intent-secondary::before,
-.refine-chip::before,
-.intent-like-tag::before {
-  content: "✦";
-  display: inline-flex;
-  margin-right: 7px;
-  transform: scale(0.9);
-  opacity: 0.55;
-}
-
-.modal-intent-primary:hover::before,
-.modal-intent-secondary:hover::before,
-.refine-chip:hover::before,
-.intent-like-tag:hover::before {
-  animation: iconPulse 0.7s ease;
-  opacity: 1;
-}
-
-.modal-intent-primary.is-selected,
-.modal-intent-secondary.is-selected,
-.refine-chip.active,
-.intent-like-tag.active {
-  box-shadow: 0 0 0 3px rgba(255, 77, 0, 0.18);
-  transform: translateY(-1px);
-}
-
-.modal-intent-primary.is-selected::after,
-.modal-intent-secondary.is-selected::after,
-.refine-chip.active::after,
-.intent-like-tag.active::after {
-  content: " ✓";
-  font-weight: 900;
-}
-
-@keyframes iconPulse {
-  0% { transform: scale(0.9); }
-  45% { transform: scale(1.35); }
-  100% { transform: scale(0.9); }
-}
-
-#preview-sheet #decision-love-btn,
-#preview-sheet #decision-maybe-btn,
-#preview-sheet #decision-pass-btn {
-  position: relative !important;
-  overflow: visible !important;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease !important;
-}
-
-#preview-sheet #decision-love-btn:hover,
-#preview-sheet #decision-maybe-btn:hover,
-#preview-sheet #decision-pass-btn:hover {
-  transform: translateY(-2px);
-}
-
-#preview-sheet #decision-love-btn.is-selected,
-#preview-sheet #decision-maybe-btn.is-selected,
-#preview-sheet #decision-pass-btn.is-selected {
-  background: #181614 !important;
-  color: #ffffff !important;
-  border-color: #181614 !important;
-  box-shadow:
-    0 0 0 4px rgba(255, 77, 0, 0.2),
-    0 16px 36px rgba(24,22,20,0.18) !important;
-  transform: translateY(-2px);
-}
-
-#preview-sheet #decision-love-btn.is-selected::after,
-#preview-sheet #decision-maybe-btn.is-selected::after,
-#preview-sheet #decision-pass-btn.is-selected::after {
-  content: "✓";
-  display: inline-flex;
-  margin-left: 9px;
-  font-weight: 900;
-}
-
-#preview-sheet .modal-intent-summary.is-refining {
-  min-height: 420px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-#preview-sheet .intent-refining-bar {
-  position: relative;
-  width: min(320px, 82%);
-  height: 10px;
-  margin: 10px auto 0;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(24,22,20,0.08);
-}
-
-#preview-sheet .intent-refining-bar span {
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  border-radius: inherit;
-  background: #ff4d00;
-  animation: intentRefineLoad 2.2s ease-in-out infinite;
-}
-
-@keyframes intentRefineLoad {
-  0% {
-    transform: translateX(-110%);
-  }
-
-  100% {
-    transform: translateX(280%);
-  }
-}
+   
 .current-controls-row {
   display: flex;
   flex-direction: column;
@@ -2155,6 +1690,8 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   border-left: 1px solid var(--line);
   border-top: 0 !important;
 }
+
+
 
 @media (max-width: 900px) {
   .intent-content-shell {
@@ -2179,14 +1716,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
     margin-right: 0 !important;
   }
 
-  .grid {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 18px !important;
-    padding: 0 !important;
-  }
-
-  .grid > .card {
+.grid > .card {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
@@ -2219,8 +1749,7 @@ let currentIntentMapBounds = null;
 
         if (googleMapsLoadingPromise) return googleMapsLoadingPromise;
 
-        const key = document.body.dataset.googleMapsApiKey;
-
+const key = document.querySelector("[data-google-maps-api-key]")?.dataset.googleMapsApiKey;
         if (!key) {
           console.error("Missing PUBLIC_GOOGLE_MAPS_API_KEY");
           return Promise.reject(new Error("Missing Google Maps API key"));
@@ -2453,18 +1982,21 @@ async function initRefinedGoogleMap(mode = "refined") {
     </script>
 
   <script is:inline>
-  const areaSelect = document.querySelector(".area-filter-select");
+const areaSelect = document.querySelector(".area-filter-select");
   const priceSelect = document.querySelector(".price-filter-select");
   const sortSelect = document.querySelector(".sort-filter-select");
+  const bedsSelect = document.querySelector(".beds-filter-select");
   let activePriceFilter = "all";
 
   function getCardPrice(card) {
     return Number(card.dataset.rawPrice || "0");
   }
 
-  function applyFilters() {
+function applyFilters() {
     const areaValue = areaSelect?.value || "all";
-    const area = areaValue.startsWith("/") ? "all" : areaValue;    activePriceFilter = priceSelect?.value || "all";
+    const area = areaValue.startsWith("/") ? "all" : areaValue;
+    activePriceFilter = priceSelect?.value || "all";
+    const bedsMin = bedsSelect?.value || "all";
 
     const cards = Array.from(document.querySelectorAll(".original-card"));
     const resultsBar = document.querySelector(".results-bar");
@@ -2477,7 +2009,10 @@ async function initRefinedGoogleMap(mode = "refined") {
       const cardArea = String(card.dataset.area || "").toLowerCase();
       const price = getCardPrice(card);
 
-      const matchesArea = area === "all" || cardArea === area;
+ const matchesArea = area === "all" || cardArea === area;
+
+      const cardBeds = Number(card.dataset.beds || 0);
+      const matchesBeds = bedsMin === "all" || cardBeds >= Number(bedsMin);
 
       const matchesPrice =
         activePriceFilter === "all" ||
@@ -2487,7 +2022,7 @@ async function initRefinedGoogleMap(mode = "refined") {
         (activePriceFilter === "850-1100" && price >= 850000 && price < 1100000) ||
         (activePriceFilter === "1100-plus" && price >= 1100000);
 
-      const shouldShow = matchesArea && matchesPrice;
+  const shouldShow = matchesArea && matchesPrice && matchesBeds;
 
      card.hidden = !shouldShow;
 card.style.display = "";
@@ -2558,18 +2093,10 @@ if (resultsBar) {
     cards.forEach((card) => grid.appendChild(card));
     applyFilters();
   }
-areaSelect?.addEventListener("change", () => {
-  const value = areaSelect.value;
-
-  if (value && value !== "all" && value.startsWith("/")) {
-    window.location.href = value;
-    return;
-  }
-
-  applyFilters();
-});
-  priceSelect?.addEventListener("change", applyFilters);
+areaSelect?.addEventListener("change", applyFilters);
+priceSelect?.addEventListener("change", applyFilters);
   sortSelect?.addEventListener("change", applySort);
+  bedsSelect?.addEventListener("change", applyFilters);
 
   applySort();
 </script>
@@ -2773,8 +2300,7 @@ data-type="${listing.normalized_type || listing.property_type || listing.type ||
             data-decision=""
             data-lat="${listing.lat || ""}"
             data-lng="${listing.lng || ""}"
-            data-city="${listing.normalized_city || listing.city || "nanaimo"}"
-            data-area="${String(listing.normalized_area || listing.area || "").toLowerCase()}"
+data-city="${listing.normalized_city || listing.city || document.querySelector('[data-city]')?.dataset.city || 'nanaimo'}"            data-area="${String(listing.normalized_area || listing.area || "").toLowerCase()}"
           >
             <img src="${image}" alt="${listing.address || "Listing"}" />
 
@@ -2791,8 +2317,8 @@ data-type="${listing.normalized_type || listing.property_type || listing.type ||
           margin:0 0 10px;
           padding:7px 11px;
           border-radius:999px;
-          background:rgba(255,77,0,0.16);
-color:#ff4d00;
+          background:color-mix(in srgb, var(--accent) 16%, transparent);
+color:var(--accent);
           font-size:0.72rem;
           font-weight:900;
           letter-spacing:0.06em;
@@ -2856,8 +2382,8 @@ async function refreshBehaviourChips() {
       },
      body: JSON.stringify({
   session_id: getIntentSessionId(),
-  city: document.body.dataset.city,
-  slug: document.body.dataset.slug,
+city: document.querySelector("[data-city]")?.dataset.city,
+  slug: document.querySelector("[data-slug]")?.dataset.slug,
   refine_label: "behaviour refresh",
   visible_max_price: getVisibleMaxPrice(),
   visible_listings: getVisibleCards().map((card) => ({
@@ -2947,8 +2473,8 @@ refinedGoogleMarkers = [];
             },
           body: JSON.stringify({
   session_id: getIntentSessionId(),
-  city: document.body.dataset.city,
-  slug: document.body.dataset.slug,
+city: document.querySelector("[data-city]")?.dataset.city,
+  slug: document.querySelector("[data-slug]")?.dataset.slug,
   refine_label: label,
   visible_max_price: getVisibleMaxPrice(),
   visible_listings: visibleListings,
@@ -3095,8 +2621,8 @@ document.addEventListener("click", async (event) => {
       },
     body: JSON.stringify({
   session_id: getIntentSessionId(),
-  city: document.body.dataset.city,
-  slug: document.body.dataset.slug,
+city: document.querySelector("[data-city]")?.dataset.city,
+  slug: document.querySelector("[data-slug]")?.dataset.slug,
   refine_label: loadMoreBtn.dataset.refineLabel || "",
         visible_max_price: getVisibleMaxPrice(),
         visible_listings: getVisibleCards().map((card) => ({
@@ -3250,9 +2776,9 @@ document.addEventListener("click", (event) => {
   },
   body: JSON.stringify({
     session_id: getIntentSessionId(),
-    intent_page_id: document.body.dataset.intentPageId,
-    city: document.body.dataset.city,
-    slug: document.body.dataset.slug,
+ intent_page_id: document.querySelector("[data-intent-page-id]")?.dataset.intentPageId,
+    city: document.querySelector("[data-city]")?.dataset.city,
+    slug: document.querySelector("[data-slug]")?.dataset.slug,
 
     listing_id: activeCard.dataset.listingId || activeCard.dataset.itemId || "",
     mls_number: activeCard.dataset.mls || "",
@@ -3332,5 +2858,5 @@ window.addEventListener("DOMContentLoaded", () => {
 });
     </script>
   
-  </body>
-</html>
+</div>
+</Layout>

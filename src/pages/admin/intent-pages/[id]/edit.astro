@@ -1,4 +1,5 @@
 ---
+import AdminSidebar from "../../../../components/AdminSidebar.astro";
 import { createClient } from "@supabase/supabase-js";
 export const prerender = false;
 
@@ -90,73 +91,76 @@ if (!page || pageError) {
 const selectedFeatures = (page.intent_page_features || []).map(
   (feature) => feature.feature_key
 );
+
 ---
 
 <html>
   <head>
     <title>Edit Intent Page</title>
-
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-      * {
-        box-sizing: border-box;
-      }
+     *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
-      body {
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f4efe7;
-        color: #181614;
-      }
-
-      .shell {
-        width: min(980px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 44px 0;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(2.3rem, 5vw, 3.6rem);
-        letter-spacing: -0.07em;
-        line-height: 0.95;
-      }
-
-      .intro {
-        max-width: 720px;
-        margin: 12px 0 28px;
-        color: rgba(24,22,20,0.62);
-        font-size: 1.02rem;
-        line-height: 1.55;
-      }
-
-    .admin-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 26px;
+:root {
+  --bg: #f7f4ef;
+  --surface: #fff;
+  --border: rgba(24,22,20,0.10);
+  --border-strong: rgba(24,22,20,0.22);
+  --ink: #181614;
+  --muted: rgba(24,22,20,0.52);
+  --radius: 16px;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-display: "Instrument Serif", Georgia, serif;
 }
 
-.admin-nav a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid rgba(24,22,20,0.14);
-  background: #fffaf1;
-  color: #181614;
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.main {
+  padding: 40px 48px 80px;
+  max-width: 900px;
+  min-width: 0;
+}
+
+.topbar {
+  margin-bottom: 32px;
+}
+
+.topbar h1 {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.intro {
+  color: var(--muted);
+  margin-top: 6px;
   font-size: 0.9rem;
-  font-weight: 900;
-  text-decoration: none;
+  line-height: 1.55;
 }
 
-.admin-nav a:hover {
-  background: #181614;
-  color: white;
-}
+   
 
 .card {
+  background: white;
+  border: 1px solid rgba(24,22,20,0.12);
+  border-radius: 16px;
+  padding: 24px;
+}
 
       .field {
         margin-bottom: 22px;
@@ -170,20 +174,30 @@ const selectedFeatures = (page.intent_page_features || []).map(
         letter-spacing: -0.02em;
       }
 
-      input,
-      textarea,
-      select {
-        display: block;
-        width: 100%;
-        min-height: 54px;
-        padding: 14px 16px;
-        border: 1px solid rgba(24,22,20,0.18);
-        border-radius: 14px;
-        font: inherit;
-        background: white;
-        color: #181614;
-        outline: none;
-      }
+      .readonly-field {
+  min-height: 41px;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+     input,
+textarea,
+select {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+}
 
       input:focus,
       textarea:focus,
@@ -192,10 +206,10 @@ const selectedFeatures = (page.intent_page_features || []).map(
         box-shadow: 0 0 0 4px rgba(24,22,20,0.08);
       }
 
-      textarea {
-        min-height: 132px;
-        resize: vertical;
-      }
+    textarea {
+  min-height: 80px;
+  resize: vertical;
+}
 
       .grid-2 {
         display: grid;
@@ -330,8 +344,8 @@ const selectedFeatures = (page.intent_page_features || []).map(
         margin-top: 30px;
       }
 
-      button,
-      a {
+      .main button,
+.main a {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -347,42 +361,51 @@ const selectedFeatures = (page.intent_page_features || []).map(
         text-decoration: none;
       }
 
-      a {
-        background: white;
-        color: #181614;
-        border: 1px solid rgba(24,22,20,0.14);
-      }
+      .main a {
+  background: white;
+  color: #181614;
+  border: 1px solid rgba(24,22,20,0.14);
+}
 
       .error {
         color: #b42318;
         font-weight: 800;
       }
 
-      @media (max-width: 820px) {
-        .grid-2,
-        .feature-picker {
-          grid-template-columns: 1fr;
-        }
-      }
+    @media (max-width: 820px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: 24px 20px 60px;
+  }
+
+  .grid-2,
+  .feature-picker {
+    grid-template-columns: 1fr;
+  }
+}
     </style>
   </head>
 
 <body>
-  <main class="shell">
+  <div class="page">
+    <AdminSidebar active="pages" />
 
-    <nav class="admin-nav">
-      <a href="/admin/intent-pages">All pages</a>
-      <a href="/admin/intent-pages/new">Create new</a>
-      <a href="/admin/agent-page">Agent editor</a>
-    </nav>
+    <main class="main">
 
-    <h1>Edit page</h1>
+   <div class="topbar">
+  <div>
+    <h1>{page.hero_heading || "Edit page"}</h1>
 
-      <p class="intro">
+    <p class="intro">
         Adjust the public page copy, filters, page type, and starting feature filters.
       </p>
+  </div>
+</div>
 
-      {message && <p class="error">{message}</p>}
+{message && <p class="error">{message}</p>}
 
       <form method="POST" class="card">
         <div class="field">
@@ -397,23 +420,29 @@ const selectedFeatures = (page.intent_page_features || []).map(
           </select>
         </div>
 
-        <div class="grid-2">
-          <div class="field">
-            <label>Slug</label>
-            <input name="slug" value={page.slug || ""} required />
-          </div>
+      <div class="grid-2">
+  <div class="field">
+    <label>Slug</label>
+    <div class="readonly-field">/{page.city}/{page.slug}</div>
+    <input type="hidden" name="slug" value={page.slug || ""} />
+  </div>
 
-          <div class="field">
-            <label>City</label>
-            <input name="city" value={page.city || "nanaimo"} required />
-          </div>
-        </div>
+  <div class="field">
+    <label>City</label>
+    <div class="readonly-field">
+      {(page.city || "nanaimo").replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
+    </div>
+    <input type="hidden" name="city" value={page.city || "nanaimo"} />
+  </div>
+</div>
 
         <div class="grid-2">
           <div class="field">
             <label>Area</label>
-            <input name="area" value={page.area || ""} />
-          </div>
+<div class="readonly-field">
+  {page.area ? page.area.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "City-wide"}
+</div>
+<input type="hidden" name="area" value={page.area || ""} /></div>
 
           <div class="field">
             <label>Property type</label>
@@ -496,6 +525,7 @@ const selectedFeatures = (page.intent_page_features || []).map(
           <a href={`/${page.city}/${page.slug}`} target="_blank">Open public page</a>
         </div>
       </form>
-    </main>
-  </body>
+       </main>
+  </div>
+</body>
 </html>

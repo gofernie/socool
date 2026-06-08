@@ -1,146 +1,212 @@
 ---
+import AdminSidebar from "../../components/AdminSidebar.astro";
+
 const slug = "chris-crump";
 ---
 
 <html>
   <head>
-    <title>Agent Page Editor</title>
+    <title>Agent Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+      :root {
+        --bg: #f7f4ef;
+        --surface: #fff;
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --ink: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --accent: #181614;
+        --accent-hover: #333;
+        --radius: 16px;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
       body {
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f4efe7;
-        color: #181614;
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
       }
 
-      .shell {
-        width: min(900px, calc(100% - 32px));
-        margin: 0 auto;
-        padding: 40px 0;
+.page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+           /* ── Main ── */
+.main {
+  padding: 40px 48px 80px;
+  max-width: 860px;
+  min-width: 0;
+}
+
+      .page-header {
+        margin-bottom: 36px;
       }
 
-      h1 {
-        font-size: 42px;
-        letter-spacing: -0.06em;
+      .page-header h1 {
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
       }
 
-      label {
-        display: block;
-        margin: 18px 0 6px;
-        font-weight: 700;
+      .page-header p {
+        color: var(--muted);
+        margin-top: 6px;
+        font-size: 0.9rem;
       }
 
-      * {
-        box-sizing: border-box;
+      /* ── Accordion sections ── */
+      .section {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        margin-bottom: 10px;
+        overflow: hidden;
       }
 
-      input,
-      textarea,
-      select {
+      .section__trigger {
         width: 100%;
-        padding: 12px;
-        border: 1px solid rgba(24, 22, 20, 0.18);
-        border-radius: 12px;
-        font: inherit;
-        background: white;
-      }
-
-      textarea {
-        min-height: 100px;
-      }
-
-      button,
-      a.preview {
-        display: inline-flex;
-        margin-top: 22px;
-        margin-right: 10px;
-        padding: 12px 16px;
-        border-radius: 999px;
-        border: 0;
-        background: #181614;
-        color: white;
-        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        background: none;
+        border: none;
         cursor: pointer;
-        text-decoration: none;
+        font: inherit;
+        text-align: left;
+        gap: 16px;
       }
 
-      .status {
-        margin-top: 14px;
-        color: #6f5a38;
+      .section__trigger:hover { background: rgba(24,22,20,0.02); }
+
+      .section__trigger-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .section__icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .section__title {
+        font-size: 0.92rem;
         font-weight: 700;
+        color: var(--ink);
       }
 
-     .admin-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 26px;
-}
-
-.admin-nav a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid rgba(24,22,20,0.14);
-  background: #fffaf1;
-  color: #181614;
-  font-size: 0.9rem;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.admin-nav a:hover,
-.admin-nav a.is-active {
-  background: #181614;
-  color: white;
-  border-color: #181614;
-}
-
-.card {
-  background: #fffaf1;
-  border: 1px solid rgba(24, 22, 20, 0.12);
-  border-radius: 24px;
-  padding: 22px;
-  margin-top: 22px;
-}
-
-      .group-editor {
-        border-top: 1px solid rgba(24, 22, 20, 0.12);
-        margin-top: 18px;
-        padding-top: 18px;
+      .section__subtitle {
+        font-size: 0.76rem;
+        color: var(--muted);
+        margin-top: 1px;
       }
 
-      .group-editor h3 {
-        margin: 0 0 10px;
+      .section__chevron {
+        width: 20px;
+        height: 20px;
+        color: var(--muted);
+        transition: transform 0.22s ease;
+        flex-shrink: 0;
+      }
+
+      .section.is-open .section__chevron {
+        transform: rotate(180deg);
+      }
+
+      .section__body {
+        display: none;
+        padding: 0 22px 22px;
+        border-top: 1px solid var(--border);
+      }
+
+      .section.is-open .section__body { display: block; }
+
+      /* ── Form fields ── */
+      .field { margin-top: 16px; }
+
+      .field label {
+        display: block;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .field input,
+      .field textarea,
+      .field select {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.9rem;
+        background: #fff;
+        color: var(--ink);
+        transition: border-color 0.14s, box-shadow 0.14s;
+      }
+
+      .field input:focus,
+      .field textarea:focus,
+      .field select:focus {
+        outline: none;
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
+      }
+
+      .field textarea { min-height: 80px; resize: vertical; }
+
+      .field select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23181614' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 13px center;
+        padding-right: 36px;
+      }
+
+      .hint {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 5px;
+        line-height: 1.4;
       }
 
       .grid-2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
+        gap: 12px;
       }
 
-      .hint {
-        margin: 8px 0 0;
-        color: rgba(24, 22, 20, 0.62);
-        font-size: 0.9rem;
-        line-height: 1.45;
-      }
-
+      /* ── Template picker ── */
       .template-options {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        margin-top: 12px;
+        gap: 12px;
+        margin-top: 16px;
       }
 
-      .template-option {
-        position: relative;
-        cursor: pointer;
-      }
+      .template-option { position: relative; cursor: pointer; }
 
       .template-option input[type="radio"] {
         position: absolute;
@@ -150,53 +216,29 @@ const slug = "chris-crump";
       }
 
       .template-option__card {
-        border: 2px solid rgba(24, 22, 20, 0.15);
-        border-radius: 16px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
         overflow: hidden;
-        transition: border-color 0.2s, box-shadow 0.2s;
+        transition: border-color 0.18s, box-shadow 0.18s;
       }
 
       .template-option input:checked + .template-option__card {
-        border-color: #181614;
-        box-shadow: 0 0 0 3px rgba(24, 22, 20, 0.12);
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.1);
       }
 
       .template-option__preview {
-        height: 100px;
+        height: 80px;
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
-        padding: 12px;
+        padding: 10px;
         position: relative;
         overflow: hidden;
       }
 
-      .template-option--brutal .template-option__preview {
-        background: #0a0a0a;
-      }
-
-      .template-option--calm .template-option__preview {
-        background: #f5f2ed;
-      }
-
-      .template-option__preview-title {
-        font-weight: 800;
-        font-size: 0.85rem;
-        letter-spacing: -0.03em;
-      }
-
-      .template-option--brutal .template-option__preview-title {
-        color: white;
-        font-size: 1rem;
-      }
-
-      .template-option--calm .template-option__preview-title {
-        color: #1c1917;
-        font-family: Georgia, serif;
-        font-style: italic;
-        font-weight: 400;
-        font-size: 0.95rem;
-      }
+      .template-option--brutal .template-option__preview { background: #0a0a0a; }
+      .template-option--calm .template-option__preview { background: #f5f2ed; }
 
       .template-option__preview-accent {
         height: 3px;
@@ -206,911 +248,1052 @@ const slug = "chris-crump";
         right: 0;
       }
 
-      .template-option--brutal .template-option__preview-accent {
-        background: #ff4d00;
+      .template-option--brutal .template-option__preview-accent { background: #ff4d00; }
+      .template-option--calm .template-option__preview-accent { background: #8b6f47; }
+
+      .template-option__preview-title {
+        font-weight: 800;
+        font-size: 0.82rem;
       }
 
-      .template-option--calm .template-option__preview-accent {
-        background: #8b6f47;
-      }
+      .template-option--brutal .template-option__preview-title { color: white; }
+      .template-option--calm .template-option__preview-title { color: #1c1917; font-family: Georgia, serif; font-style: italic; font-weight: 400; }
 
       .template-option__label {
-        padding: 10px 14px;
+        padding: 9px 12px;
         background: white;
-        border-top: 1px solid rgba(24,22,20,0.1);
+        border-top: 1px solid var(--border);
       }
 
-      .template-option__label strong {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 700;
-        margin-bottom: 2px;
+      .template-option__label strong { display: block; font-size: 0.8rem; font-weight: 700; }
+      .template-option__label span { font-size: 0.72rem; color: var(--muted); }
+      .template-option input:checked + .template-option__card .template-option__label { background: #f7f4ef; }
+
+      /* ── Colour picker ── */
+      .colour-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+        margin-bottom: 14px;
       }
 
-      .template-option__label span {
-        font-size: 0.75rem;
-        color: rgba(24, 22, 20, 0.55);
+    .preset-swatch {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
       }
 
-      .template-option input:checked + .template-option__card .template-option__label {
-        background: #f4efe7;
+      .preset-swatch:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+
+      .preset-swatch.is-selected {
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.12);
+        transform: scale(1.08);
       }
 
-      .intent-pages-grid {
-        display: grid;
+      .preset-swatch.is-selected::after {
+        content: "✓";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 900;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      }
+
+      .colour-picker-row {
+        display: flex;
+        align-items: center;
         gap: 12px;
-        margin-top: 18px;
+        margin-bottom: 14px;
       }
+
+      .colour-picker-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .colour-picker-wrap input[type="color"] {
+        width: 40px;
+        height: 40px;
+        padding: 2px;
+        border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        cursor: pointer;
+        background: none;
+      }
+
+      .colour-picker-wrap label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      #accentColorHex {
+        width: 110px !important;
+        font-family: monospace;
+        font-size: 0.88rem;
+      }
+
+      .colour-preview-strip {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .swatch-preview {
+        flex: 1;
+        height: 32px;
+        border-radius: 7px;
+        border: 1px solid rgba(24,22,20,0.07);
+        transition: background 0.22s;
+      }
+
+   .saved-section {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--border);
+        display: none;
+      }
+      .saved-section.has-customs { display: block; }
+      .saved-section__label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+      }
+   .preset-swatch.is-custom .remove-btn {
+        position: absolute;
+        top: -5px; right: -5px;
+        width: 16px; height: 16px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.2);
+        font-size: 9px; font-weight: 900;
+        color: #555; cursor: pointer;
+        z-index: 2;
+        display: none;
+        align-items: center; justify-content: center;
+        pointer-events: auto;
+      }
+      .preset-swatch.is-custom:hover .remove-btn { display: flex; }
+
+      .colour-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--muted);
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      /* ── Group editors ── */
+      .group-editor {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 12px;
+      }
+
+      .group-editor__header {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
+      /* ── Intent pages ── */
+      .intent-pages-grid { display: grid; gap: 8px; margin-top: 14px; }
 
       .intent-page-card {
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: 14px;
+        gap: 12px;
         align-items: start;
-        padding: 14px;
-        border-radius: 16px;
-        border: 1px solid rgba(24,22,20,0.12);
-        background: white;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        cursor: pointer;
+        transition: border-color 0.14s;
       }
+
+      .intent-page-card:hover { border-color: var(--border-strong); }
 
       .intent-page-card input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        margin-top: 4px;
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        accent-color: var(--ink);
       }
 
-      .intent-page-meta strong {
-        display: block;
-        margin-bottom: 4px;
-        font-size: 0.95rem;
-      }
-
-      .intent-page-meta p {
-        margin: 0;
-        color: rgba(24,22,20,0.62);
-        font-size: 0.88rem;
-        line-height: 1.5;
-      }
+      .intent-page-meta strong { display: block; font-size: 0.88rem; margin-bottom: 3px; }
+      .intent-page-meta p { color: var(--muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
 
       .intent-page-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 10px;
+        gap: 5px;
+        margin-top: 7px;
       }
 
       .intent-page-tags span {
         display: inline-flex;
         align-items: center;
-        min-height: 24px;
-        padding: 0 8px;
+        min-height: 20px;
+        padding: 0 7px;
         border-radius: 999px;
-        background: #f4efe7;
-        color: #6f5a38;
-        font-size: 0.72rem;
+        background: rgba(24,22,20,0.07);
+        color: var(--muted);
+        font-size: 0.68rem;
         font-weight: 700;
       }
 
-      @media (max-width: 700px) {
-        .grid-2 {
-          grid-template-columns: 1fr;
-        }
+      /* ── Footer actions ── */
+      .form-footer {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 28px;
+        padding-top: 22px;
+        border-top: 1px solid var(--border);
+      }
 
-        .template-options {
-          grid-template-columns: 1fr;
-        }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 11px 20px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.14s, color 0.14s, border-color 0.14s;
+      }
 
-        .intent-page-card {
-          grid-template-columns: auto 1fr;
-        }
+      .btn--primary {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+
+      .btn--primary:hover { background: #333; border-color: #333; }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--border-strong);
+      }
+
+      .btn--ghost:hover { background: rgba(24,22,20,0.05); }
+
+      .status {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #2d7a2d;
+        margin-left: auto;
+      }
+
+      .status.is-error { color: #b33; }
+
+      @media (max-width: 860px) {
+        .page { grid-template-columns: 1fr; }
+      
+        .main { padding: 24px 20px 60px; }
+        .grid-2, .template-options { grid-template-columns: 1fr; }
       }
     </style>
   </head>
 
- <body>
-  <main class="shell">
-    <nav class="admin-nav">
-      <a href="/admin/intent-pages">All pages</a>
-      <a href="/admin/intent-pages/new">Create new</a>
-      <a class="is-active" href="/admin/agent-page">Agent editor</a>
-    </nav>
+  <body>
+    <div class="page">
 
-    <h1>Agent page editor</h1>
-      <form id="agentForm">
-        <div class="card">
-          <h2>Agent</h2>
-
-          <label>Agent name</label>
-          <input name="agentName" />
-
-          <label>Agent title</label>
-          <input name="agentTitle" />
-
-          <label>Phone</label>
-          <input name="phone" />
-
-          <label>Email</label>
-          <input name="email" />
-
-          <label>City</label>
-          <input name="city" />
+<AdminSidebar active="agent">
+  <nav class="sidebar__section-links">
+    <a href="#s-agent">Agent</a>
+    <a href="#s-colour">Colour</a>
+    <a href="#s-template">Template</a>
+    <a href="#s-intent">Intent pages</a>
+    <a href="#s-hero">Hero</a>
+    <a href="#s-social">Social</a>
+    <a href="#s-sections">Listing sections</a>
+    <a href="#s-live">Live listings</a>
+    <a href="#s-city">City</a>
+    <a href="#s-bio">Bio</a>
+  </nav>
+</AdminSidebar>
+      <!-- Main -->
+      <main class="main">
+        <div class="page-header">
+          <h1>Agent page</h1>
+          <p>Configure the public-facing agent listing page.</p>
         </div>
 
-        <div class="card">
-          <h2>Page template</h2>
-          <p class="hint">Choose the visual style for this agent's landing page.</p>
+        <form id="agentForm">
 
-          <div class="template-options">
-            <label class="template-option template-option--brutal">
-              <input type="radio" name="template" value="brutal" />
-              <div class="template-option__card">
-                <div class="template-option__preview">
-                  <div class="template-option__preview-accent"></div>
-                  <div class="template-option__preview-title">Nanaimo<br/><span style="color:#ff4d00;">homes.</span></div>
-                </div>
-                <div class="template-option__label">
-                  <strong>Template 1 — Brutalist</strong>
-                  <span>Bold, high contrast, editorial</span>
-                </div>
-              </div>
-            </label>
-
-            <label class="template-option template-option--calm">
-              <input type="radio" name="template" value="calm" />
-              <div class="template-option__card">
-                <div class="template-option__preview">
-                  <div class="template-option__preview-accent"></div>
-                  <div class="template-option__preview-title">Nanaimo<br/><span style="color:#8b6f47;">homes.</span></div>
-                </div>
-                <div class="template-option__label">
-                  <strong>Template 2 — Calm</strong>
-                  <span>Warm, soft, approachable</span>
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-<div class="card">
-  <h2>Intent pages</h2>
-
-  <p class="hint">
-    Choose which intent-driven buyer pages appear on the homepage.
-  </p>
-
-  <a class="preview" href="/admin/intent-pages/new">
-    + Create new intent page
-  </a>
-
-  <div id="intentPagesGrid" class="intent-pages-grid">
-    <p class="hint">Loading intent pages...</p>
-  </div>
-</div>
-
-        <div class="card">
-          <h2>Hero</h2>
-
-          <label>Hero eyebrow</label>
-          <input name="heroEyebrow" />
-
-          <label>Hero heading</label>
-          <input name="heroHeading" />
-
-          <label>Hero intro</label>
-          <textarea name="heroIntro"></textarea>
-
-          <label>Agent pick title</label>
-          <input name="agentPickTitle" />
-
-          <label>Agent pick text</label>
-          <textarea name="agentPickText"></textarea>
-
-          <label>Featured listing MLS number</label>
-          <input name="featuredListingMls" inputmode="numeric" placeholder="Example: 1032478" />
-          <p class="hint">Optional. Enter the MLS number only - no # symbol, spaces, or extra text.</p>
-        </div>
-
-        <div class="card">
-          <h2>Social links and feeds</h2>
-          <p class="hint">Add profile links for the buttons.</p>
-
-          <div class="grid-2">
-            <div>
-              <label>LinkedIn profile URL</label>
-              <input name="linkedinUrl" placeholder="https://www.linkedin.com/in/..." />
-            </div>
-            <div>
-              <label>X / Twitter profile URL</label>
-              <input name="twitterUrl" placeholder="https://twitter.com/..." />
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div>
-              <label>Instagram URL</label>
-              <input name="instagramUrl" placeholder="https://www.instagram.com/..." />
-            </div>
-            <div>
-              <label>Facebook URL</label>
-              <input name="facebookUrl" placeholder="https://www.facebook.com/..." />
-            </div>
-          </div>
-
-          <label>Social section title</label>
-          <input name="socialTitle" />
-
-          <label>Social section intro</label>
-          <textarea name="socialIntro"></textarea>
-
-          <label>Feed type</label>
-          <select name="socialFeedType">
-            <option value="">No embedded feed</option>
-            <option value="twitter">X / Twitter profile feed</option>
-            <option value="manual">Manual embed / custom content</option>
-          </select>
-
-          <label>Feed URL</label>
-          <input name="socialFeedUrl" placeholder="Example: https://twitter.com/chriscrump" />
-
-          <label>Social feed embed</label>
-          <textarea name="socialFeedEmbed"></textarea>
-          <p class="hint">Use this for a simple note, embed code, or a manually pasted public post block.</p>
-        </div>
-
-        <div class="card">
-          <h2>Listing sections</h2>
-          <p class="hint">These are the four curated cards near the top of the page.</p>
-
-          {[1, 2, 3, 4].map((num) => (
-            <div class="group-editor">
-              <h3>Section {num}</h3>
-
-              <label>Small label</label>
-              <input name={`group${num}Kicker`} />
-
-              <label>Title</label>
-              <input name={`group${num}Title`} />
-
-              <label>Description</label>
-              <textarea name={`group${num}Text`}></textarea>
-
-              <div class="grid-2">
+          <!-- Agent -->
+          <div class="section is-open" id="s-agent">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+                <div class="section__icon">ID</div>
                 <div>
+                  <div class="section__title">Agent</div>
+                  <div class="section__subtitle">Name, contact, city</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="grid-2">
+                <div class="field"><label>Agent name</label><input name="agentName" /></div>
+                <div class="field"><label>Title</label><input name="agentTitle" /></div>
+              </div>
+              <div class="grid-2">
+                <div class="field"><label>Phone</label><input name="phone" /></div>
+                <div class="field"><label>Email</label><input name="email" /></div>
+              </div>
+              <div class="field"><label>City</label><input name="city" /></div>
+            </div>
+          </div>
+
+          <!-- Colour -->
+          <div class="section" id="s-colour">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+             <div class="section__icon">CLR</div>
+                <div>
+                  <div class="section__title">Site colour</div>
+                  <div class="section__subtitle">Accent colour and full palette</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="colour-presets">
+                <button type="button" class="preset-swatch" data-colour="#2f6f73" title="Teal" style="background:#2f6f73;"></button>
+                <button type="button" class="preset-swatch" data-colour="#2d5016" title="Forest" style="background:#2d5016;"></button>
+                <button type="button" class="preset-swatch" data-colour="#7c3a2d" title="Terracotta" style="background:#7c3a2d;"></button>
+                <button type="button" class="preset-swatch" data-colour="#1a3a5c" title="Navy" style="background:#1a3a5c;"></button>
+                <button type="button" class="preset-swatch" data-colour="#5c3d8f" title="Plum" style="background:#5c3d8f;"></button>
+                <button type="button" class="preset-swatch" data-colour="#8f5c1a" title="Amber" style="background:#8f5c1a;"></button>
+                <button type="button" class="preset-swatch" data-colour="#1a5c4a" title="Emerald" style="background:#1a5c4a;"></button>
+                <button type="button" class="preset-swatch" data-colour="#181614" title="Charcoal" style="background:#181614;"></button>
+              </div>
+<div class="saved-section" id="savedSection">
+                <div class="saved-section__label">Saved customs</div>
+                <div class="colour-presets" id="customSwatches"></div>
+              </div>
+
+              <div class="colour-picker-row">                <div class="colour-picker-wrap">
+                  <input type="color" id="accentColorPicker" name="accentColor" value="#2f6f73" />
+                  <label for="accentColorPicker">Custom</label>
+                </div>
+              <input type="text" id="accentColorHex" class="field" placeholder="#2f6f73" maxlength="7" />
+                <button type="button" class="btn btn--ghost" id="saveCustomBtn" style="white-space:nowrap; padding: 9px 16px; border-radius: 999px; font-size: 0.82rem;">Save colour</button>
+              </div>
+              <div class="colour-preview-strip">
+                <div class="swatch-preview" id="swatchAccent"></div>
+                <div class="swatch-preview" id="swatchAccentLight"></div>
+                <div class="swatch-preview" id="swatchAccentSoft"></div>
+                <div class="swatch-preview" id="swatchBg"></div>
+                <div class="swatch-preview" id="swatchCard"></div>
+                <div class="swatch-preview" id="swatchSection"></div>
+              </div>
+              <p class="colour-label" id="colourLabel">Teal</p>
+            </div>
+          </div>
+
+          <!-- Template -->
+          <div class="section" id="s-template">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">TPL</div>
+                <div>
+                  <div class="section__title">Page template</div>
+                  <div class="section__subtitle">Visual style</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="template-options">
+                <label class="template-option template-option--brutal">
+                  <input type="radio" name="template" value="brutal" />
+                  <div class="template-option__card">
+                    <div class="template-option__preview">
+                      <div class="template-option__preview-accent"></div>
+                      <div class="template-option__preview-title" style="color:white;">Nanaimo <span style="color:#ff4d00;">homes.</span></div>
+                    </div>
+                    <div class="template-option__label">
+                      <strong>Brutalist</strong>
+                      <span>Bold, high contrast</span>
+                    </div>
+                  </div>
+                </label>
+                <label class="template-option template-option--calm">
+                  <input type="radio" name="template" value="calm" />
+                  <div class="template-option__card">
+                    <div class="template-option__preview">
+                      <div class="template-option__preview-accent"></div>
+                      <div class="template-option__preview-title">Nanaimo <span style="color:#8b6f47;">homes.</span></div>
+                    </div>
+                    <div class="template-option__label">
+                      <strong>Calm</strong>
+                      <span>Warm, approachable</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Intent pages -->
+          <div class="section" id="s-intent">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">INT</div>
+                <div>
+                  <div class="section__title">Intent pages</div>
+                  <div class="section__subtitle">Buyer pages on homepage</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <a class="btn btn--ghost" href="/admin/intent-pages/new" style="margin-top:4px; margin-bottom:4px;">+ New intent page</a>
+              <div id="intentPagesGrid" class="intent-pages-grid">
+                <p class="hint">Loading...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero -->
+          <div class="section" id="s-hero">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">HRO</div>
+                <div>
+                  <div class="section__title">Hero</div>
+                  <div class="section__subtitle">Heading, intro, featured listing</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Eyebrow</label><input name="heroEyebrow" /></div>
+              <div class="field"><label>Heading</label><input name="heroHeading" /></div>
+              <div class="field"><label>Intro</label><textarea name="heroIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field"><label>Agent pick title</label><input name="agentPickTitle" /></div>
+                <div class="field"><label>Featured MLS #</label><input name="featuredListingMls" inputmode="numeric" placeholder="e.g. 1032478" /></div>
+              </div>
+              <div class="field"><label>Agent pick text</label><textarea name="agentPickText"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Social -->
+          <div class="section" id="s-social">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+            <div class="section__icon">SOC</div>
+                <div>
+                  <div class="section__title">Social</div>
+                  <div class="section__subtitle">Links and feed</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="grid-2">
+                <div class="field"><label>LinkedIn</label><input name="linkedinUrl" placeholder="https://linkedin.com/in/..." /></div>
+                <div class="field"><label>X / Twitter</label><input name="twitterUrl" placeholder="https://twitter.com/..." /></div>
+              </div>
+              <div class="grid-2">
+                <div class="field"><label>Instagram</label><input name="instagramUrl" placeholder="https://instagram.com/..." /></div>
+                <div class="field"><label>Facebook</label><input name="facebookUrl" placeholder="https://facebook.com/..." /></div>
+              </div>
+              <div class="field"><label>Section title</label><input name="socialTitle" /></div>
+              <div class="field"><label>Section intro</label><textarea name="socialIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>Feed type</label>
+                  <select name="socialFeedType">
+                    <option value="">No feed</option>
+                    <option value="twitter">X / Twitter</option>
+                    <option value="manual">Manual embed</option>
+                  </select>
+                </div>
+                <div class="field"><label>Feed URL</label><input name="socialFeedUrl" /></div>
+              </div>
+              <div class="field"><label>Embed code</label><textarea name="socialFeedEmbed"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Listing sections -->
+          <div class="section" id="s-sections">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+               <div class="section__icon">LST</div>
+                <div>
+                  <div class="section__title">Listing sections</div>
+                  <div class="section__subtitle">4 curated cards</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              {[1, 2, 3, 4].map((num) => (
+                <div class="group-editor">
+                  <div class="group-editor__header">Section {num}</div>
+                  <div class="grid-2">
+                    <div class="field"><label>Label</label><input name={`group${num}Kicker`} /></div>
+                    <div class="field"><label>Title</label><input name={`group${num}Title`} /></div>
+                  </div>
+                  <div class="field"><label>Description</label><textarea name={`group${num}Text`}></textarea></div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>City</label>
+                      <select name={`group${num}City`} class="city-select group-city-select"><option value="">Any city</option></select>
+                    </div>
+                    <div class="field">
+                      <label>Area</label>
+                      <select name={`group${num}Area`} class="area-select"><option value="">Any area</option></select>
+                    </div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>Type</label>
+                      <select name={`group${num}Type`} class="type-select"><option value="">Any type</option></select>
+                    </div>
+                    <div class="field">
+                      <label>Sort</label>
+                      <select name={`group${num}Sort`}>
+                        <option value="newest">Newest first</option>
+                        <option value="price-low">Price: low→high</option>
+                        <option value="price-high">Price: high→low</option>
+                        <option value="beds-high">Most beds</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field"><label>Min price (000s)</label><input name={`group${num}MinPrice`} inputmode="numeric" placeholder="0" /></div>
+                    <div class="field"><label>Max price (000s)</label><input name={`group${num}MaxPrice`} inputmode="numeric" placeholder="800" /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Live listings -->
+          <div class="section" id="s-live">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">LVE</div>
+                <div>
+                  <div class="section__title">Live listings</div>
+                  <div class="section__subtitle">Dynamic listing feed</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Section title</label><input name="newListingsTitle" /></div>
+              <div class="field"><label>Intro</label><textarea name="newListingsIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field">
                   <label>City</label>
-                  <select name={`group${num}City`} class="city-select group-city-select">
-                    <option value="">Loading cities...</option>
-                  </select>
+                  <select name="newListingsCity" id="newListingsCitySelect" class="city-select"><option value="">Any city</option></select>
                 </div>
-                <div>
-                  <label>Area / neighbourhood</label>
-                  <select name={`group${num}Area`} class="area-select">
-                    <option value="">Choose city first</option>
-                  </select>
+                <div class="field">
+                  <label>Area</label>
+                  <select name="newListingsArea" id="newListingsAreaSelect" class="area-select"><option value="">Any area</option></select>
                 </div>
               </div>
-
               <div class="grid-2">
-                <div>
+                <div class="field">
                   <label>Type</label>
-                  <select name={`group${num}Type`} class="type-select">
-                    <option value="">Loading types...</option>
-                  </select>
+                  <select name="newListingsType" class="type-select"><option value="">Any type</option></select>
                 </div>
-                <div>
+                <div class="field">
                   <label>Sort</label>
-                  <select name={`group${num}Sort`}>
+                  <select name="newListingsSort">
                     <option value="newest">Newest first</option>
-                    <option value="price-low">Price low to high</option>
-                    <option value="price-high">Price high to low</option>
-                    <option value="beds-high">Most bedrooms</option>
+                    <option value="price-low">Price: low→high</option>
+                    <option value="price-high">Price: high→low</option>
+                    <option value="beds-high">Most beds</option>
                   </select>
                 </div>
               </div>
-
               <div class="grid-2">
+                <div class="field"><label>Min price (000s)</label><input name="newListingsMinPrice" inputmode="numeric" placeholder="0" /></div>
+                <div class="field"><label>Max price (000s)</label><input name="newListingsMaxPrice" inputmode="numeric" placeholder="800" /></div>
+              </div>
+              <div class="field"><label>Number to show</label><input name="newListingsLimit" inputmode="numeric" placeholder="6" /></div>
+            </div>
+          </div>
+
+          <!-- City -->
+          <div class="section" id="s-city">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+            <div class="section__icon">CTY</div>
                 <div>
-                  <label>Min price in 000s</label>
-                  <input name={`group${num}MinPrice`} inputmode="numeric" placeholder="0" />
-                </div>
-                <div>
-                  <label>Max price in 000s</label>
-                  <input name={`group${num}MaxPrice`} inputmode="numeric" placeholder="Example: 800" />
+                  <div class="section__title">City section</div>
+                  <div class="section__subtitle">Intro and notes</div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        <div class="card">
-          <h2>Live listings section</h2>
-          <p class="hint">Change the city, area, property type, price, sort, or limit to show a different live listing group.</p>
-
-          <label>Section title</label>
-          <input name="newListingsTitle" />
-
-          <label>Section intro</label>
-          <textarea name="newListingsIntro"></textarea>
-
-          <div class="grid-2">
-            <div>
-              <label>Listing city</label>
-              <select name="newListingsCity" id="newListingsCitySelect" class="city-select">
-                <option value="">Loading cities...</option>
-              </select>
-            </div>
-            <div>
-              <label>Area / neighbourhood</label>
-              <select name="newListingsArea" id="newListingsAreaSelect" class="area-select">
-                <option value="">Choose city first</option>
-              </select>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>City intro</label><textarea name="cityIntro"></textarea></div>
+              <div class="field"><label>City notes</label><textarea name="cityNotes"></textarea></div>
             </div>
           </div>
 
-          <div class="grid-2">
-            <div>
-              <label>Property type</label>
-              <select name="newListingsType" class="type-select">
-                <option value="">Loading types...</option>
-              </select>
-            </div>
-            <div>
-              <label>Sort</label>
-              <select name="newListingsSort">
-                <option value="newest">Newest first</option>
-                <option value="price-low">Price low to high</option>
-                <option value="price-high">Price high to low</option>
-                <option value="beds-high">Most bedrooms</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div>
-              <label>Min price in 000s</label>
-              <input name="newListingsMinPrice" inputmode="numeric" placeholder="0" />
-            </div>
-            <div>
-              <label>Max price in 000s</label>
-              <input name="newListingsMaxPrice" inputmode="numeric" placeholder="Example: 800" />
+          <!-- Bio -->
+          <div class="section" id="s-bio">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+<div class="section__icon">BIO</div>
+                <div>
+                  <div class="section__title">Agent bio</div>
+                  <div class="section__subtitle">About section</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Bio</label><textarea name="agentBio" style="min-height:120px;"></textarea></div>
             </div>
           </div>
 
-          <label>Number to show</label>
-          <input name="newListingsLimit" inputmode="numeric" placeholder="6" />
-        </div>
+          <!-- Footer -->
+          <div class="form-footer">
+            <button type="submit" class="btn btn--primary">Save page</button>
+<a class="btn btn--ghost" id="previewLink" href="/agent-listings" target="_blank">Preview &nearr;</a>            <span class="status" id="status"></span>
+          </div>
 
-        <div class="card">
-          <h2>City section</h2>
-
-          <label>City intro</label>
-          <textarea name="cityIntro"></textarea>
-
-          <label>City notes</label>
-          <textarea name="cityNotes"></textarea>
-        </div>
-
-        <div class="card">
-          <h2>Agent bio</h2>
-
-          <label>Bio</label>
-          <textarea name="agentBio"></textarea>
-        </div>
-
-        <button type="submit">Save page</button>
-        <a class="preview" id="previewLink" href="/agent-listings" target="_blank">Preview page</a>
-
-        <div class="status" id="status"></div>
-      </form>
-    </main>
+        </form>
+      </main>
+    </div>
 
     <script is:inline>
       const slug = "chris-crump";
       const form = document.getElementById("agentForm");
       const status = document.getElementById("status");
 
-      let intentPages = [];
+      // ── Accordion ──────────────────────────────────────────
+      document.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const section = btn.closest(".section");
+          section.classList.toggle("is-open");
+        });
+      });
 
-      let filterOptions = {
-        cities: [],
-        areasByCity: {},
-        types: []
-      };
+      // ── State ──────────────────────────────────────────────
+      let intentPages = [];
+      let filterOptions = { cities: [], areasByCity: {}, types: [] };
 
       const defaults = {
-        agentName: "Chris Crump",
-        agentTitle: "Real Estate Advisor",
-        phone: "250.619.0390",
-        email: "chris@example.com",
-        city: "",
-        template: "brutal",
-        heroEyebrow: "Curated by Chris Crump",
-        heroHeading: "Homes worth watching.",
+        agentName: "Chris Crump", agentTitle: "Real Estate Advisor",
+        phone: "250.619.0390", email: "chris@example.com", city: "",
+        template: "brutal", accentColor: "#2f6f73",
+        heroEyebrow: "Curated by Chris Crump", heroHeading: "Homes worth watching.",
         heroIntro: "A simple, curated place to explore homes - organized by property type, price point, and what buyers are watching right now.",
-        agentPickTitle: "Not a giant listing portal.",
-        agentPickText: "Just the homes and categories buyers actually ask about most.",
-        featuredListingMls: "",
-        linkedinUrl: "",
-        twitterUrl: "",
-        instagramUrl: "",
-        facebookUrl: "",
-        socialTitle: "Follow along.",
-        socialIntro: "Market notes, listing updates, and local real estate context from your agent.",
-        socialFeedType: "",
-        socialFeedUrl: "",
-        socialFeedEmbed: "",
-        cityIntro: "",
-        cityNotes: "",
+        agentPickTitle: "Not a giant listing portal.", agentPickText: "Just the homes and categories buyers actually ask about most.",
+        featuredListingMls: "", linkedinUrl: "", twitterUrl: "", instagramUrl: "", facebookUrl: "",
+        socialTitle: "Follow along.", socialIntro: "Market notes, listing updates, and local real estate context from your agent.",
+        socialFeedType: "", socialFeedUrl: "", socialFeedEmbed: "",
+        cityIntro: "", cityNotes: "",
         agentBio: "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
-        newListingsTitle: "New listings.",
-        newListingsIntro: "The latest homes to hit the market.",
-        newListingsCity: "",
-        newListingsArea: "",
-        newListingsType: "",
-        newListingsMinPrice: "",
-        newListingsMaxPrice: "",
-        newListingsSort: "newest",
-        newListingsLimit: "6",
+        newListingsTitle: "New listings.", newListingsIntro: "The latest homes to hit the market.",
+        newListingsCity: "", newListingsArea: "", newListingsType: "",
+        newListingsMinPrice: "", newListingsMaxPrice: "", newListingsSort: "newest", newListingsLimit: "6",
         enabledIntentPageSlugs: [],
         groups: [
-          { title: "Condos", kicker: "Low-maintenance living", text: "Explore condo options from the latest listing data.", city: "", area: "", type: "condo", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=condo&sort=newest" },
-          { title: "Single-family homes", kicker: "Room to grow", text: "Detached homes from the latest listing data.", city: "", area: "", type: "house", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?type=house&sort=newest" },
-          { title: "Popular under $800k", kicker: "Buyer sweet spot", text: "Homes in one of the most watched price ranges for active buyers.", city: "", area: "", type: "", minPrice: "", maxPrice: "800", sort: "newest", href: "/explore?maxPrice=800&sort=newest" },
-          { title: "New listings", kicker: "Fresh to market", text: "Recently listed homes worth watching before they get buried.", city: "", area: "", type: "", minPrice: "", maxPrice: "", sort: "newest", href: "/explore?sort=newest" }
+          { title: "Condos", kicker: "Low-maintenance living", text: "Explore condo options from the latest listing data.", city: "", area: "", type: "condo", minPrice: "", maxPrice: "", sort: "newest" },
+          { title: "Single-family homes", kicker: "Room to grow", text: "Detached homes from the latest listing data.", city: "", area: "", type: "house", minPrice: "", maxPrice: "", sort: "newest" },
+          { title: "Popular under $800k", kicker: "Buyer sweet spot", text: "Homes in one of the most watched price ranges.", city: "", area: "", type: "", minPrice: "", maxPrice: "800", sort: "newest" },
+          { title: "New listings", kicker: "Fresh to market", text: "Recently listed homes worth watching.", city: "", area: "", type: "", minPrice: "", maxPrice: "", sort: "newest" }
         ]
       };
 
-      function getSelectedTemplate() {
-        const radios = form.querySelectorAll('input[name="template"]');
-        for (const radio of radios) {
-          if (radio.checked) return radio.value;
-        }
-        return "brutal";
-      }
-
-      function setSelectedTemplate(value) {
-        const radios = form.querySelectorAll('input[name="template"]');
-        for (const radio of radios) {
-          radio.checked = radio.value === value;
-        }
-        updatePreviewLink(value);
-      }
-
-      function updatePreviewLink(template) {
-        const link = document.getElementById("previewLink");
-        if (!link) return;
-        link.href = template === "calm" ? "/agent-listings-calm" : "/agent-listings";
-      }
-
-      form.querySelectorAll('input[name="template"]').forEach((radio) => {
-        radio.addEventListener("change", () => updatePreviewLink(radio.value));
-      });
-
-      function normalizeFilterValue(value) {
-        return String(value || "").trim().toLowerCase();
-      }
-
-      function titleCase(value) {
-        return String(value || "")
-          .trim()
-          .replace(/[-_]+/g, " ")
-          .replace(/\s+/g, " ")
-          .replace(/\b\w/g, (char) => char.toUpperCase());
-      }
+      // ── Helpers ────────────────────────────────────────────
+      const nv = (v) => String(v || "").trim().toLowerCase();
+      const tc = (v) => String(v || "").trim().replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
       function optionValue(item) {
         if (!item) return "";
-        if (typeof item === "object") {
-          return normalizeFilterValue(
-            item.value ||
-              item.normalized_value ||
-              item.normalized_area ||
-              item.normalized_city ||
-              item.normalized_type ||
-              item.name ||
-              item.label ||
-              ""
-          );
-        }
-        return normalizeFilterValue(item);
+        if (typeof item === "object") return nv(item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || item.label || "");
+        return nv(item);
       }
 
       function optionLabel(item) {
         if (!item) return "";
-        if (typeof item === "object") {
-          return titleCase(
-            item.label ||
-              item.display_name ||
-              item.name ||
-              item.value ||
-              item.normalized_value ||
-              item.normalized_area ||
-              item.normalized_city ||
-              item.normalized_type ||
-              ""
-          );
-        }
-        return titleCase(item);
+        if (typeof item === "object") return tc(item.label || item.display_name || item.name || item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || "");
+        return tc(item);
       }
 
       function uniqueOptions(items) {
         const seen = new Set();
         return (Array.isArray(items) ? items : [])
-          .map((item) => {
-            const value = optionValue(item);
-            return {
-              value,
-              label: optionLabel(item) || titleCase(value)
-            };
-          })
-          .filter((item) => {
-            if (!item.value || seen.has(item.value)) return false;
-            seen.add(item.value);
-            return true;
-          })
+          .map(item => ({ value: optionValue(item), label: optionLabel(item) || tc(optionValue(item)) }))
+          .filter(item => { if (!item.value || seen.has(item.value)) return false; seen.add(item.value); return true; })
           .sort((a, b) => a.label.localeCompare(b.label));
       }
 
       function getPrimaryCity() {
-        return (
-          normalizeFilterValue(form.elements.newListingsCity?.value) ||
-          normalizeFilterValue(form.elements.city?.value) ||
-          normalizeFilterValue(filterOptions.cities?.[0]?.value) ||
-          "nanaimo"
-        );
+        return nv(form.elements.newListingsCity?.value) || nv(form.elements.city?.value) || nv(filterOptions.cities?.[0]?.value) || "nanaimo";
       }
 
       function buildExploreHref(group) {
         const params = new URLSearchParams();
-        const city = normalizeFilterValue(group.city);
-        const area = normalizeFilterValue(group.area);
-        const type = normalizeFilterValue(group.type);
-
-        if (city) params.set("city", city);
-        if (area) params.set("area", area);
-        if (type) params.set("type", type);
+        if (group.city) params.set("city", nv(group.city));
+        if (group.area) params.set("area", nv(group.area));
+        if (group.type) params.set("type", nv(group.type));
         if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
         if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
         if (group.sort) params.set("sort", group.sort);
-
-        const query = params.toString();
-        return query ? `/explore?${query}` : "/explore";
+        const q = params.toString();
+        return q ? `/explore?${q}` : "/explore";
       }
 
       async function fetchJsonSafe(url) {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) return null;
-          return await res.json();
-        } catch {
-          return null;
-        }
+        try { const res = await fetch(url); if (!res.ok) return null; return await res.json(); } catch { return null; }
       }
 
+      // ── Template ───────────────────────────────────────────
+      function setSelectedTemplate(value) {
+        form.querySelectorAll('input[name="template"]').forEach(r => r.checked = r.value === value);
+        const link = document.getElementById("previewLink");
+        if (link) link.href = value === "calm" ? "/agent-listings-calm" : "/agent-listings";
+      }
+
+      form.querySelectorAll('input[name="template"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const link = document.getElementById("previewLink");
+          if (link) link.href = r.value === "calm" ? "/agent-listings-calm" : "/agent-listings";
+        });
+      });
+
+      // ── Colour picker ──────────────────────────────────────
+      const colourPresets = [
+        { colour: "#2f6f73", name: "Teal" }, { colour: "#2d5016", name: "Forest" },
+        { colour: "#7c3a2d", name: "Terracotta" }, { colour: "#1a3a5c", name: "Navy" },
+        { colour: "#5c3d8f", name: "Plum" }, { colour: "#8f5c1a", name: "Amber" },
+        { colour: "#1a5c4a", name: "Emerald" }, { colour: "#181614", name: "Charcoal" },
+      ];
+
+      function hexToRgb(hex) {
+        return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+      }
+
+  function mix(hex, w, warm = true) {
+        const {r,g,b} = hexToRgb(hex);
+        // Warm base: blend between accent and #f4efe7, then nudge toward white
+        // This matches the original site's warm sandy bg feel regardless of accent
+        const warmBase = { r: 244, g: 239, b: 231 };
+        const white = { r: 255, g: 255, b: 255 };
+        const base = warm
+          ? { r: Math.round(warmBase.r * 0.82 + white.r * 0.18), g: Math.round(warmBase.g * 0.82 + white.g * 0.18), b: Math.round(warmBase.b * 0.82 + white.b * 0.18) }
+          : white;
+        const t = w/100;
+        return `rgb(${Math.round(r+(base.r-r)*t)},${Math.round(g+(base.g-g)*t)},${Math.round(b+(base.b-b)*t)})`;
+      }
+
+      function updateSwatches(hex) {
+        const set = (id, c) => { const el = document.getElementById(id); if (el) el.style.background = c; };
+  set("swatchAccent", hex); set("swatchAccentLight", mix(hex,65));
+        set("swatchAccentSoft", mix(hex,88)); set("swatchBg", mix(hex,96));
+        set("swatchCard", "#ffffff"); set("swatchSection", mix(hex,94));
+      }
+
+      function applyColour(hex, source) {
+        if (!/^#[0-9a-f]{6}$/i.test(hex)) return;
+        hex = hex.toLowerCase();
+        const picker = document.getElementById("accentColorPicker");
+        const hexInput = document.getElementById("accentColorHex");
+        const label = document.getElementById("colourLabel");
+        if (picker && source !== "picker") picker.value = hex;
+        if (hexInput && source !== "hex") hexInput.value = hex;
+        if (label) label.textContent = colourPresets.find(p => p.colour.toLowerCase() === hex)?.name || "Custom";
+        updateSwatches(hex);
+      document.querySelectorAll(".preset-swatch").forEach(btn => {
+          btn.classList.toggle("is-selected", btn.dataset.colour.toLowerCase() === hex);
+        });
+        if (typeof syncSaveBtn === "function") syncSaveBtn();
+      }
+
+      document.querySelectorAll(".preset-swatch").forEach(btn => {
+        btn.addEventListener("click", () => applyColour(btn.dataset.colour, "preset"));
+      });
+
+      document.getElementById("accentColorPicker")?.addEventListener("input", (e) => applyColour(e.target.value, "picker"));
+
+      document.getElementById("accentColorHex")?.addEventListener("input", (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith("#")) val = "#" + val;
+        if (/^#[0-9a-f]{6}$/i.test(val)) applyColour(val, "hex");
+      });
+
+      let customColours = [];
+      try { customColours = JSON.parse(localStorage.getItem("agentCustomColours") || "[]"); } catch {}
+
+      function isBuiltin(hex) { return colourPresets.some(p => p.colour.toLowerCase() === hex.toLowerCase()); }
+      function isAlreadySaved(hex) { return customColours.some(c => c.colour.toLowerCase() === hex.toLowerCase()); }
+
+      function renderCustomSwatches() {
+        const container = document.getElementById("customSwatches");
+        const section = document.getElementById("savedSection");
+        container.innerHTML = "";
+        if (!customColours.length) { section.classList.remove("has-customs"); return; }
+        section.classList.add("has-customs");
+        customColours.forEach(c => {
+          const btn = document.createElement("button");
+        btn.type = "button";
+          btn.className = "preset-swatch is-custom";
+          btn.dataset.colour = c.colour;
+          btn.title = c.name;
+          btn.style.cssText = `background:${c.colour};width:44px;height:44px;border-radius:999px;border:2px solid transparent;cursor:pointer;position:relative;flex-shrink:0;transition:transform 0.14s,box-shadow 0.14s,border-color 0.14s;`;
+    btn.addEventListener("click", () => applyColour(c.colour, "preset"));
+          const rmv = document.createElement("button");
+          rmv.type = "button";
+          rmv.className = "remove-btn";
+          rmv.textContent = "\u2715";
+          rmv.title = "Remove";
+rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,0.2);font-size:11px;font-weight:900;color:#555;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10;padding:0;line-height:1;";          rmv.addEventListener("mouseenter", () => rmv.style.display = "flex");
+        rmv.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!confirm("Remove this saved colour?")) return;
+            customColours = customColours.filter(x => x.colour !== c.colour);
+            localStorage.setItem("agentCustomColours", JSON.stringify(customColours));
+            renderCustomSwatches();
+            syncSaveBtn();
+          });
+          btn.addEventListener("mouseenter", () => rmv.style.display = "flex");
+          btn.addEventListener("mouseleave", () => rmv.style.display = "none");
+          btn.appendChild(rmv);
+          container.appendChild(btn);
+        });
+        const hex = document.getElementById("accentColorPicker")?.value?.toLowerCase();
+        if (hex) container.querySelectorAll(".preset-swatch").forEach(b => b.classList.toggle("is-selected", b.dataset.colour.toLowerCase() === hex));
+      }
+
+      function syncSaveBtn() {
+        const hex = (document.getElementById("accentColorHex")?.value || "").toLowerCase();
+        const btn = document.getElementById("saveCustomBtn");
+        if (!btn) return;
+        const exists = isBuiltin(hex) || isAlreadySaved(hex);
+        btn.disabled = exists;
+        btn.textContent = exists ? "Saved \u2713" : "Save colour";
+      }
+
+      document.getElementById("saveCustomBtn")?.addEventListener("click", () => {
+        const hex = (document.getElementById("accentColorHex")?.value || "").toLowerCase();
+        if (!hex || !/^#[0-9a-f]{6}$/.test(hex) || isBuiltin(hex) || isAlreadySaved(hex)) return;
+        customColours.push({ colour: hex, name: hex.toUpperCase() });
+        localStorage.setItem("agentCustomColours", JSON.stringify(customColours));
+        renderCustomSwatches();
+        syncSaveBtn();
+      });
+
+      window.seedAccentColour = (hex) => { if (hex && /^#[0-9a-f]{6}$/i.test(hex)) applyColour(hex, "seed"); };
+      applyColour("#2f6f73", "seed");
+      renderCustomSwatches();
+      syncSaveBtn();
+
+      // ── Intent pages ───────────────────────────────────────
       async function loadIntentPages(selected = []) {
-        const city = normalizeFilterValue(form.elements.city?.value) || "nanaimo";
-
-        const json = await fetchJsonSafe(
-          `/api/intent-pages?city=${encodeURIComponent(city)}`
-        );
-
+        const city = nv(form.elements.city?.value) || "nanaimo";
+        const json = await fetchJsonSafe(`/api/intent-pages?city=${encodeURIComponent(city)}`);
         intentPages = Array.isArray(json?.pages) ? json.pages : [];
-
-        renderIntentPages(selected);
-      }
-
-      function renderIntentPages(selected = []) {
         const grid = document.getElementById("intentPagesGrid");
-
         if (!grid) return;
-
-        if (!intentPages.length) {
-          grid.innerHTML = `<p class="hint">No published intent pages found for this city.</p>`;
-          return;
-        }
-
-        grid.innerHTML = intentPages
-          .map((page) => {
-            const checked = selected.includes(page.slug);
-
-            return `
-              <label class="intent-page-card">
-                <input
-                  type="checkbox"
-                  class="intent-page-checkbox"
-                  value="${page.slug}"
-                  ${checked ? "checked" : ""}
-                />
-
-                <div class="intent-page-meta">
-                  <strong>${page.hero_heading || page.slug}</strong>
-
-                  <p>${page.intro_copy || ""}</p>
-
-                  <div class="intent-page-tags">
-                    ${
-                      page.property_type
-                        ? `<span>${page.property_type}</span>`
-                        : ""
-                    }
-
-                    ${
-                      page.lifestyle_angle
-                        ? `<span>${String(page.lifestyle_angle).replaceAll("_", " ")}</span>`
-                        : ""
-                    }
-
-                    ${
-                      page.price_max
-                        ? `<span>Under $${Number(page.price_max).toLocaleString()}</span>`
-                        : ""
-                    }
-                  </div>
-                </div>
-              </label>
-            `;
-          })
-          .join("");
+        if (!intentPages.length) { grid.innerHTML = `<p class="hint">No published intent pages found.</p>`; return; }
+        grid.innerHTML = intentPages.map(page => {
+          const checked = selected.includes(page.slug);
+          return `<label class="intent-page-card">
+            <input type="checkbox" class="intent-page-checkbox" value="${page.slug}" ${checked ? "checked" : ""} />
+            <div class="intent-page-meta">
+              <strong>${page.hero_heading || page.slug}</strong>
+              <p>${page.intro_copy || ""}</p>
+              <div class="intent-page-tags">
+                ${page.property_type ? `<span>${page.property_type}</span>` : ""}
+                ${page.lifestyle_angle ? `<span>${String(page.lifestyle_angle).replaceAll("_"," ")}</span>` : ""}
+                ${page.price_max ? `<span>Under $${Number(page.price_max).toLocaleString()}</span>` : ""}
+              </div>
+            </div>
+          </label>`;
+        }).join("");
       }
 
+      // ── Filter dropdowns ───────────────────────────────────
       async function loadFilterOptions() {
-        status.textContent = "Loading listing filters...";
-
-        const filtersJson = await fetchJsonSafe("/api/listing-filters");
-
-        if (filtersJson) {
-          filterOptions.cities = uniqueOptions(filtersJson.cities || []);
-          filterOptions.types = uniqueOptions(filtersJson.types || filtersJson.propertyTypes || []);
-
-          const areasByCity = filtersJson.areasByCity || {};
-
-          filterOptions.areasByCity = Object.fromEntries(
-            Object.entries(areasByCity).map(([city, areas]) => [
-              normalizeFilterValue(city),
-              uniqueOptions(areas)
-            ])
-          );
-
-          status.textContent = "";
-          return;
+        const json = await fetchJsonSafe("/api/listing-filters");
+        if (json) {
+          filterOptions.cities = uniqueOptions(json.cities || []);
+          filterOptions.types = uniqueOptions(json.types || json.propertyTypes || []);
+          const abc = json.areasByCity || {};
+          filterOptions.areasByCity = Object.fromEntries(Object.entries(abc).map(([city,areas]) => [nv(city), uniqueOptions(areas)]));
         }
-
-        filterOptions.cities = [];
-        filterOptions.types = [];
-        filterOptions.areasByCity = {};
-        status.textContent = "Could not load listing filters.";
       }
 
       function populateCitySelects() {
-        Array.from(document.querySelectorAll(".city-select")).forEach((select) => {
-          const current = normalizeFilterValue(select.value) || getPrimaryCity();
-
-          select.innerHTML = [
-            `<option value="">Any city</option>`,
-            ...filterOptions.cities.map((city) =>
-              `<option value="${city.value}" ${city.value === current ? "selected" : ""}>${city.label}</option>`
-            )
-          ].join("");
+        document.querySelectorAll(".city-select").forEach(select => {
+          const current = nv(select.value) || getPrimaryCity();
+          select.innerHTML = [`<option value="">Any city</option>`, ...filterOptions.cities.map(c => `<option value="${c.value}" ${c.value===current?"selected":""}>${c.label}</option>`)].join("");
         });
       }
 
       function populateTypeSelects() {
-        Array.from(document.querySelectorAll(".type-select")).forEach((select) => {
-          const current = normalizeFilterValue(select.value);
-
-          select.innerHTML = [
-            `<option value="">Any type</option>`,
-            ...filterOptions.types.map((type) =>
-              `<option value="${type.value}" ${type.value === current ? "selected" : ""}>${type.label}</option>`
-            )
-          ].join("");
+        document.querySelectorAll(".type-select").forEach(select => {
+          const current = nv(select.value);
+          select.innerHTML = [`<option value="">Any type</option>`, ...filterOptions.types.map(t => `<option value="${t.value}" ${t.value===current?"selected":""}>${t.label}</option>`)].join("");
         });
       }
 
       function getCityForAreaSelect(areaSelect) {
-        if (areaSelect.name === "newListingsArea") {
-          return normalizeFilterValue(form.elements.newListingsCity?.value || getPrimaryCity());
-        }
-
-        const groupNum = areaSelect.name.match(/\d+/)?.[0];
-        return normalizeFilterValue(form.elements[`group${groupNum}City`]?.value || getPrimaryCity());
+        if (areaSelect.name === "newListingsArea") return nv(form.elements.newListingsCity?.value || getPrimaryCity());
+        const n = areaSelect.name.match(/\d+/)?.[0];
+        return nv(form.elements[`group${n}City`]?.value || getPrimaryCity());
       }
 
       function populateAreaSelects() {
-        Array.from(document.querySelectorAll(".area-select")).forEach((select) => {
-          const current = normalizeFilterValue(select.value);
+        document.querySelectorAll(".area-select").forEach(select => {
+          const current = nv(select.value);
           const city = getCityForAreaSelect(select);
           const areas = filterOptions.areasByCity[city] || [];
-
-          select.innerHTML = [
-            `<option value="">Any area</option>`,
-            ...areas.map((area) =>
-              `<option value="${area.value}" ${area.value === current ? "selected" : ""}>${area.label}</option>`
-            )
-          ].join("");
+          select.innerHTML = [`<option value="">Any area</option>`, ...areas.map(a => `<option value="${a.value}" ${a.value===current?"selected":""}>${a.label}</option>`)].join("");
         });
       }
 
-      function populateDropdowns() {
-        populateCitySelects();
-        populateTypeSelects();
-        populateAreaSelects();
-      }
+      function populateDropdowns() { populateCitySelects(); populateTypeSelects(); populateAreaSelects(); }
 
+      // ── Fill form ──────────────────────────────────────────
       function fillForm(data) {
         const savedGroups = Array.isArray(data?.groups) ? data.groups : [];
-
-        const mergedGroups = [1, 2, 3, 4].map((_, index) => {
-          const saved = savedGroups[index] || {};
-          const fallback = defaults.groups[index] || {};
-
-          const isBlank =
-            !saved.kicker &&
-            !saved.title &&
-            !saved.text &&
-            !saved.href &&
-            !saved.city &&
-            !saved.area &&
-            !saved.type &&
-            !saved.minPrice &&
-            !saved.maxPrice;
-
+        const mergedGroups = [0,1,2,3].map(i => {
+          const saved = savedGroups[i] || {};
+          const fallback = defaults.groups[i] || {};
+          const isBlank = !saved.kicker && !saved.title && !saved.text && !saved.city && !saved.area && !saved.type && !saved.minPrice && !saved.maxPrice;
           return isBlank ? fallback : { ...fallback, ...saved };
         });
-
-        const merged = {
-          ...defaults,
-          ...(data || {}),
-          groups: mergedGroups
-        };
+        const merged = { ...defaults, ...(data || {}), groups: mergedGroups };
 
         setSelectedTemplate(merged.template || "brutal");
 
         Object.entries(merged).forEach(([key, value]) => {
-          if (key === "groups" || key === "template" || key === "enabledIntentPageSlugs") return;
-
+          if (["groups","template","enabledIntentPageSlugs"].includes(key)) return;
           const field = form.elements[key];
-
           if (!field) return;
-
-          if (
-            key === "city" ||
-            key === "newListingsCity" ||
-            key === "newListingsArea" ||
-            key === "newListingsType"
-          ) {
-            field.value = normalizeFilterValue(value);
-            return;
-          }
-
-          field.value = value || "";
+          field.value = ["city","newListingsCity","newListingsArea","newListingsType"].includes(key) ? nv(value) : (value || "");
         });
 
-        [1, 2, 3, 4].forEach((num) => {
-          const group = merged.groups[num - 1] || {};
-
-          form.elements[`group${num}Kicker`].value = group.kicker || "";
-          form.elements[`group${num}Title`].value = group.title || "";
-          form.elements[`group${num}Text`].value = group.text || "";
-          form.elements[`group${num}City`].value = normalizeFilterValue(group.city);
-          form.elements[`group${num}Area`].value = normalizeFilterValue(group.area);
-          form.elements[`group${num}Type`].value = normalizeFilterValue(group.type);
-          form.elements[`group${num}Sort`].value = group.sort || "newest";
-          form.elements[`group${num}MinPrice`].value = group.minPrice || "";
-          form.elements[`group${num}MaxPrice`].value = group.maxPrice || "";
+        [1,2,3,4].forEach(num => {
+          const g = merged.groups[num-1] || {};
+          form.elements[`group${num}Kicker`].value = g.kicker || "";
+          form.elements[`group${num}Title`].value = g.title || "";
+          form.elements[`group${num}Text`].value = g.text || "";
+          form.elements[`group${num}City`].value = nv(g.city);
+          form.elements[`group${num}Area`].value = nv(g.area);
+          form.elements[`group${num}Type`].value = nv(g.type);
+          form.elements[`group${num}Sort`].value = g.sort || "newest";
+          form.elements[`group${num}MinPrice`].value = g.minPrice || "";
+          form.elements[`group${num}MaxPrice`].value = g.maxPrice || "";
         });
+
+        if (typeof window.seedAccentColour === "function") window.seedAccentColour(merged.accentColor || "#2f6f73");
       }
 
-      function normalizeSavedData(data) {
-        data.city = normalizeFilterValue(data.city);
-        data.newListingsCity = normalizeFilterValue(data.newListingsCity);
-        data.newListingsArea = normalizeFilterValue(data.newListingsArea);
-        data.newListingsType = normalizeFilterValue(data.newListingsType);
-        return data;
-      }
-
+      // ── Load ───────────────────────────────────────────────
       async function loadPage() {
         const res = await fetch(`/api/agent-page?slug=${encodeURIComponent(slug)}`);
         const json = await res.json();
         const data = json?.data || defaults;
-
         fillForm(data);
-
         await loadIntentPages(data?.enabledIntentPageSlugs || []);
-
         await loadFilterOptions();
         populateDropdowns();
-
         fillForm(data);
         populateDropdowns();
-
         await loadIntentPages(data?.enabledIntentPageSlugs || []);
       }
 
-      form.addEventListener("change", async (event) => {
-        if (event.target?.classList?.contains("city-select")) {
-          populateAreaSelects();
-        }
-
-        if (event.target?.name === "city") {
-          await loadIntentPages(
-            Array.from(document.querySelectorAll(".intent-page-checkbox:checked"))
-              .map((el) => el.value)
-          );
-        }
+      form.addEventListener("change", async (e) => {
+        if (e.target?.classList?.contains("city-select")) populateAreaSelects();
+        if (e.target?.name === "city") await loadIntentPages(Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value));
       });
 
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        status.textContent = "Saving...";
+      // ── Save ───────────────────────────────────────────────
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.textContent = "Saving…";
+        status.className = "status";
 
         const formData = new FormData(form);
-        const data = normalizeSavedData(Object.fromEntries(formData.entries()));
-
+        const data = Object.fromEntries(formData.entries());
+        data.city = nv(data.city);
+        data.newListingsCity = nv(data.newListingsCity);
+        data.newListingsArea = nv(data.newListingsArea);
+        data.newListingsType = nv(data.newListingsType);
         data.template = data.template || "brutal";
+        data.accentColor = data.accentColor || "#2f6f73";
 
-        data.groups = [1, 2, 3, 4]
-          .map((num) => {
-            const group = {
-              kicker: data[`group${num}Kicker`] || "",
-              title: data[`group${num}Title`] || "",
-              text: data[`group${num}Text`] || "",
-              city: normalizeFilterValue(data[`group${num}City`]),
-              area: normalizeFilterValue(data[`group${num}Area`]),
-              type: normalizeFilterValue(data[`group${num}Type`]),
-              minPrice: data[`group${num}MinPrice`] || "",
-              maxPrice: data[`group${num}MaxPrice`] || "",
-              sort: data[`group${num}Sort`] || "newest"
-            };
+        data.groups = [1,2,3,4].map(num => {
+          const g = { kicker: data[`group${num}Kicker`]||"", title: data[`group${num}Title`]||"", text: data[`group${num}Text`]||"", city: nv(data[`group${num}City`]), area: nv(data[`group${num}Area`]), type: nv(data[`group${num}Type`]), minPrice: data[`group${num}MinPrice`]||"", maxPrice: data[`group${num}MaxPrice`]||"", sort: data[`group${num}Sort`]||"newest" };
+          return { ...g, href: buildExploreHref(g) };
+        }).filter(g => g.title || g.text || g.href);
 
-            return {
-              ...group,
-              href: buildExploreHref(group)
-            };
-          })
-          .filter((group) => group.title || group.text || group.href);
-
-        [1, 2, 3, 4].forEach((num) => {
-          delete data[`group${num}Kicker`];
-          delete data[`group${num}Title`];
-          delete data[`group${num}Text`];
-          delete data[`group${num}City`];
-          delete data[`group${num}Area`];
-          delete data[`group${num}Type`];
-          delete data[`group${num}Sort`];
-          delete data[`group${num}MinPrice`];
-          delete data[`group${num}MaxPrice`];
-        });
+        [1,2,3,4].forEach(num => ["Kicker","Title","Text","City","Area","Type","Sort","MinPrice","MaxPrice"].forEach(f => delete data[`group${num}${f}`]));
 
         data.newListingsLimit = data.newListingsLimit || "6";
-        data.newListingsMinPrice = data.newListingsMinPrice || "";
-        data.newListingsMaxPrice = data.newListingsMaxPrice || "";
-        data.newListingsSort = data.newListingsSort || "newest";
-        data.featuredListingMls = data.featuredListingMls || "";
-        data.linkedinUrl = data.linkedinUrl || "";
-        data.twitterUrl = data.twitterUrl || "";
-        data.instagramUrl = data.instagramUrl || "";
-        data.facebookUrl = data.facebookUrl || "";
-        data.socialTitle = data.socialTitle || "";
-        data.socialIntro = data.socialIntro || "";
-        data.socialFeedType = data.socialFeedType || "";
-        data.socialFeedUrl = data.socialFeedUrl || "";
-        data.socialFeedEmbed = data.socialFeedEmbed || "";
+        data.enabledIntentPageSlugs = Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value);
 
-        data.enabledIntentPageSlugs = Array.from(
-          document.querySelectorAll(".intent-page-checkbox:checked")
-        ).map((el) => el.value);
-
-        const res = await fetch("/api/agent-page", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug, data })
-        });
-
+        const res = await fetch("/api/agent-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, data }) });
         const json = await res.json();
 
-        status.textContent = json.ok ? "Saved." : json.error || "Save failed.";
+status.textContent = json.ok ? "Saved \u2713" : json.error || "Save failed";        if (!json.ok) status.className = "status is-error";
       });
 
-      loadPage();
+    // ── Sidebar section nav ─────────────────────────────
+document.querySelectorAll(".sidebar__section-links a").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetId = link.getAttribute("href").slice(1);
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    document.querySelectorAll(".section").forEach((s) => {
+      s.classList.remove("is-open");
+    });
+
+    document.querySelectorAll(".sidebar__section-links a").forEach((l) => {
+      l.classList.remove("active");
+    });
+
+    target.classList.add("is-open");
+    link.classList.add("active");
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+loadPage();
     </script>
   </body>
 </html>
