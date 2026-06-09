@@ -1,13 +1,14 @@
 ---
 import AdminSidebar from "../../components/AdminSidebar.astro";
 import { createClient } from "@supabase/supabase-js";
+import { getSite } from "../../lib/getSite";
 export const prerender = false;
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
+const site = await getSite(Astro.url.hostname);
 const formData =
   Astro.request.method === "POST" ? await Astro.request.formData() : null;
 
@@ -34,6 +35,11 @@ let pagesQuery = supabase
       feature_key
     )
   `);
+
+pagesQuery = pagesQuery.eq(
+  "site_id",
+  site?.id || "00000000-0000-0000-0000-000000000000"
+);
 
 if (activeType) {
   pagesQuery = pagesQuery.eq("property_type", activeType);
@@ -349,7 +355,12 @@ function publicHref(page: any) {
     <AdminSidebar active="pages" />
 
     <main class="main">
-      <div class="topbar">
+
+  <p style="font-weight:800; color:red;">
+    DEBUG: {Astro.url.hostname} / {site?.domain} / {site?.id}
+  </p>
+
+  <div class="topbar">
         <div>
           <h1>Intent & category pages</h1>
           <p class="intro">

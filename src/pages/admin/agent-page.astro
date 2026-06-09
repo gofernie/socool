@@ -511,12 +511,46 @@ const slug = "chris-crump";
 
       .status.is-error { color: #b33; }
 
-      @media (max-width: 860px) {
-        .page { grid-template-columns: 1fr; }
-      
-        .main { padding: 24px 20px 60px; }
-        .grid-2, .template-options { grid-template-columns: 1fr; }
-      }
+ @media (max-width: 860px) {
+  .page {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+
+  .page > *:not(.main) {
+    display: none !important;
+  }
+
+  .main {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 16px !important;
+  }
+
+  .grid-2,
+  .template-options {
+    grid-template-columns: 1fr !important;
+  }
+
+  .colour-presets,
+  #customSwatches {
+    display: grid !important;
+    grid-template-columns: repeat(4, 44px);
+    gap: 10px;
+  }
+
+  .colour-picker-row {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  #accentColorHex,
+  #saveCustomBtn {
+    width: 100% !important;
+  }
+}
     </style>
   </head>
 
@@ -1051,8 +1085,7 @@ const slug = "chris-crump";
         if (/^#[0-9a-f]{6}$/i.test(val)) applyColour(val, "hex");
       });
 
-      let customColours = [];
-      try { customColours = JSON.parse(localStorage.getItem("agentCustomColours") || "[]"); } catch {}
+let customColours = [];
 
       function isBuiltin(hex) { return colourPresets.some(p => p.colour.toLowerCase() === hex.toLowerCase()); }
       function isAlreadySaved(hex) { return customColours.some(c => c.colour.toLowerCase() === hex.toLowerCase()); }
@@ -1082,7 +1115,7 @@ rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20p
             e.preventDefault();
             if (!confirm("Remove this saved colour?")) return;
             customColours = customColours.filter(x => x.colour !== c.colour);
-            localStorage.setItem("agentCustomColours", JSON.stringify(customColours));
+           
             renderCustomSwatches();
             syncSaveBtn();
           });
@@ -1108,7 +1141,7 @@ rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20p
         const hex = (document.getElementById("accentColorHex")?.value || "").toLowerCase();
         if (!hex || !/^#[0-9a-f]{6}$/.test(hex) || isBuiltin(hex) || isAlreadySaved(hex)) return;
         customColours.push({ colour: hex, name: hex.toUpperCase() });
-        localStorage.setItem("agentCustomColours", JSON.stringify(customColours));
+        
         renderCustomSwatches();
         syncSaveBtn();
       });
@@ -1218,7 +1251,14 @@ rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20p
           form.elements[`group${num}MaxPrice`].value = g.maxPrice || "";
         });
 
-        if (typeof window.seedAccentColour === "function") window.seedAccentColour(merged.accentColor || "#2f6f73");
+customColours = Array.isArray(merged.savedColours)
+  ? merged.savedColours
+  : [];
+
+renderCustomSwatches();
+
+if (typeof window.seedAccentColour === "function")
+  window.seedAccentColour(merged.accentColor || "#2f6f73");
       }
 
       // ── Load ───────────────────────────────────────────────
@@ -1264,7 +1304,7 @@ rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20p
 
         data.newListingsLimit = data.newListingsLimit || "6";
         data.enabledIntentPageSlugs = Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value);
-
+data.savedColours = customColours;
         const res = await fetch("/api/agent-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, data }) });
         const json = await res.json();
 

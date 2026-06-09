@@ -7,6 +7,13 @@ import SiteNav from "../components/SiteNav.astro";
 import "../styles/intent-modal.css";
 import "../styles/page-hero.css";
 export const prerender = false;
+import { getSite } from "../lib/getSite";
+
+const site = await getSite(Astro.url.hostname);
+
+const siteCity = site?.city || "nanaimo";
+const accentColor = site?.accent_color || "#bf2c37";
+const siteName = site?.site_name || "Real Estate";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
@@ -15,16 +22,12 @@ const supabase = createClient(
 
 const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-const agentRes = await supabase
-  .from("agent_pages")
-  .select("data")
-  .eq("slug", "chris-crump")
-  .single();
 
-const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
+
+
 const url = Astro.url;
 
-const city = url.searchParams.get("city") || "nanaimo";
+const city = url.searchParams.get("city") || siteCity;
 const area = url.searchParams.get("area") || "";
 const type = url.searchParams.get("type") || "";
 const minPrice = Number(url.searchParams.get("minPrice") || 0);
@@ -145,7 +148,7 @@ const { data: intentPageRows } = await supabase
       feature_key
     )
   `)
-  .eq("city", clean(city || "nanaimo"))
+  .eq("site_id", site?.id)
   .eq("is_published", true)
   .order("created_at", { ascending: false });
 
@@ -363,17 +366,22 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 >
   <div class="page-hero__inner">
     <div>
-      <p class="page-hero__eyebrow">Homes worth watching</p>
+    <p class="page-hero__eyebrow">
+  {site?.hero_eyebrow || "Homes worth watching"}
+</p>
 
 <h1>
-  {(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())}
-  Homes For Sale
+  {site?.hero_heading ||
+    `${(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())} Homes For Sale`}
 </h1>
 
+<p style="font-size:14px; font-weight:800;">
+  DEBUG: {Astro.url.hostname} / {site?.domain} / {accentColor}
+</p>
+
 <p class="page-hero__copy">
-  Browse active homes for sale in Nanaimo, including
-houses, condos, and townhomes across the city's most
-popular neighbourhoods.
+  {site?.hero_copy ||
+    "Browse active homes for sale, including houses, condos, and townhomes."}
 </p>
         </div>
 
@@ -384,9 +392,10 @@ popular neighbourhoods.
     <main class="section">
       <div class="intent-content-shell">
              <section class="homepage-intro">
-  <p>
-    Looking for homes for sale in {(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())}? Explore current MLS listings, compare neighbourhoods, discover condos, townhomes, and detached houses, and find properties that match your lifestyle and budget.
-  </p>
+ <p>
+  {site?.intro_copy ||
+    `Explore current MLS listings, compare neighbourhoods, discover condos, townhomes, and detached houses, and find properties that match your lifestyle and budget.`}
+</p>
 </section>
 
 <div class="explore-toolbar">
@@ -581,6 +590,7 @@ popular neighbourhoods.
 
 <ShortlistReviewModal />
 <IntentModalController />
+
 <style is:inline slot="head">
   .section {
     padding: 28px 0 100px;

@@ -6,7 +6,7 @@ interface Props {
 const { title, accentColor = "#2f6f73" } = Astro.props;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" style={`--accent: ${accentColor};`}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -14,9 +14,7 @@ const { title, accentColor = "#2f6f73" } = Astro.props;
     <link rel="icon" href="/favicon.ico" />
     <meta name="generator" content={Astro.generator} />
    <title>{title ?? "Astro Basics"}</title>
-<script define:vars={{ accentColor }} is:inline>
-      document.documentElement.style.setProperty("--accent", accentColor);
-    </script>
+
   </head>
 
   <body>
@@ -28,9 +26,10 @@ const { title, accentColor = "#2f6f73" } = Astro.props;
   :root {
    /* Derived colours */
     --accent-light: color-mix(in srgb, var(--accent) 35%, white);
-    --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+ --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
 
-    /* Theme-aware surfaces */
+/* Theme-aware surfaces */
+--surface: color-mix(in srgb, var(--accent) 1.5%, white);
 --bg: color-mix(in srgb, var(--accent) 2%, #faf9f7);
     /* Cards & sections */
     --card-bg: #ffffff;
