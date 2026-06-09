@@ -5,6 +5,7 @@ import ListingCard from "../components/ListingCard.astro";
 import ShortlistReviewModal from "../components/ShortlistReviewModal.astro";
 import IntentModalController from "../components/IntentModalController.astro";
 import SiteNav from "../components/SiteNav.astro";
+import { getSite } from "../lib/getSite";
 import "../styles/area-page.css";
 import "../styles/intent-modal.css";
 
@@ -13,23 +14,28 @@ const supabase = createClient(
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const agentRes = await supabase
-  .from("agent_pages")
-  .select("data")
-  .eq("slug", "chris-crump")
-  .single();
+const site = await getSite(Astro.url.hostname);
 
-const accentColor = agentRes.data?.data?.accentColor || undefined;
+const city =
+  String(Astro.params.city || site?.city || "nanaimo")
+    .toLowerCase()
+    .trim();
+
+
+
+const cityLabel = city.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const accentColor = site?.accent_color || "#2f6f73";
 
 const { data: allListings = [], error } = await supabase
   .from("listing_rows")
   .select("*")
-  .eq("normalized_city", "nanaimo");
+.eq("normalized_city", city);
 
 const { data: featuredIntentPages = [], error: featuredIntentError } =
   await supabase
     .from("intent_pages")
     .select("slug, hero_heading, intro_copy")
+    .eq("site_id", site?.id || "00000000-0000-0000-0000-000000000000")
     .limit(6);
 
 console.log("FEATURED INTENT PAGES", {
@@ -39,7 +45,7 @@ console.log("FEATURED INTENT PAGES", {
 });
 
 if (error) {
-  console.error("Nanaimo market page error:", error);
+  console.error(`${cityLabel} market page error:`, error);
 }
 
 const normalizeListingImageUrl = (value: any) => {
@@ -168,12 +174,12 @@ const chartData = {
 
 ---
 
-<Layout title="Nanaimo Real Estate Market Report" accentColor={accentColor}>
+<Layout title={`${cityLabel} Real Estate Market Report`} accentColor={accentColor}>
  
   
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <SiteNav city="nanaimo" areas={navAreas} types={navTypes} showAreaNav={false} />
+  <SiteNav city={city} areas={navAreas} types={navTypes} showAreaNav={false} />
 
   <!-- ── Hero ── -->
   <header
@@ -181,21 +187,21 @@ const chartData = {
     style="--hero-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1800&q=80'); background-position: center right;"
   >
     <div class="shell area-hero__inner">
-      <p class="area-eyebrow">Nanaimo Market Report</p>
-      <h1>Nanaimo Real Estate<br />Market</h1>
-      <p class="area-intro">
-        Explore active listings, inventory levels, pricing trends and
-        neighbourhood activity across Nanaimo.
-      </p>
+      <p class="area-eyebrow">{cityLabel} Market Report</p>
+<h1>{cityLabel} Real Estate<br />Market</h1>
+<p class="area-intro">
+  Explore active listings, inventory levels, pricing trends and
+  neighbourhood activity across {cityLabel}.
+</p>
     </div>
   </header>
 
   <!-- ── Area browse nav ── -->
   <nav class="area-browse-nav">
     <div class="shell area-browse-nav__inner">
-      <span>Explore Nanaimo areas</span>
+   <span>Explore {cityLabel} areas</span>
       {navAreas.slice(0, 8).map((item) => (
-        <a href={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}>
+       <a href={`/${city}/areas/${item.replace(/\s+/g, "-")}`}>
           {labelize(item)}
         </a>
       ))}
@@ -237,7 +243,7 @@ const chartData = {
       <section class="chart-card">
         <div>
           <span class="eyebrow">Price Distribution</span>
-          <h2>Where Nanaimo Inventory Sits by Price</h2>
+          <h2>Where {cityLabel} Inventory Sits by Price</h2>
         </div>
         <div class="chart-wrap">
           <canvas id="priceChart"></canvas>
@@ -259,11 +265,11 @@ const chartData = {
     <section class="listings-section">
       <div class="section-heading" style="margin-bottom: 24px;">
         <span class="eyebrow">Latest Listings</span>
-        <h2>Newest Nanaimo Listings</h2>
-        <p>
-          A quick look at some of the newest active listings currently available
-          across Nanaimo.
-        </p>
+       <h2>Newest {cityLabel} Listings</h2>
+<p>
+  A quick look at some of the newest active listings currently available
+  across {cityLabel}.
+</p>
       </div>
 
       <div class="listing-grid">
@@ -284,19 +290,19 @@ const chartData = {
     <!-- ── Intent interrupter ── -->
     <section class="intent-interrupter">
       <div class="intent-interrupter__inner">
-        <span class="eyebrow" style="color: rgba(255,255,255,0.6);">Explore Nanaimo Homes</span>
+        <span class="eyebrow" style="color: rgba(255,255,255,0.6);">Explore {cityLabel} Homes</span>
         <h2>Browse Curated Collections</h2>
         <p>
-          Looking for something specific? Explore some of Nanaimo's most popular
-          home searches.
+          Looking for something specific? Explore some of {cityLabel}'s most popular
+home searches.
         </p>
         <div class="intent-grid">
           {featuredIntentPages.map((intentPage) => (
-            <a href={`/nanaimo/${intentPage.slug}`} class="intent-tile">
+            <a href={`/${city}/${intentPage.slug}`} class="intent-tile">
               <strong>{intentPage.hero_heading}</strong>
               <span>
                 {intentPage.intro_copy ||
-                  "Explore this curated Nanaimo real estate search."}
+                  `Explore this curated ${cityLabel} real estate search.`}
               </span>
             </a>
           ))}
@@ -311,7 +317,7 @@ const chartData = {
         {topAreas.map(([area, count]) => (
           <a
             class="area-row"
-            href={`/nanaimo/areas/${String(area).replace(/\s+/g, "-")}`}
+            href={`/${city}/areas/${String(area).replace(/\s+/g, "-")}`}
           >
             <span>{labelize(area)}</span>
             <strong>{count} listings</strong>
@@ -322,14 +328,16 @@ const chartData = {
 
     <!-- ── Popular searches ── -->
     <section class="content-card">
-      <h2>Popular Nanaimo Searches</h2>
-      <ul>
-        <li><a href="/nanaimo-homes-under-700k">Homes Under $700k</a></li>
-        <li><a href="/nanaimo-condos">Condos</a></li>
-        <li><a href="/nanaimo-townhomes">Townhomes</a></li>
-        <li><a href="/nanaimo-ocean-view-homes">Ocean View Homes</a></li>
-        <li><a href="/nanaimo-retirement-properties">Retirement Properties</a></li>
-      </ul>
+    <h2>Popular {cityLabel} Searches</h2>
+     <ul>
+  {featuredIntentPages.map((intentPage) => (
+    <li>
+      <a href={`/${city}/${intentPage.slug}`}>
+        {intentPage.hero_heading}
+      </a>
+    </li>
+  ))}
+</ul>
     </section>
 
   </main>
