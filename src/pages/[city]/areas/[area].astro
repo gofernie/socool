@@ -20,6 +20,7 @@ console.log("agent data:", JSON.stringify(agentRes));
 const allRows = await supabase.from("agent_pages").select("slug");
 console.log("all slugs:", JSON.stringify(allRows));
 const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
+const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const areaSlug = Astro.params.area || "";const area = areaSlug.replace(/-/g, " ");
 
 const areaHeroImages = {
@@ -475,178 +476,12 @@ const chartData = {
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js" slot="head"></script>
 
-  <script is:inline<script is:inline define:vars={{ chartData, mapListings, mapCenter }}>
-    window.addEventListener("load", () => {
-      const areaFilter = document.getElementById("area-filter");
-      const sortFilter = document.getElementById("sort-filter");
-      const typeFilter = document.getElementById("type-filter");
-      const priceFilter = document.getElementById("price-filter");
-      const bedsFilter = document.getElementById("beds-filter");
-      const visibleCount = document.getElementById("visible-count");
-      const grid = document.querySelector(".listing-grid");
-      const showAllButton = document.getElementById("show-all-listings");
-      let showingAllListings = false;
+ <script
+  is:inline
+  src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&loading=async`}
+  slot="head"
+></script>
 
-      document.querySelectorAll(".listing-card-wrap").forEach((wrap) => {
-        const card = wrap.querySelector("[data-card-id], [data-listing-id], .card");
-        if (!card) return;
-        card.dataset.lat = wrap.dataset.lat || "";
-        card.dataset.lng = wrap.dataset.lng || "";
-      });
-
-      function applyFilters() {
-        const type = typeFilter?.value || "all";
-        const priceRange = priceFilter?.value || "all";
-        const bedsMin = bedsFilter?.value || "all";
-        const sort = sortFilter?.value || "newest";
-
-        const cards = Array.from(document.querySelectorAll(".listing-card-wrap"));
-
-        cards.sort((a, b) => {
-          const priceA = Number(a.dataset.price || 0);
-          const priceB = Number(b.dataset.price || 0);
-          const bedsA = Number(a.dataset.beds || 0);
-          const bedsB = Number(b.dataset.beds || 0);
-          const listedA = new Date(a.dataset.listed || 0).getTime();
-          const listedB = new Date(b.dataset.listed || 0).getTime();
-          if (sort === "price-low") return priceA - priceB;
-          if (sort === "price-high") return priceB - priceA;
-          if (sort === "beds-high") return bedsB - bedsA;
-          return listedB - listedA;
-        });
-
-        let count = 0;
-        cards.forEach((card) => {
-          grid?.appendChild(card);
-          const cardType = card.dataset.type || "";
-          const price = Number(card.dataset.price || 0);
-          const beds = Number(card.dataset.beds || 0);
-          const matchesType = type === "all" || cardType === type;
-          const matchesPrice =
-            priceRange === "all" ||
-            (priceRange === "under-500" && price < 500000) ||
-            (priceRange === "500-750" && price >= 500000 && price < 750000) ||
-            (priceRange === "750-1000" && price >= 750000 && price < 1000000) ||
-            (priceRange === "1000-plus" && price >= 1000000);
-          const matchesBeds = bedsMin === "all" || beds >= Number(bedsMin);
-          const matchesFilters = matchesType && matchesPrice && matchesBeds;
-          const isExtraListing = card.classList.contains("is-extra-listing");
-          const hasActiveFilters = type !== "all" || priceRange !== "all" || bedsMin !== "all";
-          const show = matchesFilters && (showingAllListings || hasActiveFilters || !isExtraListing);
-          card.hidden = !show;
-          if (matchesFilters) count += 1;
-        });
-
-        if (visibleCount) visibleCount.textContent = String(count);
-      }
-
-      document.querySelectorAll(".area-browse-nav a").forEach((link) => {
-        let hasPrefetched = false;
-        function prefetchAreaPage() {
-          if (hasPrefetched) return;
-          hasPrefetched = true;
-          const href = link.getAttribute("href");
-          if (!href) return;
-          const preload = document.createElement("link");
-          preload.rel = "prefetch";
-          preload.href = href;
-          preload.as = "document";
-          document.head.appendChild(preload);
-        }
-        link.addEventListener("mouseenter", prefetchAreaPage);
-        link.addEventListener("focus", prefetchAreaPage);
-        link.addEventListener("touchstart", prefetchAreaPage, { passive: true });
-        link.addEventListener("click", () => {
-          sessionStorage.setItem("area_page_scroll_y", String(window.scrollY));
-        });
-      });
-
-      sortFilter?.addEventListener("change", applyFilters);
-      typeFilter?.addEventListener("change", () => {
-        if (priceFilter) priceFilter.value = "all";
-        if (bedsFilter) bedsFilter.value = "all";
-        applyFilters();
-      });
-      priceFilter?.addEventListener("change", applyFilters);
-      bedsFilter?.addEventListener("change", applyFilters);
-
-      showAllButton?.addEventListener("click", () => {
-        showingAllListings = true;
-        showAllButton.hidden = true;
-        applyFilters();
-        document.querySelector("#area-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-
-      document.querySelectorAll("[data-filter-type]").forEach((card) => {
-        card.addEventListener("click", (e) => {
-          e.preventDefault();
-          const type = card.dataset.filterType || "all";
-          if (typeFilter) {
-            typeFilter.value = type;
-            if (priceFilter) priceFilter.value = "all";
-            if (bedsFilter) bedsFilter.value = "all";
-            applyFilters();
-            document.querySelector(".filter-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        });
-      });
-
-      applyFilters();
-
-      if (window.L && document.getElementById("area-map")) {
-        const map = L.map("area-map", { scrollWheelZoom: false, dragging: true })
-          .setView([mapCenter.lat, mapCenter.lng], 12);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap",
-        }).addTo(map);
-        const bounds = [];
-        mapListings.forEach((listing) => {
-          const marker = L.marker([listing.lat, listing.lng]).addTo(map);
-          const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
-          marker.bindPopup(`
-            <strong>${price}</strong><br />
-            ${listing.address}<br />
-            ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
-          `);
-          bounds.push([listing.lat, listing.lng]);
-        });
-        if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24] });
-      }
-
-      // Chart.js — load dynamically so it's guaranteed ready before rendering
-      async function initChart() {
-        if (!window.Chart) {
-          await new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = "https://cdn.jsdelivr.net/npm/chart.js";
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-        const canvas = document.getElementById("priceChart");
-        if (!canvas) return;
-        new Chart(canvas, {
-          type: "bar",
-          data: {
-            labels: chartData.priceLabels,
-            datasets: [{ label: "Listings", data: chartData.priceCounts }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { grid: { display: false } },
-              y: { beginAtZero: true, ticks: { precision: 0 } },
-            },
-          },
-        });
-      }
-      initChart();
-    });
-  </script>
 
   <SiteNav city="nanaimo" areas={areas} types={propertyTypes} showAreaNav={false} />
 
@@ -760,6 +595,10 @@ const chartData = {
     </section>
 
     <section class="filter-bar">
+  <div class="view-toggle area-view-toggle">
+    <button type="button" class="view-btn active" id="area-list-view-btn">☷ List</button>
+    <button type="button" class="view-btn" id="area-map-view-btn">✦ Map</button>
+  </div>
       <select id="area-filter">
         <option value="">Current area: {labelize(area)}</option>
         {areas
@@ -799,7 +638,7 @@ const chartData = {
         <span id="visible-count">{listings.length}</span> homes showing
       </div>
     </section>
-
+<div id="area-listing-map" class="area-listing-map" hidden></div>
     <div class="listing-grid" id="area-listings">
       {listings.map((listing, index) => (
         <div
@@ -963,7 +802,7 @@ const chartData = {
   <ShortlistReviewModal />
   <IntentModalController />
 
-  <script is:inline define:vars={{ chartData, mapListings, mapCenter }}>
+  <script is:inline define:vars={{ chartData, mapListings, mapCenter, googleMapsApiKey }}>
     window.addEventListener("load", () => {
       const areaFilter = document.getElementById("area-filter");
       const sortFilter = document.getElementById("sort-filter");
@@ -1079,31 +918,175 @@ const chartData = {
         });
       });
 
-      applyFilters();
+    applyFilters();
 
-      if (window.L && document.getElementById("area-map")) {
-        const map = L.map("area-map", { scrollWheelZoom: false, dragging: true })
-          .setView([mapCenter.lat, mapCenter.lng], 12);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap",
-        }).addTo(map);
-        const bounds = [];
-        mapListings.forEach((listing) => {
-          const marker = L.marker([listing.lat, listing.lng]).addTo(map);
-          const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
-          marker.bindPopup(`
-            <strong>${price}</strong><br />
-            ${listing.address}<br />
-            ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
-          `);
-          bounds.push([listing.lat, listing.lng]);
-        });
-        if (bounds.length > 1) map.fitBounds(bounds, { padding: [24, 24] });
-      }
+const areaListViewBtn = document.getElementById("area-list-view-btn");
+const areaMapViewBtn = document.getElementById("area-map-view-btn");
+const areaListingMap = document.getElementById("area-listing-map");
+let areaGoogleMap = null;
+let areaGoogleMarkers = [];
 
-      if (window.Chart) {
-        new Chart(document.getElementById("priceChart"), {
+async function loadGoogleMaps() {
+  if (window.google?.maps) return;
+
+  await new Promise((resolve, reject) => {
+    const existing = document.querySelector("script[data-google-maps-loader]");
+
+    if (existing) {
+      existing.addEventListener("load", resolve);
+      existing.addEventListener("error", reject);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.dataset.googleMapsLoader = "true";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function initAreaListingGoogleMap() {
+  if (!areaListingMap) return;
+
+  await loadGoogleMaps();
+
+  if (!window.google?.maps) return;
+
+  if (!areaGoogleMap) {
+    areaGoogleMap = new google.maps.Map(areaListingMap, {
+      center: mapCenter,
+      zoom: 12,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+  }
+
+  areaGoogleMarkers.forEach((marker) => marker.setMap(null));
+  areaGoogleMarkers = [];
+
+  const bounds = new google.maps.LatLngBounds();
+  const infoWindow = new google.maps.InfoWindow();
+
+  mapListings.forEach((listing) => {
+    const position = { lat: listing.lat, lng: listing.lng };
+    const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
+
+    const marker = new google.maps.Marker({
+      position,
+      map: areaGoogleMap,
+      title: listing.address || "Listing",
+    });
+
+    marker.addListener("click", () => {
+      infoWindow.setContent(`
+        <strong>${price}</strong><br />
+        ${listing.address}<br />
+        ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+      `);
+      infoWindow.open(areaGoogleMap, marker);
+    });
+
+    areaGoogleMarkers.push(marker);
+    bounds.extend(position);
+  });
+
+  if (areaGoogleMarkers.length > 1) areaGoogleMap.fitBounds(bounds);
+
+  setTimeout(() => {
+    google.maps.event.trigger(areaGoogleMap, "resize");
+    if (areaGoogleMarkers.length > 1) areaGoogleMap.fitBounds(bounds);
+  }, 100);
+}
+
+areaListViewBtn?.addEventListener("click", () => {
+  if (areaListingMap) areaListingMap.hidden = true;
+  if (grid) grid.hidden = false;
+
+  areaListViewBtn.classList.add("active");
+  areaMapViewBtn?.classList.remove("active");
+});
+
+areaMapViewBtn?.addEventListener("click", () => {
+  if (areaListingMap) areaListingMap.hidden = false;
+  if (grid) grid.hidden = true;
+
+  areaMapViewBtn.classList.add("active");
+  areaListViewBtn?.classList.remove("active");
+
+  initAreaListingGoogleMap().catch((error) => {
+  console.error("Area Google Map failed:", error);
+});
+});
+
+if (window.google?.maps && document.getElementById("area-map")) {
+  const map = new google.maps.Map(
+    document.getElementById("area-map"),
+    {
+      center: mapCenter,
+      zoom: 12,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    }
+  );
+
+  const bounds = new google.maps.LatLngBounds();
+  const infoWindow = new google.maps.InfoWindow();
+
+  mapListings.forEach((listing) => {
+    const position = {
+      lat: listing.lat,
+      lng: listing.lng,
+    };
+
+    const marker = new google.maps.Marker({
+      position,
+      map,
+    });
+
+    const price =
+      listing.price > 0
+        ? `$${listing.price.toLocaleString()}`
+        : "View listing";
+
+    marker.addListener("click", () => {
+      infoWindow.setContent(`
+        <strong>${price}</strong><br />
+        ${listing.address}<br />
+        ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
+      `);
+      infoWindow.open(map, marker);
+    });
+
+    bounds.extend(position);
+  });
+
+  if (mapListings.length > 1) {
+    map.fitBounds(bounds);
+  }
+}
+
+
+         async function initPriceChart() {
+        if (!window.Chart) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/chart.js";
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+
+        const canvas = document.getElementById("priceChart");
+        if (!canvas || !window.Chart) return;
+
+        new Chart(canvas, {
           type: "bar",
           data: {
             labels: chartData.priceLabels,
@@ -1120,6 +1103,8 @@ const chartData = {
           },
         });
       }
+
+      initPriceChart();
     });
   </script>
 </Layout>

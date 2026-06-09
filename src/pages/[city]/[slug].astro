@@ -140,12 +140,85 @@ console.log("INTENT QUERY DEBUG", {
   priceMax: page.price_max,
 });
 
+const hasPolygonSearch = Boolean(page.polygon_geojson);
+
+const listingLimit = hasPolygonSearch ? 1000 : 200;
+
 const { data: rawListings, error: listingsError } = await query
   .order("price", { ascending: false })
-  .limit(200);
+  .limit(listingLimit);
 
 let listings = rawListings || [];
 
+function getPolygonGeometry(geojson: any) {
+  if (!geojson) return null;
+
+  if (geojson.type === "Feature") {
+    return geojson.geometry || null;
+  }
+
+  if (geojson.type === "FeatureCollection") {
+    return geojson.features?.[0]?.geometry || null;
+  }
+
+  return geojson;
+}
+
+function pointInPolygon(point: [number, number], geojson: any) {
+  const polygon = getPolygonGeometry(geojson);
+
+  if (!polygon?.coordinates?.[0]) return false;
+
+  const [x, y] = point;
+
+  const rings =
+    polygon.type === "MultiPolygon"
+      ? polygon.coordinates.flat()
+      : polygon.coordinates;
+
+  return rings.some((ring: any[]) => {
+    let inside = false;
+
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = Number(ring[i][0]);
+      const yi = Number(ring[i][1]);
+      const xj = Number(ring[j][0]);
+      const yj = Number(ring[j][1]);
+
+      const intersect =
+        yi > y !== yj > y &&
+        x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  });
+}
+
+if (hasPolygonSearch) {  listings = listings.filter((listing) => {
+    const lat = Number(listing.lat);
+    const lng = Number(listing.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+    return pointInPolygon(
+      [lng, lat],
+      page.polygon_geojson
+    );
+  });
+
+  console.log(
+    "POLYGON FILTER",
+    listings.length,
+    "matches"
+  );
+
+  console.log(
+  "POLYGON GEOJSON",
+  JSON.stringify(page.polygon_geojson)
+);
+}
 if (features.includes("waterfront")) {
   listings = listings.filter((listing) => {
     const text = [
@@ -394,6 +467,10 @@ const seo = buildSeoFallback(page);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+:global(.hero-title-dot) {
+  color: var(--accent) !important;
 }
 
 
@@ -883,10 +960,10 @@ body.is-map-mode .bottom-refine-cta {
   opacity: 0.65;
 }
 
-     .price {
+    .price {
   font-size: 1.34rem;
   line-height: 1.1;
-  font-weight: 950;
+  font-weight: 800;
   margin-bottom: 8px;
   letter-spacing: -0.035em;
   padding-right: 104px;
@@ -897,14 +974,14 @@ body.is-map-mode .bottom-refine-cta {
   color: var(--ink);
   line-height: 1.35;
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .card-city {
   margin-bottom: 14px;
   color: var(--muted);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .meta {
@@ -913,7 +990,7 @@ body.is-map-mode .bottom-refine-cta {
   gap: 18px;
   font-size: 0.86rem;
   color: var(--ink-soft);
-  font-weight: 750;
+  font-weight: 500;
 }
 
 .meta span {
@@ -1368,15 +1445,20 @@ color: var(--accent) !important;
   margin: 0 !important;
 }
 
-
+.price {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
     </style>
 
-  <div
-    data-intent-page-id={page.id}
-    data-city={city}
-    data-slug={slug}
-    data-google-maps-api-key={googleMapsApiKey}
-  >
+<div
+  data-intent-page-id={page.id}
+  data-city={city}
+  data-slug={slug}
+  data-google-maps-api-key={googleMapsApiKey}
+  data-search-area-geojson={JSON.stringify(page.polygon_geojson || null)}
+>
 <SiteNav city={city} areas={areas} types={propertyTypes} showAreaNav={false} />
     <main class="page">
   <header
@@ -1385,7 +1467,7 @@ color: var(--accent) !important;
 >
   <div class="page-hero__inner">
 <p class="page-hero__eyebrow">{city.charAt(0).toUpperCase() + city.slice(1)} Intent Search</p>
-    <h1>{page.hero_heading}</h1>
+   <h1 set:html={`${String(page.hero_heading || "").replace(/\.$/, "")}<span style="color:${accentColor} !important">.</span>`} />
 
   <p class="page-hero__copy">{page.intro_copy}</p>
 
@@ -1739,6 +1821,10 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 
  let googleMap = null;
 let googleMarkers = [];
+let searchAreaPolygon = null;
+const searchAreaGeojson = JSON.parse(
+  document.querySelector("[data-search-area-geojson]")?.dataset.searchAreaGeojson || "null"
+);
 let refinedGoogleMap = null;
 let refinedGoogleMarkers = [];
 let currentIntentMapBounds = null;
@@ -1828,11 +1914,37 @@ const cards = Array.from(document.querySelectorAll(selector)).filter((card) => {
           });
         }
 
-        googleMarkers.forEach((marker) => marker.setMap(null));
-        googleMarkers = [];
+       googleMarkers.forEach((marker) => marker.setMap(null));
+googleMarkers = [];
 
-        const bounds = new google.maps.LatLngBounds();
-        const infoWindow = new google.maps.InfoWindow();
+if (searchAreaPolygon) {
+  searchAreaPolygon.setMap(null);
+  searchAreaPolygon = null;
+}
+
+const bounds = new google.maps.LatLngBounds();
+const infoWindow = new google.maps.InfoWindow();
+
+if (searchAreaGeojson?.coordinates?.[0]) {
+  const polygonPath = searchAreaGeojson.coordinates[0].map(([lng, lat]) => ({
+    lat,
+    lng,
+  }));
+
+  searchAreaPolygon = new google.maps.Polygon({
+    paths: polygonPath,
+    strokeColor: "#2f6f73",
+    strokeOpacity: 1,
+    strokeWeight: 4,
+    fillColor: "#2f6f73",
+    fillOpacity: 0.16,
+    clickable: false,
+    zIndex: 10,
+  });
+
+  searchAreaPolygon.setMap(googleMap);
+  polygonPath.forEach((point) => bounds.extend(point));
+}
 
         points.forEach(({ card, point }) => {
           const marker = new google.maps.Marker({

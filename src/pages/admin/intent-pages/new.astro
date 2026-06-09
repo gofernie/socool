@@ -91,7 +91,24 @@ if (Astro.request.method === "POST") {
   const area = clean(form.get("area")).toLowerCase();
   const propertyType = clean(form.get("property_type")).toLowerCase();
   const pricePreset = clean(form.get("price_preset"));
+const customName = clean(form.get("custom_name"));
+  const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
+const polygonGeojson = polygonGeojsonRaw
+  ? JSON.parse(polygonGeojsonRaw)
+  : null;
+  const polygonCenterLat =
+  Number(clean(form.get("polygon_center_lat"))) || null;
 
+const polygonCenterLng =
+  Number(clean(form.get("polygon_center_lng"))) || null;
+
+const polygonBoundsRaw =
+  clean(form.get("polygon_bounds"));
+
+const polygonBounds =
+  polygonBoundsRaw
+    ? JSON.parse(polygonBoundsRaw)
+    : null;
   const { price_min, price_max } = getPricePreset(pricePreset);
 
   const areaLabel = area ? titleCase(area) : titleCase(city);
@@ -105,9 +122,11 @@ if (Astro.request.method === "POST") {
       : [];
 
  const slugParts =
-    pageType === "category"
-      ? [area || "homes", propertyType ? pluralType(propertyType) : "homes", priceLabel]
-      : [area || "homes", template, propertyType ? pluralType(propertyType) : "", priceLabel];
+  pageType === "category"
+    ? [area || city, propertyType ? pluralType(propertyType) : "homes", priceLabel]
+    : pageType === "polygon"
+      ? [city, customName || "custom-area", propertyType ? pluralType(propertyType) : "homes", priceLabel]
+      : [area || city, template, propertyType ? pluralType(propertyType) : "", priceLabel];
   const slug = slugify(slugParts.filter(Boolean).join(" "));
 
   const heroHeading =
@@ -150,19 +169,22 @@ if (existingPage) {
 message = `A page with this URL already exists.||/${existingPage.city}/${existingPage.slug}||/admin/intent-pages/${existingPage.id}/edit`;} else {
   const { data: page, error } = await supabase
     .from("intent_pages")
-    .insert({
-      slug,
-      city,
-      area,
-      property_type: propertyType || null,
-      price_min,
-      price_max,
-      hero_heading: heroHeading,
-      intro_copy: introCopy,
-      seo_title: seoTitle,
-      is_published: true,
-      lifestyle_angle: pageType,
-    })
+   .insert({
+  slug,
+  city,
+  area,
+  property_type: propertyType || null,
+  price_min,
+  price_max,
+  hero_heading: heroHeading,
+  intro_copy: introCopy,
+  seo_title: seoTitle,
+  is_published: true,
+  lifestyle_angle: pageType,
+polygon_geojson: polygonGeojson,
+polygon_center_lat: polygonCenterLat,
+polygon_center_lng: polygonCenterLng,
+polygon_bounds: polygonBounds,})
     .select("*")
     .single();
 
@@ -187,6 +209,10 @@ return Astro.redirect("/admin/intent-pages");
 <html>
   <head>
    <title>Create Intent Page</title>
+   <script
+  is:inline
+  src={`https://maps.googleapis.com/maps/api/js?key=${import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=drawing`}
+></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
@@ -289,12 +315,12 @@ return Astro.redirect("/admin/intent-pages");
 
       .grid-2 > div { min-width: 0; }
 
-      .page-type-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-top: 12px;
-      }
+     .page-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
 
       .page-type-option {
         position: relative;
@@ -439,7 +465,28 @@ return Astro.redirect("/admin/intent-pages");
         font-size: 0.78rem;
         line-height: 1.4;
       }
+.polygon-block {
+  margin-top: 20px;
+}
 
+.polygon-block[hidden] {
+  display: none;
+}
+
+.polygon-map {
+  height: 420px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: #e8e2d8;
+}
+
+.polygon-tools {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
       @media (max-width: 860px) {
         .page { grid-template-columns: 1fr; }
         .main { padding: 24px 20px 60px; }
@@ -483,32 +530,44 @@ return Astro.redirect("/admin/intent-pages");
 )}
 
       <form method="POST" class="card" id="intentForm">
-        <label>Page type</label>
+<input type="hidden" name="polygon_geojson" id="polygonGeojsonInput" />
+<input type="hidden" name="polygon_center_lat" id="polygonCenterLatInput" />
+<input type="hidden" name="polygon_center_lng" id="polygonCenterLngInput" />
+<input type="hidden" name="polygon_bounds" id="polygonBoundsInput" />        <label>Page type</label>
 
-        <div class="page-type-grid">
-          <label class="page-type-option">
-            <input type="radio" name="page_type" value="category" checked />
-            <div class="page-type-card">
-              <strong>Category page</strong>
-              <span>
-                Broad doorway page. Uses city, area, property type, and price only.
-                No feature filters on initial load.
-              </span>
-            </div>
-          </label>
+       <div class="page-type-grid">
+  <label class="page-type-option">
+    <input type="radio" name="page_type" value="category" checked />
+    <div class="page-type-card">
+      <strong>Category page</strong>
+      <span>
+        Broad doorway page. Uses city, area, property type, and price only.
+        No feature filters on initial load.
+      </span>
+    </div>
+  </label>
 
-          <label class="page-type-option">
-            <input type="radio" name="page_type" value="intent" />
-            <div class="page-type-card">
-              <strong>Intent page</strong>
-              <span>
-                More specific buyer-goal page. Adds feature filters like views, suites,
-                walkability, yards, or updated homes.
-              </span>
-            </div>
-          </label>
-        </div>
+  <label class="page-type-option">
+    <input type="radio" name="page_type" value="intent" />
+    <div class="page-type-card">
+      <strong>Intent page</strong>
+      <span>
+        More specific buyer-goal page. Adds feature filters like views, suites,
+        walkability, yards, or updated homes.
+      </span>
+    </div>
+  </label>
 
+  <label class="page-type-option">
+    <input type="radio" name="page_type" value="polygon" />
+    <div class="page-type-card">
+      <strong>Polygon page</strong>
+      <span>
+        Draw a custom area on a map and create a page from listings inside that shape.
+      </span>
+    </div>
+  </label>
+</div>
         <div class="intent-only" id="intentTemplateBlock" hidden>
           <label>Intent template</label>
           <select name="template" id="templateSelect">
@@ -543,9 +602,29 @@ return Astro.redirect("/admin/intent-pages");
     </option>
   ))}
 </select>            <p class="hint">Leave blank for a city-wide page.</p>
-          </div>
+         <label>Custom page name</label>
+<input
+  type="text"
+  name="custom_name"
+  id="customNameInput"
+  placeholder="Example: Northfield to Bowen Park"
+/>
+<p class="hint">Used for polygon page URLs and headings.</p> </div>
         </div>
+<div class="polygon-block" id="polygonBlock" hidden>
+  <label>Draw search area</label>
+  <div id="polygonMap" class="polygon-map"></div>
 
+  <div class="polygon-tools">
+    <button type="button" class="btn btn--ghost" id="clearPolygonBtn">
+      Clear shape
+    </button>
+  </div>
+
+  <p class="hint">
+    Click the map to draw points. Once you have 3+ points, the shape will save with the page.
+  </p>
+</div>
         <div class="grid-2">
           <div>
             <label>Property type</label>
@@ -602,7 +681,7 @@ return Astro.redirect("/admin/intent-pages");
       const areaInput = document.getElementById("areaInput");
       const typeSelect = document.getElementById("typeSelect");
       const priceSelect = document.getElementById("priceSelect");
-
+const customNameInput = document.getElementById("customNameInput");
       const previewType = document.getElementById("previewType");
       const previewTitle = document.getElementById("previewTitle");
       const previewCopy = document.getElementById("previewCopy");
@@ -661,14 +740,16 @@ return Astro.redirect("/admin/intent-pages");
         return "";
       }
 
-      function updatePreview() {
-        const pageType = getPageType();
+    function updatePreview() {
+  syncPolygonBlock();
+
+  const pageType = getPageType();
         const template = templateSelect.value;
         const city = cityInput.value || "nanaimo";
         const area = areaInput.value || city;
         const type = typeSelect.value;
         const price = priceLabel(priceSelect.value);
-
+const customName = customNameInput?.value || "";
         const areaLabel = titleCase(area);
         const typeLabel = pluralType(type);
         const templateLabel = titleCase(template);
@@ -680,10 +761,12 @@ return Astro.redirect("/admin/intent-pages");
             ? [areaLabel, typeLabel, price].filter(Boolean).join(" ")
             : [areaLabel, templateLabel, typeLabel, price].filter(Boolean).join(" ");
 
-        const slug =
-          pageType === "category"
-            ? slugify([area, typeLabel, price].filter(Boolean).join(" "))
-            : slugify([area, template, typeLabel, price].filter(Boolean).join(" "));
+       const slug =
+  pageType === "category"
+    ? slugify([area, typeLabel, price].filter(Boolean).join(" "))
+    : pageType === "polygon"
+      ? slugify([city, customName || "custom-area", typeLabel, price].filter(Boolean).join(" "))
+      : slugify([area, template, typeLabel, price].filter(Boolean).join(" "));
 
         const copy =
           pageType === "category"
@@ -722,13 +805,13 @@ return Astro.redirect("/admin/intent-pages");
         areaInput,
         typeSelect,
         priceSelect,
+customNameInput,
       ].forEach((el) => {
         el.addEventListener("input", updatePreview);
         el.addEventListener("change", updatePreview);
       });
 
-      updatePreview();
-    updatePreview();
+          // updatePreview runs after polygon map setup below
 
      async function loadCities() { // returns promise implicitly via async
         try {
@@ -755,7 +838,7 @@ return Astro.redirect("/admin/intent-pages");
         }
       }
 
-      loadCities();
+           // loadCities runs after polygon map setup below
 
       async function loadAreas(city) {
         try {
@@ -788,11 +871,172 @@ return Astro.redirect("/admin/intent-pages");
         updatePreview();
       });
 
-      // Load areas for default city on page load
-      loadCities().then(() => {
-        const city = document.getElementById("cityInput")?.value || "nanaimo";
-        loadAreas(city);
-      });
+    
+   const polygonBlock = document.getElementById("polygonBlock");
+const polygonInput = document.getElementById("polygonGeojsonInput");
+const polygonCenterLatInput = document.getElementById("polygonCenterLatInput");
+const polygonCenterLngInput = document.getElementById("polygonCenterLngInput");
+const polygonBoundsInput = document.getElementById("polygonBoundsInput");
+const clearPolygonBtn = document.getElementById("clearPolygonBtn");
+
+let polygonMap = null;
+let activePolygon = null;
+let polygonPath = [];
+let polygonMarkers = [];
+
+function savePolygon() {
+  if (!polygonInput || polygonPath.length < 3) {
+    polygonInput.value = "";
+
+    if (polygonCenterLatInput) polygonCenterLatInput.value = "";
+    if (polygonCenterLngInput) polygonCenterLngInput.value = "";
+    if (polygonBoundsInput) polygonBoundsInput.value = "";
+
+    return;
+  }
+
+  const coordinates = polygonPath.map((point) => [point.lng, point.lat]);
+  coordinates.push(coordinates[0]);
+
+  polygonInput.value = JSON.stringify({
+    type: "Polygon",
+    coordinates: [coordinates],
+  });
+
+  const avgLat =
+    polygonPath.reduce((sum, p) => sum + p.lat, 0) /
+    polygonPath.length;
+
+  const avgLng =
+    polygonPath.reduce((sum, p) => sum + p.lng, 0) /
+    polygonPath.length;
+
+  const lats = polygonPath.map((p) => p.lat);
+  const lngs = polygonPath.map((p) => p.lng);
+
+  const bounds = {
+    north: Math.max(...lats),
+    south: Math.min(...lats),
+    east: Math.max(...lngs),
+    west: Math.min(...lngs),
+  };
+
+  if (polygonCenterLatInput) {
+    polygonCenterLatInput.value = String(avgLat);
+  }
+
+  if (polygonCenterLngInput) {
+    polygonCenterLngInput.value = String(avgLng);
+  }
+
+  if (polygonBoundsInput) {
+    polygonBoundsInput.value = JSON.stringify(bounds);
+  }
+}
+
+function redrawPolygon() {
+  if (activePolygon) {
+    activePolygon.setMap(null);
+  }
+
+  if (polygonPath.length < 2) {
+    savePolygon();
+    return;
+  }
+
+  activePolygon = new google.maps.Polygon({
+    paths: polygonPath,
+    editable: true,
+    draggable: false,
+    strokeWeight: 2,
+    fillOpacity: 0.22,
+  });
+
+  activePolygon.setMap(polygonMap);
+  savePolygon();
+}
+
+function addPolygonPoint(latLng) {
+  const point = {
+    lat: latLng.lat(),
+    lng: latLng.lng(),
+  };
+
+  polygonPath.push(point);
+
+  const marker = new google.maps.Marker({
+    position: point,
+    map: polygonMap,
+    label: String(polygonPath.length),
+  });
+
+  polygonMarkers.push(marker);
+  redrawPolygon();
+}
+
+function initPolygonMap() {
+  if (polygonMap || !window.google?.maps) return;
+
+  polygonMap = new google.maps.Map(document.getElementById("polygonMap"), {
+    center: { lat: 49.1659, lng: -123.9401 },
+    zoom: 11,
+    mapTypeId: "roadmap",
+    draggableCursor: "crosshair",
+  });
+
+  polygonMap.addListener("click", (e) => {
+    addPolygonPoint(e.latLng);
+  });
+}
+
+function clearPolygon() {
+  polygonPath = [];
+
+  if (activePolygon) {
+    activePolygon.setMap(null);
+  }
+
+  polygonMarkers.forEach((marker) => marker.setMap(null));
+  polygonMarkers = [];
+  activePolygon = null;
+
+  if (polygonInput) {
+    polygonInput.value = "";
+  }
+}
+
+clearPolygonBtn?.addEventListener("click", clearPolygon);
+
+function syncPolygonBlock() {
+  const pageType = getPageType();
+
+  if (!polygonBlock) return;
+
+  polygonBlock.hidden = pageType !== "polygon";
+
+  if (pageType === "polygon") {
+    setTimeout(() => {
+      initPolygonMap();
+
+      if (polygonMap) {
+        google.maps.event.trigger(polygonMap, "resize");
+        polygonMap.setCenter({ lat: 49.1659, lng: -123.9401 });
+      }
+    }, 100);
+  }
+}
+form?.addEventListener("submit", (e) => {
+  if (getPageType() === "polygon" && !customNameInput?.value.trim()) {
+    e.preventDefault();
+    alert("Add a custom page name before creating this page.");
+    return;
+  }
+
+  if (getPageType() === "polygon" && !polygonInput.value) {
+    e.preventDefault();
+    alert("Draw a polygon before creating this page.");
+  }
+});
     </script>
   </div>
 </body>

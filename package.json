@@ -16,6 +16,8 @@
     "@astrojs/netlify": "^7.0.7",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.103.3",
+    "@turf/boolean-point-in-polygon": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
     "astro": "^6.1.8",
     "dotenv": "^17.4.2",
     "twilio": "^6.0.0",
