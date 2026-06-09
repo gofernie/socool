@@ -1,13 +1,14 @@
 ---
 import { createClient } from "@supabase/supabase-js";
 import AdminSidebar from "../../../components/AdminSidebar.astro";
+import { getSite } from "../../../lib/getSite";
 export const prerender = false;
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
+const site = await getSite(Astro.url.hostname);
 let message = "";
 
 const TEMPLATE_FEATURES = {
@@ -161,15 +162,17 @@ const polygonBounds =
           .join(" ");
 const { data: existingPage } = await supabase
   .from("intent_pages")
-  .select("id, city, slug")
+  .select("id, city, slug, site_id")
   .eq("slug", slug)
+  .eq("site_id", site?.id)
   .maybeSingle();
 
 if (existingPage) {
 message = `A page with this URL already exists.||/${existingPage.city}/${existingPage.slug}||/admin/intent-pages/${existingPage.id}/edit`;} else {
   const { data: page, error } = await supabase
     .from("intent_pages")
-   .insert({
+  .insert({
+  site_id: site?.id,
   slug,
   city,
   area,
