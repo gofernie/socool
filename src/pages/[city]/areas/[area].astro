@@ -21,7 +21,37 @@ const allRows = await supabase.from("agent_pages").select("slug");
 console.log("all slugs:", JSON.stringify(allRows));
 const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
 const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
-const areaSlug = Astro.params.area || "";const area = areaSlug.replace(/-/g, " ");
+const city = String(Astro.params.city || "nanaimo")
+  .toLowerCase()
+  .trim();
+
+const cityLabel = city
+  .replace(/-/g, " ")
+  .replace(/\b\w/g, (c) => c.toUpperCase());
+
+const areaSlug = Astro.params.area || "";
+
+const parksvilleAreaMap = {
+  "pq-bowser-deep-bay": ["pq bowser/deep bay", "bowser", "deep bay"],
+  "pq-errington-coombs-hilliers": ["pq errington/coombs/hilliers", "errington", "coombs", "hilliers"],
+  "pq-fairwinds": ["pq fairwinds", "fairwinds"],
+  "pq-french-creek": ["pq french creek", "french creek"],
+  "pq-little-qualicum-river-village": ["pq little qualicum river village", "little qualicum river village"],
+  "pq-nanoose": ["pq nanoose", "nanoose", "nanoose bay"],
+  "pq-parksville": ["pq parksville", "parksville"],
+  "pq-qualicum-beach": ["pq qualicum beach", "qualicum beach"],
+  "pq-qualicum-north": ["pq qualicum north", "qualicum north"],
+};
+
+const areaFromSlug = (slug) =>
+  String(slug || "").toLowerCase().replace(/-/g, " ");
+
+const area = areaFromSlug(areaSlug);
+
+const areaAliases =
+  city === "parksville"
+    ? parksvilleAreaMap[String(areaSlug || "").toLowerCase()] || [area]
+    : [area];
 
 const areaHeroImages = {
   "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
@@ -350,17 +380,51 @@ const labelize = (value) =>
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
+const areaToSlug = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\//g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const { data: areaRows = [] } = await supabase
   .from("listing_rows")
   .select("normalized_area, normalized_type")
-  .eq("normalized_city", "nanaimo")
+  .eq("normalized_city", city)
   .not("normalized_area", "is", null);
 
-const areas = [...new Set(
-  areaRows
-    .map((row) => String(row.normalized_area || "").trim())
-    .filter((item) => item && item !== "unknown")
-)].sort((a, b) => a.localeCompare(b));
+const allowedAreaLabels =
+  city === "parksville"
+    ? [
+        "PQ Bowser/Deep Bay",
+        "PQ Errington/Coombs/Hilliers",
+        "PQ Fairwinds",
+        "PQ French Creek",
+        "PQ Little Qualicum River Village",
+        "PQ Nanoose",
+        "PQ Parksville",
+        "PQ Qualicum Beach",
+        "PQ Qualicum North",
+      ]
+    : [];
+
+const areas =
+  city === "parksville"
+    ? allowedAreaLabels
+    : [...new Set(
+        areaRows
+          .map((row) => String(row.normalized_area || "").trim())
+          .filter((item) => item && item !== "unknown")
+      )].sort((a, b) => a.localeCompare(b));
+
+console.log("AREA ROWS DEBUG", {
+  city,
+  count: areaRows.length,
+  uniqueAreas: [...new Set(areaRows.map((r) => r.normalized_area))]
+    .filter(Boolean)
+    .sort(),
+});
 
 const propertyTypes = [...new Set(
   areaRows
@@ -371,8 +435,8 @@ const propertyTypes = [...new Set(
 const { data: listings = [] } = await supabase
   .from("listing_rows")
   .select("*")
-  .eq("normalized_city", "nanaimo")
-  .eq("normalized_area", area)
+  .eq("normalized_city", city)
+  .in("normalized_area", areaAliases)
   .order("listed_at", { ascending: false });
 
 const normalizeListingImageUrl = (value) => {
@@ -452,7 +516,7 @@ const chartData = {
 };
 ---
 
-<Layout title={`${labelize(area)} Real Estate | Nanaimo`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
+<Layout title={`${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
   <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
   <link
@@ -483,11 +547,10 @@ const chartData = {
 ></script>
 
 
-  <SiteNav city="nanaimo" areas={areas} types={propertyTypes} showAreaNav={false} />
-
+<SiteNav city={city} areas={areas} types={propertyTypes} showAreaNav={false} />
 <header class="page-hero" style={`--hero-image: url('${heroImage}')`}>
   <div class="page-hero__inner">
-    <p class="page-hero__eyebrow">Nanaimo Area Guide</p>
+    <p class="page-hero__eyebrow">{cityLabel} Area Guide</p>
 
     <h1>{labelize(area)}<br />Real Estate</h1>
 
@@ -502,11 +565,11 @@ const chartData = {
 
  <nav class="area-browse-nav">
     <div class="shell area-browse-nav__inner">
-      <span>Explore more Nanaimo areas</span>
+     <span>Explore more {cityLabel} areas</span>
       {areas.slice(0, 5).map((item) => (
         
           <a class:list={{ active: item === area }}
-          href={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}
+          href={`/${city}/areas/${areaToSlug(item)}`}
         >
           {labelize(item)}
         </a>
@@ -520,7 +583,7 @@ const chartData = {
           <option value="">+{areas.length - 5} more areas</option>
           {areas.slice(5).map((item) => (
             <option
-              value={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}
+              value={`/${city}/areas/${areaToSlug(item)}`}
               selected={item === area}
             >
               {labelize(item)}
@@ -604,7 +667,7 @@ const chartData = {
         {areas
           .filter((item) => item !== area)
           .map((item) => (
-            <option value={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}>
+            <option value={`/${city}/areas/${areaToSlug(item)}`}>
               {labelize(item)}
             </option>
           ))}
@@ -746,7 +809,7 @@ const chartData = {
             .filter((item) => item !== area && areas.includes(item))
             .slice(0, 5)
             .map((item) => (
-              <a class="nearby-card" href={`/nanaimo/areas/${item.replace(/\s+/g, "-")}`}>
+             <a class="nearby-card" href={`/${city}/areas/${areaToSlug(item)}`}>
                 <img src={areaHeroImages[item] || heroImage} alt={`${labelize(item)} real estate`} />
                 <strong>{labelize(item)}</strong>
                 <span>View listings</span>

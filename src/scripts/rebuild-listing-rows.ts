@@ -354,6 +354,8 @@ const getBuildingName = (listing: any) => {
       listing?.raw?.subArea
   );
 
+
+
   const cleanedArea = rawArea
   .replace(/^na\s+/i, "")
   .replace(/^nanaimo\s+/i, "")
@@ -640,6 +642,14 @@ listing?.raw?.details?.area ||
 listing?.raw?.details?.subArea
   );
 
+if (normalizedCity === "parksville") {
+  console.log("PARKSVILLE RAW AREA DEBUG", {
+    address: getNormalizedAddress(listing),
+    rawArea,
+    city: normalizedCity,
+  });
+}
+
   const cleanedArea = rawArea
     .replace(/^na\s+/i, "")
     .replace(/^nanaimo\s+/i, "")
@@ -693,8 +703,12 @@ const addressText = clean(
     return "unknown";
   }
 
-  // 4. If it is not an approved area, hide it from filters
-  return "unknown";
+// Keep the raw area if we don't have a mapping
+if (cleanedArea) {
+  return cleanedArea;
+}
+
+return "unknown";
 };
 
 const normalizeImages = (listing: any) => {

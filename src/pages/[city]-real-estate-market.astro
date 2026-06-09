@@ -21,6 +21,13 @@ const city =
     .toLowerCase()
     .trim();
 
+    console.log({
+  hostname: Astro.url.hostname,
+  paramCity: Astro.params.city,
+  siteCity: site?.city,
+  finalCity: city,
+});
+
 
 
 const cityLabel = city.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
