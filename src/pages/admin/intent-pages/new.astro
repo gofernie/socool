@@ -826,17 +826,31 @@ customNameInput,
           const select = document.getElementById("cityInput");
           if (!select || !cities.length) return;
           const current = select.value;
-          select.innerHTML = "";
-          cities.forEach((item) => {
-            const value = String(item?.value || item || "").trim().toLowerCase();
-            const label = item?.label || value.replace(/\b\w/g, (c) => c.toUpperCase());
-            if (!value) return;
-            const opt = document.createElement("option");
-            opt.value = value;
-            opt.textContent = label;
-            if (value === current) opt.selected = true;
-            select.appendChild(opt);
-          });
+const siteCity = current || "parksville";
+
+select.innerHTML = "";
+
+if (siteCity) {
+  const opt = document.createElement("option");
+  opt.value = siteCity;
+  opt.textContent = siteCity.replace(/\b\w/g, (c) => c.toUpperCase());
+  opt.selected = true;
+  select.appendChild(opt);
+}
+        cities.forEach((item) => {
+  const value = String(item?.value || item || "").trim().toLowerCase();
+  const label = item?.label || value.replace(/\b\w/g, (c) => c.toUpperCase());
+
+  if (!value) return;
+  if (value === siteCity) return;
+
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = label;
+  if (value === current) opt.selected = true;
+
+  select.appendChild(opt);
+});
           updatePreview();
         } catch (err) {
           console.error("Could not load cities:", err);
