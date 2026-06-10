@@ -12,13 +12,25 @@ import { getSite } from "../lib/getSite";
 const site = await getSite(Astro.url.hostname);
 
 const siteCity = site?.city || "nanaimo";
-const accentColor = site?.accent_color || "#bf2c37";
 const siteName = site?.site_name || "Real Estate";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+const agentPageSlug = "chris-crump";
+
+const { data: agentPage } = await supabase
+  .from("agent_pages")
+  .select("data")
+  .eq("slug", agentPageSlug)
+  .maybeSingle();
+
+const accentColor =
+  agentPage?.data?.accentColor ||
+  site?.accent_color ||
+  "#2f6f73";
 
 const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
