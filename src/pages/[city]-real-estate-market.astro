@@ -31,7 +31,19 @@ const city =
 
 
 const cityLabel = city.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-const accentColor = site?.accent_color || "#2f6f73";
+
+const agentPageSlug = city === "parksville" ? "parksville" : "chris-crump";
+
+const { data: agentPage } = await supabase
+  .from("agent_pages")
+  .select("data")
+  .eq("slug", agentPageSlug)
+  .maybeSingle();
+
+const accentColor =
+  agentPage?.data?.accentColor ||
+  site?.accent_color ||
+  "#2f6f73";
 
 const { data: allListings = [], error } = await supabase
   .from("listing_rows")
