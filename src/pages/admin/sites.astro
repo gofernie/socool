@@ -1,5 +1,6 @@
 ---
 import { createClient } from "@supabase/supabase-js";
+import AdminSidebar from "../../components/AdminSidebar.astro";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
@@ -22,20 +23,26 @@ const { data: sites = [] } = await supabase
   .order("domain");
 ---
 
-<h1>Your Sites</h1>
+<div class="page">
+  <AdminSidebar active="sites" />
 
-<div class="sites">
-  {sites.map((site) => (
-    <a class="site-card" href={`/admin/sites/${site.id}/settings`}>
-      <div class="swatch" style={`background:${site.accent_color || "#2f6f73"}`}></div>
+  <main class="main">
+    <h1>Your Sites</h1>
 
-      <div>
-        <h2>{site.site_name || site.domain}</h2>
-        <p>{site.domain}</p>
-        <small>{site.city}</small>
-      </div>
-    </a>
-  ))}
+    <div class="sites">
+      {sites.map((site) => (
+        <a class="site-card" href={`/admin/sites/${site.id}/settings`}>
+          <div class="swatch" style={`background:${site.accent_color || "#2f6f73"}`}></div>
+
+          <div>
+            <h2>{site.site_name || site.domain}</h2>
+            <p>{site.domain}</p>
+            <small>{site.city}</small>
+          </div>
+        </a>
+      ))}
+    </div>
+  </main>
 </div>
 
 <style>
@@ -46,16 +53,23 @@ const { data: sites = [] } = await supabase
     color: #1f2933;
   }
 
+  .page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+  }
+
+  .main {
+    padding: 48px 32px 64px;
+  }
+
   h1 {
     max-width: 1000px;
-    margin: 48px auto 24px;
-    padding: 0 24px;
+    margin: 0 0 24px;
   }
 
   .sites {
     max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 24px 64px;
     display: grid;
     gap: 16px;
   }
@@ -97,5 +111,15 @@ const { data: sites = [] } = await supabase
 
   small {
     color: #8a949e;
+  }
+
+  @media (max-width: 860px) {
+    .page {
+      display: block;
+    }
+
+    .main {
+      padding: 28px 18px 48px;
+    }
   }
 </style>

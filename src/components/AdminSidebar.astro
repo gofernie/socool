@@ -1,10 +1,10 @@
 ---
 const { active = "" } = Astro.props;
-const siteSlug = Astro.url.searchParams.get("slug") || "chris-crump";
 const navItems = [
   { key: "pages", label: "All pages", href: "/admin/intent-pages" },
   { key: "new-page", label: "+ Create intent page", href: "/admin/intent-pages/new" },
-{ key: "agent", label: "Agent editor", href: `/admin/agent-page?slug=${siteSlug}` },  { key: "sessions", label: "Intent sessions", href: "/admin/intent-sessions" },
+  { key: "sites", label: "Sites", href: "/admin/sites" },
+  { key: "sessions", label: "Intent sessions", href: "/admin/intent-sessions" },
   { key: "shortlists", label: "Shortlists", href: "/shortlists" },
   { key: "create-shortlist", label: "Create shortlist", href: "/listings" },
 ];
