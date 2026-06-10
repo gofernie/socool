@@ -1,135 +1,1344 @@
 ---
-import { createClient } from "@supabase/supabase-js";
-import AdminSidebar from "../../../../components/AdminSidebar.astro";
+import AdminSidebar from "../../components/AdminSidebar.astro";
 
-const supabase = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const siteId = Astro.params.id;
-
-if (Astro.request.method === "POST") {
-  const form = await Astro.request.formData();
-
-  await supabase
-    .from("sites")
-    .update({
-      site_name: form.get("site_name"),
-      accent_color: form.get("accent_color"),
-    })
-    .eq("id", siteId);
-
-  return Astro.redirect(`/admin/sites/${siteId}/settings`);
-}
-
-const { data: site } = await supabase
-  .from("sites")
-  .select("id, domain, city, site_name, accent_color")
-  .eq("id", siteId)
-  .maybeSingle();
-
-if (!site) {
-  return new Response("Site not found", { status: 404 });
-}
+// Slug is resolved in the client script from ?slug=
 ---
 
-<div class="page">
-  <AdminSidebar active="sites" />
+<html>
+  <head>
+    <title>Agent Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
-  <main class="main">
-    <a class="back" href="/admin/sites">← Back to sites</a>
+      :root {
+        --bg: #f7f4ef;
+        --surface: #fff;
+        --border: rgba(24,22,20,0.10);
+        --border-strong: rgba(24,22,20,0.22);
+        --ink: #181614;
+        --muted: rgba(24,22,20,0.52);
+        --accent: #181614;
+        --accent-hover: #333;
+        --radius: 16px;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
 
-    <h1>{site.site_name || site.domain}</h1>
-    <p class="muted">{site.domain}</p>
+      body {
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
+      }
 
-    <form method="post" class="card">
-      <label>
-        Site name
-        <input name="site_name" value={site.site_name || ""} />
-      </label>
+.page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
 
-      <label>
-        Accent colour
-        <input type="color" name="accent_color" value={site.accent_color || "#2f6f73"} />
-      </label>
+           /* ── Main ── */
+.main {
+  padding: 40px 48px 80px;
+  max-width: 860px;
+  min-width: 0;
+}
 
-      <button type="submit">Save settings</button>
-    </form>
-  </main>
-</div>
+      .page-header {
+        margin-bottom: 36px;
+      }
 
-<style>
-  body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #f6f3ee;
-    color: #1f2933;
+      .page-header h1 {
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+
+      .page-header p {
+        color: var(--muted);
+        margin-top: 6px;
+        font-size: 0.9rem;
+      }
+
+      /* ── Accordion sections ── */
+      .section {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+
+      .section__trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        gap: 16px;
+      }
+
+      .section__trigger:hover { background: rgba(24,22,20,0.02); }
+
+      .section__trigger-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .section__icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        display: grid;
+        place-items: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+
+      .section__title {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .section__subtitle {
+        font-size: 0.76rem;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+
+      .section__chevron {
+        width: 20px;
+        height: 20px;
+        color: var(--muted);
+        transition: transform 0.22s ease;
+        flex-shrink: 0;
+      }
+
+      .section.is-open .section__chevron {
+        transform: rotate(180deg);
+      }
+
+      .section__body {
+        display: none;
+        padding: 0 22px 22px;
+        border-top: 1px solid var(--border);
+      }
+
+      .section.is-open .section__body { display: block; }
+
+      /* ── Form fields ── */
+      .field { margin-top: 16px; }
+
+      .field label {
+        display: block;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .field input,
+      .field textarea,
+      .field select {
+        width: 100%;
+        padding: 10px 13px;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.9rem;
+        background: #fff;
+        color: var(--ink);
+        transition: border-color 0.14s, box-shadow 0.14s;
+      }
+
+      .field input:focus,
+      .field textarea:focus,
+      .field select:focus {
+        outline: none;
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
+      }
+
+      .field textarea { min-height: 80px; resize: vertical; }
+
+      .field select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23181614' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 13px center;
+        padding-right: 36px;
+      }
+
+      .hint {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      /* ── Template picker ── */
+      .template-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .template-option { position: relative; cursor: pointer; }
+
+      .template-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .template-option__card {
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.18s, box-shadow 0.18s;
+      }
+
+      .template-option input:checked + .template-option__card {
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.1);
+      }
+
+      .template-option__preview {
+        height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .template-option--brutal .template-option__preview { background: #0a0a0a; }
+      .template-option--calm .template-option__preview { background: #f5f2ed; }
+
+      .template-option__preview-accent {
+        height: 3px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+      }
+
+      .template-option--brutal .template-option__preview-accent { background: #ff4d00; }
+      .template-option--calm .template-option__preview-accent { background: #8b6f47; }
+
+      .template-option__preview-title {
+        font-weight: 800;
+        font-size: 0.82rem;
+      }
+
+      .template-option--brutal .template-option__preview-title { color: white; }
+      .template-option--calm .template-option__preview-title { color: #1c1917; font-family: Georgia, serif; font-style: italic; font-weight: 400; }
+
+      .template-option__label {
+        padding: 9px 12px;
+        background: white;
+        border-top: 1px solid var(--border);
+      }
+
+      .template-option__label strong { display: block; font-size: 0.8rem; font-weight: 700; }
+      .template-option__label span { font-size: 0.72rem; color: var(--muted); }
+      .template-option input:checked + .template-option__card .template-option__label { background: #f7f4ef; }
+
+      /* ── Colour picker ── */
+      .colour-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+        margin-bottom: 14px;
+      }
+
+    .preset-swatch {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
+      }
+
+      .preset-swatch:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
+
+      .preset-swatch.is-selected {
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(24,22,20,0.12);
+        transform: scale(1.08);
+      }
+
+      .preset-swatch.is-selected::after {
+        content: "✓";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 900;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      }
+
+      .colour-picker-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .colour-picker-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .colour-picker-wrap input[type="color"] {
+        width: 40px;
+        height: 40px;
+        padding: 2px;
+        border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        cursor: pointer;
+        background: none;
+      }
+
+      .colour-picker-wrap label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      #accentColorHex {
+        width: 110px !important;
+        font-family: monospace;
+        font-size: 0.88rem;
+      }
+
+      .colour-preview-strip {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .swatch-preview {
+        flex: 1;
+        height: 32px;
+        border-radius: 7px;
+        border: 1px solid rgba(24,22,20,0.07);
+        transition: background 0.22s;
+      }
+
+   .saved-section {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--border);
+        display: none;
+      }
+      .saved-section.has-customs { display: block; }
+      .saved-section__label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+      }
+   .preset-swatch.is-custom .remove-btn {
+        position: absolute;
+        top: -5px; right: -5px;
+        width: 16px; height: 16px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.2);
+        font-size: 9px; font-weight: 900;
+        color: #555; cursor: pointer;
+        z-index: 2;
+        display: none;
+        align-items: center; justify-content: center;
+        pointer-events: auto;
+      }
+      .preset-swatch.is-custom:hover .remove-btn { display: flex; }
+
+      .colour-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--muted);
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      /* ── Group editors ── */
+      .group-editor {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 12px;
+      }
+
+      .group-editor__header {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
+      /* ── Intent pages ── */
+      .intent-pages-grid { display: grid; gap: 8px; margin-top: 14px; }
+
+      .intent-page-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        cursor: pointer;
+        transition: border-color 0.14s;
+      }
+
+      .intent-page-card:hover { border-color: var(--border-strong); }
+
+      .intent-page-card input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin-top: 3px;
+        accent-color: var(--ink);
+      }
+
+      .intent-page-meta strong { display: block; font-size: 0.88rem; margin-bottom: 3px; }
+      .intent-page-meta p { color: var(--muted); font-size: 0.8rem; line-height: 1.4; margin: 0; }
+
+      .intent-page-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 7px;
+      }
+
+      .intent-page-tags span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: rgba(24,22,20,0.07);
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 700;
+      }
+
+      /* ── Footer actions ── */
+      .form-footer {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 28px;
+        padding-top: 22px;
+        border-top: 1px solid var(--border);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 11px 20px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.14s, color 0.14s, border-color 0.14s;
+      }
+
+      .btn--primary {
+        background: var(--ink);
+        color: #fff;
+        border-color: var(--ink);
+      }
+
+      .btn--primary:hover { background: #333; border-color: #333; }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--border-strong);
+      }
+
+      .btn--ghost:hover { background: rgba(24,22,20,0.05); }
+
+      .status {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #2d7a2d;
+        margin-left: auto;
+      }
+
+      .status.is-error { color: #b33; }
+
+ @media (max-width: 860px) {
+  .page {
+    display: block !important;
+    grid-template-columns: none !important;
   }
 
-  .page {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 260px 1fr;
+  .page > *:not(.main) {
+    display: none !important;
   }
 
   .main {
-    padding: 48px 32px;
-    max-width: 760px;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 16px !important;
   }
 
-  .back {
-    display: inline-block;
-    margin-bottom: 24px;
-    color: #667085;
-    text-decoration: none;
+  .grid-2,
+  .template-options {
+    grid-template-columns: 1fr !important;
   }
 
-  h1 {
-    margin: 0 0 4px;
+  .colour-presets,
+  #customSwatches {
+    display: grid !important;
+    grid-template-columns: repeat(4, 44px);
+    gap: 10px;
   }
 
-  .muted {
-    margin: 0 0 24px;
-    color: #667085;
+  .colour-picker-row {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
 
-  .card {
-    background: #fff;
-    border: 1px solid #e3ddd2;
-    border-radius: 18px;
-    padding: 24px;
-    display: grid;
-    gap: 18px;
+  #accentColorHex,
+  #saveCustomBtn {
+    width: 100% !important;
   }
+}
+    </style>
+  </head>
 
-  label {
-    display: grid;
-    gap: 8px;
-    font-weight: 700;
-  }
+  <body>
+    <div class="page">
 
-  input {
-    padding: 12px;
-    border: 1px solid #ddd5c8;
-    border-radius: 10px;
-    font: inherit;
-  }
+<AdminSidebar active="sites">
+  <nav class="sidebar__section-links">
+    <a href="#s-agent">Agent</a>
+    <a href="#s-colour">Colour</a>
+    <a href="#s-template">Template</a>
+    <a href="#s-intent">Intent pages</a>
+    <a href="#s-hero">Hero</a>
+    <a href="#s-social">Social</a>
+    <a href="#s-sections">Listing sections</a>
+    <a href="#s-live">Live listings</a>
+    <a href="#s-city">City</a>
+    <a href="#s-bio">Bio</a>
+  </nav>
+</AdminSidebar>
+      <!-- Main -->
+      <main class="main">
+        <div class="page-header">
+      <h1>Site settings</h1>
+<p>Configure colours, homepage copy, hero content, and branding for this site.</p>p>
+        </div>
 
-  input[type="color"] {
-    width: 90px;
-    height: 48px;
-    padding: 4px;
-  }
+        <form id="agentForm">
 
-  button {
-    width: fit-content;
-    padding: 12px 18px;
-    border: 0;
-    border-radius: 999px;
-    background: #111;
-    color: white;
-    font-weight: 800;
-    cursor: pointer;
-  }
-</style>
+          <!-- Agent -->
+          <div class="section is-open" id="s-agent">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+                <div class="section__icon">ID</div>
+                <div>
+                  <div class="section__title">Agent</div>
+                  <div class="section__subtitle">Name, contact, city</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="grid-2">
+                <div class="field"><label>Agent name</label><input name="agentName" /></div>
+                <div class="field"><label>Title</label><input name="agentTitle" /></div>
+              </div>
+              <div class="grid-2">
+                <div class="field"><label>Phone</label><input name="phone" /></div>
+                <div class="field"><label>Email</label><input name="email" /></div>
+              </div>
+              <div class="field"><label>City</label><input name="city" /></div>
+            </div>
+          </div>
+
+          <!-- Colour -->
+          <div class="section" id="s-colour">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+             <div class="section__icon">CLR</div>
+                <div>
+                  <div class="section__title">Site colour</div>
+                  <div class="section__subtitle">Accent colour and full palette</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="colour-presets">
+                <button type="button" class="preset-swatch" data-colour="#2f6f73" title="Teal" style="background:#2f6f73;"></button>
+                <button type="button" class="preset-swatch" data-colour="#2d5016" title="Forest" style="background:#2d5016;"></button>
+                <button type="button" class="preset-swatch" data-colour="#7c3a2d" title="Terracotta" style="background:#7c3a2d;"></button>
+                <button type="button" class="preset-swatch" data-colour="#1a3a5c" title="Navy" style="background:#1a3a5c;"></button>
+                <button type="button" class="preset-swatch" data-colour="#5c3d8f" title="Plum" style="background:#5c3d8f;"></button>
+                <button type="button" class="preset-swatch" data-colour="#8f5c1a" title="Amber" style="background:#8f5c1a;"></button>
+                <button type="button" class="preset-swatch" data-colour="#1a5c4a" title="Emerald" style="background:#1a5c4a;"></button>
+                <button type="button" class="preset-swatch" data-colour="#181614" title="Charcoal" style="background:#181614;"></button>
+              </div>
+<div class="saved-section" id="savedSection">
+                <div class="saved-section__label">Saved customs</div>
+                <div class="colour-presets" id="customSwatches"></div>
+              </div>
+
+              <div class="colour-picker-row">                <div class="colour-picker-wrap">
+                  <input type="color" id="accentColorPicker" name="accentColor" value="#2f6f73" />
+                  <label for="accentColorPicker">Custom</label>
+                </div>
+              <input type="text" id="accentColorHex" class="field" placeholder="#2f6f73" maxlength="7" />
+                <button type="button" class="btn btn--ghost" id="saveCustomBtn" style="white-space:nowrap; padding: 9px 16px; border-radius: 999px; font-size: 0.82rem;">Save colour</button>
+              </div>
+              <div class="colour-preview-strip">
+                <div class="swatch-preview" id="swatchAccent"></div>
+                <div class="swatch-preview" id="swatchAccentLight"></div>
+                <div class="swatch-preview" id="swatchAccentSoft"></div>
+                <div class="swatch-preview" id="swatchBg"></div>
+                <div class="swatch-preview" id="swatchCard"></div>
+                <div class="swatch-preview" id="swatchSection"></div>
+              </div>
+              <p class="colour-label" id="colourLabel">Teal</p>
+            </div>
+          </div>
+
+          <!-- Template -->
+          <div class="section" id="s-template">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">TPL</div>
+                <div>
+                  <div class="section__title">Page template</div>
+                  <div class="section__subtitle">Visual style</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="template-options">
+                <label class="template-option template-option--brutal">
+                  <input type="radio" name="template" value="brutal" />
+                  <div class="template-option__card">
+                    <div class="template-option__preview">
+                      <div class="template-option__preview-accent"></div>
+                      <div class="template-option__preview-title" style="color:white;">Nanaimo <span style="color:#ff4d00;">homes.</span></div>
+                    </div>
+                    <div class="template-option__label">
+                      <strong>Brutalist</strong>
+                      <span>Bold, high contrast</span>
+                    </div>
+                  </div>
+                </label>
+                <label class="template-option template-option--calm">
+                  <input type="radio" name="template" value="calm" />
+                  <div class="template-option__card">
+                    <div class="template-option__preview">
+                      <div class="template-option__preview-accent"></div>
+                      <div class="template-option__preview-title">Nanaimo <span style="color:#8b6f47;">homes.</span></div>
+                    </div>
+                    <div class="template-option__label">
+                      <strong>Calm</strong>
+                      <span>Warm, approachable</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Intent pages -->
+          <div class="section" id="s-intent">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">INT</div>
+                <div>
+                  <div class="section__title">Intent pages</div>
+                  <div class="section__subtitle">Buyer pages on homepage</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <a class="btn btn--ghost" href="/admin/intent-pages/new" style="margin-top:4px; margin-bottom:4px;">+ New intent page</a>
+              <div id="intentPagesGrid" class="intent-pages-grid">
+                <p class="hint">Loading...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero -->
+          <div class="section" id="s-hero">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">HRO</div>
+                <div>
+                  <div class="section__title">Hero</div>
+                  <div class="section__subtitle">Heading, intro, featured listing</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Eyebrow</label><input name="heroEyebrow" /></div>
+              <div class="field"><label>Heading</label><input name="heroHeading" /></div>
+              <div class="field"><label>Intro</label><textarea name="heroIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field"><label>Agent pick title</label><input name="agentPickTitle" /></div>
+                <div class="field"><label>Featured MLS #</label><input name="featuredListingMls" inputmode="numeric" placeholder="e.g. 1032478" /></div>
+              </div>
+              <div class="field"><label>Agent pick text</label><textarea name="agentPickText"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Social -->
+          <div class="section" id="s-social">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+            <div class="section__icon">SOC</div>
+                <div>
+                  <div class="section__title">Social</div>
+                  <div class="section__subtitle">Links and feed</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="grid-2">
+                <div class="field"><label>LinkedIn</label><input name="linkedinUrl" placeholder="https://linkedin.com/in/..." /></div>
+                <div class="field"><label>X / Twitter</label><input name="twitterUrl" placeholder="https://twitter.com/..." /></div>
+              </div>
+              <div class="grid-2">
+                <div class="field"><label>Instagram</label><input name="instagramUrl" placeholder="https://instagram.com/..." /></div>
+                <div class="field"><label>Facebook</label><input name="facebookUrl" placeholder="https://facebook.com/..." /></div>
+              </div>
+              <div class="field"><label>Section title</label><input name="socialTitle" /></div>
+              <div class="field"><label>Section intro</label><textarea name="socialIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>Feed type</label>
+                  <select name="socialFeedType">
+                    <option value="">No feed</option>
+                    <option value="twitter">X / Twitter</option>
+                    <option value="manual">Manual embed</option>
+                  </select>
+                </div>
+                <div class="field"><label>Feed URL</label><input name="socialFeedUrl" /></div>
+              </div>
+              <div class="field"><label>Embed code</label><textarea name="socialFeedEmbed"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Listing sections -->
+          <div class="section" id="s-sections">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+               <div class="section__icon">LST</div>
+                <div>
+                  <div class="section__title">Listing sections</div>
+                  <div class="section__subtitle">4 curated cards</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              {[1, 2, 3, 4].map((num) => (
+                <div class="group-editor">
+                  <div class="group-editor__header">Section {num}</div>
+                  <div class="grid-2">
+                    <div class="field"><label>Label</label><input name={`group${num}Kicker`} /></div>
+                    <div class="field"><label>Title</label><input name={`group${num}Title`} /></div>
+                  </div>
+                  <div class="field"><label>Description</label><textarea name={`group${num}Text`}></textarea></div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>City</label>
+                      <select name={`group${num}City`} class="city-select group-city-select"><option value="">Any city</option></select>
+                    </div>
+                    <div class="field">
+                      <label>Area</label>
+                      <select name={`group${num}Area`} class="area-select"><option value="">Any area</option></select>
+                    </div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>Type</label>
+                      <select name={`group${num}Type`} class="type-select"><option value="">Any type</option></select>
+                    </div>
+                    <div class="field">
+                      <label>Sort</label>
+                      <select name={`group${num}Sort`}>
+                        <option value="newest">Newest first</option>
+                        <option value="price-low">Price: low→high</option>
+                        <option value="price-high">Price: high→low</option>
+                        <option value="beds-high">Most beds</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field"><label>Min price (000s)</label><input name={`group${num}MinPrice`} inputmode="numeric" placeholder="0" /></div>
+                    <div class="field"><label>Max price (000s)</label><input name={`group${num}MaxPrice`} inputmode="numeric" placeholder="800" /></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Live listings -->
+          <div class="section" id="s-live">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+              <div class="section__icon">LVE</div>
+                <div>
+                  <div class="section__title">Live listings</div>
+                  <div class="section__subtitle">Dynamic listing feed</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Section title</label><input name="newListingsTitle" /></div>
+              <div class="field"><label>Intro</label><textarea name="newListingsIntro"></textarea></div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>City</label>
+                  <select name="newListingsCity" id="newListingsCitySelect" class="city-select"><option value="">Any city</option></select>
+                </div>
+                <div class="field">
+                  <label>Area</label>
+                  <select name="newListingsArea" id="newListingsAreaSelect" class="area-select"><option value="">Any area</option></select>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="field">
+                  <label>Type</label>
+                  <select name="newListingsType" class="type-select"><option value="">Any type</option></select>
+                </div>
+                <div class="field">
+                  <label>Sort</label>
+                  <select name="newListingsSort">
+                    <option value="newest">Newest first</option>
+                    <option value="price-low">Price: low→high</option>
+                    <option value="price-high">Price: high→low</option>
+                    <option value="beds-high">Most beds</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="field"><label>Min price (000s)</label><input name="newListingsMinPrice" inputmode="numeric" placeholder="0" /></div>
+                <div class="field"><label>Max price (000s)</label><input name="newListingsMaxPrice" inputmode="numeric" placeholder="800" /></div>
+              </div>
+              <div class="field"><label>Number to show</label><input name="newListingsLimit" inputmode="numeric" placeholder="6" /></div>
+            </div>
+          </div>
+
+          <!-- City -->
+          <div class="section" id="s-city">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+            <div class="section__icon">CTY</div>
+                <div>
+                  <div class="section__title">City section</div>
+                  <div class="section__subtitle">Intro and notes</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>City intro</label><textarea name="cityIntro"></textarea></div>
+              <div class="field"><label>City notes</label><textarea name="cityNotes"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Bio -->
+          <div class="section" id="s-bio">
+            <button type="button" class="section__trigger" data-toggle>
+              <div class="section__trigger-left">
+<div class="section__icon">BIO</div>
+                <div>
+                  <div class="section__title">Agent bio</div>
+                  <div class="section__subtitle">About section</div>
+                </div>
+              </div>
+              <svg class="section__chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
+            </button>
+            <div class="section__body">
+              <div class="field"><label>Bio</label><textarea name="agentBio" style="min-height:120px;"></textarea></div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="form-footer">
+            <button type="submit" class="btn btn--primary">Save page</button>
+<a class="btn btn--ghost" id="previewLink" href="/agent-listings" target="_blank">Preview &nearr;</a>            <span class="status" id="status"></span>
+          </div>
+
+        </form>
+      </main>
+    </div>
+
+    <script is:inline>
+      const params = new URLSearchParams(window.location.search);
+const siteId = window.location.pathname.split("/").filter(Boolean)[2];
+      const form = document.getElementById("agentForm");
+      const status = document.getElementById("status");
+
+      // ── Accordion ──────────────────────────────────────────
+      document.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const section = btn.closest(".section");
+          section.classList.toggle("is-open");
+        });
+      });
+
+      // ── State ──────────────────────────────────────────────
+      let intentPages = [];
+      let filterOptions = { cities: [], areasByCity: {}, types: [] };
+
+      const defaults = {
+        agentName: "Chris Crump", agentTitle: "Real Estate Advisor",
+        phone: "250.619.0390", email: "chris@example.com", city: "",
+        template: "brutal", accentColor: "#2f6f73",
+        heroEyebrow: "Curated by Chris Crump", heroHeading: "Homes worth watching.",
+        heroIntro: "A simple, curated place to explore homes - organized by property type, price point, and what buyers are watching right now.",
+        agentPickTitle: "Not a giant listing portal.", agentPickText: "Just the homes and categories buyers actually ask about most.",
+        featuredListingMls: "", linkedinUrl: "", twitterUrl: "", instagramUrl: "", facebookUrl: "",
+        socialTitle: "Follow along.", socialIntro: "Market notes, listing updates, and local real estate context from your agent.",
+        socialFeedType: "", socialFeedUrl: "", socialFeedEmbed: "",
+        cityIntro: "", cityNotes: "",
+        agentBio: "A local real estate advisor helping buyers make sense of the market with clear, curated listing guidance.",
+        newListingsTitle: "New listings.", newListingsIntro: "The latest homes to hit the market.",
+        newListingsCity: "", newListingsArea: "", newListingsType: "",
+        newListingsMinPrice: "", newListingsMaxPrice: "", newListingsSort: "newest", newListingsLimit: "6",
+        enabledIntentPageSlugs: [],
+        groups: [
+          { title: "Condos", kicker: "Low-maintenance living", text: "Explore condo options from the latest listing data.", city: "", area: "", type: "condo", minPrice: "", maxPrice: "", sort: "newest" },
+          { title: "Single-family homes", kicker: "Room to grow", text: "Detached homes from the latest listing data.", city: "", area: "", type: "house", minPrice: "", maxPrice: "", sort: "newest" },
+          { title: "Popular under $800k", kicker: "Buyer sweet spot", text: "Homes in one of the most watched price ranges.", city: "", area: "", type: "", minPrice: "", maxPrice: "800", sort: "newest" },
+          { title: "New listings", kicker: "Fresh to market", text: "Recently listed homes worth watching.", city: "", area: "", type: "", minPrice: "", maxPrice: "", sort: "newest" }
+        ]
+      };
+
+      // ── Helpers ────────────────────────────────────────────
+      const nv = (v) => String(v || "").trim().toLowerCase();
+      const tc = (v) => String(v || "").trim().replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+      function optionValue(item) {
+        if (!item) return "";
+        if (typeof item === "object") return nv(item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || item.name || item.label || "");
+        return nv(item);
+      }
+
+      function optionLabel(item) {
+        if (!item) return "";
+        if (typeof item === "object") return tc(item.label || item.display_name || item.name || item.value || item.normalized_value || item.normalized_area || item.normalized_city || item.normalized_type || "");
+        return tc(item);
+      }
+
+      function uniqueOptions(items) {
+        const seen = new Set();
+        return (Array.isArray(items) ? items : [])
+          .map(item => ({ value: optionValue(item), label: optionLabel(item) || tc(optionValue(item)) }))
+          .filter(item => { if (!item.value || seen.has(item.value)) return false; seen.add(item.value); return true; })
+          .sort((a, b) => a.label.localeCompare(b.label));
+      }
+
+      function getPrimaryCity() {
+        return nv(form.elements.newListingsCity?.value) || nv(form.elements.city?.value) || nv(filterOptions.cities?.[0]?.value) || "nanaimo";
+      }
+
+      function buildExploreHref(group) {
+        const params = new URLSearchParams();
+        if (group.city) params.set("city", nv(group.city));
+        if (group.area) params.set("area", nv(group.area));
+        if (group.type) params.set("type", nv(group.type));
+        if (group.minPrice) params.set("minPrice", String(Number(group.minPrice) * 1000));
+        if (group.maxPrice) params.set("maxPrice", String(Number(group.maxPrice) * 1000));
+        if (group.sort) params.set("sort", group.sort);
+        const q = params.toString();
+        return q ? `/explore?${q}` : "/explore";
+      }
+
+      async function fetchJsonSafe(url) {
+        try { const res = await fetch(url); if (!res.ok) return null; return await res.json(); } catch { return null; }
+      }
+
+      // ── Template ───────────────────────────────────────────
+      function setSelectedTemplate(value) {
+        form.querySelectorAll('input[name="template"]').forEach(r => r.checked = r.value === value);
+        const link = document.getElementById("previewLink");
+        if (link) link.href = value === "calm" ? "/agent-listings-calm" : "/agent-listings";
+      }
+
+      form.querySelectorAll('input[name="template"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const link = document.getElementById("previewLink");
+          if (link) link.href = r.value === "calm" ? "/agent-listings-calm" : "/agent-listings";
+        });
+      });
+
+      // ── Colour picker ──────────────────────────────────────
+      const colourPresets = [
+        { colour: "#2f6f73", name: "Teal" }, { colour: "#2d5016", name: "Forest" },
+        { colour: "#7c3a2d", name: "Terracotta" }, { colour: "#1a3a5c", name: "Navy" },
+        { colour: "#5c3d8f", name: "Plum" }, { colour: "#8f5c1a", name: "Amber" },
+        { colour: "#1a5c4a", name: "Emerald" }, { colour: "#181614", name: "Charcoal" },
+      ];
+
+      function hexToRgb(hex) {
+        return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+      }
+
+  function mix(hex, w, warm = true) {
+        const {r,g,b} = hexToRgb(hex);
+        // Warm base: blend between accent and #f4efe7, then nudge toward white
+        // This matches the original site's warm sandy bg feel regardless of accent
+        const warmBase = { r: 244, g: 239, b: 231 };
+        const white = { r: 255, g: 255, b: 255 };
+        const base = warm
+          ? { r: Math.round(warmBase.r * 0.82 + white.r * 0.18), g: Math.round(warmBase.g * 0.82 + white.g * 0.18), b: Math.round(warmBase.b * 0.82 + white.b * 0.18) }
+          : white;
+        const t = w/100;
+        return `rgb(${Math.round(r+(base.r-r)*t)},${Math.round(g+(base.g-g)*t)},${Math.round(b+(base.b-b)*t)})`;
+      }
+
+      function updateSwatches(hex) {
+        const set = (id, c) => { const el = document.getElementById(id); if (el) el.style.background = c; };
+  set("swatchAccent", hex); set("swatchAccentLight", mix(hex,65));
+        set("swatchAccentSoft", mix(hex,88)); set("swatchBg", mix(hex,96));
+        set("swatchCard", "#ffffff"); set("swatchSection", mix(hex,94));
+      }
+
+      function applyColour(hex, source) {
+        if (!/^#[0-9a-f]{6}$/i.test(hex)) return;
+        hex = hex.toLowerCase();
+        const picker = document.getElementById("accentColorPicker");
+        const hexInput = document.getElementById("accentColorHex");
+        const label = document.getElementById("colourLabel");
+        if (picker && source !== "picker") picker.value = hex;
+        if (hexInput && source !== "hex") hexInput.value = hex;
+        if (label) label.textContent = colourPresets.find(p => p.colour.toLowerCase() === hex)?.name || "Custom";
+        updateSwatches(hex);
+      document.querySelectorAll(".preset-swatch").forEach(btn => {
+          btn.classList.toggle("is-selected", btn.dataset.colour.toLowerCase() === hex);
+        });
+        if (typeof syncSaveBtn === "function") syncSaveBtn();
+      }
+
+      document.querySelectorAll(".preset-swatch").forEach(btn => {
+        btn.addEventListener("click", () => applyColour(btn.dataset.colour, "preset"));
+      });
+
+      document.getElementById("accentColorPicker")?.addEventListener("input", (e) => applyColour(e.target.value, "picker"));
+
+      document.getElementById("accentColorHex")?.addEventListener("input", (e) => {
+        let val = e.target.value.trim();
+        if (!val.startsWith("#")) val = "#" + val;
+        if (/^#[0-9a-f]{6}$/i.test(val)) applyColour(val, "hex");
+      });
+
+let customColours = [];
+
+      function isBuiltin(hex) { return colourPresets.some(p => p.colour.toLowerCase() === hex.toLowerCase()); }
+      function isAlreadySaved(hex) { return customColours.some(c => c.colour.toLowerCase() === hex.toLowerCase()); }
+
+      function renderCustomSwatches() {
+        const container = document.getElementById("customSwatches");
+        const section = document.getElementById("savedSection");
+        container.innerHTML = "";
+        if (!customColours.length) { section.classList.remove("has-customs"); return; }
+        section.classList.add("has-customs");
+        customColours.forEach(c => {
+          const btn = document.createElement("button");
+        btn.type = "button";
+          btn.className = "preset-swatch is-custom";
+          btn.dataset.colour = c.colour;
+          btn.title = c.name;
+          btn.style.cssText = `background:${c.colour};width:44px;height:44px;border-radius:999px;border:2px solid transparent;cursor:pointer;position:relative;flex-shrink:0;transition:transform 0.14s,box-shadow 0.14s,border-color 0.14s;`;
+    btn.addEventListener("click", () => applyColour(c.colour, "preset"));
+          const rmv = document.createElement("button");
+          rmv.type = "button";
+          rmv.className = "remove-btn";
+          rmv.textContent = "\u2715";
+          rmv.title = "Remove";
+rmv.style.cssText = "position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,0.2);font-size:11px;font-weight:900;color:#555;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:10;padding:0;line-height:1;";          rmv.addEventListener("mouseenter", () => rmv.style.display = "flex");
+        rmv.addEventListener("click", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!confirm("Remove this saved colour?")) return;
+            customColours = customColours.filter(x => x.colour !== c.colour);
+           
+            renderCustomSwatches();
+            syncSaveBtn();
+          });
+          btn.addEventListener("mouseenter", () => rmv.style.display = "flex");
+          btn.addEventListener("mouseleave", () => rmv.style.display = "none");
+          btn.appendChild(rmv);
+          container.appendChild(btn);
+        });
+        const hex = document.getElementById("accentColorPicker")?.value?.toLowerCase();
+        if (hex) container.querySelectorAll(".preset-swatch").forEach(b => b.classList.toggle("is-selected", b.dataset.colour.toLowerCase() === hex));
+      }
+
+      function syncSaveBtn() {
+        const hex = (document.getElementById("accentColorHex")?.value || "").toLowerCase();
+        const btn = document.getElementById("saveCustomBtn");
+        if (!btn) return;
+        const exists = isBuiltin(hex) || isAlreadySaved(hex);
+        btn.disabled = exists;
+        btn.textContent = exists ? "Saved \u2713" : "Save colour";
+      }
+
+      document.getElementById("saveCustomBtn")?.addEventListener("click", () => {
+        const hex = (document.getElementById("accentColorHex")?.value || "").toLowerCase();
+        if (!hex || !/^#[0-9a-f]{6}$/.test(hex) || isBuiltin(hex) || isAlreadySaved(hex)) return;
+        customColours.push({ colour: hex, name: hex.toUpperCase() });
+        
+        renderCustomSwatches();
+        syncSaveBtn();
+      });
+
+      window.seedAccentColour = (hex) => { if (hex && /^#[0-9a-f]{6}$/i.test(hex)) applyColour(hex, "seed"); };
+      applyColour("#2f6f73", "seed");
+      renderCustomSwatches();
+      syncSaveBtn();
+
+      // ── Intent pages ───────────────────────────────────────
+      async function loadIntentPages(selected = []) {
+        const city = nv(form.elements.city?.value) || "nanaimo";
+        const json = await fetchJsonSafe(`/api/intent-pages?city=${encodeURIComponent(city)}`);
+        intentPages = Array.isArray(json?.pages) ? json.pages : [];
+        const grid = document.getElementById("intentPagesGrid");
+        if (!grid) return;
+        if (!intentPages.length) { grid.innerHTML = `<p class="hint">No published intent pages found.</p>`; return; }
+        grid.innerHTML = intentPages.map(page => {
+          const checked = selected.includes(page.slug);
+          return `<label class="intent-page-card">
+            <input type="checkbox" class="intent-page-checkbox" value="${page.slug}" ${checked ? "checked" : ""} />
+            <div class="intent-page-meta">
+              <strong>${page.hero_heading || page.slug}</strong>
+              <p>${page.intro_copy || ""}</p>
+              <div class="intent-page-tags">
+                ${page.property_type ? `<span>${page.property_type}</span>` : ""}
+                ${page.lifestyle_angle ? `<span>${String(page.lifestyle_angle).replaceAll("_"," ")}</span>` : ""}
+                ${page.price_max ? `<span>Under $${Number(page.price_max).toLocaleString()}</span>` : ""}
+              </div>
+            </div>
+          </label>`;
+        }).join("");
+      }
+
+      // ── Filter dropdowns ───────────────────────────────────
+      async function loadFilterOptions() {
+        const json = await fetchJsonSafe("/api/listing-filters");
+        if (json) {
+          filterOptions.cities = uniqueOptions(json.cities || []);
+          filterOptions.types = uniqueOptions(json.types || json.propertyTypes || []);
+          const abc = json.areasByCity || {};
+          filterOptions.areasByCity = Object.fromEntries(Object.entries(abc).map(([city,areas]) => [nv(city), uniqueOptions(areas)]));
+        }
+      }
+
+      function populateCitySelects() {
+        document.querySelectorAll(".city-select").forEach(select => {
+          const current = nv(select.value) || getPrimaryCity();
+          select.innerHTML = [`<option value="">Any city</option>`, ...filterOptions.cities.map(c => `<option value="${c.value}" ${c.value===current?"selected":""}>${c.label}</option>`)].join("");
+        });
+      }
+
+      function populateTypeSelects() {
+        document.querySelectorAll(".type-select").forEach(select => {
+          const current = nv(select.value);
+          select.innerHTML = [`<option value="">Any type</option>`, ...filterOptions.types.map(t => `<option value="${t.value}" ${t.value===current?"selected":""}>${t.label}</option>`)].join("");
+        });
+      }
+
+      function getCityForAreaSelect(areaSelect) {
+        if (areaSelect.name === "newListingsArea") return nv(form.elements.newListingsCity?.value || getPrimaryCity());
+        const n = areaSelect.name.match(/\d+/)?.[0];
+        return nv(form.elements[`group${n}City`]?.value || getPrimaryCity());
+      }
+
+      function populateAreaSelects() {
+        document.querySelectorAll(".area-select").forEach(select => {
+          const current = nv(select.value);
+          const city = getCityForAreaSelect(select);
+          const areas = filterOptions.areasByCity[city] || [];
+          select.innerHTML = [`<option value="">Any area</option>`, ...areas.map(a => `<option value="${a.value}" ${a.value===current?"selected":""}>${a.label}</option>`)].join("");
+        });
+      }
+
+      function populateDropdowns() { populateCitySelects(); populateTypeSelects(); populateAreaSelects(); }
+
+      // ── Fill form ──────────────────────────────────────────
+      function fillForm(data) {
+        const savedGroups = Array.isArray(data?.groups) ? data.groups : [];
+        const mergedGroups = [0,1,2,3].map(i => {
+          const saved = savedGroups[i] || {};
+          const fallback = defaults.groups[i] || {};
+          const isBlank = !saved.kicker && !saved.title && !saved.text && !saved.city && !saved.area && !saved.type && !saved.minPrice && !saved.maxPrice;
+          return isBlank ? fallback : { ...fallback, ...saved };
+        });
+        const merged = { ...defaults, ...(data || {}), groups: mergedGroups };
+
+        setSelectedTemplate(merged.template || "brutal");
+
+        Object.entries(merged).forEach(([key, value]) => {
+          if (["groups","template","enabledIntentPageSlugs"].includes(key)) return;
+          const field = form.elements[key];
+          if (!field) return;
+          field.value = ["city","newListingsCity","newListingsArea","newListingsType"].includes(key) ? nv(value) : (value || "");
+        });
+
+        [1,2,3,4].forEach(num => {
+          const g = merged.groups[num-1] || {};
+          form.elements[`group${num}Kicker`].value = g.kicker || "";
+          form.elements[`group${num}Title`].value = g.title || "";
+          form.elements[`group${num}Text`].value = g.text || "";
+          form.elements[`group${num}City`].value = nv(g.city);
+          form.elements[`group${num}Area`].value = nv(g.area);
+          form.elements[`group${num}Type`].value = nv(g.type);
+          form.elements[`group${num}Sort`].value = g.sort || "newest";
+          form.elements[`group${num}MinPrice`].value = g.minPrice || "";
+          form.elements[`group${num}MaxPrice`].value = g.maxPrice || "";
+        });
+
+customColours = Array.isArray(merged.savedColours)
+  ? merged.savedColours
+  : [];
+
+renderCustomSwatches();
+
+if (typeof window.seedAccentColour === "function")
+  window.seedAccentColour(merged.accentColor || "#2f6f73");
+      }
+
+      // ── Load ───────────────────────────────────────────────
+      async function loadPage() {
+        const res = await fetch(`/api/site-settings?id=${encodeURIComponent(siteId)}`);
+        const json = await res.json();
+        const data = json?.data || defaults;
+        fillForm(data);
+        await loadIntentPages(data?.enabledIntentPageSlugs || []);
+        await loadFilterOptions();
+        populateDropdowns();
+        fillForm(data);
+        populateDropdowns();
+        await loadIntentPages(data?.enabledIntentPageSlugs || []);
+      }
+
+      form.addEventListener("change", async (e) => {
+        if (e.target?.classList?.contains("city-select")) populateAreaSelects();
+        if (e.target?.name === "city") await loadIntentPages(Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value));
+      });
+
+      // ── Save ───────────────────────────────────────────────
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.textContent = "Saving…";
+        status.className = "status";
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.city = nv(data.city);
+        data.newListingsCity = nv(data.newListingsCity);
+        data.newListingsArea = nv(data.newListingsArea);
+        data.newListingsType = nv(data.newListingsType);
+        data.template = data.template || "brutal";
+        data.accentColor = data.accentColor || "#2f6f73";
+
+        data.groups = [1,2,3,4].map(num => {
+          const g = { kicker: data[`group${num}Kicker`]||"", title: data[`group${num}Title`]||"", text: data[`group${num}Text`]||"", city: nv(data[`group${num}City`]), area: nv(data[`group${num}Area`]), type: nv(data[`group${num}Type`]), minPrice: data[`group${num}MinPrice`]||"", maxPrice: data[`group${num}MaxPrice`]||"", sort: data[`group${num}Sort`]||"newest" };
+          return { ...g, href: buildExploreHref(g) };
+        }).filter(g => g.title || g.text || g.href);
+
+        [1,2,3,4].forEach(num => ["Kicker","Title","Text","City","Area","Type","Sort","MinPrice","MaxPrice"].forEach(f => delete data[`group${num}${f}`]));
+
+        data.newListingsLimit = data.newListingsLimit || "6";
+        data.enabledIntentPageSlugs = Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value);
+data.savedColours = customColours;
+const res = await fetch("/api/site-settings", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ id: siteId, data })
+});
+        const json = await res.json();
+
+status.textContent = json.ok ? "Saved \u2713" : json.error || "Save failed";        if (!json.ok) status.className = "status is-error";
+      });
+
+    // ── Sidebar section nav ─────────────────────────────
+document.querySelectorAll(".sidebar__section-links a").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetId = link.getAttribute("href").slice(1);
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    document.querySelectorAll(".section").forEach((s) => {
+      s.classList.remove("is-open");
+    });
+
+    document.querySelectorAll(".sidebar__section-links a").forEach((l) => {
+      l.classList.remove("active");
+    });
+
+    target.classList.add("is-open");
+    link.classList.add("active");
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+loadPage();
+    </script>
+  </body>
+</html>

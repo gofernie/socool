@@ -557,7 +557,7 @@ import AdminSidebar from "../../components/AdminSidebar.astro";
   <body>
     <div class="page">
 
-<AdminSidebar active="agent">
+<AdminSidebar active="sites">
   <nav class="sidebar__section-links">
     <a href="#s-agent">Agent</a>
     <a href="#s-colour">Colour</a>
@@ -574,8 +574,8 @@ import AdminSidebar from "../../components/AdminSidebar.astro";
       <!-- Main -->
       <main class="main">
         <div class="page-header">
-          <h1>Agent page</h1>
-          <p>Configure the public-facing agent listing page.</p>
+      <h1>Site settings</h1>
+<p>Configure colours, homepage copy, hero content, and branding for this site.</p>p>
         </div>
 
         <form id="agentForm">
@@ -928,7 +928,7 @@ import AdminSidebar from "../../components/AdminSidebar.astro";
 
     <script is:inline>
       const params = new URLSearchParams(window.location.search);
-const slug = params.get("slug") || "chris-crump";
+const siteId = window.location.pathname.split("/").filter(Boolean)[2];
       const form = document.getElementById("agentForm");
       const status = document.getElementById("status");
 
@@ -1264,7 +1264,7 @@ if (typeof window.seedAccentColour === "function")
 
       // ── Load ───────────────────────────────────────────────
       async function loadPage() {
-        const res = await fetch(`/api/agent-page?slug=${encodeURIComponent(slug)}`);
+        const res = await fetch(`/api/site-settings?id=${encodeURIComponent(siteId)}`);
         const json = await res.json();
         const data = json?.data || defaults;
         fillForm(data);
@@ -1306,7 +1306,11 @@ if (typeof window.seedAccentColour === "function")
         data.newListingsLimit = data.newListingsLimit || "6";
         data.enabledIntentPageSlugs = Array.from(document.querySelectorAll(".intent-page-checkbox:checked")).map(el => el.value);
 data.savedColours = customColours;
-        const res = await fetch("/api/agent-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, data }) });
+const res = await fetch("/api/site-settings", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ id: siteId, data })
+});
         const json = await res.json();
 
 status.textContent = json.ok ? "Saved \u2713" : json.error || "Save failed";        if (!json.ok) status.className = "status is-error";
