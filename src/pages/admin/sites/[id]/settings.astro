@@ -1,0 +1,135 @@
+---
+import { createClient } from "@supabase/supabase-js";
+import AdminSidebar from "../../../../components/AdminSidebar.astro";
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const siteId = Astro.params.id;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+
+  await supabase
+    .from("sites")
+    .update({
+      site_name: form.get("site_name"),
+      accent_color: form.get("accent_color"),
+    })
+    .eq("id", siteId);
+
+  return Astro.redirect(`/admin/sites/${siteId}/settings`);
+}
+
+const { data: site } = await supabase
+  .from("sites")
+  .select("id, domain, city, site_name, accent_color")
+  .eq("id", siteId)
+  .maybeSingle();
+
+if (!site) {
+  return new Response("Site not found", { status: 404 });
+}
+---
+
+<div class="page">
+  <AdminSidebar active="sites" />
+
+  <main class="main">
+    <a class="back" href="/admin/sites">← Back to sites</a>
+
+    <h1>{site.site_name || site.domain}</h1>
+    <p class="muted">{site.domain}</p>
+
+    <form method="post" class="card">
+      <label>
+        Site name
+        <input name="site_name" value={site.site_name || ""} />
+      </label>
+
+      <label>
+        Accent colour
+        <input type="color" name="accent_color" value={site.accent_color || "#2f6f73"} />
+      </label>
+
+      <button type="submit">Save settings</button>
+    </form>
+  </main>
+</div>
+
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f6f3ee;
+    color: #1f2933;
+  }
+
+  .page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+  }
+
+  .main {
+    padding: 48px 32px;
+    max-width: 760px;
+  }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: #667085;
+    text-decoration: none;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+  }
+
+  .muted {
+    margin: 0 0 24px;
+    color: #667085;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e3ddd2;
+    border-radius: 18px;
+    padding: 24px;
+    display: grid;
+    gap: 18px;
+  }
+
+  label {
+    display: grid;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  input {
+    padding: 12px;
+    border: 1px solid #ddd5c8;
+    border-radius: 10px;
+    font: inherit;
+  }
+
+  input[type="color"] {
+    width: 90px;
+    height: 48px;
+    padding: 4px;
+  }
+
+  button {
+    width: fit-content;
+    padding: 12px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: #111;
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+  }
+</style>
