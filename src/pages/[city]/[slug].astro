@@ -1462,15 +1462,22 @@ color: var(--accent) !important;
       </div>
 
       <select class="price-filter-select" aria-label="Filter by price">
-        <option value="all">Any Price</option>
-        <option value="under-450">Under $450k</option>
-        <option value="450-650">$450k - $650k</option>
-        <option value="650-850">$650k - $850k</option>
-        <option value="850-1100">$850k - $1.1M</option>
-        <option value="1100-plus">$1.1M+</option>
-      </select>
+  <option value="all">Any Price</option>
+  <option value="under-450">Under $450k</option>
+  <option value="450-650">$450k - $650k</option>
+  <option value="650-850">$650k - $850k</option>
+  <option value="850-1100">$850k - $1.1M</option>
+  <option value="1100-plus">$1.1M+</option>
+</select>
 
-      <select class="sort-filter-select" aria-label="Sort listings">
+<select class="type-filter-select" aria-label="Filter by property type">
+  <option value="all">Any Type</option>
+  {propertyTypes.map((type) => (
+    <option value={type}>{titleCase(type)}</option>
+  ))}
+</select>
+
+<select class="sort-filter-select" aria-label="Sort listings">
         <option value="newest">Newest first</option>
         <option value="price-asc">Price low to high</option>
         <option value="price-desc">Price high to low</option>
@@ -2063,9 +2070,10 @@ async function initRefinedGoogleMap(mode = "refined") {
 
   <script is:inline>
 const areaSelect = document.querySelector(".area-filter-select");
-  const priceSelect = document.querySelector(".price-filter-select");
-  const sortSelect = document.querySelector(".sort-filter-select");
-  const bedsSelect = document.querySelector(".beds-filter-select");
+const priceSelect = document.querySelector(".price-filter-select");
+const typeSelect = document.querySelector(".type-filter-select");
+const sortSelect = document.querySelector(".sort-filter-select");
+const bedsSelect = document.querySelector(".beds-filter-select");
   let activePriceFilter = "all";
 
   function getCardPrice(card) {
@@ -2076,7 +2084,8 @@ function applyFilters() {
     const areaValue = areaSelect?.value || "all";
     const area = areaValue.startsWith("/") ? "all" : areaValue;
     activePriceFilter = priceSelect?.value || "all";
-    const bedsMin = bedsSelect?.value || "all";
+const typeValue = typeSelect?.value || "all";
+const bedsMin = bedsSelect?.value || "all";
 
     const cards = Array.from(document.querySelectorAll(".original-card"));
     const resultsBar = document.querySelector(".results-bar");
@@ -2091,8 +2100,11 @@ function applyFilters() {
 
  const matchesArea = area === "all" || cardArea === area;
 
-      const cardBeds = Number(card.dataset.beds || 0);
-      const matchesBeds = bedsMin === "all" || cardBeds >= Number(bedsMin);
+     const cardBeds = Number(card.dataset.beds || 0);
+const matchesBeds = bedsMin === "all" || cardBeds >= Number(bedsMin);
+
+const cardType = String(card.dataset.type || "").toLowerCase();
+const matchesType = typeValue === "all" || cardType === typeValue;
 
       const matchesPrice =
         activePriceFilter === "all" ||
@@ -2102,7 +2114,7 @@ function applyFilters() {
         (activePriceFilter === "850-1100" && price >= 850000 && price < 1100000) ||
         (activePriceFilter === "1100-plus" && price >= 1100000);
 
-  const shouldShow = matchesArea && matchesPrice && matchesBeds;
+  const shouldShow = matchesArea && matchesPrice && matchesBeds && matchesType;
 
      card.hidden = !shouldShow;
 card.style.display = "";
@@ -2175,8 +2187,9 @@ if (resultsBar) {
   }
 areaSelect?.addEventListener("change", applyFilters);
 priceSelect?.addEventListener("change", applyFilters);
-  sortSelect?.addEventListener("change", applySort);
-  bedsSelect?.addEventListener("change", applyFilters);
+typeSelect?.addEventListener("change", applyFilters);
+sortSelect?.addEventListener("change", applySort);
+bedsSelect?.addEventListener("change", applyFilters);
 
   applySort();
 </script>
