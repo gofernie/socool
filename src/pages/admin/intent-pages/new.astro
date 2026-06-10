@@ -93,6 +93,10 @@ if (Astro.request.method === "POST") {
   const propertyType = clean(form.get("property_type")).toLowerCase();
   const pricePreset = clean(form.get("price_preset"));
 const customName = clean(form.get("custom_name"));
+const slugOverride = clean(form.get("slug_override"));
+const heroHeadingOverride = clean(form.get("hero_heading_override"));
+const seoTitleOverride = clean(form.get("seo_title_override"));
+const introCopyOverride = clean(form.get("intro_copy_override"));
   const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
 const polygonGeojson = polygonGeojsonRaw
   ? JSON.parse(polygonGeojsonRaw)
@@ -128,7 +132,7 @@ const polygonBounds =
     : pageType === "polygon"
       ? [city, customName || "custom-area", propertyType ? pluralType(propertyType) : "homes", priceLabel]
       : [area || city, template, propertyType ? pluralType(propertyType) : "", priceLabel];
-  const slug = slugify(slugParts.filter(Boolean).join(" "));
+ const slug = slugify(slugOverride || slugParts.filter(Boolean).join(" "));
 
   const heroHeading =
     pageType === "category"
@@ -179,9 +183,9 @@ message = `A page with this URL already exists.||/${existingPage.city}/${existin
   property_type: propertyType || null,
   price_min,
   price_max,
-  hero_heading: heroHeading,
-  intro_copy: introCopy,
-  seo_title: seoTitle,
+  hero_heading: heroHeadingOverride || heroHeading,
+intro_copy: introCopyOverride || introCopy,
+seo_title: seoTitleOverride || seoTitle,
   is_published: true,
   lifestyle_angle: pageType,
 polygon_geojson: polygonGeojson,
@@ -290,7 +294,8 @@ return Astro.redirect("/admin/intent-pages");
       }
 
       input,
-      select {
+select,
+textarea {
         width: 100%;
         max-width: 100%;
         padding: 10px 13px;
@@ -304,7 +309,8 @@ return Astro.redirect("/admin/intent-pages");
       }
 
       input:focus,
-      select:focus {
+select:focus,
+textarea:focus {
         outline: none;
         border-color: var(--ink);
         box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
@@ -656,7 +662,21 @@ return Astro.redirect("/admin/intent-pages");
           </div>
         </div>
 
-        <div class="preview-box">
+        <div class="seo-box">
+  <label>Page URL</label>
+  <input name="slug_override" id="slugOverrideInput" />
+
+  <label>H1 Heading</label>
+  <input name="hero_heading_override" id="heroHeadingInput" />
+
+  <label>SEO Title</label>
+  <input name="seo_title_override" id="seoTitleInput" />
+
+  <label>Page Description</label>
+  <textarea name="intro_copy_override" id="introCopyInput" rows="4"></textarea>
+</div>
+
+<div class="preview-box">
           <div class="preview-kicker" id="previewType">Category page</div>
           <h2 class="preview-title" id="previewTitle">Nanaimo Homes</h2>
           <p class="preview-copy" id="previewCopy">
@@ -687,6 +707,10 @@ return Astro.redirect("/admin/intent-pages");
       const typeSelect = document.getElementById("typeSelect");
       const priceSelect = document.getElementById("priceSelect");
 const customNameInput = document.getElementById("customNameInput");
+const slugOverrideInput = document.getElementById("slugOverrideInput");
+const heroHeadingInput = document.getElementById("heroHeadingInput");
+const seoTitleInput = document.getElementById("seoTitleInput");
+const introCopyInput = document.getElementById("introCopyInput");
       const previewType = document.getElementById("previewType");
       const previewTitle = document.getElementById("previewTitle");
       const previewCopy = document.getElementById("previewCopy");
@@ -785,7 +809,23 @@ const customName = customNameInput?.value || "";
                 price ? `This page focuses on options ${price.toLowerCase()}.` : "",
                 `React to listings as you browse and the page will help surface better matches.`,
               ].filter(Boolean).join(" ");
+const seoTitle = `${title} | ${titleCase(city)} Real Estate`;
 
+if (slugOverrideInput && !slugOverrideInput.dataset.edited) {
+  slugOverrideInput.value = slug;
+}
+
+if (heroHeadingInput && !heroHeadingInput.dataset.edited) {
+  heroHeadingInput.value = title;
+}
+
+if (seoTitleInput && !seoTitleInput.dataset.edited) {
+  seoTitleInput.value = seoTitle;
+}
+
+if (introCopyInput && !introCopyInput.dataset.edited) {
+  introCopyInput.value = copy;
+}
         previewType.textContent =
           pageType === "category" ? "Category page" : "Intent page";
 
@@ -815,7 +855,16 @@ customNameInput,
         el.addEventListener("input", updatePreview);
         el.addEventListener("change", updatePreview);
       });
-
+[
+  slugOverrideInput,
+  heroHeadingInput,
+  seoTitleInput,
+  introCopyInput,
+].forEach((el) => {
+  el?.addEventListener("input", () => {
+    el.dataset.edited = "true";
+  });
+});
           // updatePreview runs after polygon map setup below
 
      async function loadCities() { // returns promise implicitly via async
