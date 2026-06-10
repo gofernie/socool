@@ -76,7 +76,7 @@ try {
     .from("listing_rows")
     .select("normalized_area")
     .eq("status", "A")
-    .eq("normalized_city", "nanaimo")
+    .eq("normalized_city", site?.city || "nanaimo")
     .not("normalized_area", "is", null);
 
   areaOptions = Array.from(
@@ -590,9 +590,11 @@ return Astro.redirect("/admin/intent-pages");
         <div class="grid-2">
         <div>
             <label>City</label>
-            <select name="city" id="cityInput">
-              <option value="nanaimo">Nanaimo</option>
-            </select>
+          <select name="city" id="cityInput">
+  <option value={site?.city || "nanaimo"}>
+    {(site?.city || "nanaimo").replace(/\b\w/g, (c) => c.toUpperCase())}
+  </option>
+</select>
           </div>
 
           <div>
@@ -1028,6 +1030,10 @@ function syncPolygonBlock() {
     }, 100);
   }
 }
+loadCities().then(() => {
+  loadAreas(cityInput.value);
+  updatePreview();
+});
 form?.addEventListener("submit", (e) => {
   if (getPageType() === "polygon" && !customNameInput?.value.trim()) {
     e.preventDefault();
