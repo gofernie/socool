@@ -1219,14 +1219,34 @@ const rows = [...addressMap.values()];
   console.log("Missing coords:", missingCoords);
   console.log("Missing images:", missingImages);
 
-  const BATCH = 50;
+const BATCH = 50;
 
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
+const cleanupCity = String(
+  rows[0]?.normalized_city || process.argv[2] || ""
+)
+  .trim()
+  .toLowerCase();
 
-    const { error: upsertError } = await supabase
-      .from("listing_rows")
-.upsert(batch, { onConflict: "id", ignoreDuplicates: false });  if (upsertError) {
+console.log(`Marking existing ${cleanupCity} rows inactive before rebuild...`);
+
+const { error: preCleanError } = await supabase
+  .from("listing_rows")
+  .update({ status: "inactive" })
+  .eq("normalized_city", cleanupCity)
+  .eq("status", "A");
+
+if (preCleanError) {
+  console.error("Pre-clean failed:", preCleanError);
+} else {
+  console.log("Existing active rows marked inactive.");
+}
+
+for (let i = 0; i < rows.length; i += BATCH) {
+  const batch = rows.slice(i, i + BATCH);
+
+  const { error: upsertError } = await supabase
+    .from("listing_rows")
+    .upsert(batch, { onConflict: "id", ignoreDuplicates: false }); if (upsertError) {
       console.error("Batch failed:", upsertError);
       return;
     }
@@ -1234,22 +1254,43 @@ const rows = [...addressMap.values()];
     console.log(`Upserted ${Math.min(i + batch.length, rows.length)} / ${rows.length}`);
   }
 
-   const activeIds = new Set(rows.map((r) => r.id));
+   const activeMlsNumbers = new Set(
+  rows
+    .map((row) => String(row.mls_number || row.id || "").trim())
+    .filter(Boolean)
+);
 
-const { data: existingListingRows } = await supabase
+const { data: existingListingRows, error: staleFetchError } = await supabase
   .from("listing_rows")
-  .select("id")
-  .eq("normalized_city", city);
+  .select("mls_number")
+  .eq("normalized_city", cleanupCity)
+  .eq("status", "A");
 
-const staleIds = (existingListingRows || [])
-  .map((r) => r.id)
-  .filter((id) => !activeIds.has(id));
+if (staleFetchError) {
+  console.error("Failed to fetch existing active rows:", staleFetchError);
+} else {
+  const staleMlsNumbers = (existingListingRows || [])
+    .map((row) => String(row.mls_number || "").trim())
+    .filter((mls) => mls && !activeMlsNumbers.has(mls));
 
-if (staleIds.length) {
-  await supabase
-    .from("listing_rows")
-    .update({ status: "I" })
-    .in("id", staleIds);
+  console.log("Existing active rows:", existingListingRows?.length || 0);
+  console.log("Fresh active rows:", activeMlsNumbers.size);
+  console.log("Stale rows to mark inactive:", staleMlsNumbers.length);
+  console.log("Sample stale MLS:", staleMlsNumbers.slice(0, 10));
+
+  for (let i = 0; i < staleMlsNumbers.length; i += 500) {
+    const batch = staleMlsNumbers.slice(i, i + 500);
+
+    const { error: staleError } = await supabase
+      .from("listing_rows")
+      .update({ status: "inactive" })
+      .eq("normalized_city", cleanupCity)
+      .in("mls_number", batch);
+
+    if (staleError) {
+      console.error("Failed to mark stale batch inactive:", staleError);
+    }
+  }
 }
 };
 
