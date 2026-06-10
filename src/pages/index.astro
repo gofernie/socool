@@ -19,7 +19,10 @@ const supabase = createClient(
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const agentPageSlug = "chris-crump";
+const agentPageSlug =
+  site?.city?.toLowerCase() === "parksville"
+    ? "parksville"
+    : "chris-crump";
 
 const { data: agentPage } = await supabase
   .from("agent_pages")
