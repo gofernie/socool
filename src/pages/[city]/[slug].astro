@@ -119,6 +119,14 @@ if (page.price_max) {
   query = query.lte("price", page.price_max);
 }
 
+if (page.requires_waterfront) {
+  query = query.eq("waterfront", true);
+}
+
+if (page.requires_ocean_view) {
+  query = query.eq("ocean_view", true);
+}
+
 const featureTerms: Record<string, string[]> = {
   yard: ["yard", "fenced", "outdoor"],
   garage: ["garage", "shop"],
@@ -218,55 +226,8 @@ if (hasPolygonSearch) {  listings = listings.filter((listing) => {
   JSON.stringify(page.polygon_geojson)
 );
 }
-if (features.includes("waterfront")) {
-  listings = listings.filter((listing) => {
-    const text = [
-      listing.description,
-      listing.address,
-      listing.normalized_area,
-      listing.area,
-    ]
-      .join(" ")
-      .toLowerCase();
 
-    return (
-      text.includes("waterfront") ||
-      text.includes("oceanfront") ||
-      text.includes("lakefront") ||
-      text.includes("shoreline") ||
-      text.includes("beachfront") ||
-      text.includes("walk-on waterfront") ||
-      text.includes("walk on waterfront") ||
-      text.includes("water's edge") ||
-      text.includes("waters edge") ||
-      text.includes("dock") ||
-      text.includes("moorage")
-    );
-  });
-}
-let filteredListings = listings || [];
 
-if (features.includes("waterfront")) {
-  filteredListings = filteredListings.filter((listing) => {
-    const text = [
-      listing.description,
-      listing.address,
-      listing.area,
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return (
-      text.includes("waterfront") ||
-      text.includes("oceanfront") ||
-      text.includes("shoreline") ||
-      text.includes("beachfront") ||
-      text.includes("walk-on waterfront") ||
-      text.includes("dock") ||
-      text.includes("moorage")
-    );
-  });
-}
 console.log("INTENT LISTINGS DEBUG", {
   slug,
   count: listings?.length || 0,
@@ -368,10 +329,12 @@ const seo = buildSeoFallback(page);
   accentColor={accentColor}
 >
  <meta
-  name="description"
-  content={
+  name="description"  query = query.lte("price", page.price_max);
+
+  content={if (page.price_max) {
     page.meta_description ||
-    page.seo_intro ||
+    page.seo_intro ||if (page.price_max) {
+  query = query.lte("price", page.price_max);
     page.intro_copy
   }
   slot="head"

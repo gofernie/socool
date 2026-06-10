@@ -203,7 +203,16 @@ is_published: true,
 polygon_geojson: polygonGeojson,
 polygon_center_lat: polygonCenterLat,
 polygon_center_lng: polygonCenterLng,
-polygon_bounds: polygonBounds,})
+polygon_bounds: polygonBounds,
+
+requires_waterfront:
+  pageType === "intent" &&
+  template === "waterfront",
+
+requires_ocean_view:
+  pageType === "intent" &&
+  template === "ocean_view_homes",
+})
     .select("*")
     .single();
 
