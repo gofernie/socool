@@ -120,7 +120,12 @@ const propertyLabel = type
 const seoTitle = `${pageSubject} & ${propertyLabel} For Sale | MLS® Listings`;
 
 const seoDescription = `Browse ${pageSubject.toLowerCase()} including ${propertyLabel.toLowerCase()} for sale. View active MLS® listings with photos, prices, maps, and local search details.`;
-const buildFilterUrl = (updates: Record<string, string | number | null>) => {
+
+const heroHeading =
+  site?.hero_heading ||
+  `${(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())} Homes For Sale`;
+
+const heroHeadingClean = heroHeading.replace(/\.$/, "");const buildFilterUrl = (updates: Record<string, string | number | null>) => {
   const params = new URLSearchParams();
 
   params.set("city", city || "nanaimo");
@@ -372,13 +377,10 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 </p>
 
 <h1>
-  {site?.hero_heading ||
-    `${(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())} Homes For Sale`}
+  {heroHeadingClean}<span class="accent-period">.</span>
 </h1>
 
-<p style="font-size:14px; font-weight:800;">
-  DEBUG: {Astro.url.hostname} / {site?.domain} / {accentColor}
-</p>
+
 
 <p class="page-hero__copy">
   {site?.hero_copy ||
@@ -593,6 +595,10 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 <IntentModalController />
 
 <style is:inline slot="head">
+
+  .accent-period {
+  color: var(--accent);
+}
   .section {
     padding: 28px 0 100px;
     background: var(--bg);
