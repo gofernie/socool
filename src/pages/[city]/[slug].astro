@@ -363,10 +363,17 @@ This page combines active MLS® listings with interactive search tools that help
 const seo = buildSeoFallback(page);
 ---
 
-<Layout title={page.seo_title} accentColor={accentColor}>
-  <meta
+<Layout
+  title={page.seo_title || page.hero_heading}
+  accentColor={accentColor}
+>
+ <meta
   name="description"
-  content={page.seo_intro || page.intro_copy}
+  content={
+    page.meta_description ||
+    page.seo_intro ||
+    page.intro_copy
+  }
   slot="head"
 />
 {
