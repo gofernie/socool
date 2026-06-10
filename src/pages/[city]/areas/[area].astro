@@ -5,21 +5,18 @@ import ListingCard from "../../../components/ListingCard.astro";
 import ShortlistReviewModal from "../../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../../components/IntentModalController.astro";
 import SiteNav from "../../../components/SiteNav.astro";
+import { getSite } from "../../../lib/getSite";
 import "../../../styles/intent-modal.css";
 import "../../../styles/area-page.css";
 import "../../../styles/page-hero.css";
 
-const agentRes = await supabase
-  .from("agent_pages")
-  .select("data")
-  .eq("slug", "chris-crump")
-  .single();
+import { getSite } from "../../../lib/getSite";
 
-console.log("agent data:", JSON.stringify(agentRes));
+const site = await getSite(Astro.url.hostname);
 
-const allRows = await supabase.from("agent_pages").select("slug");
-console.log("all slugs:", JSON.stringify(allRows));
-const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
+const accentColor =
+  site?.accent_color ||
+  "#2f6f73";
 const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const city = String(Astro.params.city || "nanaimo")
   .toLowerCase()

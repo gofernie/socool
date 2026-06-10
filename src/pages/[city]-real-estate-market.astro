@@ -44,7 +44,6 @@ const { data: agentPage } = await supabase
   .maybeSingle();
 
 const accentColor =
-  agentPage?.data?.accentColor ||
   site?.accent_color ||
   "#2f6f73";
 

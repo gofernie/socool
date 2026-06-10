@@ -4,6 +4,7 @@ import Layout from "../../layouts/Layout.astro";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../components/IntentModalController.astro";
 import SiteNav from "../../components/SiteNav.astro";
+import { getSite } from "../../lib/getSite";
 import "../../styles/intent-modal.css";
 import "../../styles/page-hero.css";
 
@@ -18,13 +19,11 @@ const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const slug = Astro.params.slug || "";
 const city = Astro.params.city || "nanaimo";
 
-const agentRes = await supabase
-  .from("agent_pages")
-  .select("data")
-  .eq("slug", "chris-crump")
-  .single();
+const site = await getSite(Astro.url.hostname);
 
-const accentColor = agentRes.data?.data?.accentColor || "#2f6f73";
+const accentColor =
+  site?.accent_color ||
+  "#2f6f73";
 
 const { data: page, error: pageError } = await supabase
   .from("intent_pages")
