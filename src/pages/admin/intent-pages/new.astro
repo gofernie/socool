@@ -91,7 +91,11 @@ if (Astro.request.method === "POST") {
   const city = clean(form.get("city") || "nanaimo").toLowerCase();
   const area = clean(form.get("area")).toLowerCase();
   const propertyType = clean(form.get("property_type")).toLowerCase();
-  const pricePreset = clean(form.get("price_preset"));
+  let pricePreset = clean(form.get("price_preset"));
+
+if (!pricePreset && template === "luxury_homes") {
+  pricePreset = "luxury";
+}
 const customName = clean(form.get("custom_name"));
 const slugOverride = clean(form.get("slug_override"));
 const heroHeadingOverride = clean(form.get("hero_heading_override"));

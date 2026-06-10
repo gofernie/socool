@@ -1234,8 +1234,23 @@ const rows = [...addressMap.values()];
     console.log(`Upserted ${Math.min(i + batch.length, rows.length)} / ${rows.length}`);
   }
 
-   console.log("Skipping duplicate cleanup RPC.");
-  console.log("Done.");
+   const activeIds = new Set(rows.map((r) => r.id));
+
+const { data: existingRows } = await supabase
+  .from("listing_rows")
+  .select("id")
+  .eq("normalized_city", city);
+
+const staleIds = (existingRows || [])
+  .map((r) => r.id)
+  .filter((id) => !activeIds.has(id));
+
+if (staleIds.length) {
+  await supabase
+    .from("listing_rows")
+    .update({ status: "I" })
+    .in("id", staleIds);
+}
 };
 
 run();
