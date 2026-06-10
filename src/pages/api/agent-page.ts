@@ -53,5 +53,21 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  // Also save colour to the actual site record
+  if (data.accentColor) {
+    const siteCity = slug === "parksville" ? "parksville" : "nanaimo";
+
+    const { error: siteError } = await supabase
+      .from("sites")
+      .update({ accent_color: data.accentColor })
+      .eq("city", siteCity);
+
+    if (siteError) {
+      return new Response(JSON.stringify({ ok: false, error: siteError.message }), {
+        status: 500
+      });
+    }
+  }
+
   return new Response(JSON.stringify({ ok: true }));
 };
