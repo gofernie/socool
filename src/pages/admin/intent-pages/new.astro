@@ -97,7 +97,8 @@ const slugOverride = clean(form.get("slug_override"));
 const heroHeadingOverride = clean(form.get("hero_heading_override"));
 const seoTitleOverride = clean(form.get("seo_title_override"));
 const introCopyOverride = clean(form.get("intro_copy_override"));
-  const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
+const metaDescriptionOverride = clean(form.get("meta_description_override"));  
+const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
 const polygonGeojson = polygonGeojsonRaw
   ? JSON.parse(polygonGeojsonRaw)
   : null;
@@ -147,7 +148,13 @@ const polygonBounds =
     pageType === "category"
       ? [areaLabel, typeLabel, priceLabel].filter(Boolean).join(" ")
       : [areaLabel, templateLabel, typeLabel, priceLabel].filter(Boolean).join(" ");
-
+const metaDescription = [
+  `Browse active ${areaLabel} ${typeLabel.toLowerCase()} for sale.`,
+  priceLabel ? `View options ${priceLabel.toLowerCase()}.` : "",
+  `Explore current listings and find homes that match your preferences.`,
+]
+  .filter(Boolean)
+  .join(" ");
   const introCopy =
     pageType === "category"
       ? [
@@ -186,7 +193,8 @@ message = `A page with this URL already exists.||/${existingPage.city}/${existin
   hero_heading: heroHeadingOverride || heroHeading,
 intro_copy: introCopyOverride || introCopy,
 seo_title: seoTitleOverride || seoTitle,
-  is_published: true,
+meta_description: metaDescriptionOverride || metaDescription,
+is_published: true,
   lifestyle_angle: pageType,
 polygon_geojson: polygonGeojson,
 polygon_center_lat: polygonCenterLat,
@@ -315,6 +323,11 @@ textarea:focus {
         border-color: var(--ink);
         box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
       }
+
+      #slugOverrideInput {
+  background: #f5f3ef;
+  color: var(--muted);
+}
 
       .grid-2 {
         display: grid;
@@ -669,7 +682,11 @@ textarea:focus {
 
         <div class="seo-box">
   <label>Page URL</label>
-  <input name="slug_override" id="slugOverrideInput" />
+  <input
+  name="slug_override"
+  id="slugOverrideInput"
+  readonly
+/>
 
   <label>H1 Heading</label>
   <input name="hero_heading_override" id="heroHeadingInput" />
@@ -677,8 +694,11 @@ textarea:focus {
   <label>SEO Title</label>
   <input name="seo_title_override" id="seoTitleInput" />
 
-  <label>Page Description</label>
-  <textarea name="intro_copy_override" id="introCopyInput" rows="4"></textarea>
+<label>Meta Description</label>
+<textarea name="meta_description_override" id="metaDescriptionInput" rows="3"></textarea>
+
+<label>Page Intro</label>
+<textarea name="intro_copy_override" id="introCopyInput" rows="4"></textarea>
 </div>
 
 <div class="preview-box">
@@ -716,7 +736,8 @@ const slugOverrideInput = document.getElementById("slugOverrideInput");
 const heroHeadingInput = document.getElementById("heroHeadingInput");
 const seoTitleInput = document.getElementById("seoTitleInput");
 const introCopyInput = document.getElementById("introCopyInput");
-      const previewType = document.getElementById("previewType");
+     const metaDescriptionInput = document.getElementById("metaDescriptionInput"); 
+const previewType = document.getElementById("previewType");
       const previewTitle = document.getElementById("previewTitle");
       const previewCopy = document.getElementById("previewCopy");
       const previewSlug = document.getElementById("previewSlug");
@@ -815,7 +836,11 @@ const customName = customNameInput?.value || "";
                 `React to listings as you browse and the page will help surface better matches.`,
               ].filter(Boolean).join(" ");
 const seoTitle = `${title} | ${titleCase(city)} Real Estate`;
-
+const metaDescription = [
+  `Browse active ${areaLabel} ${typeLabel.toLowerCase()} for sale.`,
+  price ? `View options ${price.toLowerCase()}.` : "",
+  `Explore current listings and find homes that match your preferences.`,
+].filter(Boolean).join(" ");
 if (slugOverrideInput && !slugOverrideInput.dataset.edited) {
   slugOverrideInput.value = slug;
 }
@@ -826,6 +851,10 @@ if (heroHeadingInput && !heroHeadingInput.dataset.edited) {
 
 if (seoTitleInput && !seoTitleInput.dataset.edited) {
   seoTitleInput.value = seoTitle;
+}
+
+if (metaDescriptionInput && !metaDescriptionInput.dataset.edited) {
+  metaDescriptionInput.value = metaDescription;
 }
 
 if (introCopyInput && !introCopyInput.dataset.edited) {
@@ -864,6 +893,7 @@ customNameInput,
   slugOverrideInput,
   heroHeadingInput,
   seoTitleInput,
+  metaDescriptionInput,
   introCopyInput,
 ].forEach((el) => {
   el?.addEventListener("input", () => {
