@@ -48,18 +48,17 @@ const { data: sites = [] } = await supabase
 </div>
 
 <style>
-  body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #f6f3ee;
-    color: #1f2933;
-  }
+ :global(body) {
+  margin: 0;
+  background: #f6f3ee;
+  color: #1f2933;
+}
 
-  .page {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 260px 1fr;
-  }
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 252px 1fr;
+}
 
   .main {
     padding: 48px 32px 64px;
