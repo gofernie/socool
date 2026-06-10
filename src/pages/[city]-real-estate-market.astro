@@ -40,7 +40,18 @@ const { data: agentPage } = await supabase
   .eq("slug", agentPageSlug)
   .maybeSingle();
 
-const accentColor = "#ff0000";
+const accentColor =
+  agentPage?.data?.accentColor ||
+  site?.accent_color ||
+  "#2f6f73";
+
+console.log("COLOUR SOURCE DEBUG", {
+  city,
+  agentPageSlug,
+  agentPageAccent: agentPage?.data?.accentColor,
+  siteAccent: site?.accent_color,
+  finalAccent: accentColor,
+});
 
 const { data: allListings = [], error } = await supabase
   .from("listing_rows")
