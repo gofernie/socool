@@ -24,7 +24,12 @@ const { data: sites = [] } = await supabase
   .eq("domain", domain)
   .order("domain");
 ---
+---
 
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<div class="page">
 <div class="page">
   <AdminSidebar active="sites" />
 
@@ -48,16 +53,26 @@ const { data: sites = [] } = await supabase
 </div>
 
 <style>
- :global(body) {
+ :global(:root) {
+  --bg: #f7f4ef;
+  --ink: #181614;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-display: "Instrument Serif", Georgia, serif;
+}
+
+:global(body) {
   margin: 0;
-  background: #f6f3ee;
-  color: #1f2933;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 252px 1fr;
+  grid-template-columns: 220px 1fr;
 }
 
   .main {
