@@ -329,13 +329,12 @@ const seo = buildSeoFallback(page);
   accentColor={accentColor}
 >
  <meta
-  name="description"  query = query.lte("price", page.price_max);
-
-  content={if (page.price_max) {
+  name="description"
+  content={
     page.meta_description ||
-    page.seo_intro ||if (page.price_max) {
-  query = query.lte("price", page.price_max);
-    page.intro_copy
+    page.seo_intro ||
+    page.intro_copy ||
+    ""
   }
   slot="head"
 />
