@@ -7,19 +7,21 @@ const supabase = createClient(
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// TEMP: use email while we wire this in
-const agentEmail = "chris@crump.ca";
+const host =
+  Astro.request.headers.get("x-forwarded-host") ||
+  Astro.request.headers.get("host") ||
+  "";
 
-const { data: agent } = await supabase
-  .from("agents")
-  .select("id, email, name")
-  .eq("email", agentEmail)
-  .maybeSingle();
+const domain = host
+  .split(",")[0]
+  .trim()
+  .replace(/^www\./, "")
+  .split(":")[0];
 
 const { data: sites = [] } = await supabase
   .from("sites")
   .select("id, domain, city, site_name, accent_color")
-  .eq("agent_id", agent?.id)
+  .eq("domain", domain)
   .order("domain");
 ---
 
