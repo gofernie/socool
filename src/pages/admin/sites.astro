@@ -1,0 +1,101 @@
+---
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// TEMP: use email while we wire this in
+const agentEmail = "chris@parksville.com";
+
+const { data: agent } = await supabase
+  .from("agents")
+  .select("id, email, name")
+  .eq("email", agentEmail)
+  .maybeSingle();
+
+const { data: sites = [] } = await supabase
+  .from("sites")
+  .select("id, domain, city, site_name, accent_color")
+  .eq("agent_id", agent?.id)
+  .order("domain");
+---
+
+<h1>Your Sites</h1>
+
+<div class="sites">
+  {sites.map((site) => (
+    <a class="site-card" href={`/admin/sites/${site.id}/settings`}>
+      <div class="swatch" style={`background:${site.accent_color || "#2f6f73"}`}></div>
+
+      <div>
+        <h2>{site.site_name || site.domain}</h2>
+        <p>{site.domain}</p>
+        <small>{site.city}</small>
+      </div>
+    </a>
+  ))}
+</div>
+
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f6f3ee;
+    color: #1f2933;
+  }
+
+  h1 {
+    max-width: 1000px;
+    margin: 48px auto 24px;
+    padding: 0 24px;
+  }
+
+  .sites {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px 64px;
+    display: grid;
+    gap: 16px;
+  }
+
+  .site-card {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid #e3ddd2;
+    border-radius: 18px;
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+  }
+
+  .site-card:hover {
+    transform: translateY(-1px);
+  }
+
+  .swatch {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,0.08);
+    flex: 0 0 auto;
+  }
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+  }
+
+  p {
+    margin: 0 0 4px;
+    color: #5f6b76;
+  }
+
+  small {
+    color: #8a949e;
+  }
+</style>
