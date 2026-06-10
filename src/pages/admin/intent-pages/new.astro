@@ -613,16 +613,21 @@ textarea:focus {
     </option>
   ))}
 </select>            <p class="hint">Leave blank for a city-wide page.</p>
-         <label>Custom page name</label>
-<input
-  type="text"
-  name="custom_name"
-  id="customNameInput"
-  placeholder="Example: Northfield to Bowen Park"
-/>
-<p class="hint">Used for polygon page URLs and headings.</p> </div>
+         </div>
         </div>
 <div class="polygon-block" id="polygonBlock" hidden>
+
+  <label>Area Name</label>
+  <input
+    type="text"
+    name="custom_name"
+    id="customNameInput"
+    placeholder="Example: Fairwinds Waterfront"
+  />
+
+  <p class="hint">
+    Used only for custom polygon area names.
+  </p>
   <label>Draw search area</label>
   <div id="polygonMap" class="polygon-map"></div>
 
