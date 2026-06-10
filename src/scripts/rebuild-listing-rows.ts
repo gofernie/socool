@@ -1088,7 +1088,20 @@ if (rowAddress.includes("4474 wellington rd")) {
 
       const lat = freshLat || savedCoords?.lat || null;
       const lng = freshLng || savedCoords?.lng || null;
-
+if (
+  String(
+    listing?.details?.viewType ||
+    listing?.raw?.details?.viewType ||
+    ""
+  )
+    .toLowerCase()
+    .includes("ocean")
+) {
+  console.log(
+    "OCEAN LISTING",
+    JSON.stringify(listing?.details || listing?.raw?.details || {}, null, 2)
+  );
+}
      rowMap.set(id, {
   id,
   mls_number: id,
@@ -1137,8 +1150,17 @@ sqft: getSqft(listing),
 address: getNormalizedAddress(listing),
 
 waterfront:
-  listing?.details?.waterfront === "Y" ||
-  listing?.raw?.details?.waterfront === "Y",
+  ["y", "yes", "true", "ocean", "lake", "river"].some((term) =>
+    String(
+      listing?.details?.waterfront ||
+        listing?.raw?.details?.waterfront ||
+        listing?.details?.waterfrontType ||
+        listing?.raw?.details?.waterfrontType ||
+        ""
+    )
+      .toLowerCase()
+      .includes(term)
+  ),
 
 ocean_view:
   String(
@@ -1204,7 +1226,11 @@ for (const row of rawRows) {
 
 const rows = [...addressMap.values()];
   console.log("Rows normalized:", rows.length);
+const uniqueRows = Array.from(
+  new Map(rows.map((row) => [row.id, row])).values()
+);
 
+console.log("Rows after dedupe:", uniqueRows.length);
 console.log("SAMPLE ROW");
 console.dir(rows[0], { depth: null });
 
@@ -1251,19 +1277,20 @@ if (preCleanError) {
   console.log("Existing active rows marked inactive.");
 }
 
-for (let i = 0; i < rows.length; i += BATCH) {
-  const batch = rows.slice(i, i + BATCH);
+for (let i = 0; i < uniqueRows.length; i += BATCH) {
+  const batch = uniqueRows.slice(i, i + BATCH);
 
  const { error: upsertError } = await supabase
   .from("listing_rows")
-  .upsert(batch, { onConflict: "mls_number", ignoreDuplicates: false });
-
+.upsert(batch, { onConflict: "id", ignoreDuplicates: false });
 if (upsertError) {
   console.error("Batch failed:", upsertError);
   return;
 }
 
-console.log(`Upserted ${Math.min(i + batch.length, rows.length)} / ${rows.length}`);
+console.log(
+  `Upserted ${Math.min(i + batch.length, uniqueRows.length)} / ${uniqueRows.length}`
+);
 }
 
 console.log("Done.");
