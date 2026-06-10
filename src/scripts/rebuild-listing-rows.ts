@@ -1236,12 +1236,12 @@ const rows = [...addressMap.values()];
 
    const activeIds = new Set(rows.map((r) => r.id));
 
-const { data: existingRows } = await supabase
+const { data: existingListingRows } = await supabase
   .from("listing_rows")
   .select("id")
   .eq("normalized_city", city);
 
-const staleIds = (existingRows || [])
+const staleIds = (existingListingRows || [])
   .map((r) => r.id)
   .filter((id) => !activeIds.has(id));
 
