@@ -1150,7 +1150,7 @@ sqft: getSqft(listing),
 address: getNormalizedAddress(listing),
 
 waterfront:
-  ["y", "yes", "true", "ocean", "lake", "river"].some((term) =>
+  ["y", "yes", "true", "ocean", "lake", "river", "creek"].some((term) =>
     String(
       listing?.details?.waterfront ||
         listing?.raw?.details?.waterfront ||
@@ -1161,6 +1161,33 @@ waterfront:
       .toLowerCase()
       .includes(term)
   ),
+
+waterfront_type: (() => {
+  const mlsSource = `
+    ${listing?.details?.viewType || ""}
+    ${listing?.raw?.details?.viewType || ""}
+    ${listing?.details?.waterfrontType || ""}
+    ${listing?.raw?.details?.waterfrontType || ""}
+    ${listing?.details?.waterfront || ""}
+    ${listing?.raw?.details?.waterfront || ""}
+  `.toLowerCase();
+
+  const descriptionSource = String(
+    listing?.description ||
+      listing?.raw?.description ||
+      ""
+  ).toLowerCase();
+
+  if (mlsSource.includes("river")) return "river";
+  if (mlsSource.includes("lake")) return "lake";
+  if (mlsSource.includes("ocean")) return "ocean";
+
+  if (descriptionSource.includes("riverfront")) return "river";
+  if (descriptionSource.includes("lakefront")) return "lake";
+  if (descriptionSource.includes("oceanfront")) return "ocean";
+
+  return "waterfront";
+})(),
 
 ocean_view:
   String(
