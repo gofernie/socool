@@ -406,14 +406,28 @@ const allowedAreaLabels =
       ]
     : [];
 
+const nanaimoAreas = [
+  "North Nanaimo",
+  "Hammond Bay",
+  "Departure Bay",
+  "Uplands",
+  "Pleasant Valley",
+  "Diver Lake",
+  "Central Nanaimo",
+  "Old City",
+  "University District",
+  "South Nanaimo",
+  "Chase River",
+  "Cedar",
+  "Jingle Pot",
+  "Extension",
+  "Brechin Hill",
+];
+
 const areas =
   city === "parksville"
     ? allowedAreaLabels
-    : [...new Set(
-        areaRows
-          .map((row) => String(row.normalized_area || "").trim())
-          .filter((item) => item && item !== "unknown")
-      )].sort((a, b) => a.localeCompare(b));
+    : nanaimoAreas;
 
 console.log("AREA ROWS DEBUG", {
   city,
