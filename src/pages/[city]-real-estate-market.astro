@@ -267,10 +267,7 @@ const chartData = {
     <span>Explore more {cityLabel} areas</span>
 
    {navAreas.slice(0, 5).map((item) => (
- <a
-  class:list={{ active: areaToSlug(item) === areaToSlug(area) }}
-  href={`/${city}/areas/${areaToSlug(item)}`}
->
+ <a href={`/${city}/areas/${areaToSlug(item)}`}>
   {labelize(item)}
 </a>
 ))}
