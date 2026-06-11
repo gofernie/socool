@@ -152,26 +152,6 @@ const topAreas = Object.entries(areaCounts)
   .sort((a, b) => b[1] - a[1])
   .slice(0, 10);
 
-const allowedMainAreas = new Set([
-  "north nanaimo",
-  "south nanaimo",
-  "central nanaimo",
-  "old city",
-  "cedar",
-  "departure bay",
-  "hammond bay",
-  "uplands",
-  "pleasant valley",
-  "diver lake",
-  "chase river",
-  "university district",
-  "south jingle pot",
-  "north jingle pot",
-  "jingle pot",
-  "brechin hill",
-  "extension",
-]);
-
 const areaToSlug = (value) =>
   String(value || "")
     .toLowerCase()
@@ -180,25 +160,26 @@ const areaToSlug = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const nanaimoAreas = [
-  "North Nanaimo",
-  "Hammond Bay",
-  "Departure Bay",
-  "Uplands",
-  "Pleasant Valley",
-  "Diver Lake",
-  "Central Nanaimo",
-  "Old City",
-  "University District",
-  "South Nanaimo",
-  "Chase River",
-  "Cedar",
-  "Jingle Pot",
-  "Extension",
-  "Brechin Hill",
-];
+const navAreas = Object.entries(areaCounts)
+  .map(([area, count]) => ({
+    area: String(area || "").trim(),
+    count: Number(count || 0),
+  }))
+  .filter(({ area, count }) => {
+    const clean = area.toLowerCase();
 
-const navAreas = nanaimoAreas;
+    if (!clean || clean === "unknown" || clean === "other") {
+      return false;
+    }
+
+    if (city === "parksville") {
+      return clean.startsWith("pq ");
+    }
+
+    return count >= 5;
+  })
+  .sort((a, b) => b.count - a.count)
+  .map(({ area }) => area);
 
 const navTypes = [
   ...new Set(
