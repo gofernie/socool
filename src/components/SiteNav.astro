@@ -44,8 +44,15 @@ const TYPE_PAGE_MAP: Record<string, string> = {
   townhome: "townhomes",
 };
 
+const cleanAreaLabel = (value: string) =>
+  String(value || "")
+    .replace(/^pq\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 const areaLinks: NavItem[] = areas.slice(0, 8).map((area: string) => ({
-  label: String(area).replace(/\b\w/g, (char) => char.toUpperCase()),
+  label: cleanAreaLabel(area),
   href: `/${slugify(city)}/areas/${slugify(area)}`,
 }));
 
