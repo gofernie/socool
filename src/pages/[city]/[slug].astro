@@ -337,6 +337,44 @@ const priceLabel = page.price_max
     ? `${formatPrice(page.price_min)}+`
     : "Live market";
 
+let interruptTitle = "Want to steer the next few matches?";
+let interruptDescription =
+  "Pick a direction to guide what shows up next, or keep browsing and react to homes as you go.";
+
+if (
+  page.waterfront_type === "oceanfront" ||
+  slug.includes("oceanfront")
+) {
+  interruptTitle = "Still looking for the right stretch of waterfront?";
+  interruptDescription =
+    "You've viewed a few waterfront properties. What matters most about the waterfront experience?";
+}
+
+else if (
+  page.requires_ocean_view ||
+  slug.includes("ocean-view")
+) {
+  interruptTitle = "What's most important about the view?";
+  interruptDescription =
+    "Tell us what kind of ocean view property you'd like to see more of.";
+}
+
+else if (
+  slug.includes("family")
+) {
+  interruptTitle = "What would make the next homes a better fit?";
+  interruptDescription =
+    "Help us narrow in on the homes your family is most likely to love.";
+}
+
+else if (
+  normalizedPropertyType === "condo"
+) {
+  interruptTitle = "Let's refine your condo search.";
+  interruptDescription =
+    "What matters most in your ideal condo?";
+}
+
 const priceDirectionLabels = page.price_max
   ? [
       "Show lower-priced options",
@@ -368,14 +406,69 @@ const fallbackFeatureLabels =
   defaultFeatureDirectionsByType[String(page.property_type || "house").toLowerCase()] ||
   ["Better layout", "More modern", "Better value", "Outdoor space"];
 
-const featureDirectionLabels = Array.from(
-  new Set([
-    ...savedFeatureLabels,
-    ...fallbackFeatureLabels,
-    "Better value",
-    "More modern",
-  ])
-);
+let dynamicFeatureLabels: string[] = [];
+
+if (
+  page.waterfront_type === "oceanfront" ||
+  slug.includes("oceanfront")
+) {
+  dynamicFeatureLabels = [
+    "Walk-on waterfront",
+    "Sandy beach",
+    "Deep water",
+    "Sunset views",
+    "Privacy",
+  ];
+}
+
+else if (
+  page.requires_ocean_view ||
+  slug.includes("ocean-view")
+) {
+  dynamicFeatureLabels = [
+    "Panoramic views",
+    "Sunset views",
+    "Large lot",
+    "Modern interior",
+    "Suite potential",
+  ];
+}
+
+else if (
+  slug.includes("family")
+) {
+  dynamicFeatureLabels = [
+    "Larger yard",
+    "More bedrooms",
+    "Better schools",
+    "Garage space",
+    "Suite potential",
+  ];
+}
+
+else if (
+  normalizedPropertyType === "condo"
+) {
+  dynamicFeatureLabels = [
+    "Walkability",
+    "Ocean views",
+    "Luxury finishes",
+    "Low strata fees",<h3>{interruptTitle}</h3>
+    "Best value",
+  ];
+}
+
+const featureDirectionLabels =
+  dynamicFeatureLabels.length
+    ? dynamicFeatureLabels
+    : Array.from(
+        new Set([
+          ...savedFeatureLabels,
+          ...fallbackFeatureLabels,
+          "Better value",
+          "More modern",
+        ])
+      );
 
 function titleCase(value = "") {
   return String(value || "")
@@ -1748,7 +1841,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 <div class="interrupt-kicker">Shape this search</div>
 <h3>Want to steer the next few matches?</h3>
 <p>
-  Pick a direction to guide what shows up next, or keep browsing and react to homes as you go.
+  {interruptDescription}
 </p>
                       </div>
 
