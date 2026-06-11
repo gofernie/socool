@@ -1164,33 +1164,17 @@ waterfront:
 
 waterfront_type: (() => {
   const mlsSource = `
-    ${listing?.details?.viewType || ""}
-    ${listing?.raw?.details?.viewType || ""}
     ${listing?.details?.waterfrontType || ""}
     ${listing?.raw?.details?.waterfrontType || ""}
     ${listing?.details?.waterfront || ""}
     ${listing?.raw?.details?.waterfront || ""}
   `.toLowerCase();
 
-  const descriptionSource = String(
-    listing?.description ||
-      listing?.raw?.description ||
-      ""
-  ).toLowerCase();
+  if (mlsSource.includes("river")) return "riverfront";
+  if (mlsSource.includes("lake")) return "lakefront";
+  if (mlsSource.includes("ocean")) return "oceanfront";
 
-if (mlsSource.includes("river")) return "riverfront";
-if (mlsSource.includes("lake")) return "lakefront";
-
-if (
-  mlsSource.includes("ocean") ||
-  mlsSource.includes("marine") ||
-  mlsSource.includes("sea") ||
-  mlsSource.includes("salt water")
-) {
-  return "oceanfront";
-}
-
-return null;
+  return null;
 })(),
 
 ocean_view:
