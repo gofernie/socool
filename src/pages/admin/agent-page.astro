@@ -1314,7 +1314,10 @@ data.savedColours = customColours;
 const res = await fetch("/api/site-settings", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ id: siteId, data })
+  body: JSON.stringify({
+  id: siteId || null,
+  data
+})
 });
         const json = await res.json();
 
