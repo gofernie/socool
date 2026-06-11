@@ -17,7 +17,7 @@ const { title, accentColor = "#2f6f73" } = Astro.props;
 
   </head>
 
-  <body>
+ <body data-google-maps-api-key={import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
     <slot />
   </body>
 </html>

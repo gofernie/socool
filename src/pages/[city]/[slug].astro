@@ -396,7 +396,7 @@ const priceDirectionLabels = page.price_max
 
 const defaultFeatureDirectionsByType: Record<string, string[]> = {
   condo: ["Better layout", "More modern", "Walkability", "Views"],
-  house: ["Better layout", "Larger yard", "Garage space", "Suite potential"],
+  house: ["Better layout", "Larger yard", "Garage space", "Suite ready"],
   townhouse: ["Better layout", "Garage space", "Outdoor space", "Better value"],
   mobile: ["Better value", "Updated", "Parking", "Outdoor space"],
 };
@@ -435,7 +435,7 @@ else if (
     "Sunset views",
     "Large lot",
     "Modern interior",
-    "Suite potential",
+    "Suite ready",
   ];
 }
 
@@ -447,7 +447,7 @@ else if (
     "More bedrooms",
     "Better schools",
     "Garage space",
-    "Suite potential",
+    "Suite ready",
   ];
 }
 
@@ -3029,20 +3029,7 @@ const generatedChips = json.generated_chips || [];
 // Do not hard-filter refined results here,
 // or multi-area chips can collapse to zero results.
 
-const normalizedRefineLabel = String(label || "")
-  .toLowerCase()
-  .trim();
 
-if (normalizedRefineLabel.includes("more bedrooms")) {
-  listings = listings
-    .slice()
-    .sort((a, b) => {
-      const bedDiff = Number(b.beds || 0) - Number(a.beds || 0);
-      if (bedDiff !== 0) return bedDiff;
-
-      return Number(b.price || 0) - Number(a.price || 0);
-    });
-}
 
 console.log("REFINED LISTINGS FROM API", listings);
 

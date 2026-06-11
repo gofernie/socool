@@ -35,7 +35,17 @@ const tagTerms: Record<string, string[]> = {
   garage: ["garage", "shop", "parking", "carport"],
   modern: ["updated", "renovated", "modern", "newer"],
   value: ["value", "potential", "affordable"],
-  suite: ["suite", "income", "mortgage helper", "secondary"],
+  suite: [
+  "second kitchen",
+  "2 kitchens",
+  "two kitchens",
+  "secondary suite",
+  "legal suite",
+  "unauthorized suite",
+  "in-law suite",
+  "mortgage helper",
+  "basement suite"
+],
   views: ["view", "ocean", "mountain", "water"],
   area: [],
 };
@@ -338,13 +348,20 @@ if (
   }
 }
 
-    const preferredFeatureLabels = {
-      modern: refineLabel.includes("modern"),
-      yard: refineLabel.includes("yard"),
-      garage: refineLabel.includes("garage"),
-      income: refineLabel.includes("income"),
-      view: refineLabel.includes("view"),
-    };
+const preferredFeatureLabels = {
+  modern: refineLabel.includes("modern"),
+  yard: refineLabel.includes("yard"),
+  garage: refineLabel.includes("garage"),
+income:
+  refineLabel.includes("income") ||
+  refineLabel.includes("suite ready") ||
+  refineLabel.includes("suite"),
+view: refineLabel.includes("view"),
+  bedrooms:
+    refineLabel.includes("more bedrooms") ||
+    refineLabel.includes("more beds") ||
+    refineLabel.includes("bedrooms"),
+};
 
     const stayInMatch = refineLabel.match(/stay in (.+)$/i);
 const wantsNearbyAreas = refineLabel.includes("nearby");
@@ -390,10 +407,41 @@ const wantsNearbyAreas = refineLabel.includes("nearby");
       targetMaxPrice,
     });
 
- const { data, error } = await query
+const { data, error } = await query
   .order("price", { ascending: !wantsPremium })
   .limit(120);
-      let filteredData = data || [];
+
+let filteredData = data || [];
+
+if (preferredFeatureLabels.income) {
+  filteredData = filteredData.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.public_remarks,
+      listing.remarks,
+      listing.features,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+ return textIncludesAny(text, [
+  "second kitchen",
+  "2 kitchens",
+  "two kitchens",
+  "secondary suite",
+  "legal suite",
+  "unauthorized suite",
+  "in-law suite",
+  "inlaw suite",
+  "mortgage helper",
+  "basement suite",
+  "nanny suite",
+  "self-contained suite",
+  "self contained suite"
+]);
+  });
+}
 
 if (mapBounds) {
   filteredData = filteredData.filter((listing) => {
@@ -478,9 +526,9 @@ if (mapBounds) {
           score += 12;
         }
 
-        if (preferredFeatureLabels.income && textIncludesAny(description, tagTerms.suite)) {
-          score += 12;
-        }
+      if (preferredFeatureLabels.income) {
+  score += 100;
+}
 
         if (preferredFeatureLabels.view && textIncludesAny(description, tagTerms.views)) {
           score += 12;
@@ -570,6 +618,11 @@ if (wantsNearbyAreas) {
         };
       })
       .sort((a, b) => {
+  if (preferredFeatureLabels.bedrooms) {
+    const bedDiff = Number(b.listing.beds || 0) - Number(a.listing.beds || 0);
+    if (bedDiff !== 0) return bedDiff;
+  }
+
   if (b.score !== a.score) return b.score - a.score;
 
   if (wantsLowerPrice) {
