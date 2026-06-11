@@ -124,14 +124,26 @@ if (page.waterfront_type === "waterfront") {
   query = query.eq("waterfront", true);
 }
 
-if (
-  page.waterfront_type === "oceanfront" ||
-  page.waterfront_type === "riverfront" ||
-  page.waterfront_type === "lakefront"
-) {
-  query = query.eq("waterfront", true);
-} else if (page.waterfront_type === "waterfront") {
-  query = query.eq("waterfront", true);
+if (page.waterfront_type === "oceanfront") {
+  if (city === "parksville") {
+    query = query.eq("waterfront", true);
+  } else {
+    query = query
+      .eq("waterfront", true)
+      .ilike("view_type", "%Ocean%");
+  }
+}
+
+if (page.waterfront_type === "riverfront") {
+  query = query
+    .eq("waterfront", true)
+    .ilike("view_type", "%River%");
+}
+
+if (page.waterfront_type === "lakefront") {
+  query = query
+    .eq("waterfront", true)
+    .ilike("view_type", "%Lake%");
 }
 
 if (!page.waterfront_type && page.requires_waterfront) {
