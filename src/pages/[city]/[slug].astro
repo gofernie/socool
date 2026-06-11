@@ -1949,7 +1949,37 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
     <ShortlistReviewModal />
 <IntentModalController />
 
-    <style is:global>
+  <style is:global>
+
+#refined-results .refined-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
+}
+
+#refined-results .refined-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--line-warm);
+  color: inherit;
+  display: block;
+  cursor: pointer;
+  box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+}
+
+#refined-results .refined-card img {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+#refined-results .refined-card .card-body {
+  padding: 14px 16px;
+  background: var(--surface);
+  min-height: 128px;
+}
 
        .interrupt-options .generated-refine-chip,
 .refine-options .generated-refine-chip {
