@@ -213,7 +213,9 @@ let query = supabase
     }
 
    const lowerCeiling =
-  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.55) : 700000;
+  visibleMaxPrice > 0
+    ? Math.round(visibleMaxPrice * 0.35)
+    : 700000;
 
 const midFloor =
   visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.55) : 700000;
@@ -330,9 +332,9 @@ const wantsNearbyAreas = refineLabel.includes("nearby");
       targetMaxPrice,
     });
 
-    const { data, error } = await query
-      .order("price", { ascending: false })
-      .limit(120);
+ const { data, error } = await query
+  .order("price", { ascending: !wantsPremium })
+  .limit(120);
       let filteredData = data || [];
 
 if (mapBounds) {
@@ -510,9 +512,14 @@ if (wantsNearbyAreas) {
         };
       })
       .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return Number(b.listing.price || 0) - Number(a.listing.price || 0);
-      });
+  if (b.score !== a.score) return b.score - a.score;
+
+  if (wantsLowerPrice) {
+    return Number(a.listing.price || 0) - Number(b.listing.price || 0);
+  }
+
+  return Number(b.listing.price || 0) - Number(a.listing.price || 0);
+});
 
     const unviewedScored = scoredAll.filter((item) => {
       return !excludeAddresses.includes(String(item.listing.address || "").trim());
