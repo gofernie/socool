@@ -152,9 +152,53 @@ const topAreas = Object.entries(areaCounts)
   .sort((a, b) => b[1] - a[1])
   .slice(0, 10);
 
-const navAreas = Object.keys(areaCounts)
-  .filter((area) => area && area !== "unknown" && area !== "other")
-  .sort((a, b) => a.localeCompare(b));
+const allowedMainAreas = new Set([
+  "north nanaimo",
+  "south nanaimo",
+  "central nanaimo",
+  "old city",
+  "cedar",
+  "departure bay",
+  "hammond bay",
+  "uplands",
+  "pleasant valley",
+  "diver lake",
+  "chase river",
+  "university district",
+  "south jingle pot",
+  "north jingle pot",
+  "jingle pot",
+  "brechin hill",
+  "extension",
+]);
+
+const areaToSlug = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\//g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const nanaimoAreas = [
+  "North Nanaimo",
+  "Hammond Bay",
+  "Departure Bay",
+  "Uplands",
+  "Pleasant Valley",
+  "Diver Lake",
+  "Central Nanaimo",
+  "Old City",
+  "University District",
+  "South Nanaimo",
+  "Chase River",
+  "Cedar",
+  "Jingle Pot",
+  "Extension",
+  "Brechin Hill",
+];
+
+const navAreas = nanaimoAreas;
 
 const navTypes = [
   ...new Set(
@@ -231,16 +275,28 @@ const chartData = {
   </header>
 
   <!-- ── Area browse nav ── -->
-  <nav class="area-browse-nav">
-    <div class="shell area-browse-nav__inner">
-   <span>Explore {cityLabel} areas</span>
-      {navAreas.slice(0, 8).map((item) => (
-       <a href={`/${city}/areas/${item.replace(/\s+/g, "-")}`}>
-          {labelize(item)}
-        </a>
-      ))}
-    </div>
-  </nav>
+ <nav class="area-browse-nav">
+  <div class="shell area-browse-nav__inner">
+    <span>Explore more {cityLabel} areas</span>
+
+   {navAreas.slice(0, 5).map((item) => (
+  <a href={`/${city}/areas/${areaToSlug(item)}`}>
+    {labelize(item)}
+  </a>
+))}
+
+    {navAreas.length > 5 && (
+      <select onchange="if(this.value) window.location.href=this.value;">
+        <option value="">+{navAreas.length - 5} more areas</option>
+        {navAreas.slice(5).map((item) => (
+         <option value={`/${city}/areas/${areaToSlug(item)}`}>
+  {labelize(item)}
+</option>
+        ))}
+      </select>
+    )}
+  </div>
+</nav>
 
   <main class="shell">
 
@@ -433,6 +489,32 @@ home searches.
 </Layout>
 
 <style>
+
+  .area-browse-nav select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(28, 25, 23, 0.22);
+  border-radius: 999px;
+  background: #fff;
+  color: #332f2b;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 7px 34px 7px 14px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.area-browse-nav select:hover {
+  border-color: var(--accent);
+}
 
   .chart-wrap {
   position: relative;
