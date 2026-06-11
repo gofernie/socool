@@ -1982,10 +1982,10 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 }
 
 #refined-results .refined-card .price {
-  font-size: 1.2rem !important;
+  font-size: 1.34rem !important;
   line-height: 1.1 !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.035em !important;
   margin-bottom: 8px !important;
   padding-right: 104px !important;
 }
@@ -2714,7 +2714,9 @@ data-type="${listing.normalized_type || listing.property_type || listing.type ||
             data-lng="${listing.lng || ""}"
 data-city="${listing.normalized_city || listing.city || document.querySelector('[data-city]')?.dataset.city || 'nanaimo'}"            data-area="${String(listing.normalized_area || listing.area || "").toLowerCase()}"
           >
-            <img src="${image}" alt="${listing.address || "Listing"}" />
+                        <div class="card-image-wrap">
+              <img src="${image}" alt="${listing.address || "Listing"}" />
+            </div>
 
             <div class="card-body">
        ${
@@ -2743,9 +2745,15 @@ color:var(--accent);
     `
     : ""
 }
-              <div class="price">${listing.price_text || ""}</div>
+                            <div class="price">${listing.price_text || ""}</div>
               <div class="address">${listing.address || ""}</div>
-              <div class="meta">${listing.beds || "-"} bed · ${listing.baths || "-"} bath</div>
+              <div class="card-city">${listing.normalized_city || listing.city || "Nanaimo"}, BC</div>
+
+              <div class="meta">
+                <span>🛏 ${listing.beds || "-"} bd</span>
+                <span>🛁 ${listing.baths || "-"} ba</span>
+                ${listing.sqft ? `<span>↗ ${Number(listing.sqft).toLocaleString()} sq ft</span>` : ""}
+              </div>
             </div>
           </article>
         `;
