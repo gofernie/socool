@@ -295,13 +295,6 @@ function scoreRelatedIntent(intent: any) {
 }
 
 const relatedIntentPages = relatedIntentPagesRaw
-console.log(
-  "RELATED INTENTS",
-  relatedIntentPages.map((p) => ({
-    slug: p.slug,
-    score: p.related_score,
-  }))
-);
   .map((intent) => ({
     ...intent,
     related_score: scoreRelatedIntent(intent),
