@@ -1178,15 +1178,15 @@ waterfront_type: (() => {
       ""
   ).toLowerCase();
 
-  if (mlsSource.includes("river")) return "river";
-  if (mlsSource.includes("lake")) return "lake";
-  if (mlsSource.includes("ocean")) return "ocean";
+if (mlsSource.includes("river")) return "riverfront";
+if (mlsSource.includes("lake")) return "lakefront";
+if (mlsSource.includes("ocean")) return "oceanfront";
 
-  if (descriptionSource.includes("riverfront")) return "river";
-  if (descriptionSource.includes("lakefront")) return "lake";
-  if (descriptionSource.includes("oceanfront")) return "ocean";
+if (descriptionSource.includes("riverfront")) return "riverfront";
+if (descriptionSource.includes("lakefront")) return "lakefront";
+if (descriptionSource.includes("oceanfront")) return "oceanfront";
 
-  return "waterfront";
+return null;
 })(),
 
 ocean_view:
