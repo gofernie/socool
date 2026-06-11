@@ -7,6 +7,7 @@ import SiteNav from "../../components/SiteNav.astro";
 import { getSite } from "../../lib/getSite";
 import "../../styles/intent-modal.css";
 import "../../styles/page-hero.css";
+import RelatedIntentCards from "../../components/RelatedIntentCards.astro";
 
 export const prerender = false;
 const supabase = createClient(
@@ -260,7 +261,53 @@ console.log("INTENT LISTINGS DEBUG", {
   error: listingsError,
 });
 
+const { data: relatedIntentPagesRaw = [] } = await supabase
+  .from("intent_pages")
+  .select("*")
+  .eq("city", city)
+  .eq("is_published", true)
+  .neq("slug", slug);
 
+function scoreRelatedIntent(intent: any) {
+  let score = 0;
+
+  if (intent.waterfront_type && intent.waterfront_type === page.waterfront_type) {
+    score += 50;
+  }
+
+  if (intent.property_type && intent.property_type === page.property_type) {
+    score += 30;
+  }
+
+  if (intent.area && intent.area === page.area) {
+    score += 20;
+  }
+
+  if (
+    intent.price_max &&
+    page.price_max &&
+    Math.abs(Number(intent.price_max) - Number(page.price_max)) <= 150000
+  ) {
+    score += 10;
+  }
+
+  return score;
+}
+
+const relatedIntentPages = relatedIntentPagesRaw
+console.log(
+  "RELATED INTENTS",
+  relatedIntentPages.map((p) => ({
+    slug: p.slug,
+    score: p.related_score,
+  }))
+);
+  .map((intent) => ({
+    ...intent,
+    related_score: scoreRelatedIntent(intent),
+  }))
+  .sort((a, b) => b.related_score - a.related_score)
+  .slice(0, 8);
 
 function formatPrice(price: number) {
   return `$${Number(price || 0).toLocaleString()}`;
@@ -1460,6 +1507,69 @@ color: var(--accent) !important;
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
 }
+
+.related-intents {
+  margin-top: 56px;
+  padding: 36px;
+  background: var(--surface);
+  border: 1px solid var(--line-warm);
+  border-radius: 24px;
+}
+
+.related-intents__head p {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.related-intents__head h2 {
+  margin: 0 0 24px;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.related-intents__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.related-intent-card {
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--line-warm);
+  border-radius: 18px;
+  background: var(--surface-soft);
+  text-decoration: none;
+}
+
+.related-intent-card h3 {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-size: 1.3rem;
+}
+
+.related-intent-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .related-intents {
+    margin: 36px 14px 0;
+    padding: 24px;
+  }
+
+  .related-intents__grid {
+    grid-template-columns: 1fr;
+  }
+}
     </style>
 
 <div
@@ -1679,6 +1789,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
           );
         })}
       </section>
+<RelatedIntentCards city={city} pages={relatedIntentPages} />
 
 <section class="intent-guide">
  <div class="intent-guide-label">

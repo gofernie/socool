@@ -1,0 +1,25 @@
+---
+const {
+  city = "nanaimo",
+  pages = [],
+  title = "Explore Similar Searches",
+} = Astro.props;
+---
+
+{pages.length > 0 && (
+  <section class="related-intents">
+    <div class="related-intents__head">
+      <p>Next Searches</p>
+      <h2>{title}</h2>
+    </div>
+
+    <div class="related-intents__grid">
+      {pages.map((intent) => (
+        <a class="related-intent-card" href={`/${city}/${intent.slug}`}>
+          <h3>{intent.hero_heading || intent.seo_heading}</h3>
+          <p>{intent.intro_copy || intent.meta_description || "View current listings for this search."}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+)}
