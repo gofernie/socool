@@ -1,7 +1,9 @@
 ---
 import AdminSidebar from "../../components/AdminSidebar.astro";
+import { getSite } from "../../lib/getSite";
 
-// Slug is resolved in the client script from ?slug=
+const site = await getSite(Astro.url.hostname);
+const currentSiteId = site?.id || "";
 ---
 
 <html>
@@ -572,7 +574,7 @@ import AdminSidebar from "../../components/AdminSidebar.astro";
   </nav>
 </AdminSidebar>
       <!-- Main -->
-      <main class="main">
+      <main class="main" data-site-id={currentSiteId}>
         <div class="page-header">
       <h1>Site settings</h1>
 <p>Configure colours, homepage copy, hero content, and branding for this site.</p>
@@ -927,8 +929,11 @@ import AdminSidebar from "../../components/AdminSidebar.astro";
     </div>
 
     <script is:inline>
-      const params = new URLSearchParams(window.location.search);
-const siteId = window.location.pathname.split("/").filter(Boolean)[2];
+    const params = new URLSearchParams(window.location.search);
+const siteId =
+  params.get("id") ||
+  document.querySelector(".main")?.dataset.siteId ||
+  "";
       const form = document.getElementById("agentForm");
       const status = document.getElementById("status");
 
@@ -1338,7 +1343,12 @@ document.querySelectorAll(".sidebar__section-links a").forEach((link) => {
   });
 });
 
-loadPage();
+if (!siteId) {
+  status.textContent = "Site not found. Add localhost to the sites table or open this page from the live domain.";
+  status.className = "status is-error";
+} else {
+  loadPage();
+}
     </script>
   </body>
 </html>
