@@ -25,13 +25,14 @@ const {
 )}
 
 <style>
-  .related-intents {
-    margin-top: 56px;
-    padding: 36px;
-    background: var(--surface);
-    border: 1px solid var(--line-warm);
-    border-radius: 24px;
-  }
+.related-intents {
+  margin-top: 56px;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 
   .related-intents__head p {
     margin: 0 0 10px;
@@ -79,9 +80,9 @@ const {
 
   @media (max-width: 900px) {
     .related-intents {
-      margin: 36px 14px 0;
-      padding: 24px;
-    }
+  margin: 36px 14px 0;
+  padding: 0 !important;
+}
 
     .related-intents__grid {
       grid-template-columns: 1fr;
