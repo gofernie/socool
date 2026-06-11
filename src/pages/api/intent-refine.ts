@@ -73,17 +73,28 @@ const wantsPremium =
       .map((value) => String(value || "").toLowerCase())
       .join(" ");
 
-    if (!pageType) {
-      if (/\b(condo|condos|apartment|apartments)\b/.test(pageClues)) {
-        pageType = "condo";
-      } else if (/\b(townhouse|townhome|townhomes|townhouses)\b/.test(pageClues)) {
-        pageType = "townhouse";
-      } else if (/\b(mobile|mobiles|manufactured)\b/.test(pageClues)) {
-        pageType = "mobile";
-      } else if (/\b(single family|sfh|house|houses|home|homes)\b/.test(pageClues)) {
-        pageType = "house";
-      }
-    }
+   let intentPage: any = null;
+
+if (slug) {
+  const { data } = await supabase
+    .from("intent_pages")
+    .select(`
+      property_type,
+      area,
+      waterfront_type,
+      requires_waterfront,
+      requires_ocean_view
+    `)
+    .eq("slug", slug)
+    .eq("city", city)
+    .maybeSingle();
+
+  intentPage = data || null;
+
+  if (!pageType && intentPage?.property_type) {
+    pageType = String(intentPage.property_type).toLowerCase();
+  }
+}
 
     if (!pageType && slug) {
       const { data: intentPage } = await supabase
@@ -207,10 +218,57 @@ let query = supabase
       .eq("status", "A")
       .eq("normalized_city", city);
 
-     if (pageType) {
-      console.log("REFINE LOCKED PROPERTY TYPE:", pageType);
-      query = query.eq("normalized_type", pageType);
-    }
+   const propertyTypeMap: Record<string, string> = {
+  home: "house",
+  homes: "house",
+  house: "house",
+  houses: "house",
+  condo: "condo",
+  condos: "condo",
+  apartment: "condo",
+  apartments: "condo",
+  townhome: "townhouse",
+  townhomes: "townhouse",
+  townhouse: "townhouse",
+  townhouses: "townhouse",
+  mobile: "mobile",
+  manufactured: "mobile",
+  land: "land",
+};
+
+const lockedPageType =
+  propertyTypeMap[pageType] || pageType;
+
+if (lockedPageType) {
+  console.log("REFINE LOCKED PROPERTY TYPE:", lockedPageType);
+  query = query.eq("normalized_type", lockedPageType);
+}
+
+if (intentPage?.area) {
+  query = query.eq(
+    "normalized_area",
+    String(intentPage.area).toLowerCase().trim()
+  );
+}
+
+if (intentPage?.waterfront_type === "waterfront") {
+  query = query.eq("waterfront", true);
+}
+
+if (
+  intentPage?.waterfront_type &&
+  intentPage.waterfront_type !== "waterfront"
+) {
+  query = query.eq("waterfront_type", intentPage.waterfront_type);
+}
+
+if (!intentPage?.waterfront_type && intentPage?.requires_waterfront) {
+  query = query.eq("waterfront", true);
+}
+
+if (intentPage?.requires_ocean_view) {
+  query = query.eq("ocean_view", true);
+}
 
    const lowerCeiling =
   visibleMaxPrice > 0
