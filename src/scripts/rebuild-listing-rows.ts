@@ -1180,11 +1180,15 @@ waterfront_type: (() => {
 
 if (mlsSource.includes("river")) return "riverfront";
 if (mlsSource.includes("lake")) return "lakefront";
-if (mlsSource.includes("ocean")) return "oceanfront";
 
-if (descriptionSource.includes("riverfront")) return "riverfront";
-if (descriptionSource.includes("lakefront")) return "lakefront";
-if (descriptionSource.includes("oceanfront")) return "oceanfront";
+if (
+  mlsSource.includes("ocean") ||
+  mlsSource.includes("marine") ||
+  mlsSource.includes("sea") ||
+  mlsSource.includes("salt water")
+) {
+  return "oceanfront";
+}
 
 return null;
 })(),

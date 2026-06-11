@@ -19,8 +19,11 @@ const TEMPLATE_FEATURES = {
   homes_with_suites: ["suite", "income", "mortgage_helper"],
   luxury_homes: ["views", "garage", "updated"],
   investment_properties: ["suite", "income", "value"],
-  waterfront: ["views", "waterfront"],
-  walkable_homes: ["walkability"],
+waterfront: ["views", "waterfront"],
+oceanfront: ["views", "waterfront"],
+lakefront: ["views", "waterfront"],
+riverfront: ["views", "waterfront"],
+walkable_homes: ["walkability"],
   updated_homes: ["updated"],
 };
 
@@ -209,7 +212,12 @@ polygon_bounds: polygonBounds,
 
 requires_waterfront:
   pageType === "intent" &&
-  template === "waterfront",
+  (
+    template === "waterfront" ||
+    template === "oceanfront" ||
+    template === "lakefront" ||
+    template === "riverfront"
+  ),
 
 requires_ocean_view:
   pageType === "intent" &&
@@ -217,11 +225,13 @@ requires_ocean_view:
 
 waterfront_type:
   template === "oceanfront"
-    ? "ocean"
+    ? "oceanfront"
     : template === "lakefront"
-    ? "lake"
+    ? "lakefront"
     : template === "riverfront"
-    ? "river"
+    ? "riverfront"
+    : template === "waterfront"
+    ? "waterfront"
     : null,
 })
     .select("*")
