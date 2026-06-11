@@ -335,15 +335,31 @@ function titleCase(value = "") {
 
 function buildSeoFallback(page: any) {
   const area = titleCase(page.area || "Nanaimo");
-  const type = page.property_type || "homes";
-  const heading = page.hero_heading || `${area} ${type}`;
+
+  let heading = page.hero_heading || "Nanaimo Homes";
+
+  if (page.waterfront_type === "oceanfront") {
+    heading = `Oceanfront Homes for Sale in ${titleCase(city)}`;
+  }
+
+  if (page.waterfront_type === "riverfront") {
+    heading = `${titleCase(city)} Riverfront Homes for Sale`;
+  }
+
+  if (page.waterfront_type === "lakefront") {
+    heading = `${titleCase(city)} Lakefront Properties`;
+  }
 
   return {
-    heading: `${heading} for Sale`,
-intro: `Browse active ${heading.toLowerCase()} currently available on the MLS®. Explore listings, compare options, and discover homes that match your goals and budget.`,    body: `${area} remains a popular destination for buyers looking for ${type}. Listings update automatically from the MLS® system, helping buyers monitor inventory, pricing, and new opportunities as they come to market.`,
-    long: `${area} offers a variety of housing opportunities that appeal to different lifestyles and budgets. Buyers often compare location, home style, amenities, outdoor space, and long-term value when evaluating available properties.
+    heading,
 
-This page combines active MLS® listings with interactive search tools that help surface homes worth a closer look. As new listings become available, inventory and pricing can change quickly, making it useful to revisit this page regularly.`,
+    intro: `Explore ${heading.toLowerCase()} currently available on the MLS®. Compare listings, pricing, lot sizes, and property features while monitoring new opportunities as they come to market.`,
+
+    body: `Listings on this page update directly from MLS® data and are filtered specifically for buyers searching for ${heading.toLowerCase()}. Inventory, pricing, and availability can change quickly throughout the year.`,
+
+    long: `${heading} appeal to buyers looking for a specific lifestyle, location, or property characteristic. Whether you're comparing value, outdoor space, views, waterfront access, or long-term investment potential, this search helps surface active opportunities currently available in the market.
+
+Because inventory can be limited in specialized property categories, new listings often attract significant attention. Revisiting this page regularly can help you stay ahead of new listings, price changes, and market activity.`,
   };
 }
 
@@ -1526,7 +1542,7 @@ color: var(--accent) !important;
 
       <div class="section-head">
   <div>
-    <h2>Fresh homes worth a closer look.</h2>
+    <h2>{page.seo_heading || page.hero_heading}</h2>
     <p class="section-subcopy">Updated just now</p>
   </div>
 
@@ -1665,9 +1681,9 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
       </section>
 
 <section class="intent-guide">
-  <div class="intent-guide-label">
-    Buyer Guide
-  </div>
+ <div class="intent-guide-label">
+  Area Guide
+</div>
 
   <h2>{page.seo_heading || seo.heading}</h2>
 
@@ -1693,13 +1709,13 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 
   <p>
     {page.neighbourhood_copy ||
-`${titleCase(page.area || titleCase(city))} is one of the ${titleCase(city)} areas buyers often compare when searching for homes that balance location, lifestyle, and value.`}  </p>
+`${titleCase(page.area || city)} is a popular area for buyers seeking a balance of location, lifestyle, and long-term value. Local amenities, recreation opportunities, schools, transportation links, and housing diversity all contribute to its appeal.`}  </p>
 
   <h3>Local Market Snapshot</h3>
 
   <p>
     {page.market_commentary ||
-      `Active listings in this search can change quickly as new homes come to market and others sell.`}
+      `Inventory levels, pricing, and new listing activity can change quickly throughout the year. Monitoring the market regularly can help buyers identify new opportunities and stay informed about changing conditions.`}
   </p>
 </section>
 
