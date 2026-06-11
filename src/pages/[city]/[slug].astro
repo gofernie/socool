@@ -125,13 +125,13 @@ if (page.waterfront_type === "waterfront") {
 }
 
 if (
-  page.waterfront_type &&
-  page.waterfront_type !== "waterfront"
+  page.waterfront_type === "oceanfront" ||
+  page.waterfront_type === "riverfront" ||
+  page.waterfront_type === "lakefront"
 ) {
-  query = query.eq(
-    "waterfront_type",
-    page.waterfront_type
-  );
+  query = query.eq("waterfront", true);
+} else if (page.waterfront_type === "waterfront") {
+  query = query.eq("waterfront", true);
 }
 
 if (!page.waterfront_type && page.requires_waterfront) {
