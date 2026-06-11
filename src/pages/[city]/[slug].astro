@@ -165,9 +165,21 @@ const hasPolygonSearch = Boolean(page.polygon_geojson);
 
 const listingLimit = hasPolygonSearch ? 1000 : 200;
 
-const { data: rawListings, error: listingsError } = await query
-  .order("price", { ascending: false })
-  .limit(listingLimit);
+const defaultSort = page.default_sort || "newest";
+
+if (defaultSort === "price-asc") {
+  query = query.order("price", { ascending: true });
+} else if (defaultSort === "price-desc") {
+  query = query.order("price", { ascending: false });
+} else if (defaultSort === "beds-desc") {
+  query = query.order("beds", { ascending: false });
+} else if (defaultSort === "sqft-desc") {
+  query = query.order("sqft", { ascending: false });
+} else {
+  query = query.order("listed_at", { ascending: false });
+}
+
+const { data: rawListings, error: listingsError } = await query.limit(listingLimit);
 
 let listings = rawListings || [];
 
@@ -1492,10 +1504,12 @@ color: var(--accent) !important;
 </select>
 
 <select class="sort-filter-select" aria-label="Sort listings">
-        <option value="newest">Newest first</option>
-        <option value="price-asc">Price low to high</option>
-        <option value="price-desc">Price high to low</option>
-      </select>
+  <option value="newest" selected={(page.default_sort || "newest") === "newest"}>Newest first</option>
+  <option value="price-asc" selected={page.default_sort === "price-asc"}>Price low to high</option>
+  <option value="price-desc" selected={page.default_sort === "price-desc"}>Price high to low</option>
+  <option value="beds-desc" selected={page.default_sort === "beds-desc"}>Most bedrooms first</option>
+  <option value="sqft-desc" selected={page.default_sort === "sqft-desc"}>Largest homes first</option>
+</select>
 
       <select class="beds-filter-select" aria-label="Filter by beds">
         <option value="all">Any beds</option>
@@ -2186,8 +2200,10 @@ if (resultsBar) {
     const cards = Array.from(grid.querySelectorAll(".original-card"));
 
     cards.sort((a, b) => {
-      if (sort === "price-asc") return getCardPrice(a) - getCardPrice(b);
-      if (sort === "price-desc") return getCardPrice(b) - getCardPrice(a);
+   if (sort === "price-asc") return getCardPrice(a) - getCardPrice(b);
+if (sort === "price-desc") return getCardPrice(b) - getCardPrice(a);
+if (sort === "beds-desc") return Number(b.dataset.beds || 0) - Number(a.dataset.beds || 0);
+if (sort === "sqft-desc") return Number(b.dataset.sqft || 0) - Number(a.dataset.sqft || 0);
 
       return (
         new Date(b.dataset.listedAt || 0).getTime() -
