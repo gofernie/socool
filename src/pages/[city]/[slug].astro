@@ -346,8 +346,8 @@ if (
   slug.includes("oceanfront")
 ) {
   interruptTitle = "Still looking for the right stretch of waterfront?";
-  interruptDescription =
-    "You've viewed a few waterfront properties. What matters most about the waterfront experience?";
+interruptDescription =
+  "You've viewed a few oceanfront properties. What would make the next group a better fit?";
 }
 
 else if (
@@ -412,13 +412,13 @@ if (
   page.waterfront_type === "oceanfront" ||
   slug.includes("oceanfront")
 ) {
-  dynamicFeatureLabels = [
-    "Walk-on waterfront",
-    "Sandy beach",
-    "Deep water",
-    "Sunset views",
-    "Privacy",
-  ];
+ dynamicFeatureLabels = [
+  "Ocean views",
+  "Larger lot",
+  "More bedrooms",
+  "More modern",
+  "Private setting",
+];
 }
 
 else if (
@@ -453,7 +453,7 @@ else if (
     "Walkability",
     "Ocean views",
     "Luxury finishes",
-    "Low strata fees",<h3>{interruptTitle}</h3>
+    "Low strata fees",
     "Best value",
   ];
 }
@@ -1842,7 +1842,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
                     <div class="interrupt-inner">
                       <div>
 <div class="interrupt-kicker">Shape this search</div>
-<h3>Want to steer the next few matches?</h3>
+<h3>{interruptTitle}</h3>
 <p>
   {interruptDescription}
 </p>
