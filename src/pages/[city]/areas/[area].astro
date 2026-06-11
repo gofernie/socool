@@ -372,9 +372,15 @@ const content = areaContent[area] || {
   nearby: ["central nanaimo", "north nanaimo", "departure bay", "hammond bay", "old city"],
 };
 
-const labelize = (value) =>
+const cleanAreaName = (value) =>
   String(value || "")
+    .replace(/^pq[\s-]+/i, "")
     .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const labelize = (value) =>
+  cleanAreaName(value)
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const areaToSlug = (value) =>
@@ -394,15 +400,15 @@ const { data: areaRows = [] } = await supabase
 const allowedAreaLabels =
   city === "parksville"
     ? [
-        "PQ Bowser/Deep Bay",
-        "PQ Errington/Coombs/Hilliers",
-        "PQ Fairwinds",
-        "PQ French Creek",
-        "PQ Little Qualicum River Village",
-        "PQ Nanoose",
-        "PQ Parksville",
-        "PQ Qualicum Beach",
-        "PQ Qualicum North",
+        "pq bowser/deep bay",
+        "pq errington/coombs/hilliers",
+        "pq fairwinds",
+        "pq french creek",
+        "pq little qualicum river village",
+        "pq nanoose",
+        "pq parksville",
+        "pq qualicum beach",
+        "pq qualicum north",
       ]
     : [];
 

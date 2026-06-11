@@ -189,10 +189,16 @@ const navTypes = [
   ),
 ].sort((a, b) => a.localeCompare(b));
 
-const labelize = (value) =>
+const cleanAreaName = (value) =>
   String(value || "")
+    .replace(/^pq[\s-]+/i, "")
     .split("-")
     .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const labelize = (value) =>
+  cleanAreaName(value)
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
 const priceBuckets = [
