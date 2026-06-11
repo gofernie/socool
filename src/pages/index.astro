@@ -146,7 +146,7 @@ const heroHeadingClean = heroHeading.replace(/\.$/, "");const buildFilterUrl = (
 
   return `?${params.toString()}`;
 };
-const { data: intentPageRows } = await supabase
+let intentPagesQuery = supabase
   .from("intent_pages")
   .select(`
     *,
@@ -154,9 +154,15 @@ const { data: intentPageRows } = await supabase
       feature_key
     )
   `)
-  .eq("site_id", site?.id)
-  .eq("is_published", true)
+  .eq("city", city || siteCity || "nanaimo")
+  .or("is_published.eq.true,status.eq.published")
   .order("created_at", { ascending: false });
+
+if (site?.id) {
+  intentPagesQuery = intentPagesQuery.or(`site_id.eq.${site.id},site_id.is.null`);
+}
+
+const { data: intentPageRows } = await intentPagesQuery;
 
 function shortenIntentTitle(title: string) {
   const t = title.toLowerCase();

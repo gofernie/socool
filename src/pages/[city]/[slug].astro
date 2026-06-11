@@ -305,7 +305,12 @@ function scoreRelatedIntent(intent: any) {
 
   return score;
 }
-
+console.log("RELATED INTENT LOCAL DEBUG", {
+  city,
+  slug,
+  rawCount: relatedIntentPagesRaw?.length || 0,
+  sample: relatedIntentPagesRaw?.slice?.(0, 3),
+});
 const relatedIntentPages = relatedIntentPagesRaw
   .map((intent) => ({
     ...intent,
@@ -1095,13 +1100,13 @@ body.is-map-mode .bottom-refine-cta {
 }
 
 .card-decision-badge.is-love {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  background: #ff3b30;
+  color: #fff;
 }
 
 .card-decision-badge.is-maybe {
-  background: rgba(24, 22, 20, 0.08);
-  color: rgba(24, 22, 20, 0.72);
+  background: #f59e0b;
+  color: #fff;
 }
 
 .card-decision-badge.is-pass {
@@ -1603,11 +1608,7 @@ color: var(--accent) !important;
   margin: 0 !important;
 }
 
-.price {
-  font-size: 1.2rem !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em !important;
-}
+
 
 .related-intents {
   margin-top: 56px;
@@ -1950,62 +1951,102 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 <IntentModalController />
 
   <style is:global>
+#refined-results .card-decision-badge {
+  position: absolute !important;
+  top: 16px !important;
+  right: 14px !important;
+  display: inline-flex !important;
+  width: fit-content !important;
+  margin: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 999px !important;
+  font-size: 0.66rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
 
+#refined-results .card-decision-badge[hidden] {
+  display: none !important;
+}
+
+#refined-results .card-decision-badge.is-love {
+  background: #ff3b30 !important;
+  color: #fff !important;
+}
+
+#refined-results .card-decision-badge.is-maybe {
+  background: #f59e0b !important;
+  color: #fff !important;
+}
 #refined-results .refined-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
 
-#refined-results .refined-card {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--line-warm);
-  color: inherit;
-  display: block;
-  cursor: pointer;
-  box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+@media (max-width: 1100px) {
+  #refined-results .refined-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-#refined-results .refined-card img {
-  display: block;
+@media (max-width: 700px) {
+  #refined-results .refined-results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+#refined-results .card.is-passed {
+  opacity: 0.32 !important;
+  filter: grayscale(0.55) !important;
+}
+
+#refined-results .card.is-passed:hover {
+  opacity: 0.65 !important;
+}
+
+#refined-results .card-image-wrap,
+#refined-results .card-image-wrap img,
+#refined-results .card img {
   width: 100%;
   height: 190px;
   object-fit: cover;
 }
 
-#refined-results .refined-card .card-body {
+#refined-results .card-body {
+  position: relative;
   padding: 14px 16px;
   background: var(--surface);
   min-height: 128px;
 }
 
-#refined-results .refined-card .price {
-  font-size: 1.2rem !important;
+#refined-results .price {
+  font-size: 1.34rem !important;
   line-height: 1.1 !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em !important;
+  font-weight: 800 !important;
   margin-bottom: 8px !important;
+  letter-spacing: -0.035em !important;
   padding-right: 104px !important;
 }
 
-#refined-results .refined-card .address {
+#refined-results .address {
   margin-bottom: 2px !important;
   color: var(--ink) !important;
   line-height: 1.35 !important;
   font-size: 0.9rem !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
 }
 
-#refined-results .refined-card .card-city {
+#refined-results .card-city {
   margin-bottom: 14px !important;
   color: var(--muted) !important;
   font-size: 0.86rem !important;
   font-weight: 500 !important;
 }
 
-#refined-results .refined-card .meta {
+#refined-results .meta {
   display: flex !important;
   align-items: center !important;
   gap: 18px !important;
@@ -2013,6 +2054,15 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   color: var(--ink-soft) !important;
   font-weight: 500 !important;
 }
+
+#refined-results .meta span {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+
 
        .interrupt-options .generated-refine-chip,
 .refine-options .generated-refine-chip {
@@ -2563,61 +2613,104 @@ function saveViewedIntentAddress(address) {
   );
 }
 
-function updateViewedBadges() {
-const viewed = new Set(getViewedIntentAddresses());
-const viewedKeys = new Set(getViewedIntentListingKeys());
+function getIntentCardKey(card) {
+  return String(
+    card?.dataset?.listingId ||
+    card?.dataset?.mls ||
+    card?.dataset?.itemId ||
+    card?.dataset?.address ||
+    ""
+  ).trim().toLowerCase();
+}
 
-  document.querySelectorAll(".refined-card").forEach((card) => {
-    const address = String(card.dataset.address || "").trim().toLowerCase();
-const key = String(
-  card.dataset.listingId ||
-  card.dataset.mls ||
-  card.dataset.itemId ||
-  card.dataset.address ||
-  ""
-).trim().toLowerCase();
+function applyDecisionBadge(card, decision) {
+  if (!card) return;
 
-const badge = card.querySelector(".refined-badge");
+  const badge = card.querySelector(".card-decision-badge");
+  if (!badge) return;
 
-if (viewed.has(address) || viewedKeys.has(key)) {
-  if (badge) {
-    badge.textContent = "Already viewed";
-    badge.classList.add("is-viewed");
+  card.dataset.decision = decision || "";
+
+  badge.className = "card-decision-badge";
+  card.classList.remove("is-passed");
+card.style.opacity = "";
+card.style.filter = "";
+
+  if (decision === "love") {
+    badge.textContent = "Loved";
+    badge.classList.add("is-love");
+    badge.hidden = false;
     return;
   }
 
-  const cardBody = card.querySelector(".card-body");
-
-  if (cardBody) {
-    cardBody.insertAdjacentHTML(
-      "afterbegin",
-      `
-        <div
-          class="refined-badge is-viewed"
-          style="
-            display:inline-flex;
-            align-items:center;
-            width:fit-content;
-            margin:0 0 10px;
-            padding:7px 11px;
-            border-radius:999px;
-            background:rgba(255,77,0,0.16);
-            color:#ff4d00;
-            font-size:0.72rem;
-            font-weight:900;
-            letter-spacing:0.06em;
-            text-transform:uppercase;
-            line-height:1;
-          "
-        >
-          Already viewed
-        </div>
-      `
-    );
+  if (decision === "maybe") {
+    badge.textContent = "Kinda liked";
+    badge.classList.add("is-maybe");
+    badge.hidden = false;
+    return;
   }
+
+ if (decision === "pass") {
+  badge.textContent = "Not for me";
+  badge.classList.add("is-pass");
+  badge.hidden = false;
+
+  card.classList.add("is-passed");
+  card.style.opacity = "0.32";
+  card.style.filter = "grayscale(0.55)";
+
+  return;
 }
+
+  badge.textContent = "";
+  badge.hidden = true;
+}
+
+function updateViewedBadges() {
+  document.querySelectorAll(".card").forEach((card) => {
+    const key = getIntentCardKey(card);
+    const savedDecision =
+      localStorage.getItem(`intent_decision_${key}`) ||
+      card.dataset.decision ||
+      "";
+
+    applyDecisionBadge(card, savedDecision);
   });
 }
+
+document.addEventListener("click", (event) => {
+  const card = event.target.closest(".card");
+  if (card) {
+    window.__activeIntentCard = card;
+    return;
+  }
+
+  const button = event.target.closest("button");
+  if (!button || !window.__activeIntentCard) return;
+
+  const label = String(button.textContent || "").trim().toLowerCase();
+
+  let decision = "";
+
+  if (label.includes("love")) decision = "love";
+  if (label.includes("kinda")) decision = "maybe";
+  if (label.includes("not for me")) decision = "pass";
+
+  if (!decision) return;
+
+  const activeCard = window.__activeIntentCard;
+  const key = getIntentCardKey(activeCard);
+
+  if (key) {
+    localStorage.setItem(`intent_decision_${key}`, decision);
+  }
+
+  document.querySelectorAll(".card").forEach((card) => {
+    if (getIntentCardKey(card) === key) {
+      applyDecisionBadge(card, decision);
+    }
+  });
+});
         function getIntentSessionId() {
   const key = "intent_session_id";
   let value = localStorage.getItem(key);
@@ -2687,6 +2780,41 @@ const alreadyViewed =
   viewedAddresses.has(String(listing.address || "").trim().toLowerCase()) ||
   viewedKeys.has(listingKey);
 
+const savedDecision =
+  localStorage.getItem(`intent_decision_${listingKey}`) ||
+  listing.decision ||
+  "";
+
+const decisionLabel =
+  savedDecision === "love"
+    ? "Loved"
+    : savedDecision === "maybe"
+      ? "Kinda liked"
+      : "";
+
+const decisionClass =
+  savedDecision === "love"
+    ? "is-love"
+    : savedDecision === "maybe"
+      ? "is-maybe"
+      : "";
+
+const refinedPrice = listing.price
+  ? `$${Number(listing.price).toLocaleString()}`
+  : listing.price_text || "";
+
+const refinedCityRaw =
+  listing.normalized_city ||
+  listing.city ||
+  document.querySelector("[data-city]")?.dataset.city ||
+  "nanaimo";
+
+const refinedCity = String(refinedCityRaw)
+  .split(" ")
+  .filter(Boolean)
+  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+  .join(" ");
+
         return `
           <article
             class="card refined-card"
@@ -2696,7 +2824,7 @@ const alreadyViewed =
             data-mls="${listing.mls_number || listing.id || ""}"
             data-image="${image}"
             data-images='${JSON.stringify(listing.images || [])}'
-            data-price="${listing.price_text || ""}"
+            data-price="${refinedPrice}"
             data-raw-price="${String(listing.price || listing.raw_price || listing.price_text || "").replace(/[^0-9]/g, "")}"
 data-sort-index="${index}"
 data-listed-at="${listing.listed_at || listing.created_at || listing.updated_at || ""}"
@@ -2718,36 +2846,17 @@ data-city="${listing.normalized_city || listing.city || document.querySelector('
               <img src="${image}" alt="${listing.address || "Listing"}" />
             </div>
 
-            <div class="card-body">
-       ${
-  alreadyViewed
-    ? `
-      <div
-        class="refined-badge is-viewed"
-        style="
-          display:inline-flex;
-          align-items:center;
-          width:fit-content;
-          margin:0 0 10px;
-          padding:7px 11px;
-          border-radius:999px;
-          background:color-mix(in srgb, var(--accent) 16%, transparent);
-color:var(--accent);
-          font-size:0.72rem;
-          font-weight:900;
-          letter-spacing:0.06em;
-          text-transform:uppercase;
-          line-height:1;
-        "
-      >
-        Already viewed
-      </div>
-    `
-    : ""
-}
-                            <div class="price">${listing.price_text || ""}</div>
-              <div class="address">${listing.address || ""}</div>
-              <div class="card-city">${listing.normalized_city || listing.city || "Nanaimo"}, BC</div>
+         <div class="card-body">
+  <div class="price">${refinedPrice}</div>
+
+ <div
+  class="card-decision-badge ${decisionClass}"
+  ${decisionLabel ? "" : "hidden"}
+style="position:absolute;top:16px;right:14px;display:inline-flex;align-items:center;width:fit-content;margin:0;padding:5px 9px;border-radius:999px;font-size:0.66rem;font-weight:900;line-height:1;letter-spacing:0.05em;text-transform:uppercase;"
+>${decisionLabel}</div>
+
+  <div class="address">${listing.address || ""}</div>
+              <div class="card-city">${refinedCity}, BC</div>
 
               <div class="meta">
                 <span>🛏 ${listing.beds || "-"} bd</span>
@@ -2913,6 +3022,22 @@ const generatedChips = json.generated_chips || [];
 // Area is now handled by backend scoring.
 // Do not hard-filter refined results here,
 // or multi-area chips can collapse to zero results.
+
+const normalizedRefineLabel = String(label || "")
+  .toLowerCase()
+  .trim();
+
+if (normalizedRefineLabel.includes("more bedrooms")) {
+  listings = listings
+    .slice()
+    .sort((a, b) => {
+      const bedDiff = Number(b.beds || 0) - Number(a.beds || 0);
+      if (bedDiff !== 0) return bedDiff;
+
+      return Number(b.price || 0) - Number(a.price || 0);
+    });
+}
+
 console.log("REFINED LISTINGS FROM API", listings);
 
 const hasMore = Boolean(json.has_more);
@@ -3065,6 +3190,7 @@ city: document.querySelector("[data-city]")?.dataset.city,
       grid.insertAdjacentHTML(
         "beforeend",
 moreListings.map((listing, index) => createRefinedListingCard(listing, index)).join("")      );
+updateViewedBadges();
     }
 
     if (hasMoreAgain) {
