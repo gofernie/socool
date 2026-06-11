@@ -50,7 +50,8 @@ if (Astro.request.method === "POST") {
       hero_heading: clean(form.get("hero_heading")),
       intro_copy: clean(form.get("intro_copy")),
       seo_title: clean(form.get("seo_title")),
-      lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
+default_sort: clean(form.get("default_sort")) || "newest",
+lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
       is_published: form.get("is_published") === "on",
     })
     .eq("id", id);
@@ -466,6 +467,17 @@ select {
             <label>Price max</label>
             <input name="price_max" type="number" value={page.price_max || ""} placeholder="$ Enter maximum" />
           </div>
+        </div>
+
+               <div class="field">
+          <label>Default sort</label>
+          <select name="default_sort">
+            <option value="newest" selected={(page.default_sort || "newest") === "newest"}>Newest listings first</option>
+            <option value="price-asc" selected={page.default_sort === "price-asc"}>Price: low to high</option>
+            <option value="price-desc" selected={page.default_sort === "price-desc"}>Price: high to low</option>
+            <option value="beds-desc" selected={page.default_sort === "beds-desc"}>Most bedrooms first</option>
+            <option value="sqft-desc" selected={page.default_sort === "sqft-desc"}>Largest homes first</option>
+          </select>
         </div>
 
         <div class="field">
