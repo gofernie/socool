@@ -267,9 +267,12 @@ const chartData = {
     <span>Explore more {cityLabel} areas</span>
 
    {navAreas.slice(0, 5).map((item) => (
-  <a href={`/${city}/areas/${areaToSlug(item)}`}>
-    {labelize(item)}
-  </a>
+ <a
+  class:list={{ active: areaToSlug(item) === areaToSlug(area) }}
+  href={`/${city}/areas/${areaToSlug(item)}`}
+>
+  {labelize(item)}
+</a>
 ))}
 
     {navAreas.length > 5 && (
@@ -501,6 +504,13 @@ home searches.
 
 .area-browse-nav select:hover {
   border-color: var(--accent);
+}
+
+.area-browse-nav a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 999px;
 }
 
   .chart-wrap {

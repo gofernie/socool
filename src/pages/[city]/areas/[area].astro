@@ -585,9 +585,10 @@ const chartData = {
      <span>Explore more {cityLabel} areas</span>
       {areas.slice(0, 5).map((item) => (
         
-          <a class:list={{ active: item === area }}
-          href={`/${city}/areas/${areaToSlug(item)}`}
-        >
+       <a
+  class:list={{ active: areaToSlug(item) === areaSlug }}
+  href={`/${city}/areas/${areaToSlug(item)}`}
+>
           {labelize(item)}
         </a>
       ))}
@@ -1187,4 +1188,13 @@ if (window.google?.maps && document.getElementById("area-map")) {
       initPriceChart();
     });
   </script>
+  <style>
+  .area-browse-nav a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: 999px;
+    font-weight: 700;
+  }
+</style>
 </Layout>
