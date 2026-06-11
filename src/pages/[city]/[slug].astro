@@ -509,6 +509,9 @@ Because inventory can be limited in specialized property categories, new listing
 }
 
 const seo = buildSeoFallback(page);
+const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
+  ? String(page.hero_heading || "").slice(0, -1)
+  : String(page.hero_heading || "");
 ---
 
 <Layout
@@ -1686,7 +1689,7 @@ color: var(--accent) !important;
 >
   <div class="page-hero__inner">
 <p class="page-hero__eyebrow">{city.charAt(0).toUpperCase() + city.slice(1)} Intent Search</p>
-   <h1 set:html={`${String(page.hero_heading || "").replace(/\.$/, "")}<span style="color:${accentColor} !important">.</span>`} />
+   <h1 set:html={`${cleanHeroHeading}<span style="color:${accentColor} !important">.</span>`} />
 
   <p class="page-hero__copy">{page.intro_copy}</p>
 
