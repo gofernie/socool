@@ -102,7 +102,8 @@ const heroHeadingOverride = clean(form.get("hero_heading_override"));
 const seoTitleOverride = clean(form.get("seo_title_override"));
 const introCopyOverride = clean(form.get("intro_copy_override"));
 const metaDescriptionOverride = clean(form.get("meta_description_override"));  
-const sortOrder = Number(clean(form.get("sort_order"))) || 0;const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
+const defaultSort = clean(form.get("default_sort")) || "newest";
+const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
 const polygonGeojson = polygonGeojsonRaw
   ? JSON.parse(polygonGeojsonRaw)
   : null;
@@ -198,7 +199,7 @@ message = `A page with this URL already exists.||/${existingPage.city}/${existin
 intro_copy: introCopyOverride || introCopy,
 seo_title: seoTitleOverride || seoTitle,
 meta_description: metaDescriptionOverride || metaDescription,
-sort_order: sortOrder,
+default_sort: defaultSort,
 is_published: true,
   lifestyle_angle: pageType,
 polygon_geojson: polygonGeojson,
@@ -707,16 +708,17 @@ textarea:focus {
         </div>
 
         <div class="seo-box">
-  <label>Sort order</label>
-<input
-  type="number"
-  name="sort_order"
-  value="0"
-  placeholder="0"
-/>
+<label>Default sort</label>
+<select name="default_sort" id="defaultSortSelect">
+  <option value="newest">Newest listings first</option>
+  <option value="price-asc">Price: low to high</option>
+  <option value="price-desc">Price: high to low</option>
+  <option value="beds-desc">Most bedrooms first</option>
+  <option value="sqft-desc">Largest homes first</option>
+</select>
 
 <p class="hint">
-  Lower numbers can show first in navs, featured sections, or admin lists.
+  Controls the default listing order on this page.
 </p>
 
 <label>Page URL</label>
