@@ -524,20 +524,50 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
   },
 
  parksville: {
-    "parksville": "parksville",
-    "pa parksville": "parksville",
-    "errington/coombs/hilliers": "errington coombs hilliers",
-    "errington coombs hilliers": "errington coombs hilliers",
-    "french creek": "french creek",
-    "qualicum beach": "qualicum beach",
-    "qb qualicum beach": "qualicum beach",
-    "nanoose": "nanoose bay",
-    "nanoose bay": "nanoose bay",
-    "pa nanoose": "nanoose bay",
-    "pa nanoose bay": "nanoose bay",
-    "pa errington coombs hilliers": "errington coombs hilliers",
-    "pa french creek": "french creek"
-  },
+  "parksville": "pq parksville",
+  "pq parksville": "pq parksville",
+  "pa parksville": "pq parksville",
+
+  "bowser/deep bay": "pq bowser/deep bay",
+  "bowser deep bay": "pq bowser/deep bay",
+  "pq bowser/deep bay": "pq bowser/deep bay",
+  "pq bowser deep bay": "pq bowser/deep bay",
+  "deep bay": "pq bowser/deep bay",
+  "bowser": "pq bowser/deep bay",
+
+  "errington/coombs/hilliers": "pq errington/coombs/hilliers",
+  "errington coombs hilliers": "pq errington/coombs/hilliers",
+  "pq errington/coombs/hilliers": "pq errington/coombs/hilliers",
+  "pq errington coombs hilliers": "pq errington/coombs/hilliers",
+  "pa errington coombs hilliers": "pq errington/coombs/hilliers",
+  "errington": "pq errington/coombs/hilliers",
+  "coombs": "pq errington/coombs/hilliers",
+  "hilliers": "pq errington/coombs/hilliers",
+
+  "fairwinds": "pq fairwinds",
+  "pq fairwinds": "pq fairwinds",
+
+  "french creek": "pq french creek",
+  "pq french creek": "pq french creek",
+  "pa french creek": "pq french creek",
+
+  "little qualicum river village": "pq little qualicum river village",
+  "pq little qualicum river village": "pq little qualicum river village",
+
+  "nanoose": "pq nanoose",
+  "nanoose bay": "pq nanoose",
+  "pq nanoose": "pq nanoose",
+  "pq nanoose bay": "pq nanoose",
+  "pa nanoose": "pq nanoose",
+  "pa nanoose bay": "pq nanoose",
+
+  "qualicum beach": "pq qualicum beach",
+  "pq qualicum beach": "pq qualicum beach",
+  "qb qualicum beach": "pq qualicum beach",
+
+  "qualicum north": "pq qualicum north",
+  "pq qualicum north": "pq qualicum north",
+},
 
   "campbell river": {
     "cr campbell river central": "campbell river central",
