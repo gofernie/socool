@@ -23,3 +23,68 @@ const {
     </div>
   </section>
 )}
+
+<style>
+  .related-intents {
+    margin-top: 56px;
+    padding: 36px;
+    background: var(--surface);
+    border: 1px solid var(--line-warm);
+    border-radius: 24px;
+  }
+
+  .related-intents__head p {
+    margin: 0 0 10px;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .related-intents__head h2 {
+    margin: 0 0 24px;
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+
+  .related-intents__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .related-intent-card {
+    display: block;
+    padding: 20px;
+    border: 1px solid var(--line-warm);
+    border-radius: 18px;
+    background: var(--surface-soft);
+    text-decoration: none;
+  }
+
+  .related-intent-card h3 {
+    margin: 0 0 10px;
+    font-family: var(--serif);
+    font-size: 1.3rem;
+  }
+
+  .related-intent-card p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  @media (max-width: 900px) {
+    .related-intents {
+      margin: 36px 14px 0;
+      padding: 24px;
+    }
+
+    .related-intents__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
