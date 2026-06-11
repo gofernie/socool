@@ -786,9 +786,9 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   background: #fff;
 }
 
-  .price {
+   .price {
   margin-bottom: 6px;
-  padding-right: 0;
+  padding-right: 104px;
   font-size: 1.22rem;
   line-height: 1.15;
   font-weight: 800;
@@ -823,9 +823,50 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
     white-space: nowrap;
   }
 
-  .card-decision-badge[hidden] {
-    display: none;
-  }
+.card-decision-badge {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card-decision-badge[hidden] {
+  display: none;
+}
+
+.card-decision-badge.is-love {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.card-decision-badge.is-maybe {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.card-decision-badge.is-pass {
+  background: rgba(24, 22, 20, 0.08);
+  color: rgba(24, 22, 20, 0.56);
+}
+
+.card.is-passed {
+  opacity: 0.32;
+  filter: grayscale(0.55);
+}
+
+.card.is-passed:hover {
+  opacity: 0.65;
+}
 
   .intent-map {
     height: 62vh;
