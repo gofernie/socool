@@ -102,7 +102,7 @@ const heroHeadingOverride = clean(form.get("hero_heading_override"));
 const seoTitleOverride = clean(form.get("seo_title_override"));
 const introCopyOverride = clean(form.get("intro_copy_override"));
 const metaDescriptionOverride = clean(form.get("meta_description_override"));  
-const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
+const sortOrder = Number(clean(form.get("sort_order"))) || 0;const polygonGeojsonRaw = clean(form.get("polygon_geojson"));
 const polygonGeojson = polygonGeojsonRaw
   ? JSON.parse(polygonGeojsonRaw)
   : null;
@@ -198,6 +198,7 @@ message = `A page with this URL already exists.||/${existingPage.city}/${existin
 intro_copy: introCopyOverride || introCopy,
 seo_title: seoTitleOverride || seoTitle,
 meta_description: metaDescriptionOverride || metaDescription,
+sort_order: sortOrder,
 is_published: true,
   lifestyle_angle: pageType,
 polygon_geojson: polygonGeojson,
@@ -706,7 +707,19 @@ textarea:focus {
         </div>
 
         <div class="seo-box">
-  <label>Page URL</label>
+  <label>Sort order</label>
+<input
+  type="number"
+  name="sort_order"
+  value="0"
+  placeholder="0"
+/>
+
+<p class="hint">
+  Lower numbers can show first in navs, featured sections, or admin lists.
+</p>
+
+<label>Page URL</label>
   <input
   name="slug_override"
   id="slugOverrideInput"
