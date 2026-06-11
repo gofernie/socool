@@ -119,7 +119,21 @@ if (page.price_max) {
   query = query.lte("price", page.price_max);
 }
 
-if (page.requires_waterfront) {
+if (page.waterfront_type === "waterfront") {
+  query = query.eq("waterfront", true);
+}
+
+if (
+  page.waterfront_type &&
+  page.waterfront_type !== "waterfront"
+) {
+  query = query.eq(
+    "waterfront_type",
+    page.waterfront_type
+  );
+}
+
+if (!page.waterfront_type && page.requires_waterfront) {
   query = query.eq("waterfront", true);
 }
 
