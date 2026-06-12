@@ -33,6 +33,12 @@ function getListingId(listing: any) {
 }
 
 const CITY_FETCH_GROUPS: Record<string, string[]> = {
+ parksville: [
+  "Parksville",
+  "Nanoose Bay",
+  "Qualicum Beach"
+],
+
   duncan: [
     "Duncan",
     "Chemainus",
@@ -45,6 +51,7 @@ const CITY_FETCH_GROUPS: Record<string, string[]> = {
     "Saltair",
     "Youbou"
   ],
+
   colwood: [
     "Colwood"
   ]

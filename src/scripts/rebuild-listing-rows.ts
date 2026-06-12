@@ -333,9 +333,133 @@ const BUILDING_ALIASES: Record<string, string> = {
   "the met": "north nanaimo",
   "dover condos": "north nanaimo",
   "dover condominiums": "north nanaimo",
-  "dover view estates": "north nanaimo",
+   "dover view estates": "north nanaimo",
   "winchelsea": "north nanaimo",
-  "rocklands at rutherford": "north nanaimo"
+  "rocklands at rutherford": "north nanaimo",
+
+  // Parksville / Oceanside complexes
+  "craig bay": "pq nanoose",
+  "craig bay-arbutus grove": "pq nanoose",
+
+  "fairwinds": "pq fairwinds",
+
+  "morningstar ridge": "pq french creek",
+  "morningstar": "pq french creek",
+  "columbia beach": "pq french creek",
+
+  "sunrise ridge": "pq parksville",
+  "sunrise ridge resort": "pq parksville",
+  "sunrise ridge resorts": "pq parksville",
+  "sunrise ridge waterfront resort": "pq parksville",
+
+  "the beach club": "pq parksville",
+  "beach club": "pq parksville",
+  "beach club resort": "pq parksville",
+  "the beach club residences": "pq parksville",
+  "residences at the beach club": "pq parksville",
+
+  "mosaic": "pq parksville",
+  "mosaic ii": "pq parksville",
+
+  "windsor court": "pq parksville",
+  "the pacific grande": "pq parksville",
+
+   "oceanside village resort": "pq french creek",
+  "ocean sands": "pq french creek",
+  "ocean sands resort": "pq french creek",
+
+  "spider lake springs resort": "pq qualicum north",
+  "qualicum river estates": "pq qualicum north",
+  "horne lake": "pq qualicum north",
+  "horne lake community": "pq qualicum north",
+  "horne lake caves road": "pq qualicum north",
+
+  "qualicum landing": "pq qualicum beach",
+  "qualicum college heights": "pq qualicum beach",
+  "qualicum place": "pq qualicum beach",
+
+  "lqrv": "pq little qualicum river village",
+
+  "beachcomber": "pq nanoose",
+  "pacific shores nature resort": "pq nanoose",
+  "craig creek estates": "pq nanoose",
+  "wall beach": "pq nanoose",
+  "shorewater": "pq nanoose",
+  "schooner house": "pq nanoose",
+  "schooner ridge": "pq nanoose",
+  "schooner bay manufactured home park": "pq nanoose",
+
+  "baywater estates": "pq qualicum beach",
+  "shelter ridge": "pq qualicum beach",
+  "gracewood": "pq qualicum beach",
+  "the westerly": "pq qualicum beach",
+  "the bluffs": "pq qualicum beach",
+  "eaglewood": "pq qualicum beach",
+  "cameron beach": "pq qualicum beach",
+  "eaglecrest": "pq qualicum beach",
+  "the cedars": "pq qualicum beach",
+
+  "wembley crossing": "pq parksville",
+  "whembley crossing": "pq parksville",
+  "wembley place": "pq parksville",
+  "laurel park": "pq parksville",
+  "riverbend townhomes": "pq parksville",
+  "the meadows": "pq parksville",
+  "meadows": "pq parksville",
+  "parksville mobile home park": "pq parksville",
+  "aurora mobile home park": "pq parksville",
+  "aurora estates": "pq parksville",
+  "cedarwood way": "pq parksville",
+
+  "tanglewood": "pq parksville",
+  "shellybrook park": "pq parksville",
+  "emerald estates": "pq parksville",
+    "tulip ave duplex": "pq parksville",
+
+  "the willows": "pq parksville",
+  "chelsea court": "pq parksville",
+  "parklane place": "pq parksville",
+  "the onyx": "pq parksville",
+  "the 180": "pq parksville",
+  "100 lombardy": "pq parksville",
+  "st. andrew's lane": "pq parksville",
+  "azalea terrace": "pq parksville",
+
+  "oceanside": "pq nanoose",
+  "oceanside subdivision": "pq nanoose",
+  "oceanwood gardens": "pq nanoose",
+  "ocean trails": "pq nanoose",
+  "seaside village": "pq nanoose",
+  "pebble beach": "pq nanoose",
+  "bayside village": "pq nanoose",
+
+  "rockcliffe park": "pq qualicum beach",
+  "oak point estates": "pq qualicum beach",
+  "parkwood place": "pq qualicum beach",
+  "parkwood": "pq qualicum beach",
+  "villa rose": "pq qualicum beach",
+  "villa lila": "pq qualicum beach",
+  "shoreline": "pq qualicum beach",
+  "glen eagle": "pq qualicum beach",
+  "evergreens": "pq qualicum beach",
+
+  "river edge": "pq little qualicum river village",
+
+    "aerie estates": "pq qualicum north",
+  "chinook park": "pq qualicum north",
+  "ermineskin": "pq qualicum north",
+  "upland properties in dashwood": "pq qualicum north",
+
+  "uplands": "pq qualicum beach",
+  "ashleigh manor": "pq parksville",
+  "ocean park gardens": "pq parksville",
+  "eyres estates": "pq parksville",
+  "bridgewater lane": "pq parksville",
+  "avista place": "pq parksville",
+  "fern tree place": "pq parksville",
+
+  "west ridge": "pq qualicum beach",
+  "coach house": "pq qualicum beach"
 };
 
 const getBuildingName = (listing: any) => {
@@ -561,9 +685,10 @@ const AREA_ALIASES: Record<string, Record<string, string>> = {
   "pa nanoose": "pq nanoose",
   "pa nanoose bay": "pq nanoose",
 
-  "qualicum beach": "pq qualicum beach",
-  "pq qualicum beach": "pq qualicum beach",
-  "qb qualicum beach": "pq qualicum beach",
+ "qualicum beach": "pq qualicum beach",
+"qualicum beach town of": "pq qualicum beach",
+"pq qualicum beach": "pq qualicum beach",
+"qb qualicum beach": "pq qualicum beach",
 
   "qualicum north": "pq qualicum north",
   "pq qualicum north": "pq qualicum north",
@@ -897,6 +1022,12 @@ const run = async () => {
       const city = snapshotCity || getCity(listing, snapshot);
       const rawCity = clean(city);
 
+const PARKSVILLE_MARKET_CITIES = new Set([
+  "parksville",
+  "nanoose bay",
+  "qualicum beach"
+]);
+
 const DUNCAN_MARKET_CITIES = new Set([
   "duncan",
   "chemainus",
@@ -912,9 +1043,12 @@ const DUNCAN_MARKET_CITIES = new Set([
   "youbou"
 ]);
 
-const normalized_city = DUNCAN_MARKET_CITIES.has(rawCity)
-  ? "duncan"
-  : clean(rawCity);
+const normalized_city =
+  PARKSVILLE_MARKET_CITIES.has(rawCity)
+    ? "parksville"
+    : DUNCAN_MARKET_CITIES.has(rawCity)
+      ? "duncan"
+      : clean(rawCity);
       const normalized_type = normalizeType(listing);
      // Skip commercial completely
 if (
