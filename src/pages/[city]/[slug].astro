@@ -1729,11 +1729,23 @@ color: var(--accent) !important;
   <option value="1100-plus">$1.1M+</option>
 </select>
 
-<select class="type-filter-select" aria-label="Filter by property type">
-  <option value="all">Any Type</option>
-  {propertyTypes.map((type) => (
-    <option value={type}>{titleCase(type)}</option>
-  ))}
+{
+  !normalizedPropertyType && (
+    <select class="type-filter-select" aria-label="Filter by property type">
+      <option value="all">Any Type</option>
+      {propertyTypes.map((type) => (
+        <option value={type}>{titleCase(type)}</option>
+      ))}
+    </select>
+  )
+}
+
+<select class="beds-filter-select" aria-label="Filter by beds">
+  <option value="all">Any beds</option>
+  <option value="1">1+ bed</option>
+  <option value="2">2+ beds</option>
+  <option value="3">3+ beds</option>
+  <option value="4">4+ beds</option>
 </select>
 
 <select class="sort-filter-select" aria-label="Sort listings">
@@ -1743,14 +1755,6 @@ color: var(--accent) !important;
   <option value="beds-desc" selected={page.default_sort === "beds-desc"}>Most bedrooms first</option>
   <option value="sqft-desc" selected={page.default_sort === "sqft-desc"}>Largest homes first</option>
 </select>
-
-      <select class="beds-filter-select" aria-label="Filter by beds">
-        <option value="all">Any beds</option>
-        <option value="1">1+ bed</option>
-        <option value="2">2+ beds</option>
-        <option value="3">3+ beds</option>
-        <option value="4">4+ beds</option>
-      </select>
     </section>
   </div>
 </nav>

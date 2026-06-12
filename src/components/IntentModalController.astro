@@ -1171,17 +1171,23 @@ sheetMapBtn?.addEventListener("click", async () => {
     sheetImageStage.classList.add("is-hidden");
   }
 
-  sheetMiniMap.hidden = false;
-  sheetMiniMap.style.display = "block";
+sheetMiniMap.hidden = false;
+sheetMiniMap.style.display = "block";
+sheetMiniMap.style.height = "430px";
+sheetMiniMap.style.minHeight = "430px";
+sheetMiniMap.style.width = "100%";
 
-  if (sheetMapBtn) {
-    sheetMapBtn.textContent = "Pictures";
-  }
+if (sheetMapBtn) {
+  sheetMapBtn.textContent = "Pictures";
+}
 
- try {
-    await loadGoogleMaps();
+try {
+  await loadGoogleMaps();
 
-    sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 120));
+
+  sheetMiniMapInstance = new google.maps.Map(sheetMiniMap, {
       center: point,
       zoom: 15,
       mapTypeControl: false,
@@ -1195,10 +1201,11 @@ sheetMapBtn?.addEventListener("click", async () => {
       title: activeCard.dataset.address || "Listing",
     });
 
-    window.setTimeout(() => {
-      google.maps.event.trigger(sheetMiniMapInstance, "resize");
-      sheetMiniMapInstance.setCenter(point);
-    }, 120);
+  window.setTimeout(() => {
+  google.maps.event.trigger(sheetMiniMapInstance, "resize");
+  sheetMiniMapInstance.setCenter(point);
+  sheetMiniMapInstance.setZoom(15);
+}, 350);
 } catch (error) {
     console.error("Map failed to load:", error);
 

@@ -51,7 +51,7 @@ const areaAliases =
     : [area];
 
 const areaHeroImages = {
-  "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
+"university district": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1800&q=80",  "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
   "departure bay": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80",
   "hammond bay": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1800&q=80",
   "old city": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1800&q=80",
@@ -583,7 +583,7 @@ const chartData = {
  <nav class="area-browse-nav">
     <div class="shell area-browse-nav__inner">
      <span>Explore more {cityLabel} areas</span>
-      {areas.slice(0, 5).map((item) => (
+      {areas.slice(0, 3).map((item) => (
         
        <a
   class:list={{ active: areaToSlug(item) === areaSlug }}
@@ -598,8 +598,8 @@ const chartData = {
           id="area-nav-select"
           onchange="if(this.value) window.location.href=this.value;"
         >
-          <option value="">+{areas.length - 5} more areas</option>
-          {areas.slice(5).map((item) => (
+          <option value="">Browse all areas</option>
+          {areas.slice(3).map((item) => (
             <option
               value={`/${city}/areas/${areaToSlug(item)}`}
               selected={item === area}
@@ -613,6 +613,13 @@ const chartData = {
   </nav>
 
 <main class="shell">
+
+    <section class="area-context-intro">
+      <p>
+        {labelize(area)} offers a practical mix of homes, condos, townhomes, services,
+        schools, and nearby routes for buyers comparing lifestyle, price, and long-term value.
+      </p>
+    </section>
 
     <section class="area-stats">
       <a class="stat-card stat-card-link" href="#" data-filter-type="all">

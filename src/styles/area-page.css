@@ -96,22 +96,24 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 15px;
   border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--muted);
   font-size: 0.84rem;
-  font-weight: 500;
+  font-weight: 750;
   line-height: 1;
   text-decoration: none;
 }
 
 .area-browse-nav__inner a:hover,
 .area-browse-nav__inner a.active {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 10%, white);
   color: var(--ink);
-  font-weight: 500;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  font-weight: 750;
+  box-shadow: none;
 }
 
 /* ── Stats ── */
@@ -125,8 +127,8 @@ p {
 .stat-card {
   padding: 16px;
   border-radius: 16px;
-  background: transparent;
-  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.42);
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
 }
 
 .stat-card-link {
@@ -306,7 +308,7 @@ p {
 /* ── Listing grid ── */
 .listing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 18px;
 }
 
@@ -641,6 +643,7 @@ p {
   text-decoration: none;
 }
 
+
 /* ── Responsive ── */
 @media (max-width: 1100px) {
   .shell { width: calc(100% - 60px); }
@@ -805,4 +808,58 @@ p {
 .area-view-toggle .view-btn.active {
   background: var(--accent);
   color: #fff;
+}
+
+.area-context-intro {
+  max-width: 860px;
+  margin: 0 0 24px;
+}
+
+.area-context-intro p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+@media (max-width: 768px) {
+  .area-browse-nav__inner > a {
+    display: none;
+  }
+
+  #area-nav-select {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .area-browse-nav__inner {
+    padding-top: 16px !important;
+    padding-bottom: 18px !important;
+    align-items: flex-start;
+  }
+
+  .area-browse-nav__inner span {
+    display: block;
+    width: 100%;
+    margin: 0 0 10px;
+  }
+
+  #area-nav-select {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .area-browse-nav .area-browse-nav__inner {
+    padding-top: 20px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .area-browse-nav__inner span {
+    margin-bottom: 12px;
+  }
 }

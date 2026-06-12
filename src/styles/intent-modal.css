@@ -2800,3 +2800,79 @@ body.edit-mode .agent-edit-grid {
 .panel__content.no-scroll-hint::after {
   display: none;
 }
+
+.panel__content.has-scroll-hint::after {
+  content: "Scroll for more ↓";
+  animation: scrollHintPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes scrollHintPulse {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.photo-nav {
+  width: 52px;
+  height: 52px;
+  font-size: 2rem;
+  font-weight: 900;
+  border-width: 2px;
+}
+
+.photo-nav--prev {
+  left: 18px;
+}
+
+.photo-nav--next {
+  right: 18px;
+}
+
+@media (max-width: 640px) {
+  .photo-nav {
+    width: 46px;
+    height: 46px;
+    font-size: 1.75rem;
+  }
+
+  .photo-nav--prev {
+    left: 12px;
+  }
+
+  .photo-nav--next {
+    right: 12px;
+  }
+}
+
+.photo-nav {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.photo-nav {
+  font-size: 0;
+}
+
+.photo-nav::before {
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.photo-nav--prev::before {
+  content: "‹";
+}
+
+.photo-nav--next::before {
+  content: "›";
+}
