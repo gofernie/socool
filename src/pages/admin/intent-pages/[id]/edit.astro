@@ -53,6 +53,7 @@ if (Astro.request.method === "POST") {
 default_sort: clean(form.get("default_sort")) || "newest",
 lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
       is_published: form.get("is_published") === "on",
+show_in_nav: form.get("show_in_nav") === "on",
     })
     .eq("id", id);
 
@@ -530,6 +531,19 @@ select {
             <span>This page will be publicly visible.</span>
           </div>
         </label>
+
+        <label class="publish-row" style="margin-top: 16px;">
+  <input
+    type="checkbox"
+    name="show_in_nav"
+    checked={page.show_in_nav === true}
+  />
+
+  <div>
+    Show in main nav
+    <span>This page will appear in the top navigation.</span>
+  </div>
+</label>
 
         <div class="actions">
           <button type="submit">Save changes</button>
