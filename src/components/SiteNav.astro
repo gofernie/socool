@@ -8,6 +8,7 @@ const {
   city = "nanaimo",
   areas = [],
   types = [],
+  intentPages = [],
   showAreaNav = false,
 } = Astro.props;
 
@@ -67,6 +68,21 @@ const typeLinks: NavItem[] = types.slice(0, 5).map((type: string) => {
     href: `/${slugify(city)}-${typePageSlug}`,
   };
 });
+
+const intentLinks: NavItem[] = intentPages.slice(0, 6).map((page: any) => ({
+  label:
+    page.nav_label ||
+    page.card_title ||
+    page.hero_heading ||
+    page.seo_heading ||
+    page.lifestyle_angle ||
+    page.slug
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (char: string) => char.toUpperCase()),
+  href: `/${slugify(city)}/${page.slug}`,
+}));
+
+const finalNavLinks: NavItem[] = intentLinks.length > 0 ? intentLinks : typeLinks;
 ---
 
 <nav class="site-nav">
@@ -93,18 +109,11 @@ const typeLinks: NavItem[] = types.slice(0, 5).map((type: string) => {
         Areas
       </a>
 
-      <a
-        class:list={{ active: isActive(`/${slugify(city)}-homes`) }}
-        href={`/${slugify(city)}-homes`}
-      >
-        Homes
-      </a>
-
-      {typeLinks.map((item) => (
-        <a class:list={{ active: isActive(item.href) }} href={item.href}>
-          {item.label}
-        </a>
-      ))}
+   {finalNavLinks.map((item) => (
+  <a class:list={{ active: isActive(item.href) }} href={item.href}>
+    {item.label}
+  </a>
+))}
     </div>
   </div>
 </nav>

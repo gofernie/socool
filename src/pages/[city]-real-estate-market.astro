@@ -232,6 +232,15 @@ const chartData = {
   areaCounts: topAreas.map(([, count]) => count),
 };
 
+const { data: navIntentPages = [] } = await supabase
+  .from("intent_pages")
+  .select("slug, hero_heading, seo_heading, lifestyle_angle, property_type, sort_order, show_in_nav")
+  .eq("city", city)
+  .eq("status", "published")
+  .eq("show_in_nav", true)
+  .order("sort_order", { ascending: true })
+  .order("created_at", { ascending: false });
+console.log("NAV INTENT PAGES", navIntentPages);
 
 ---
 {console.log("LAYOUT ACCENT", {
@@ -245,8 +254,13 @@ const chartData = {
   
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <SiteNav city={city} areas={navAreas} types={navTypes} showAreaNav={false} />
-
+<SiteNav
+  city={city}
+  areas={navAreas}
+  types={navTypes}
+  intentPages={navIntentPages}
+  showAreaNav={false}
+/>
   <!-- ── Hero ── -->
  <header
   class="page-hero"
