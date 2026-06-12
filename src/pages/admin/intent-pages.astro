@@ -378,8 +378,19 @@ function publicHref(page: any) {
 }
 
 .drag-handle {
-  color: var(--muted);
-  font-weight: 900;
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  gap: 4px 5px;
+  width: 14px;
+  flex: 0 0 14px;
+  cursor: grab;
+}
+
+.drag-handle span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(24, 22, 20, 0.42);
 }
     </style>
   </head>
@@ -440,7 +451,11 @@ function publicHref(page: any) {
           draggable="true"
           data-id={page.id}
         >
-          <span class="drag-handle">☰</span>
+          <span class="drag-handle" aria-hidden="true">
+  <span></span><span></span>
+  <span></span><span></span>
+  <span></span><span></span>
+</span>
           <span>
             {page.nav_label ||
               page.hero_heading ||
