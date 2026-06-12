@@ -450,7 +450,7 @@ sheet.classList.toggle(
 );
 
 if (sheetEngage) {
-  sheetEngage.hidden = card.dataset.decision !== "love";
+  sheetEngage.hidden = false;
 }
 if (card.classList.contains("refined-card")) {
   refinedBrowseCount += 1;
@@ -1091,7 +1091,7 @@ updateCardDecisionBadge(activeCard);
 );
 
 if (sheetEngage) {
-  sheetEngage.hidden = decision !== "love";
+  sheetEngage.hidden = false;
 }
 
   if (feedback) {
