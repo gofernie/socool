@@ -347,6 +347,40 @@ function publicHref(page: any) {
         .topbar { flex-direction: column; align-items: flex-start; }
         .grid { grid-template-columns: 1fr; }
       }
+
+      .nav-sort-card {
+  margin-bottom: 24px;
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.nav-sort-card h2 {
+  margin-bottom: 6px;
+}
+
+.nav-sort-card p {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.nav-sort-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: move;
+}
+
+.drag-handle {
+  color: var(--muted);
+  font-weight: 900;
+}
     </style>
   </head>
 
@@ -389,6 +423,41 @@ function publicHref(page: any) {
       </div>
 
       {error && <p class="error">{error.message}</p>}
+
+<section class="nav-sort-card">
+  <h2>Navigation Order</h2>
+  <p>
+    Drag pages to control the order shown in the site navigation.
+  </p>
+
+  <div id="nav-sort-list">
+    {(pages || [])
+      .filter((page) => page.show_in_nav)
+      .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+      .map((page) => (
+        <div
+          class="nav-sort-item"
+          draggable="true"
+          data-id={page.id}
+        >
+          <span class="drag-handle">☰</span>
+          <span>
+            {page.nav_label ||
+              page.hero_heading ||
+              titleCase(page.slug)}
+          </span>
+        </div>
+      ))}
+  </div>
+
+  <button
+    type="button"
+    class="btn btn--primary"
+    id="save-nav-order"
+  >
+    Save Nav Order
+  </button>
+</section>
 
       {!pages?.length && (
         <div class="empty">
@@ -453,5 +522,56 @@ function publicHref(page: any) {
       </section>
      </main>
   </div>
+  <script>
+  const list = document.getElementById("nav-sort-list");
+  const saveBtn = document.getElementById("save-nav-order");
+
+  let draggedItem = null;
+
+  list?.addEventListener("dragstart", (event) => {
+    draggedItem = event.target.closest(".nav-sort-item");
+    event.dataTransfer.effectAllowed = "move";
+  });
+
+  list?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+
+    const target = event.target.closest(".nav-sort-item");
+    if (!target || target === draggedItem) return;
+
+    const rect = target.getBoundingClientRect();
+    const shouldInsertAfter = event.clientY > rect.top + rect.height / 2;
+
+    list.insertBefore(
+      draggedItem,
+      shouldInsertAfter ? target.nextSibling : target
+    );
+  });
+
+  saveBtn?.addEventListener("click", async () => {
+    const items = Array.from(document.querySelectorAll(".nav-sort-item")).map(
+      (item, index) => ({
+        id: item.dataset.id,
+        sort_order: index + 1,
+      })
+    );
+
+    saveBtn.textContent = "Saving...";
+
+    const response = await fetch("/api/admin/save-nav-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ items }),
+    });
+
+    saveBtn.textContent = response.ok ? "Saved!" : "Save failed";
+
+    setTimeout(() => {
+      saveBtn.textContent = "Save Nav Order";
+    }, 1200);
+  });
+</script>
 </body>
 </html>
