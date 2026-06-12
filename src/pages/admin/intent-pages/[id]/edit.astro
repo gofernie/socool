@@ -55,6 +55,7 @@ default_sort: clean(form.get("default_sort")) || "newest",
 lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
       is_published: form.get("is_published") === "on",
 show_in_nav: form.get("show_in_nav") === "on",
+sort_order: form.get("sort_order") ? Number(form.get("sort_order")) : 999,
     })
     .eq("id", id);
 
@@ -493,6 +494,16 @@ select {
     name="nav_label"
     value={page.nav_label || ""}
     placeholder="Ocean View, Downsizers, Suites..."
+  />
+</div>
+
+<div class="field">
+  <label>Nav sort order</label>
+  <input
+    name="sort_order"
+    type="number"
+    value={page.sort_order ?? 999}
+    placeholder="1"
   />
 </div>
 
