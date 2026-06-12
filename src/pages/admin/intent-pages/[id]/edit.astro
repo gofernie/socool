@@ -48,7 +48,8 @@ if (Astro.request.method === "POST") {
       price_min: form.get("price_min") ? Number(form.get("price_min")) : null,
       price_max: form.get("price_max") ? Number(form.get("price_max")) : null,
       hero_heading: clean(form.get("hero_heading")),
-      intro_copy: clean(form.get("intro_copy")),
+nav_label: clean(form.get("nav_label")) || null,
+intro_copy: clean(form.get("intro_copy")),
       seo_title: clean(form.get("seo_title")),
 default_sort: clean(form.get("default_sort")) || "newest",
 lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
@@ -482,9 +483,18 @@ select {
         </div>
 
         <div class="field">
-          <label>Hero heading</label>
-          <input name="hero_heading" value={page.hero_heading || ""} required />
-        </div>
+  <label>Hero heading</label>
+  <input name="hero_heading" value={page.hero_heading || ""} required />
+</div>
+
+<div class="field">
+  <label>Nav label</label>
+  <input
+    name="nav_label"
+    value={page.nav_label || ""}
+    placeholder="Ocean View, Downsizers, Suites..."
+  />
+</div>
 
         <div class="field">
           <label>Intro copy</label>
