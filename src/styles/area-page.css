@@ -125,8 +125,8 @@ p {
 .stat-card {
   padding: 16px;
   border-radius: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--line-warm);
+  background: transparent;
+  border: 1px solid var(--line);
 }
 
 .stat-card-link {

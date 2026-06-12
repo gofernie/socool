@@ -2767,3 +2767,36 @@ body.edit-mode .agent-edit-grid {
 #preview-sheet .panel__meta .panel__meta-item:nth-child(3)::before {
   content: "▢" !important;
 }
+
+.panel__content {
+  position: relative;
+  overflow-y: auto;
+}
+
+.panel__content.has-scroll-hint::after {
+  content: "Scroll for details ↓";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  margin-top: -58px;
+  padding: 42px 16px 14px;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(20, 18, 16, 0.72);
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0.92) 48%,
+    rgba(255,255,255,1)
+  );
+  pointer-events: none;
+  z-index: 30;
+}
+
+.panel__content.is-near-bottom::after,
+.panel__content.no-scroll-hint::after {
+  display: none;
+}

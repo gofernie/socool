@@ -134,6 +134,20 @@ if (!likeTagsEl) {
         const photoPrevBtn = document.getElementById("photo-prev-btn");
         const photoNextBtn = document.getElementById("photo-next-btn");
 
+function updateSheetScrollHint() {
+  if (!sheetContent) return;
+
+  const canScroll = sheetContent.scrollHeight > sheetContent.clientHeight + 80;
+  const nearBottom =
+    sheetContent.scrollTop + sheetContent.clientHeight >= sheetContent.scrollHeight - 90;
+
+  sheetContent.classList.toggle("no-scroll-hint", !canScroll);
+  sheetContent.classList.toggle("is-near-bottom", nearBottom);
+}
+
+sheetContent?.addEventListener("scroll", updateSheetScrollHint);
+window.addEventListener("resize", updateSheetScrollHint);
+
         let activePhotoUrls = [];
         let activePhotoIndex = 0;
         let photoSwipeStartX = 0;
@@ -453,6 +467,9 @@ if (sheetImageStage) {
 if (sheetMapBtn) {
   sheetMapBtn.textContent = "Map";
 }
+
+sheetContent.scrollTop = 0;
+setTimeout(updateSheetScrollHint, 80);
         }
 function updateCardDecisionBadge(card) {
   if (!card) return;

@@ -612,7 +612,7 @@ const chartData = {
     </div>
   </nav>
 
-  <main class="shell">
+<main class="shell">
 
     <section class="area-stats">
       <a class="stat-card stat-card-link" href="#" data-filter-type="all">
@@ -639,40 +639,6 @@ const chartData = {
         <strong>{townhomeCount}</strong>
         <span>Townhomes</span>
       </a>
-    </section>
-
-    <section class="market-row" id="area-insights">
-      <article class="market-snapshot">
-        <span class="eyebrow">MARKET TAKEAWAY</span>
-        <h2>{labelize(area)} at a glance</h2>
-        <p class="market-takeaway">
-          {housePercent >= 65
-            ? `${labelize(area)} is strongly detached-home oriented, with houses making up about ${housePercent}% of active inventory.`
-            : condoPercent >= 35
-              ? `${labelize(area)} offers a more mixed market, with condos making up about ${condoPercent}% of current inventory.`
-              : `${labelize(area)} has a balanced mix of homes, condos, and townhomes for buyers to compare.`}
-        </p>
-        <ul class="market-points">
-          <li>{listings.length} active listings give buyers a current read on available inventory.</li>
-          <li>{housePercent}% of listings are houses, {condoPercent}% are condos, and {townhomePercent}% are townhomes.</li>
-          <li>The median price is ${medianPrice.toLocaleString()}, which is often the cleanest quick read on typical pricing.</li>
-          <li>
-            {condoCount === 0
-              ? "Condo inventory is very limited here, so low-maintenance buyers may need to compare nearby areas."
-              : "Buyers should compare property type, condition, location, layout, and long-term resale before judging value."}
-          </li>
-        </ul>
-      </article>
-
-      <section class="chart-card">
-        <div>
-          <span class="eyebrow">PRICE DISTRIBUTION</span>
-          <h2>Where {labelize(area)} Inventory Sits by Price</h2>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="priceChart"></canvas>
-        </div>
-      </section>
     </section>
 
     <section class="filter-bar">
@@ -741,6 +707,43 @@ const chartData = {
         Show all {listings.length} listings
       </button>
     </div>
+
+    
+
+    <section class="market-row" id="area-insights">
+      <article class="market-snapshot">
+        <span class="eyebrow">MARKET TAKEAWAY</span>
+        <h2>{labelize(area)} at a glance</h2>
+        <p class="market-takeaway">
+          {housePercent >= 65
+            ? `${labelize(area)} is strongly detached-home oriented, with houses making up about ${housePercent}% of active inventory.`
+            : condoPercent >= 35
+              ? `${labelize(area)} offers a more mixed market, with condos making up about ${condoPercent}% of current inventory.`
+              : `${labelize(area)} has a balanced mix of homes, condos, and townhomes for buyers to compare.`}
+        </p>
+        <ul class="market-points">
+          <li>{listings.length} active listings give buyers a current read on available inventory.</li>
+          <li>{housePercent}% of listings are houses, {condoPercent}% are condos, and {townhomePercent}% are townhomes.</li>
+          <li>The median price is ${medianPrice.toLocaleString()}, which is often the cleanest quick read on typical pricing.</li>
+          <li>
+            {condoCount === 0
+              ? "Condo inventory is very limited here, so low-maintenance buyers may need to compare nearby areas."
+              : "Buyers should compare property type, condition, location, layout, and long-term resale before judging value."}
+          </li>
+        </ul><main class="shell">
+      </article>
+
+      <section class="chart-card">
+        <div>
+          <span class="eyebrow">PRICE DISTRIBUTION</span>
+          <h2>Where {labelize(area)} Inventory Sits by Price</h2>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </section>
+    </section>
+
 
     <section class="area-extra">
       <div class="living-card">
@@ -973,7 +976,11 @@ if (showAllButton) {
           sessionStorage.setItem("area_page_scroll_y", String(window.scrollY));
         });
       });
-
+areaFilter?.addEventListener("change", () => {
+  if (areaFilter.value) {
+    window.location.href = areaFilter.value;
+  }
+});
       sortFilter?.addEventListener("change", applyFilters);
       typeFilter?.addEventListener("change", () => {
         if (priceFilter) priceFilter.value = "all";

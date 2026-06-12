@@ -307,82 +307,82 @@ const chartData = {
   </div>
 </section>
 
-    <!-- ── Stats ── -->
-    <section class="area-stats">
-      <div class="stat-card">
-        <strong>{activeListings}</strong>
-        <span>Active Listings</span>
-      </div>
-      <div class="stat-card">
-        <strong>${avgPrice.toLocaleString()}</strong>
-        <span>Average Price</span>
-      </div>
-      <div class="stat-card">
-        <strong>${medianPrice.toLocaleString()}</strong>
-        <span>Median Price</span>
-      </div>
-      <div class="stat-card">
-        <strong>{houseCount}</strong>
-        <span>Houses</span>
-      </div>
-      <div class="stat-card">
-        <strong>{condoCount}</strong>
-        <span>Condos</span>
-      </div>
-      <div class="stat-card">
-        <strong>{townhomeCount}</strong>
-        <span>Townhomes</span>
-      </div>
-    </section>
+   <!-- ── Latest listings ── -->
+<section class="listings-section">
+  <div class="section-heading" style="margin-bottom: 24px;">
+    <span class="eyebrow">Latest Listings</span>
+    <h2>Newest {cityLabel} Listings</h2>
+    <p>
+      A quick look at some of the newest active listings currently available
+      across {cityLabel}.
+    </p>
+  </div>
 
-    <!-- ── Charts ── -->
-    <section class="market-row">
-      <section class="chart-card">
-        <div>
-          <span class="eyebrow">Price Distribution</span>
-          <h2>Where {cityLabel} Inventory Sits by Price</h2>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="priceChart"></canvas>
-        </div>
-      </section>
-
-      <section class="chart-card">
-        <div>
-          <span class="eyebrow">Area Activity</span>
-          <h2>Top Areas by Listing Count</h2>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="areaChart"></canvas>
-        </div>
-      </section>
-    </section>
-
-    <!-- ── Latest listings ── -->
-    <section class="listings-section">
-      <div class="section-heading" style="margin-bottom: 24px;">
-        <span class="eyebrow">Latest Listings</span>
-       <h2>Newest {cityLabel} Listings</h2>
-<p>
-  A quick look at some of the newest active listings currently available
-  across {cityLabel}.
-</p>
+  <div class="listing-grid">
+    {listings.map((listing) => (
+      <div
+        class="listing-card-wrap"
+        data-type={listing.normalized_type || ""}
+        data-price={listing.price || 0}
+        data-beds={listing.beds || 0}
+        data-listed={listing.listed_at || ""}
+      >
+        <ListingCard listing={listing} image={getListingImage(listing)} />
       </div>
+    ))}
+  </div>
+</section>
 
-      <div class="listing-grid">
-        {listings.map((listing) => (
-          <div
-            class="listing-card-wrap"
-            data-type={listing.normalized_type || ""}
-            data-price={listing.price || 0}
-            data-beds={listing.beds || 0}
-            data-listed={listing.listed_at || ""}
-          >
-            <ListingCard listing={listing} image={getListingImage(listing)} />
-          </div>
-        ))}
-      </div>
-    </section>
+<!-- ── Stats ── -->
+<section class="area-stats">
+  <div class="stat-card">
+    <strong>{activeListings}</strong>
+    <span>Active Listings</span>
+  </div>
+  <div class="stat-card">
+    <strong>${avgPrice.toLocaleString()}</strong>
+    <span>Average Price</span>
+  </div>
+  <div class="stat-card">
+    <strong>${medianPrice.toLocaleString()}</strong>
+    <span>Median Price</span>
+  </div>
+  <div class="stat-card">
+    <strong>{houseCount}</strong>
+    <span>Houses</span>
+  </div>
+  <div class="stat-card">
+    <strong>{condoCount}</strong>
+    <span>Condos</span>
+  </div>
+  <div class="stat-card">
+    <strong>{townhomeCount}</strong>
+    <span>Townhomes</span>
+  </div>
+</section>
+
+<!-- ── Charts ── -->
+<section class="market-row">
+  <section class="chart-card">
+    <div>
+      <span class="eyebrow">Price Distribution</span>
+      <h2>Where {cityLabel} Inventory Sits by Price</h2>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </section>
+
+  <section class="chart-card">
+    <div>
+      <span class="eyebrow">Area Activity</span>
+      <h2>Top Areas by Listing Count</h2>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="areaChart"></canvas>
+    </div>
+  </section>
+</section>
 
     <!-- ── Intent interrupter ── -->
     <section class="intent-interrupter">
@@ -721,23 +721,23 @@ home searches.
 }
 
 .area-pick-card:nth-child(6n+2) {
-  background: color-mix(in srgb, var(--accent) 10%, white);
-}
-
-.area-pick-card:nth-child(6n+3) {
-  background: color-mix(in srgb, var(--accent) 14%, white);
-}
-
-.area-pick-card:nth-child(6n+4) {
   background: color-mix(in srgb, var(--accent) 8%, white);
 }
 
+.area-pick-card:nth-child(6n+3) {
+  background: color-mix(in srgb, var(--accent) 10%, white);
+}
+
+.area-pick-card:nth-child(6n+4) {
+  background: color-mix(in srgb, var(--accent) 7%, white);
+}
+
 .area-pick-card:nth-child(6n+5) {
-  background: color-mix(in srgb, var(--accent) 12%, white);
+  background: color-mix(in srgb, var(--accent) 9%, white);
 }
 
 .area-pick-card:nth-child(6n) {
-  background: color-mix(in srgb, var(--accent) 16%, white);
+  background: color-mix(in srgb, var(--accent) 11%, white);
 }
 
 .area-pick-card strong {
@@ -768,7 +768,7 @@ home searches.
 .area-pick-card:hover {
   transform: translateY(-3px);
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 22%, white);
+  background: color-mix(in srgb, var(--accent) 12%, white);
   box-shadow: 0 16px 36px rgba(28, 25, 23, 0.09);
 }
 </style>
