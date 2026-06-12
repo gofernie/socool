@@ -9,6 +9,7 @@ import { getSite } from "../lib/getSite";
 import "../styles/area-page.css";
 import "../styles/page-hero.css";
 import "../styles/intent-modal.css";
+import { getNavIntentPages } from "../lib/getNavIntentPages";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
@@ -232,15 +233,7 @@ const chartData = {
   areaCounts: topAreas.map(([, count]) => count),
 };
 
-const { data: navIntentPages = [] } = await supabase
-  .from("intent_pages")
-  .select("slug, nav_label, hero_heading, seo_heading, lifestyle_angle, property_type, sort_order, show_in_nav")
-  .eq("city", city)
-  .eq("is_published", true)
-  .eq("show_in_nav", true)
-  .order("sort_order", { ascending: true })
-  .order("created_at", { ascending: false });
-console.log("NAV INTENT PAGES", navIntentPages);
+const navIntentPages = await getNavIntentPages(supabase, city);
 
 ---
 {console.log("LAYOUT ACCENT", {
