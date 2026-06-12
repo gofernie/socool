@@ -796,7 +796,7 @@ const chartData = {
               </li>
             ))}
           </ul>
-          <a href="#">View all schools</a>
+         
         </article>
         <article class="info-card">
           <h3>Shopping & Amenities</h3>
@@ -808,25 +808,19 @@ const chartData = {
               </li>
             ))}
           </ul>
-          <a href="#">View all amenities</a>
+          
         </article>
       </div>
 
-      <article class="map-card real-map-card">
-        <div class="map-card__label">
-          <strong>{labelize(area)}</strong>
-          <span>{mapListings.length} mapped listings</span>
-        </div>
-        <div id="area-map"></div>
-      </article>
+     
 
       <section class="nearby-areas">
         <p class="section-kicker">Popular Nearby Areas</p>
         <div class="nearby-grid">
-          {content.nearby
-            .filter((item) => item !== area && areas.includes(item))
-            .slice(0, 5)
-            .map((item) => (
+       {content.nearby
+  .filter((item) => item !== area)
+  .slice(0, 5)
+  .map((item) => (
              <a class="nearby-card" href={`/${city}/areas/${areaToSlug(item)}`}>
                 <img src={areaHeroImages[item] || heroImage} alt={`${labelize(item)} real estate`} />
                 <strong>{labelize(item)}</strong>
@@ -945,7 +939,18 @@ const chartData = {
           if (matchesFilters) count += 1;
         });
 
-        if (visibleCount) visibleCount.textContent = String(count);
+if (visibleCount) visibleCount.textContent = String(count);
+
+if (showAllButton) {
+  const hasActiveFilters =
+    type !== "all" ||
+    priceRange !== "all" ||
+    bedsMin !== "all";
+
+  showAllButton.hidden =
+    hasActiveFilters ||
+    showingAllListings;
+}
       }
 
       document.querySelectorAll(".area-browse-nav a").forEach((link) => {
@@ -994,7 +999,12 @@ const chartData = {
             if (priceFilter) priceFilter.value = "all";
             if (bedsFilter) bedsFilter.value = "all";
             applyFilters();
-            document.querySelector(".filter-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            const filterBar = document.querySelector(".filter-bar");
+
+if (filterBar) {
+  const y = filterBar.getBoundingClientRect().top + window.scrollY - 90;
+  window.scrollTo({ top: y, behavior: "smooth" });
+}
           }
         });
       });

@@ -133,12 +133,25 @@ p {
   color: inherit;
   text-decoration: none;
   cursor: pointer;
-  transition: all .2s ease;
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card-link::after {
+  content: "Filter →";
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent);
+  opacity: 0.8;
 }
 
 .stat-card-link:hover {
   transform: translateY(-2px);
-  border-color: var(--accent-light);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, white);
   box-shadow: 0 12px 28px rgba(28,25,23,.08);
 }
 
