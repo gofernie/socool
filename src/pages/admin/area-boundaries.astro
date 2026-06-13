@@ -125,16 +125,23 @@ const sitesJson = JSON.stringify(sites);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
       }
 
-    .controls {
+   .controls {
   display: grid;
   grid-template-columns:
-    minmax(240px, 1.4fr)
-    minmax(160px, 0.8fr)
-    minmax(180px, 0.9fr)
-    minmax(260px, 1.4fr);
+    minmax(220px, 1fr)
+    minmax(220px, 1fr)
+    minmax(220px, 1fr)
+    minmax(220px, 1fr);
   gap: 12px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.control-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .controls button {
@@ -170,11 +177,11 @@ const sitesJson = JSON.stringify(sites);
         font-weight: 800;
       }
 
-      .primary {
-        background: #181614;
-        color: #fff;
-        border-color: #181614;
-      }
+     .main button.primary {
+  background: #181614;
+  color: #fff;
+  border-color: #181614;
+}
 
       .danger {
         color: #9f1d1d;
@@ -216,6 +223,10 @@ const sitesJson = JSON.stringify(sites);
       @media (max-width: 1150px) {
   .controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .control-actions {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -302,9 +313,11 @@ const sitesJson = JSON.stringify(sites);
               />
             </label>
 
-            <button type="button" id="drawBtn">Draw Boundary</button>
-            <button type="button" class="danger" id="clearBtn">Clear</button>
-            <button type="button" class="primary" id="saveBtn">Save Boundary</button>
+           <div class="control-actions">
+  <button type="button" id="drawBtn">Draw Boundary</button>
+  <button type="button" class="danger" id="clearBtn">Clear</button>
+  <button type="button" class="primary" id="saveBtn">Save Boundary</button>
+</div>
           </div>
 
           <div id="map"></div>
