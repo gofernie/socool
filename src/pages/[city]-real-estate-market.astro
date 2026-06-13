@@ -203,6 +203,17 @@ const labelize = (value) =>
   cleanAreaName(value)
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
+function areaHue(areaName, index) {
+  let hash = 0;
+
+  for (const char of String(areaName || "")) {
+    hash = char.charCodeAt(0) + ((hash << 5) - hash);
+  }
+
+  const hues = [355, 18, 34, 48, 205, 178, 155, 285, 315, 12, 92, 230];
+  return hues[Math.abs(hash + index * 7) % hues.length];
+}
+
 const priceBuckets = [
   { label: "Under $500k", min: 0, max: 500000 },
   { label: "$500k–$750k", min: 500000, max: 750000 },
@@ -369,10 +380,11 @@ const navIntentPages = await getNavIntentPages(supabase, city);
   </div>
 
  <div class="area-card-grid">
-  {topAreas.map(([area, count]) => (
+  {topAreas.map(([area, count], index) => (
     <a
       class="area-pick-card"
-      href={`/${city}/areas/${areaToSlug(area)}`}
+href={`/${city}/areas/${areaToSlug(area)}`}
+style={`--area-tint:${4 + ((index * 2) % 4)}%; --area-border:${16 + ((index * 3) % 8)}%;`}
     >
       <strong>{labelize(area)}</strong>
 
@@ -788,35 +800,11 @@ home searches.
   gap: 6px;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid var(--line-warm);
-  background: color-mix(in srgb, var(--accent) 5%, white);
+  border: 1px solid color-mix(in srgb, var(--accent) var(--area-border), transparent);
+  background: color-mix(in srgb, var(--accent) var(--area-tint), white);
   color: inherit;
   text-decoration: none;
   transition: .18s ease;
-}
-
-.area-pick-card:nth-child(6n+1) {
-  background: color-mix(in srgb, var(--accent) 4%, white);
-}
-
-.area-pick-card:nth-child(6n+2) {
-  background: color-mix(in srgb, var(--accent) 5%, white);
-}
-
-.area-pick-card:nth-child(6n+3) {
-  background: color-mix(in srgb, var(--accent) 6%, white);
-}
-
-.area-pick-card:nth-child(6n+4) {
-  background: color-mix(in srgb, var(--accent) 4.5%, white);
-}
-
-.area-pick-card:nth-child(6n+5) {
-  background: color-mix(in srgb, var(--accent) 5.5%, white);
-}
-
-.area-pick-card:nth-child(6n) {
-  background: color-mix(in srgb, var(--accent) 6.5%, white);
 }
 
 .area-pick-card strong {
@@ -840,8 +828,8 @@ home searches.
 
 .area-pick-card:hover {
   transform: translateY(-2px);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, white);
+  border-color: hsl(var(--area-hue) 45% 62%);
+  background: hsl(var(--area-hue) 65% 94%);
   box-shadow: 0 12px 26px rgba(28, 25, 23, 0.08);
 }
 
