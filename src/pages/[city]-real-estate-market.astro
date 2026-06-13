@@ -218,6 +218,8 @@ const priceBucketCounts = priceBuckets.map((bucket) =>
   }).length
 );
 
+
+
 const chartData = {
   priceLabels: priceBuckets.map((b) => b.label),
   priceCounts: priceBucketCounts,
@@ -304,14 +306,24 @@ const navIntentPages = await getNavIntentPages(supabase, city);
     <p>Start with an area, then filter by property type, price, beds, and more.</p>
   </div>
 
-  <div class="area-card-grid">
-    {topAreas.map(([area, count]) => (
-      <a class="area-pick-card" href={`/${city}/areas/${areaToSlug(area)}`}>
-        <strong>{labelize(area)}</strong>
-      <span>View neighbourhood →</span>
-      </a>
-    ))}
-  </div>
+ <div class="area-card-grid">
+  {topAreas.map(([area, count]) => (
+    <a
+      class="area-pick-card"
+      href={`/${city}/areas/${areaToSlug(area)}`}
+    >
+      <strong>{labelize(area)}</strong>
+
+      <div class="area-count">
+        {count} listings
+      </div>
+
+    <small>
+  Browse homes in {labelize(area)}
+</small>
+    </a>
+  ))}
+</div>
 </section>
 
    <!-- ── Latest listings ── -->
@@ -705,77 +717,79 @@ home searches.
 
 .area-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .area-pick-card {
-  padding: 20px;
+  display: grid;
+  gap: 6px;
+  padding: 16px;
   border-radius: 18px;
   border: 1px solid var(--line-warm);
+  background: color-mix(in srgb, var(--accent) 5%, white);
   color: inherit;
   text-decoration: none;
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
-
-  background: color-mix(in srgb, var(--accent) 8%, white);
+  transition: .18s ease;
 }
 
 .area-pick-card:nth-child(6n+1) {
-  background: color-mix(in srgb, var(--accent) 6%, white);
+  background: color-mix(in srgb, var(--accent) 4%, white);
 }
 
 .area-pick-card:nth-child(6n+2) {
-  background: color-mix(in srgb, var(--accent) 8%, white);
+  background: color-mix(in srgb, var(--accent) 5%, white);
 }
 
 .area-pick-card:nth-child(6n+3) {
-  background: color-mix(in srgb, var(--accent) 10%, white);
+  background: color-mix(in srgb, var(--accent) 6%, white);
 }
 
 .area-pick-card:nth-child(6n+4) {
-  background: color-mix(in srgb, var(--accent) 7%, white);
+  background: color-mix(in srgb, var(--accent) 4.5%, white);
 }
 
 .area-pick-card:nth-child(6n+5) {
-  background: color-mix(in srgb, var(--accent) 9%, white);
+  background: color-mix(in srgb, var(--accent) 5.5%, white);
 }
 
 .area-pick-card:nth-child(6n) {
-  background: color-mix(in srgb, var(--accent) 11%, white);
+  background: color-mix(in srgb, var(--accent) 6.5%, white);
 }
 
 .area-pick-card strong {
-  display: block;
   font-family: var(--f-display);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   line-height: 1;
   letter-spacing: -0.04em;
 }
 
-.area-pick-card span {
-  display: block;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 0.82rem;
+.area-count {
+  color: var(--accent);
   font-weight: 800;
+  font-size: .9rem;
 }
 
-.area-pick-card::after {
-  content: "View area →";
-  display: inline-block;
-  margin-top: 18px;
-  color: var(--accent);
-  font-size: 0.8rem;
-  font-weight: 900;
+.area-pick-card small {
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.3;
 }
 
 .area-pick-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, white);
-  box-shadow: 0 16px 36px rgba(28, 25, 23, 0.09);
+  box-shadow: 0 12px 26px rgba(28, 25, 23, 0.08);
+}
+
+.area-pick-card::after {
+  display: none;
+}
+
+@media (min-width: 760px) {
+  .area-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 </style>
