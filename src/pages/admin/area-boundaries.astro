@@ -53,15 +53,6 @@ const areaOptions = {
 
 const areasByCityJson = JSON.stringify(areaOptions);
 const sitesJson = JSON.stringify(sites);
-
-function slugify(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/\//g, "-")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 ---
 
 <html lang="en">
@@ -70,57 +61,82 @@ function slugify(value) {
     <title>Area Boundaries</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
     <script
-  src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=drawing&v=weekly`}
-  async
-  defer
-></script>
+      src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=drawing&v=weekly`}
+      async
+      defer
+    ></script>
 
     <style>
-      body {
+      :global(:root) {
+        --bg: #f7f4ef;
+        --ink: #181614;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
+      :global(body) {
         margin: 0;
-        font-family: system-ui, sans-serif;
-        background: #f7f4ef;
-        color: #181614;
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
       }
 
       .page {
+        min-height: 100vh;
         display: grid;
         grid-template-columns: 220px 1fr;
-        min-height: 100vh;
       }
 
       .main {
-        padding: 40px 48px 80px;
+        padding: 48px 32px 64px;
+        min-width: 0;
+        overflow-x: hidden;
       }
 
-      h1 {
+    .main h1 {
         margin: 0 0 8px;
-        font-size: 34px;
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
       }
 
       .muted {
-        color: #6f6860;
+        color: #6f6a63;
         margin: 0 0 28px;
       }
 
       .panel {
         background: #fff;
-        border: 1px solid #e8e1d8;
+        border: 1px solid #e3ddd2;
         border-radius: 22px;
         padding: 22px;
-        box-shadow: 0 18px 45px rgba(0,0,0,0.06);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
       }
 
       .controls {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr auto auto auto;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
         gap: 12px;
         align-items: end;
         margin-bottom: 18px;
       }
 
-      label {
+      .controls button {
+        width: 100%;
+      }
+
+      .main label {
         display: grid;
         gap: 6px;
         font-size: 13px;
@@ -128,8 +144,9 @@ function slugify(value) {
         color: #514a43;
       }
 
-      select,
-      button {
+     .main select,
+.main input,
+.main button {
         height: 44px;
         border-radius: 999px;
         border: 1px solid #ddd3c8;
@@ -138,7 +155,7 @@ function slugify(value) {
         background: #fff;
       }
 
-      button {
+      .main button {
         cursor: pointer;
         font-weight: 800;
       }
@@ -154,7 +171,21 @@ function slugify(value) {
         border-color: #e8bcbc;
       }
 
+      .main button.is-active {
+        background: #2f6f73 !important;
+        border-color: #2f6f73 !important;
+        color: #fff !important;
+        box-shadow: 0 0 0 4px rgba(47, 111, 115, 0.18);
+      }
+
+      .main button.danger.is-active {
+        background: #9f1d1d !important;
+        border-color: #9f1d1d !important;
+        color: #fff !important;
+      }
+
       #map {
+        width: 100%;
         height: 640px;
         border-radius: 20px;
         overflow: hidden;
@@ -175,11 +206,11 @@ function slugify(value) {
 
       @media (max-width: 900px) {
         .page {
-          grid-template-columns: 1fr;
+          display: block;
         }
 
         .main {
-          padding: 24px 16px 60px;
+          padding: 28px 18px 48px;
         }
 
         .controls {
@@ -229,9 +260,19 @@ function slugify(value) {
               <select id="areaSelect"></select>
             </label>
 
-        <button type="button" id="drawBtn">Draw Boundary</button>
-<button type="button" class="danger" id="clearBtn">Clear</button>
-<button type="button" class="primary" id="saveBtn">Save Boundary</button> </div>
+            <label>
+              Short Description
+              <input
+                id="shortDescription"
+                type="text"
+                placeholder="Ocean views • Shopping"
+              />
+            </label>
+
+            <button type="button" id="drawBtn">Draw Boundary</button>
+            <button type="button" class="danger" id="clearBtn">Clear</button>
+            <button type="button" class="primary" id="saveBtn">Save Boundary</button>
+          </div>
 
           <div id="map"></div>
 
@@ -250,16 +291,17 @@ function slugify(value) {
       const siteSelect = document.getElementById("siteSelect");
       const citySelect = document.getElementById("citySelect");
       const areaSelect = document.getElementById("areaSelect");
+      const shortDescriptionInput = document.getElementById("shortDescription");
       const drawBtn = document.getElementById("drawBtn");
-const clearBtn = document.getElementById("clearBtn");
-const saveBtn = document.getElementById("saveBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const saveBtn = document.getElementById("saveBtn");
       const statusEl = document.getElementById("status");
 
       let map;
-let activePolygon = null;
-let drawingPath = [];
-let drawingMarkers = [];
-let isDrawing = false;
+      let activePolygon = null;
+      let drawingPath = [];
+      let drawingMarkers = [];
+      let isDrawing = false;
 
       const cityCenters = {
         nanaimo: { lat: 49.1967, lng: -123.9401, zoom: 12 },
@@ -279,6 +321,19 @@ let isDrawing = false;
         statusEl.textContent = message;
       }
 
+      function setActiveAction(action) {
+        drawBtn?.classList.toggle("is-active", action === "draw");
+        clearBtn?.classList.toggle("is-active", action === "clear");
+      }
+
+      function moveMapToCity() {
+        if (!map) return;
+
+        const center = cityCenters[citySelect.value] || cityCenters.nanaimo;
+        map.setCenter({ lat: center.lat, lng: center.lng });
+        map.setZoom(center.zoom);
+      }
+
       function refreshAreas() {
         const city = citySelect.value;
         const areas = areasByCity[city] || [];
@@ -290,83 +345,88 @@ let isDrawing = false;
         moveMapToCity();
       }
 
-      function moveMapToCity() {
-        if (!map) return;
+      function clearPolygon(options = {}) {
+        const { quiet = false } = options;
 
-        const center = cityCenters[citySelect.value] || cityCenters.nanaimo;
-        map.setCenter({ lat: center.lat, lng: center.lng });
-        map.setZoom(center.zoom);
+        if (activePolygon) {
+          activePolygon.setMap(null);
+          activePolygon = null;
+        }
+
+        drawingMarkers.forEach((marker) => marker.setMap(null));
+        drawingMarkers = [];
+        drawingPath = [];
+        isDrawing = false;
+
+        if (!quiet) {
+          setStatus("Boundary cleared. Choose Draw Boundary to start again.");
+        }
       }
-function clearPolygon(options = {}) {
-  const { quiet = false } = options;
 
-  if (activePolygon) {
-    activePolygon.setMap(null);
-    activePolygon = null;
-  }
+      async function loadBoundary() {
+        if (!map || !window.google?.maps || !areaSelect.value) return;
 
-  drawingMarkers.forEach((marker) => marker.setMap(null));
-  drawingMarkers = [];
-  drawingPath = [];
-  isDrawing = false;
+        clearPolygon({ quiet: true });
+        setActiveAction(null);
 
-  if (!quiet) {
-    setStatus("Draw a polygon on the map, then save it.");
-  }
-}
+        const response = await fetch(
+          `/api/admin/area-boundary?city=${encodeURIComponent(citySelect.value)}&area_slug=${encodeURIComponent(areaSelect.value)}`
+        );
 
-async function loadBoundary() {
-  if (!map || !window.google?.maps || !areaSelect.value) return;
+        if (!response.ok) {
+          shortDescriptionInput.value = "";
+          setStatus("No saved boundary found for this area.");
+          return;
+        }
 
-  clearPolygon({ quiet: true });
+        const result = await response.json();
 
- const response = await fetch(
-  `/api/admin/area-boundary?city=${encodeURIComponent(citySelect.value)}&area_slug=${encodeURIComponent(areaSelect.value)}`
-);
+        shortDescriptionInput.value =
+          result?.boundary?.short_description ||
+          result?.short_description ||
+          "";
 
-  if (!response.ok) {
-    setStatus("No saved boundary found for this area.");
-    return;
-  }
+        const polygon =
+          result?.boundary?.polygon_geojson ||
+          result?.polygon_geojson;
 
-  const result = await response.json();
-  const polygon = result?.boundary?.polygon_geojson || result?.polygon_geojson;
+        if (!polygon?.coordinates?.[0]?.length) {
+          setStatus("No saved boundary found for this area.");
+          return;
+        }
 
-  if (!polygon?.coordinates?.[0]?.length) {
-    setStatus("No saved boundary found for this area.");
-    return;
-  }
+        const coords = polygon.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
 
-  const coords = polygon.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
+        activePolygon = new google.maps.Polygon({
+          paths: coords,
+          map,
+          editable: true,
+          draggable: true,
+          fillOpacity: 0.18,
+          strokeWeight: 3,
+        });
 
-  activePolygon = new google.maps.Polygon({
-    paths: coords,
-    map,
-    editable: true,
-    draggable: true,
-    fillOpacity: 0.18,
-    strokeWeight: 3,
-  });
+        const bounds = new google.maps.LatLngBounds();
+        coords.forEach((point) => bounds.extend(point));
 
-  const bounds = new google.maps.LatLngBounds();
-  coords.forEach((point) => bounds.extend(point));
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds);
+        }
 
-  if (!bounds.isEmpty()) {
-    map.fitBounds(bounds);
-  }
+        setStatus(`Loaded boundary for ${result?.boundary?.area_name || result?.area_name || "this area"}.`);
+      }
 
-  setStatus(`Loaded boundary for ${result?.boundary?.area_name || result?.area_name || "this area"}.`);
-}
-     drawBtn?.addEventListener("click", () => {
-  if (!map || !window.google?.maps) {
-    setStatus("Map is not ready yet. Refresh and try again.");
-    return;
-  }
+      drawBtn?.addEventListener("click", () => {
+        if (!map || !window.google?.maps) {
+          setStatus("Map is not ready yet. Refresh and try again.");
+          return;
+        }
 
-  clearPolygon();
-  isDrawing = true;
-  setStatus("Click points around the area boundary. Add at least 3 points, then save.");
-});
+        clearPolygon({ quiet: true });
+        isDrawing = true;
+        setActiveAction("draw");
+        setStatus("Draw mode selected. Click points around the area boundary.");
+      });
 
       function polygonToGeoJson(polygon) {
         const path = polygon.getPath();
@@ -418,6 +478,7 @@ async function loadBoundary() {
           city: citySelect.value,
           area_slug: areaSelect.value,
           area_name: areaName,
+          short_description: shortDescriptionInput.value.trim(),
           polygon_geojson: polygonToGeoJson(activePolygon),
           center_lat: center.lat,
           center_lng: center.lng,
@@ -438,6 +499,7 @@ async function loadBoundary() {
           return;
         }
 
+        setActiveAction(null);
         setStatus(`Saved boundary for ${areaName}.`);
       }
 
@@ -463,68 +525,72 @@ async function loadBoundary() {
         });
 
         map.addListener("click", (event) => {
-  if (!isDrawing) return;
+          if (!isDrawing) return;
 
-  drawingPath.push(event.latLng);
+          drawingPath.push(event.latLng);
 
-  const marker = new google.maps.Marker({
-    position: event.latLng,
-    map,
-  });
+          const marker = new google.maps.Marker({
+            position: event.latLng,
+            map,
+          });
 
-  drawingMarkers.push(marker);
+          drawingMarkers.push(marker);
 
-  if (activePolygon) activePolygon.setMap(null);
+          if (activePolygon) activePolygon.setMap(null);
 
-  activePolygon = new google.maps.Polygon({
-    paths: drawingPath,
-    map,
-    editable: true,
-    draggable: true,
-    fillOpacity: 0.18,
-    strokeWeight: 3,
-  });
+          activePolygon = new google.maps.Polygon({
+            paths: drawingPath,
+            map,
+            editable: true,
+            draggable: true,
+            fillOpacity: 0.18,
+            strokeWeight: 3,
+          });
 
-  setStatus(`${drawingPath.length} points added. Add at least 3, then click Save Boundary.`);
-});
+          setStatus(`${drawingPath.length} points added. Add at least 3, then click Save Boundary.`);
+        });
 
-       
         syncCityFromSite();
+
         setTimeout(() => {
           loadBoundary();
         }, 300);
       }
 
-window.addEventListener("DOMContentLoaded", () => {
-  refreshAreas();
-  syncCityFromSite();
-});
+      window.addEventListener("DOMContentLoaded", () => {
+        refreshAreas();
+        syncCityFromSite();
+      });
 
-window.addEventListener("load", () => {
-  const wait = setInterval(() => {
-    if (window.google?.maps) {
-      clearInterval(wait);
-      initMap();
-    }
-  }, 100);
-});
-siteSelect?.addEventListener("change", async () => {
-  syncCityFromSite();
-  await loadBoundary();
-});
+      window.addEventListener("load", () => {
+        const wait = setInterval(() => {
+          if (window.google?.maps) {
+            clearInterval(wait);
+            initMap();
+          }
+        }, 100);
+      });
 
-citySelect?.addEventListener("change", async () => {
-  refreshAreas();
-  await loadBoundary();
-});
+      siteSelect?.addEventListener("change", async () => {
+        syncCityFromSite();
+        await loadBoundary();
+      });
 
-areaSelect?.addEventListener("change", async () => {
-  await loadBoundary();
-});
+      citySelect?.addEventListener("change", async () => {
+        refreshAreas();
+        await loadBoundary();
+      });
 
+      areaSelect?.addEventListener("change", async () => {
+        await loadBoundary();
+      });
 
-clearBtn?.addEventListener("click", clearPolygon);
-saveBtn?.addEventListener("click", saveBoundary);
+      clearBtn?.addEventListener("click", () => {
+        setActiveAction("clear");
+        clearPolygon();
+      });
+
+      saveBtn?.addEventListener("click", saveBoundary);
     </script>
   </body>
 </html>

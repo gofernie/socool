@@ -25,26 +25,144 @@ function fmtDate(value) {
     <meta charset="utf-8" />
     <title>Leads</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-      body { margin:0; font-family: system-ui, sans-serif; background:#f7f4ef; color:#181614; }
-      .page { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
-      .main { padding:40px 48px 80px; max-width:1100px; }
-      h1 { font-family: Georgia, serif; font-size:2.6rem; font-weight:400; margin:0 0 8px; }
-      .sub { color:#777; margin-bottom:28px; }
-      .lead { background:#fff; border:1px solid rgba(24,22,20,.12); border-radius:18px; padding:20px; margin-bottom:12px; }
-      .top { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; }
-      .name { font-weight:850; font-size:1.05rem; }
-      .meta { color:#777; font-size:.88rem; margin-top:4px; }
-      .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px; }
-      .cell { background:#f7f4ef; border:1px solid rgba(24,22,20,.1); border-radius:12px; padding:12px; }
-      .label { font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:#777; font-weight:800; margin-bottom:4px; }
-      .value { font-weight:650; overflow-wrap:anywhere; }
-      .actions { margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
-      .btn { display:inline-flex; padding:8px 12px; border-radius:999px; border:1px solid rgba(24,22,20,.2); color:#181614; text-decoration:none; font-size:.82rem; font-weight:800; }
-      @media (max-width:860px) {
-        .page { grid-template-columns:1fr; }
-        .main { padding:24px 20px 60px; }
-        .grid { grid-template-columns:1fr; }
+      :global(:root) {
+        --bg: #f7f4ef;
+        --ink: #181614;
+        --font-body: "DM Sans", system-ui, sans-serif;
+        --font-display: "Instrument Serif", Georgia, serif;
+      }
+
+      :global(body) {
+        margin: 0;
+        font-family: var(--font-body);
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .page {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 220px 1fr;
+      }
+
+      .main {
+        padding: 48px 32px 64px;
+        max-width: 1100px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-family: var(--font-display);
+        font-size: 2.6rem;
+        font-weight: 400;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+
+      .sub {
+        color: #6f6a63;
+        margin: 0 0 28px;
+      }
+
+      .lead {
+        background: #fff;
+        border: 1px solid #e3ddd2;
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+      }
+
+      .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .name {
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+
+      .meta {
+        color: #777;
+        font-size: 0.88rem;
+        margin-top: 4px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .cell {
+        background: #f7f4ef;
+        border: 1px solid rgba(24, 22, 20, 0.1);
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .label {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #777;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+
+      .value {
+        font-weight: 650;
+        overflow-wrap: anywhere;
+      }
+
+      .actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(24, 22, 20, 0.2);
+        color: #181614;
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 800;
+      }
+
+      .btn:hover {
+        background: #f7f4ef;
+      }
+
+      @media (max-width: 860px) {
+        .page {
+          display: block;
+        }
+
+        .main {
+          padding: 28px 18px 48px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -55,7 +173,9 @@ function fmtDate(value) {
 
       <main class="main">
         <h1>Leads</h1>
-        <p class="sub">All captured buyer leads from intent pages, ask-a-question, and showing requests.</p>
+        <p class="sub">
+          All captured buyer leads from intent pages, ask-a-question, and showing requests.
+        </p>
 
         {error && <p>Error loading leads: {error.message}</p>}
 
@@ -85,7 +205,9 @@ function fmtDate(value) {
 
               <div class="cell">
                 <div class="label">City / Page</div>
-                <div class="value">{lead.city || "—"} / {lead.slug || "—"}</div>
+                <div class="value">
+                  {lead.city || "—"} / {lead.slug || "—"}
+                </div>
               </div>
 
               <div class="cell">
@@ -100,10 +222,25 @@ function fmtDate(value) {
             </div>
 
             <div class="actions">
-              {lead.email && <a class="btn" href={`mailto:${lead.email}`}>Email</a>}
-              {lead.phone && <a class="btn" href={`tel:${lead.phone}`}>Call</a>}
+              {lead.email && (
+                <a class="btn" href={`mailto:${lead.email}`}>
+                  Email
+                </a>
+              )}
+
+              {lead.phone && (
+                <a class="btn" href={`tel:${lead.phone}`}>
+                  Call
+                </a>
+              )}
+
               {lead.session_id && (
-                <a class="btn" href={`/admin/intent-sessions?session=${encodeURIComponent(lead.session_id)}`}>
+                <a
+                  class="btn"
+                  href={`/admin/intent-sessions?session=${encodeURIComponent(
+                    lead.session_id
+                  )}`}
+                >
                   View session
                 </a>
               )}

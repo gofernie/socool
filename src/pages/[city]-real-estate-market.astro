@@ -220,9 +220,70 @@ const priceBucketCounts = priceBuckets.map((bucket) =>
 
 
 
+const { data: areaMetaRows = [] } = await supabase
+  .from("area_boundaries")
+  .select("area_slug, short_description, polygon_geojson")
+  .eq("city", city);
+
+  const areaBoundariesBySlug = Object.fromEntries(
+  areaMetaRows
+    .filter((row) => row.polygon_geojson?.coordinates?.[0]?.length)
+    .map((row) => [row.area_slug, row.polygon_geojson])
+);
+
+function pointInPolygon(point, polygon) {
+  const [lng, lat] = point;
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+function getAreaCardCount(area, fallbackCount) {
+  const boundary = areaBoundariesBySlug[areaToSlug(area)];
+  const polygon = boundary?.coordinates?.[0];
+
+  if (!polygon?.length) {
+    return fallbackCount;
+  }
+
+const normalizedAreaListings = allListings.filter(
+  (listing) => areaToSlug(listing.normalized_area) === areaToSlug(area)
+);
+
+return normalizedAreaListings.filter((listing) => {
+  const lat = Number(listing.lat || 0);
+  const lng = Number(listing.lng || 0);
+
+  if (!lat || !lng) {
+    return false;
+  }
+
+  return pointInPolygon([lng, lat], polygon);
+}).length;
+}
+
+const areaDescriptions = Object.fromEntries(
+  areaMetaRows.map((row) => [
+    row.area_slug,
+    row.short_description,
+  ])
+);
+
 const chartData = {
   priceLabels: priceBuckets.map((b) => b.label),
   priceCounts: priceBucketCounts,
+
   areaLabels: topAreas.map(([area]) =>
     labelize(area)
       .replace("North Nanaimo", "North")
@@ -232,6 +293,7 @@ const chartData = {
       .replace("Departure Bay", "Departure")
       .replace("Pleasant Valley", "Pleasant")
   ),
+
   areaCounts: topAreas.map(([, count]) => count),
 };
 
@@ -315,11 +377,11 @@ const navIntentPages = await getNavIntentPages(supabase, city);
       <strong>{labelize(area)}</strong>
 
       <div class="area-count">
-        {count} listings
-      </div>
+  {getAreaCardCount(area, count)} listings
+</div>
 
-    <small>
-  Browse homes in {labelize(area)}
+  <small>
+  {areaDescriptions[areaToSlug(area)] || `Browse homes in ${labelize(area)}`}
 </small>
     </a>
   ))}

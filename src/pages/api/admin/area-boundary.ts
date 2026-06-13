@@ -54,6 +54,7 @@ export const POST: APIRoute = async ({ request }) => {
     city,
     area_slug,
     area_name,
+    short_description,
     polygon_geojson,
     center_lat,
     center_lng,
@@ -69,16 +70,17 @@ export const POST: APIRoute = async ({ request }) => {
   const { error } = await supabase
     .from("area_boundaries")
     .upsert(
-   {
-  site_id,
-  city: String(city).toLowerCase(),
-  area_slug: String(area_slug).toLowerCase(),
-  area_name,
-  polygon_geojson,
-  center_lat,
-  center_lng,
-  updated_at: new Date().toISOString(),
-},
+      {
+        site_id,
+        city: String(city).toLowerCase(),
+        area_slug: String(area_slug).toLowerCase(),
+        area_name,
+        short_description: short_description || null,
+        polygon_geojson,
+        center_lat,
+        center_lng,
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: "site_id,city,area_slug" }
     );
 

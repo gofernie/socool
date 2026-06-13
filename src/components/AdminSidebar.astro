@@ -1,9 +1,11 @@
 ---
 const { active = "" } = Astro.props;
+
 const navItems = [
   { key: "pages", label: "All pages", href: "/admin/intent-pages" },
   { key: "new-page", label: "+ Create intent page", href: "/admin/intent-pages/new" },
   { key: "sites", label: "Sites", href: "/admin/sites" },
+  { key: "areas", label: "Area boundaries", href: "/admin/area-boundaries" },
   { key: "sessions", label: "Intent sessions", href: "/admin/intent-sessions" },
   { key: "leads", label: "Leads", href: "/admin/leads" },
   { key: "shortlists", label: "Shortlists", href: "/shortlists" },
@@ -22,6 +24,7 @@ const navItems = [
       {item.label}
     </a>
   ))}
+
   <slot />
 </aside>
 
@@ -29,6 +32,9 @@ const navItems = [
   .sidebar {
     position: sticky;
     top: 0;
+    width: 220px;
+    min-width: 220px;
+    box-sizing: border-box;
     height: 100vh;
     background: #181614;
     color: #fff;
@@ -85,7 +91,7 @@ const navItems = [
     color: #fff;
   }
 
-    :global(.sidebar__section-links) {
+  :global(.sidebar__section-links) {
     margin-top: 24px;
     padding-top: 18px;
     border-top: 1px solid rgba(255,255,255,0.1);
