@@ -175,6 +175,47 @@ const shapeListing = (listing: any) => {
   };
 };
 
+function pointInRing(point: [number, number], ring: any[]) {
+  const [x, y] = point;
+  let inside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+
+    const intersect =
+      yi > y !== yj > y &&
+      x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+function polygonContainsPoint(geojson: any, lat: number, lng: number) {
+  if (!geojson) return false;
+
+  const geometry = geojson.type === "Feature" ? geojson.geometry : geojson;
+  if (!geometry) return false;
+
+  const point: [number, number] = [lng, lat];
+
+  if (geometry.type === "Polygon") {
+    return pointInRing(point, geometry.coordinates?.[0] || []);
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.some((poly: any[]) =>
+      pointInRing(point, poly?.[0] || [])
+    );
+  }
+
+  return false;
+}
+
 const FEATURE_TERMS: Record<string, string[]> = {
   views: ["view", "views", "ocean view", "water view", "mountain view"],
   garage: ["garage", "double garage", "attached garage", "shop"],
@@ -184,29 +225,6 @@ const FEATURE_TERMS: Record<string, string[]> = {
   walkability: ["walkable", "walk to", "near shops", "close to amenities"],
 };
 
-function scoreListingForFeatures(listing: any, features: string[]) {
-  if (!features.length) return 0;
-
-  const text = [
-    listing.description,
-    listing.publicRemarks,
-    listing.remarks,
-    listing.address,
-    listing.normalized_area,
-    listing.area,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return features.reduce((score, feature) => {
-    const terms = FEATURE_TERMS[feature] || [feature];
-    const matched = terms.some((term) => text.includes(term));
-
-    return matched ? score + 20 : score;
-  }, 0);
-}
-
 export const GET: APIRoute = async ({ url }) => {
   const city = clean(url.searchParams.get("city") || "nanaimo");
   const area = clean(url.searchParams.get("area") || "");
@@ -214,19 +232,33 @@ export const GET: APIRoute = async ({ url }) => {
   const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
   const sort = clean(url.searchParams.get("sort") || "newest");
   const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
-const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 12)));
+  const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 12)));
 
-const features = clean(url.searchParams.get("features") || "")
-  .split(",")
-  .map((feature) => clean(feature))
-  .filter(Boolean);
+  const features = clean(url.searchParams.get("features") || "")
+    .split(",")
+    .map((feature) => clean(feature))
+    .filter(Boolean);
+
+  let areaBoundary: any = null;
+
+  if (area) {
+    const { data: boundary } = await supabase
+      .from("area_boundaries")
+      .select("polygon_geojson")
+      .eq("city", city)
+      .eq("area_slug", area.replace(/\s+/g, "-"))
+      .maybeSingle();
+
+    areaBoundary = boundary?.polygon_geojson || null;
+  }
+
   let query = supabase
     .from("listing_rows")
     .select("*", { count: "exact" })
     .eq("status", "A")
     .eq("normalized_city", city);
 
-  if (area) query = query.eq("normalized_area", area);
+  if (area && !areaBoundary) query = query.eq("normalized_area", area);
   if (type) query = query.eq("normalized_type", type);
   if (maxPrice) query = query.lte("price", maxPrice * 1000);
 
@@ -238,14 +270,14 @@ const features = clean(url.searchParams.get("features") || "")
     query = query.order("listed_at", { ascending: false });
   }
 
-if (features.length) {
-  query = query.range(0, 199);
-} else {
-  query = query.range(offset, offset + limit - 1);
-}
+  if (areaBoundary || features.length) {
+    query = query.range(0, 999);
+  } else {
+    query = query.range(offset, offset + limit - 1);
+  }
 
   const { data, error, count } = await query;
-const filteredData = data || [];
+
   if (error) {
     return new Response(
       JSON.stringify({ error: error.message, listings: [], count: 0 }),
@@ -253,35 +285,55 @@ const filteredData = data || [];
     );
   }
 
-  return new Response(
-    JSON.stringify({
-    listings: (features.length
-  ? filteredData
-      .filter((listing) => {
-        const text = [
-          listing.description,
-          listing.publicRemarks,
-          listing.remarks,
-          listing.address,
-          listing.normalized_area,
-          listing.area,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
+  let filteredData = data || [];
 
-        return features.every((feature) => {
-          const terms = FEATURE_TERMS[feature] || [feature];
-          return terms.some((term) => text.includes(term));
-        });
-      })
-      .slice(offset, offset + limit)
-      .map(shapeListing)
-  : filteredData.map(shapeListing)),
-      count: count || 0,
-      offset,
-      limit,
-    }),
+  if (areaBoundary) {
+    filteredData = filteredData.filter((listing: any) => {
+      const lat = Number(listing.lat || 0);
+      const lng = Number(listing.lng || 0);
+
+      if (!lat || !lng) return false;
+
+      return polygonContainsPoint(areaBoundary, lat, lng);
+    });
+  }
+
+  if (features.length) {
+    filteredData = filteredData.filter((listing: any) => {
+      const text = [
+        listing.description,
+        listing.publicRemarks,
+        listing.remarks,
+        listing.address,
+        listing.normalized_area,
+        listing.area,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return features.every((feature) => {
+        const terms = FEATURE_TERMS[feature] || [feature];
+        return terms.some((term) => text.includes(term));
+      });
+    });
+  }
+
+  const totalCount = areaBoundary || features.length ? filteredData.length : count || 0;
+
+  const pagedData =
+    areaBoundary || features.length
+      ? filteredData.slice(offset, offset + limit)
+      : filteredData;
+
+return new Response(
+  JSON.stringify({
+    listings: pagedData.map(shapeListing),
+    mapListings: filteredData.map(shapeListing),
+    count: totalCount,
+    offset,
+    limit,
+  }),
     {
       headers: {
         "Content-Type": "application/json",
