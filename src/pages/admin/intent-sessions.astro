@@ -528,7 +528,7 @@ function inferSession(reactions) {
         const city = session.city || "nanaimo";
 
         return (
-       <article class="session">
+       <article class="session" data-session-id={session.session_id}>
             <button type="button" class="session-trigger">
               <div class="session-trigger-left">
                 <div class="session-icon">{countDecision(session.reactions, "love")}♥</div>
@@ -746,13 +746,24 @@ href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || 
 </main>
     </div>
 
-    <script>
-      document.querySelectorAll(".session-trigger").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const session = btn.closest(".session");
-          session.classList.toggle("is-open");
-        });
-      });
-    </script>
+   <script>
+  document.querySelectorAll(".session-trigger").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const session = btn.closest(".session");
+      session.classList.toggle("is-open");
+    });
+  });
+
+  const wantedSession = new URLSearchParams(window.location.search).get("session");
+
+  if (wantedSession) {
+    const target = document.querySelector(
+      `.session[data-session-id="${CSS.escape(wantedSession)}"]`
+    );
+
+    target?.classList.add("is-open");
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+</script>
   </body>
 </html>
