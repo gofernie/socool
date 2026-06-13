@@ -451,11 +451,10 @@ const propertyTypes = [...new Set(
     .map((row) => String(row.normalized_type || "").trim())
     .filter((item) => item && item !== "unknown")
 )].sort((a, b) => a.localeCompare(b));
-const { data: rawListings = [] } = await supabase
+const { data: cityListings = [] } = await supabase
   .from("listing_rows")
   .select("*")
   .eq("normalized_city", city)
-  .in("normalized_area", areaAliases)
   .order("listed_at", { ascending: false });
 
 function pointInPolygon(point, polygon) {
@@ -497,11 +496,11 @@ const polygon =
 console.log("POLYGON DEBUG", {
   polygonExists: !!polygon,
   polygonPoints: polygon?.length || 0,
-  rawListings: rawListings.length,
+  cityListings: cityListings.length,
 });
 
 const listings = polygon
-  ? rawListings.filter((listing) => {
+  ? cityListings.filter((listing) => {
       const lat = Number(listing.lat || 0);
       const lng = Number(listing.lng || 0);
 
@@ -509,7 +508,11 @@ const listings = polygon
 
       return pointInPolygon([lng, lat], polygon);
     })
-  : rawListings;
+  : cityListings.filter((listing) =>
+      areaAliases.includes(
+        String(listing.normalized_area || "").toLowerCase()
+      )
+    );
 
 const normalizeListingImageUrl = (value) => {
   if (!value) return "";
