@@ -69,6 +69,7 @@ function getLikeTagsForType(propertyType = "") {
 
   if (type.includes("condo") || type.includes("apartment")) {
     return [
+      ["area", "Location"],
       ["layout", "Layout"],
       ["views", "Views"],
       ["building", "Building"],
@@ -76,43 +77,46 @@ function getLikeTagsForType(propertyType = "") {
       ["walkability", "Walkability"],
       ["modern", "Modern"],
       ["value", "Value"],
-      ["area", "Location"],
+      
     ];
   }
 
   if (type.includes("town")) {
     return [
-      ["layout", "Layout"],
+    ["area", "Area"],  
+    ["layout", "Layout"],
       ["garage", "Garage"],
       ["yard", "Yard"],
       ["storage", "Storage"],
       ["modern", "Modern"],
       ["value", "Value"],
-      ["area", "Area"],
+      
     ];
   }
 
-  if (type.includes("mobile") || type.includes("manufactured")) {
-    return [
-      ["value", "Affordable"],
-      ["modern", "Updated"],
-      ["community", "Community"],
-      ["views", "Views"],
-      ["layout", "Layout"],
-      ["parking", "Parking"],
-      ["yard", "Yard"],
-    ];
-  }
+if (type.includes("mobile") || type.includes("manufactured")) {
+  return [
+    ["area", "Location"],
+    ["value", "Affordable"],
+    ["modern", "Updated"],
+    ["community", "Community"],
+    ["views", "Views"],
+    ["layout", "Layout"],
+    ["parking", "Parking"],
+    ["yard", "Yard"],
+  ];
+}
 
   return [
-    ["layout", "Layout"],
+  ["area", "Area"],  
+  ["layout", "Layout"],
     ["yard", "Yard"],
     ["garage", "Garage"],
     ["suite", "Suite potential"],
     ["views", "Views"],
     ["privacy", "Privacy"],
     ["modern", "Modern"],
-    ["area", "Area"],
+    
   ];
 }
 
@@ -916,17 +920,21 @@ function showIntentSummaryCard() {
   sheetContent.classList.remove("open");
   sheetSummary.classList.add("open");
 
- const lovedCards = Array.from(document.querySelectorAll(".original-card"))
-    .filter((c) => c.dataset.decision === "love")
-    .slice(0, 4);
+const positiveCards = Array.from(document.querySelectorAll(".original-card"))
+  .filter((c) => c.dataset.decision === "love" || c.dataset.decision === "maybe")
+  .sort((a, b) => {
+    const score = (card) => card.dataset.decision === "love" ? 2 : 1;
+    return score(b) - score(a);
+  })
+  .slice(0, 4);
 
   const likedTagLabels = Array.from(
     document.querySelectorAll("#preview-sheet .intent-like-tag.active")
   ).map((btn) => btn.textContent.trim()).filter(Boolean);
 
-  const thumbsHtml = lovedCards.length ? `
-    <div style="display:grid;grid-template-columns:repeat(${lovedCards.length},1fr);gap:8px;margin:0 0 20px;">
-      ${lovedCards.map((c) => `
+  const thumbsHtml = positiveCards.length ? `
+    <div style="display:grid;grid-template-columns:repeat(${positiveCards.length},1fr);gap:8px;margin:0 0 20px;">
+      ${positiveCards.map((c) => `
         <div style="border-radius:12px;overflow:hidden;aspect-ratio:4/3;background:#eee;">
           <img src="${c.dataset.image || ""}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
         </div>
@@ -947,7 +955,7 @@ function showIntentSummaryCard() {
 
       ${thumbsHtml}
 
-  <p>You've reacted positively to ${lovedCards.length || "a few"} home${lovedCards.length !== 1 ? "s" : ""}. We can refine the next batch around what you seem drawn to.</p>
+  <p>You've reacted positively to ${positiveCards.length || "a few"} home${positiveCards.length !== 1 ? "s" : ""}. We can refine the next batch around what you seem drawn to.</p>
 
       ${featureHtml}
 

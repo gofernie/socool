@@ -127,9 +127,18 @@ if (slug) {
       : [];
       const mapBounds = body.map_bounds || null;
 
-   const excludeAddresses = visibleListings
+  const excludeAddresses = visibleListings
   .map((item: any) => String(item.address || "").trim())
   .filter(Boolean);
+
+const reactedAddresses = behaviourRows
+  .map((row) => String(row.address || "").trim())
+  .filter(Boolean);
+
+const allExcludedAddresses = new Set([
+  ...excludeAddresses,
+  ...reactedAddresses,
+]);
 
 const visiblePriceByAddress = new Map(
   visibleListings
@@ -632,9 +641,11 @@ if (wantsNearbyAreas) {
   return Number(b.listing.price || 0) - Number(a.listing.price || 0);
 });
 
-    const unviewedScored = scoredAll.filter((item) => {
-      return !excludeAddresses.includes(String(item.listing.address || "").trim());
-    });
+const unviewedScored = scoredAll.filter((item) => {
+  const address = String(item.listing.address || "").trim();
+
+  return !reactedAddresses.includes(address);
+});
 
    const scored =
   unviewedScored.length >= 12
