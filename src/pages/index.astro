@@ -8,6 +8,7 @@ import "../styles/intent-modal.css";
 import "../styles/page-hero.css";
 export const prerender = false;
 import { getSite } from "../lib/getSite";
+import { getNavIntentPages } from "../lib/getNavIntentPages";
 
 const site = await getSite(Astro.url.hostname);
 
@@ -21,10 +22,8 @@ const supabase = createClient(
 
 const accentColor = site?.accent_color || "#2f6f73";
 
-const googleMapsApiKey = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
-
-
+const googleMapsApiKey =
+  import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 const url = Astro.url;
 
@@ -34,6 +33,11 @@ const type = url.searchParams.get("type") || "";
 const minPrice = Number(url.searchParams.get("minPrice") || 0);
 const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
 const sort = url.searchParams.get("sort") || "newest";
+
+const navIntentPages = await getNavIntentPages(
+  supabase,
+  city
+);
 
 const clean = (value: any) =>
   String(value || "")
@@ -370,6 +374,7 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   city={city}
   areas={areaOptions}
   types={propertyTypeOptions}
+  intentPages={navIntentPages}
   showAreaNav={false}
 />
 <header
@@ -656,9 +661,13 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 }
 
  .view-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-width: max-content;
 }
 
 .view-pill__btn,
@@ -682,9 +691,12 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   height: 28px;
   min-height: 28px;
   padding: 0 13px;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .view-pill__btn + .view-pill__btn {

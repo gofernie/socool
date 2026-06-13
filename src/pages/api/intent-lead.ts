@@ -24,15 +24,15 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const lead = {
-      session_id: body.session_id || "",
-      intent_page_id: body.intent_page_id || null,
-      city: body.city || "",
-      slug: body.slug || "",
-      name,
-      email,
-      phone,
-      source: "intent_refined_search",
-    };
+  session_id: body.session_id || "",
+  intent_page_id: body.intent_page_id || null,
+  city: body.city || "",
+  slug: body.slug || "",
+  name,
+  email,
+  phone,
+  source: body.source || "intent_refined_search",
+};
 
     const { data, error } = await supabase
       .from("intent_leads")
@@ -50,21 +50,25 @@ export const POST: APIRoute = async ({ request }) => {
     if (sid && token && from && notifyPhone) {
       const client = twilio(sid, token);
 
-      await client.messages.create({
+       await client.messages.create({
         from,
         to: notifyPhone,
-       body:
-  `New intent lead\n\n` +
-  `Name: ${name || "Not provided"}\n` +
-  `Email: ${email || "Not provided"}\n` +
-  `Phone: ${phone || "Not provided"}\n` +
-  `City: ${lead.city}\n` +
-  `Page: ${lead.slug}\n\n` +
-`${String(import.meta.env.PUBLIC_SITE_URL || "https://chriscrump.com").replace(/\/$/, "")}/intent-sessions`,
+        body:
+          `New intent lead\n\n` +
+          `Source: ${body.source || "intent_refined_search"}\n` +
+          `Name: ${name || "Not provided"}\n` +
+          `Email: ${email || "Not provided"}\n` +
+          `Phone: ${phone || "Not provided"}\n` +
+          `City: ${lead.city || "Not provided"}\n` +
+          `Page: ${lead.slug || "Not provided"}\n` +
+          `Address: ${body.address || "Not provided"}\n` +
+          `Price: ${body.price || "Not provided"}\n` +
+          `MLS: ${body.mls_number || "Not provided"}\n\n` +
+          `${String(import.meta.env.PUBLIC_SITE_URL || "https://chriscrump.com").replace(/\/$/, "")}/admin/intent-sessions?session=${encodeURIComponent(lead.session_id)}`,
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, lead: data }), {
+    return new Response(JSON.stringify({ ok: true, lead: data }), {    
       status: 200,
     });
   } catch (error) {

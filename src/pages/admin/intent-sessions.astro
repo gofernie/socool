@@ -22,13 +22,24 @@ const { data: leads } = await supabase
   .select("*")
   .order("created_at", { ascending: false });
 
-const leadBySessionId = new Map(
-  (leads || []).map((lead) => [lead.session_id, lead])
-);
+const leadBySessionId = new Map();
+
+(leads || []).forEach((lead) => {
+  if (!lead.session_id) return;
+
+  const existing = leadBySessionId.get(lead.session_id);
+
+  if (
+    !existing ||
+    new Date(lead.created_at).getTime() > new Date(existing.created_at).getTime()
+  ) {
+    leadBySessionId.set(lead.session_id, lead);
+  }
+});
 
 const sessions = Object.values(
   rows.reduce((acc, row) => {
-    const key = `${row.session_id}:${row.slug}`;
+    const key = row.session_id;
 
     if (!acc[key]) {
       acc[key] = {

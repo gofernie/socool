@@ -2876,3 +2876,15 @@ body.edit-mode .agent-edit-grid {
 .photo-nav--next::before {
   content: "›";
 }
+
+.intent-controls .view-toggle {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-width: max-content;
+}
+
+.intent-controls .view-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

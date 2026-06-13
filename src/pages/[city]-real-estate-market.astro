@@ -276,16 +276,16 @@ const navIntentPages = await getNavIntentPages(supabase, city);
   <div class="shell area-browse-nav__inner">
     <span>Explore more {cityLabel} areas</span>
 
-   {navAreas.slice(0, 5).map((item) => (
+   {navAreas.slice(0, 4).map((item) => (
  <a href={`/${city}/areas/${areaToSlug(item)}`}>
   {labelize(item)}
 </a>
 ))}
 
-    {navAreas.length > 5 && (
+    {navAreas.length > 4 && (
       <select onchange="if(this.value) window.location.href=this.value;">
-        <option value="">+{navAreas.length - 5} more areas</option>
-        {navAreas.slice(5).map((item) => (
+        <option value="">+{navAreas.length - 4} more areas</option>
+        {navAreas.slice(4).map((item) => (
          <option value={`/${city}/areas/${areaToSlug(item)}`}>
   {labelize(item)}
 </option>
