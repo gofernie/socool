@@ -63,8 +63,8 @@ export const POST: APIRoute = async ({ request }) => {
           `Page: ${lead.slug || "Not provided"}\n` +
           `Address: ${body.address || "Not provided"}\n` +
           `Price: ${body.price || "Not provided"}\n` +
-          `MLS: ${body.mls_number || "Not provided"}\n\n` +
-          `${String(import.meta.env.PUBLIC_SITE_URL || "https://chriscrump.com").replace(/\/$/, "")}/admin/intent-sessions?session=${encodeURIComponent(lead.session_id)}`,
+`MLS: ${body.mls_number || "Not provided"}\n\n` +
+`${String(import.meta.env.PUBLIC_SITE_URL || "https://chriscrump.com").replace(/\/$/, "")}/admin/leads?session=${encodeURIComponent(lead.session_id)}`,
       });
     }
 
