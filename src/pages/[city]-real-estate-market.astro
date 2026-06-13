@@ -384,7 +384,7 @@ const navIntentPages = await getNavIntentPages(supabase, city);
     <a
       class="area-pick-card"
 href={`/${city}/areas/${areaToSlug(area)}`}
-style={`--area-tint:${4 + ((index * 2) % 4)}%; --area-border:${16 + ((index * 3) % 8)}%;`}
+style={`--area-tint:${4 + (areaToSlug(area).length % 3)}%; --area-border:${16 + (areaToSlug(area).charCodeAt(0) % 4)}%;`}
     >
       <strong>{labelize(area)}</strong>
 
