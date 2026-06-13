@@ -562,9 +562,11 @@ const mapListings = listings
   .map((listing) => ({
     id: listing.id,
     address: listing.address || "",
+    type: listing.normalized_type || "",
     price: Number(listing.price || 0),
-    beds: listing.beds || "",
+    beds: Number(listing.beds || 0),
     baths: listing.baths || "",
+    listed: listing.listed_at || "",
     lat: Number(listing.lat || 0),
     lng: Number(listing.lng || 0),
   }))
@@ -1016,6 +1018,10 @@ if (showAllButton) {
     hasActiveFilters ||
     showingAllListings;
 }
+
+if (areaGoogleMap && areaListingMap && !areaListingMap.hidden) {
+  updateAreaMapMarkers();
+}
       }
 
       document.querySelectorAll(".area-browse-nav a").forEach((link) => {
@@ -1044,11 +1050,7 @@ areaFilter?.addEventListener("change", () => {
   }
 });
       sortFilter?.addEventListener("change", applyFilters);
-      typeFilter?.addEventListener("change", () => {
-        if (priceFilter) priceFilter.value = "all";
-        if (bedsFilter) bedsFilter.value = "all";
-        applyFilters();
-      });
+    typeFilter?.addEventListener("change", applyFilters);
       priceFilter?.addEventListener("change", applyFilters);
       bedsFilter?.addEventListener("change", applyFilters);
 
@@ -1077,8 +1079,6 @@ if (filterBar) {
           }
         });
       });
-
-    applyFilters();
 
 const areaListViewBtn = document.getElementById("area-list-view-btn");
 const areaMapViewBtn = document.getElementById("area-map-view-btn");
@@ -1109,30 +1109,38 @@ async function loadGoogleMaps() {
   });
 }
 
-async function initAreaListingGoogleMap() {
-  if (!areaListingMap) return;
+function getFilteredMapListings() {
+  const type = typeFilter?.value || "all";
+  const priceRange = priceFilter?.value || "all";
+  const bedsMin = bedsFilter?.value || "all";
 
-  await loadGoogleMaps();
+  return mapListings.filter((listing) => {
+    const matchesType = type === "all" || listing.type === type;
 
-  if (!window.google?.maps) return;
+    const matchesPrice =
+      priceRange === "all" ||
+      (priceRange === "under-500" && listing.price < 500000) ||
+      (priceRange === "500-750" && listing.price >= 500000 && listing.price < 750000) ||
+      (priceRange === "750-1000" && listing.price >= 750000 && listing.price < 1000000) ||
+      (priceRange === "1000-plus" && listing.price >= 1000000);
 
-  if (!areaGoogleMap) {
-    areaGoogleMap = new google.maps.Map(areaListingMap, {
-      center: mapCenter,
-      zoom: 12,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
-  }
+    const matchesBeds = bedsMin === "all" || listing.beds >= Number(bedsMin);
+
+    return matchesType && matchesPrice && matchesBeds && listing.lat && listing.lng;
+  });
+}
+
+function updateAreaMapMarkers() {
+  if (!areaGoogleMap || !window.google?.maps) return;
 
   areaGoogleMarkers.forEach((marker) => marker.setMap(null));
   areaGoogleMarkers = [];
 
+  const filteredListings = getFilteredMapListings();
   const bounds = new google.maps.LatLngBounds();
   const infoWindow = new google.maps.InfoWindow();
 
-  mapListings.forEach((listing) => {
+  filteredListings.forEach((listing) => {
     const position = { lat: listing.lat, lng: listing.lng };
     const price = listing.price > 0 ? `$${listing.price.toLocaleString()}` : "View listing";
 
@@ -1155,11 +1163,39 @@ async function initAreaListingGoogleMap() {
     bounds.extend(position);
   });
 
-  if (areaGoogleMarkers.length > 1) areaGoogleMap.fitBounds(bounds);
+  if (filteredListings.length > 1) {
+    areaGoogleMap.fitBounds(bounds);
+  } else if (filteredListings.length === 1) {
+    areaGoogleMap.setCenter({
+      lat: filteredListings[0].lat,
+      lng: filteredListings[0].lng,
+    });
+    areaGoogleMap.setZoom(14);
+  }
+}
+
+async function initAreaListingGoogleMap() {
+  if (!areaListingMap) return;
+
+  await loadGoogleMaps();
+
+  if (!window.google?.maps) return;
+
+  if (!areaGoogleMap) {
+    areaGoogleMap = new google.maps.Map(areaListingMap, {
+      center: mapCenter,
+      zoom: 12,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+  }
+
+  updateAreaMapMarkers();
 
   setTimeout(() => {
     google.maps.event.trigger(areaGoogleMap, "resize");
-    if (areaGoogleMarkers.length > 1) areaGoogleMap.fitBounds(bounds);
+    updateAreaMapMarkers();
   }, 100);
 }
 
@@ -1264,6 +1300,7 @@ if (window.google?.maps && document.getElementById("area-map")) {
         });
       }
 
+           applyFilters();
       initPriceChart();
     });
   </script>
