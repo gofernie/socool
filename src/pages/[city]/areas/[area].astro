@@ -1,6 +1,6 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
-import { supabase } from "../../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import ListingCard from "../../../components/ListingCard.astro";
 import ShortlistReviewModal from "../../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../../components/IntentModalController.astro";
@@ -10,7 +10,10 @@ import "../../../styles/intent-modal.css";
 import "../../../styles/area-page.css";
 import "../../../styles/page-hero.css";
 
-import { getSite } from "../../../lib/getSite";
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 const site = await getSite(Astro.url.hostname);
 
@@ -448,13 +451,65 @@ const propertyTypes = [...new Set(
     .map((row) => String(row.normalized_type || "").trim())
     .filter((item) => item && item !== "unknown")
 )].sort((a, b) => a.localeCompare(b));
-
-const { data: listings = [] } = await supabase
+const { data: rawListings = [] } = await supabase
   .from("listing_rows")
   .select("*")
   .eq("normalized_city", city)
   .in("normalized_area", areaAliases)
   .order("listed_at", { ascending: false });
+
+function pointInPolygon(point, polygon) {
+  const [lng, lat] = point;
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+const { data: boundary, error: boundaryError } = await supabase
+  .from("area_boundaries")
+  .select("polygon_geojson")
+  .eq("city", city)
+  .eq("area_slug", String(areaSlug || "").toLowerCase())
+  .maybeSingle();
+
+console.log("BOUNDARY DEBUG", {
+  city,
+  areaSlug,
+  boundary,
+  boundaryError,
+});
+const polygon =
+  boundary?.polygon_geojson?.type === "Polygon"
+    ? boundary.polygon_geojson.coordinates?.[0]
+    : null;
+
+console.log("POLYGON DEBUG", {
+  polygonExists: !!polygon,
+  polygonPoints: polygon?.length || 0,
+  rawListings: rawListings.length,
+});
+
+const listings = polygon
+  ? rawListings.filter((listing) => {
+      const lat = Number(listing.lat || 0);
+      const lng = Number(listing.lng || 0);
+
+      if (!lat || !lng) return false;
+
+      return pointInPolygon([lng, lat], polygon);
+    })
+  : rawListings;
 
 const normalizeListingImageUrl = (value) => {
   if (!value) return "";

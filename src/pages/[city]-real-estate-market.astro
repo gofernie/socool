@@ -308,7 +308,7 @@ const navIntentPages = await getNavIntentPages(supabase, city);
     {topAreas.map(([area, count]) => (
       <a class="area-pick-card" href={`/${city}/areas/${areaToSlug(area)}`}>
         <strong>{labelize(area)}</strong>
-        <span>{count} active listings</span>
+      <span>View neighbourhood →</span>
       </a>
     ))}
   </div>
@@ -424,7 +424,7 @@ home searches.
             href={`/${city}/areas/${String(area).replace(/\s+/g, "-")}`}
           >
             <span>{labelize(area)}</span>
-            <strong>{count} listings</strong>
+          <strong>View area</strong>
           </a>
         ))}
       </div>
