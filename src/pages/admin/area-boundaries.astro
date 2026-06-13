@@ -97,10 +97,11 @@ const sitesJson = JSON.stringify(sites);
       }
 
       .main {
-        padding: 48px 32px 64px;
-        min-width: 0;
-        overflow-x: hidden;
-      }
+  padding: 48px 32px 64px;
+  min-width: 0;
+  overflow-x: hidden;
+  max-width: 1200px;
+}
 
     .main h1 {
         margin: 0 0 8px;
@@ -124,17 +125,22 @@ const sitesJson = JSON.stringify(sites);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
       }
 
-      .controls {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(160px, 1fr));
-        gap: 12px;
-        align-items: end;
-        margin-bottom: 18px;
-      }
+    .controls {
+  display: grid;
+  grid-template-columns:
+    minmax(240px, 1.4fr)
+    minmax(160px, 0.8fr)
+    minmax(180px, 0.9fr)
+    minmax(260px, 1.4fr);
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+}
 
-      .controls button {
-        width: 100%;
-      }
+.controls button {
+  width: 100%;
+  min-width: 0;
+}
 
       .main label {
         display: grid;
@@ -144,16 +150,20 @@ const sitesJson = JSON.stringify(sites);
         color: #514a43;
       }
 
-     .main select,
+   .main select,
 .main input,
 .main button {
-        height: 44px;
-        border-radius: 999px;
-        border: 1px solid #ddd3c8;
-        padding: 0 14px;
-        font: inherit;
-        background: #fff;
-      }
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid #ddd3c8;
+  padding: 0 14px;
+  font: inherit;
+  background: #fff;
+}
 
       .main button {
         cursor: pointer;
@@ -203,6 +213,29 @@ const sitesJson = JSON.stringify(sites);
         color: #766f66;
         font-size: 14px;
       }
+      @media (max-width: 1150px) {
+  .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    display: block;
+  }
+
+  .main {
+    padding: 28px 18px 48px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  #map {
+    height: 520px;
+  }
+}
 
       @media (max-width: 900px) {
         .page {
