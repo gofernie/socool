@@ -304,14 +304,23 @@ const sitesJson = JSON.stringify(sites);
               <select id="areaSelect"></select>
             </label>
 
-            <label>
-              Short Description
-              <input
-                id="shortDescription"
-                type="text"
-                placeholder="Ocean views • Shopping"
-              />
-            </label>
+         <label>
+  Short Description
+  <input
+    id="shortDescription"
+    type="text"
+    placeholder="Ocean views • Shopping"
+  />
+</label>
+
+<label>
+  Hero Image URL
+  <input
+    id="heroImageUrl"
+    type="text"
+    placeholder="https://images.unsplash.com/..."
+  />
+</label>
 
            <div class="control-actions">
   <button type="button" id="drawBtn">Draw Boundary</button>
@@ -338,6 +347,7 @@ const sitesJson = JSON.stringify(sites);
       const citySelect = document.getElementById("citySelect");
       const areaSelect = document.getElementById("areaSelect");
       const shortDescriptionInput = document.getElementById("shortDescription");
+const heroImageUrlInput = document.getElementById("heroImageUrl");
       const drawBtn = document.getElementById("drawBtn");
       const clearBtn = document.getElementById("clearBtn");
       const saveBtn = document.getElementById("saveBtn");
@@ -427,10 +437,15 @@ const sitesJson = JSON.stringify(sites);
 
         const result = await response.json();
 
-        shortDescriptionInput.value =
-          result?.boundary?.short_description ||
-          result?.short_description ||
-          "";
+       shortDescriptionInput.value =
+  result?.boundary?.short_description ||
+  result?.short_description ||
+  "";
+
+heroImageUrlInput.value =
+  result?.boundary?.hero_image_url ||
+  result?.hero_image_url ||
+  "";
 
         const polygon =
           result?.boundary?.polygon_geojson ||
@@ -519,16 +534,13 @@ const sitesJson = JSON.stringify(sites);
         const areaName = selectedOption?.textContent || areaSelect.value;
         const center = getPolygonCenter(activePolygon);
 
-        const payload = {
-          site_id: siteSelect.value,
-          city: citySelect.value,
-          area_slug: areaSelect.value,
-          area_name: areaName,
-          short_description: shortDescriptionInput.value.trim(),
-          polygon_geojson: polygonToGeoJson(activePolygon),
-          center_lat: center.lat,
-          center_lng: center.lng,
-        };
+     const payload = {
+  site_id: siteSelect.value,
+  city: citySelect.value,
+  area_slug: areaSelect.value,
+  area_name: areaName,
+  short_description: shortDescriptionInput.value.trim(),
+  hero_image_url: heroImageUrlInput.value.trim(),
 
         setStatus("Saving boundary...");
 

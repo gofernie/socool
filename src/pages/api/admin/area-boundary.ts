@@ -7,6 +7,7 @@ const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL,
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
 export const GET: APIRoute = async ({ url }) => {
   const city = url.searchParams.get("city");
   const area_slug = url.searchParams.get("area_slug");
@@ -15,7 +16,10 @@ export const GET: APIRoute = async ({ url }) => {
   if (!city || !area_slug) {
     return new Response(
       JSON.stringify({ ok: false, error: "Missing city or area_slug" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 
@@ -43,9 +47,12 @@ export const GET: APIRoute = async ({ url }) => {
       ok: true,
       boundary: data,
     }),
-    { headers: { "Content-Type": "application/json" } }
+    {
+      headers: { "Content-Type": "application/json" },
+    }
   );
 };
+
 export const POST: APIRoute = async ({ request }) => {
   const body = await request.json();
 
@@ -55,6 +62,7 @@ export const POST: APIRoute = async ({ request }) => {
     area_slug,
     area_name,
     short_description,
+    hero_image_url,
     polygon_geojson,
     center_lat,
     center_lng,
@@ -63,32 +71,39 @@ export const POST: APIRoute = async ({ request }) => {
   if (!site_id || !city || !area_slug || !polygon_geojson) {
     return new Response(
       JSON.stringify({ ok: false, error: "Missing required fields" }),
-      { status: 400 }
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 
-  const { error } = await supabase
-    .from("area_boundaries")
-    .upsert(
-      {
-        site_id,
-        city: String(city).toLowerCase(),
-        area_slug: String(area_slug).toLowerCase(),
-        area_name,
-        short_description: short_description || null,
-        polygon_geojson,
-        center_lat,
-        center_lng,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "site_id,city,area_slug" }
-    );
+  const { error } = await supabase.from("area_boundaries").upsert(
+    {
+      site_id,
+      city: String(city).toLowerCase(),
+      area_slug: String(area_slug).toLowerCase(),
+      area_name,
+      short_description: short_description || null,
+      hero_image_url: hero_image_url || null,
+      polygon_geojson,
+      center_lat,
+      center_lng,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "site_id,city,area_slug",
+    }
+  );
 
   if (error) {
     return new Response(JSON.stringify({ ok: false, error: error.message }), {
       status: 500,
+      headers: { "Content-Type": "application/json" },
     });
   }
 
-  return new Response(JSON.stringify({ ok: true }));
+  return new Response(JSON.stringify({ ok: true }), {
+    headers: { "Content-Type": "application/json" },
+  });
 };
