@@ -316,6 +316,23 @@ const areaDescriptions = Object.fromEntries(
   ])
 );
 
+
+
+function areaTagIcon(tag: string) {
+  const clean = String(tag || "").toLowerCase();
+
+  if (clean.includes("ocean") || clean.includes("waterfront")) return "🏖";
+  if (clean.includes("shopping")) return "🛍";
+  if (clean.includes("park")) return "🌳";
+  if (clean.includes("walk")) return "🚶";
+  if (clean.includes("viu") || clean.includes("school")) return "🎓";
+  if (clean.includes("investment")) return "💰";
+  if (clean.includes("family")) return "🏡";
+  if (clean.includes("character")) return "🏛";
+
+  return "•";
+}
+
 const chartData = {
   priceLabels: priceBuckets.map((b) => b.label),
   priceCounts: priceBucketCounts,
@@ -417,9 +434,22 @@ style={`--area-tint:${4 + (areaToSlug(area).length % 3)}%; --area-border:${16 + 
   {getAreaCardCount(area, count)} listings
 </div>
 
-  <small>
-  {areaDescriptions[areaToSlug(area)] || `Browse homes in ${labelize(area)}`}
-</small>
+{areaDescriptions[areaToSlug(area)] && (
+  <div class="area-highlights">
+    {areaDescriptions[areaToSlug(area)]
+      .split("•")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((tag) => (
+        <div class="area-highlight">
+          <span class="area-highlight-icon">{areaTagIcon(tag)}</span>
+          <span>{tag.trim()}</span>
+        </div>
+      ))}
+  </div>
+)}
+
+<span class="area-card-link">View area →</span>
     </a>
   ))}
 </div>
@@ -822,14 +852,50 @@ home searches.
 
 .area-pick-card {
   display: grid;
-  gap: 6px;
-  padding: 16px;
+  gap: 8px;
+  padding: 18px;
   border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--accent) var(--area-border), transparent);
-  background: color-mix(in srgb, var(--accent) var(--area-tint), white);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  background: #fff;
   color: inherit;
   text-decoration: none;
-  transition: .18s ease;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.area-pick-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  box-shadow: 0 14px 30px rgba(28, 25, 23, 0.08);
+}
+
+.area-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  min-height: 52px;
+}
+
+.area-highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #5d6866;
+  font-weight: 600;
+}
+
+.area-highlight-icon {
+  font-size: 1rem;
+  width: 18px;
+  text-align: center;
+}
+
+.area-card-link {
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .area-pick-card strong {
