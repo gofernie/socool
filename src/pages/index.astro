@@ -380,17 +380,21 @@ try {
 
   areaOptions = allowedAreas.filter((area) => areaCounts.has(area));
 
-  homepageAreaCards = [
-    "north nanaimo",
-    "departure bay",
-    "hammond bay",
-    "old city",
-    "university district",
-  ].filter((name) => areaCounts.has(name)).map((name) => ({
-    name,
-    count: areaCounts.get(name) || 0,
-    href: `/${city || "nanaimo"}/areas/${name.replace(/\s+/g, "-")}`,
-  }));
+  homepageAreaCards = (boundaries || [])
+  .map((boundary: any) => {
+    const slug = String(boundary.area_slug || boundary.area_name || "")
+      .replace(/-/g, " ")
+      .toLowerCase()
+      .trim();
+
+    return {
+      name: slug,
+      count: areaCounts.get(slug) || 0,
+      href: `/${city || "nanaimo"}/areas/${String(boundary.area_slug || slug.replace(/\s+/g, "-")).trim()}`,
+    };
+  })
+  .filter((card) => card.count > 0)
+  .slice(0, 5);
 } catch {}
 
 let listings: any[] = [];
@@ -503,21 +507,9 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   <div class="homepage-area-grid">
     {homepageAreaCards.map((card) => (
       <a href={card.href} class="homepage-area-card">
-        <strong>{titleCase(card.name)}</strong>
+        <strong>{titleCase(card.name).replace(/^Pq\s+/i, "")}</strong>
         <span>{card.count} listings</span>
-        <small>
-          {card.name === "north nanaimo"
-            ? "Ocean views · Shopping"
-            : card.name === "departure bay"
-            ? "Waterfront · Parks"
-            : card.name === "hammond bay"
-            ? "Ocean views · Family friendly"
-            : card.name === "old city"
-            ? "Character · Walkable"
-            : card.name === "university district"
-            ? "VIU · Investment"
-            : "Browse homes"}
-        </small>
+       <small>Browse homes in this area</small>
       </a>
     ))}
 
@@ -786,7 +778,7 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 
 .homepage-area-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 16px;
 }
 
@@ -800,6 +792,7 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   text-decoration: none;
   box-shadow: 0 2px 16px rgba(28,25,23,0.04);
   transition: all 0.22s ease;
+    overflow-wrap: anywhere;
 }
 
 .homepage-area-card:hover {
