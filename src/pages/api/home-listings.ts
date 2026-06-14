@@ -229,8 +229,9 @@ export const GET: APIRoute = async ({ url }) => {
   const city = clean(url.searchParams.get("city") || "nanaimo");
   const area = clean(url.searchParams.get("area") || "");
   const type = clean(url.searchParams.get("type") || "");
-  const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
-  const sort = clean(url.searchParams.get("sort") || "newest");
+const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
+const beds = Number(url.searchParams.get("beds") || 0);
+const sort = clean(url.searchParams.get("sort") || "newest");
   const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
   const limit = Math.min(24, Math.max(8, Number(url.searchParams.get("limit") || 12)));
 
@@ -258,9 +259,10 @@ export const GET: APIRoute = async ({ url }) => {
     .eq("status", "A")
     .eq("normalized_city", city);
 
-  if (area && !areaBoundary) query = query.eq("normalized_area", area);
-  if (type) query = query.eq("normalized_type", type);
-  if (maxPrice) query = query.lte("price", maxPrice * 1000);
+if (area && !areaBoundary) query = query.eq("normalized_area", area);
+if (type) query = query.eq("normalized_type", type);
+if (beds) query = query.gte("beds", beds);
+if (maxPrice) query = query.lte("price", maxPrice * 1000);
 
   if (sort === "price-low") {
     query = query.order("price", { ascending: true });

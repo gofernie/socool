@@ -32,6 +32,7 @@ const area = url.searchParams.get("area") || "";
 const type = url.searchParams.get("type") || "";
 const minPrice = Number(url.searchParams.get("minPrice") || 0);
 const maxPrice = Number(url.searchParams.get("maxPrice") || 0);
+const beds = Number(url.searchParams.get("beds") || 0);
 const sort = url.searchParams.get("sort") || "newest";
 
 const navIntentPages = await getNavIntentPages(
@@ -561,12 +562,20 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   ))}
 </select>
 
-  <select name="maxPrice" class="filter-select" aria-label="Max price">
-    <option value="" selected={!maxPrice}>Any Price</option>
-    <option value="500" selected={maxPrice === 500}>Under $500k</option>
-    <option value="800" selected={maxPrice === 800}>Under $800k</option>
-    <option value="1200" selected={maxPrice === 1200}>Under $1.2M</option>
-  </select>
+ <select name="maxPrice" class="filter-select" aria-label="Max price">
+  <option value="" selected={!maxPrice}>Any Price</option>
+  <option value="500" selected={maxPrice === 500}>Under $500k</option>
+  <option value="800" selected={maxPrice === 800}>Under $800k</option>
+  <option value="1200" selected={maxPrice === 1200}>Under $1.2M</option>
+</select>
+
+<select name="beds" class="filter-select" aria-label="Bedrooms">
+  <option value="" selected={!beds}>Any Beds</option>
+  <option value="2" selected={beds === 2}>2+ Beds</option>
+  <option value="3" selected={beds === 3}>3+ Beds</option>
+  <option value="4" selected={beds === 4}>4+ Beds</option>
+  <option value="5" selected={beds === 5}>5+ Beds</option>
+</select>
 
   <select name="sort" class="filter-select" aria-label="Sort listings">
     <option value="newest" selected={sort === "newest"}>Newest first</option>
@@ -1528,12 +1537,14 @@ btn.textContent = "Load More Listings";
 
       const area = String(form.elements.area?.value || "").trim();
       const type = String(form.elements.type?.value || "").trim();
-      const maxPrice = String(form.elements.maxPrice?.value || "").trim();
-      const sort = String(form.elements.sort?.value || "newest").trim();
+    const maxPrice = String(form.elements.maxPrice?.value || "").trim();
+const beds = String(form.elements.beds?.value || "").trim();
+const sort = String(form.elements.sort?.value || "newest").trim();
 
       if (area) params.set("area", area);
       if (type) params.set("type", type);
       if (maxPrice) params.set("maxPrice", maxPrice);
+      if (beds) params.set("beds", beds);
 if (sort) params.set("sort", sort);
 
 const refinements = Array.from(
@@ -1692,14 +1703,19 @@ window.addEventListener("resize", () => {
   const priceValue = form.elements.maxPrice?.value || "";
 
   let priceText = "";
+const bedsValue = form.elements.beds?.value || "";
+let bedsText = "";
 
+if (bedsValue) {
+  bedsText = ` ${bedsValue}+ Bed`;
+}
   if (priceValue === "500") priceText = " Under $500k";
   else if (priceValue === "800") priceText = " Under $800k";
   else if (priceValue === "1200") priceText = " Under $1.2M";
 
   if (resultsHeading) {
     resultsHeading.textContent =
-      `${areaText} ${typeText}${priceText}`;
+      `${areaText} ${typeText}${bedsText}${priceText}`;
   }
 
   fetchHomeListings({ append: false });

@@ -560,21 +560,7 @@ home searches.
       </div>
     </section>
 
-    <!-- ── Area table ── -->
-    <section class="content-card">
-      <h2>Market Activity by Area</h2>
-      <div class="area-table">
-        {topAreas.map(([area, count]) => (
-          <a
-            class="area-row"
-            href={`/${city}/areas/${String(area).replace(/\s+/g, "-")}`}
-          >
-            <span>{labelize(area)}</span>
-          <strong>View area</strong>
-          </a>
-        ))}
-      </div>
-    </section>
+    
 
     <!-- ── Popular searches ── -->
     <section class="content-card">
