@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
           `Address: ${body.address || "Not provided"}\n` +
           `Price: ${body.price || "Not provided"}\n` +
 `MLS: ${body.mls_number || "Not provided"}\n\n` +
-`${String(import.meta.env.PUBLIC_SITE_URL || "https://chriscrump.com").replace(/\/$/, "")}/admin/leads?session=${encodeURIComponent(lead.session_id)}`,
+`${new URL(request.url).origin}/admin/leads?session=${encodeURIComponent(lead.session_id)}`,
       });
     }
 
