@@ -534,13 +534,17 @@ heroImageUrlInput.value =
         const areaName = selectedOption?.textContent || areaSelect.value;
         const center = getPolygonCenter(activePolygon);
 
-     const payload = {
+    const payload = {
   site_id: siteSelect.value,
   city: citySelect.value,
   area_slug: areaSelect.value,
   area_name: areaName,
   short_description: shortDescriptionInput.value.trim(),
   hero_image_url: heroImageUrlInput.value.trim(),
+  polygon_geojson: polygonToGeoJson(activePolygon),
+  center_lat: center.lat,
+  center_lng: center.lng,
+};
 
         setStatus("Saving boundary...");
 
