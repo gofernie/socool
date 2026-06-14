@@ -475,7 +475,7 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 </p>
 
 <h1>
-  <span set:html={heroHeadingClean.replace(/\n/g, "<br />")} />
+  <span set:html={heroHeadingClean.replace(/\s*\|\s*/g, "<br />")} />
 <span class="accent-period">.</span>
 </h1>
 
