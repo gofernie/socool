@@ -987,24 +987,42 @@ const run = async () => {
 
   console.log(`Snapshots found: ${snapshots?.length || 0}`);
 
-  const { data: existingRows, error: existingError } = await supabase
-    .from("listing_rows")
-    .select("id, lat, lng");
+const { data: existingRows, error: existingError } = await supabase
+  .from("listing_rows")
+  .select("id, address, lat, lng, image_url, images");
 
   if (existingError) {
     console.error("Existing listing_rows fetch failed:", existingError);
     return;
   }
 
-  const existingCoords = new Map(
-    (existingRows || []).map((row: any) => [
-      String(row.id),
+const existingRowsMap = new Map(
+  (existingRows || []).map((row: any) => [
+    String(row.id),
+    {
+      lat: numOrNull(row.lat),
+      lng: numOrNull(row.lng),
+      image_url: row.image_url,
+      images: row.images || []
+    }
+  ])
+);
+
+const existingAddressImages = new Map(
+  (existingRows || [])
+    .filter(
+      (row: any) =>
+        row.address &&
+        row.image_url
+    )
+    .map((row: any) => [
+      clean(row.address),
       {
-        lat: numOrNull(row.lat),
-        lng: numOrNull(row.lng)
+        image_url: row.image_url,
+        images: row.images || []
       }
     ])
-  );
+);
 
   const rowMap = new Map<string, any>();
 
@@ -1248,10 +1266,25 @@ if (rowAddress.includes("4474 wellington rd")) {
       const freshLat = getLat(listing);
       const freshLng = getLng(listing);
 
-      const savedCoords = existingCoords.get(id);
+     const existingRow = existingRowsMap.get(id);
 
-      const lat = freshLat || savedCoords?.lat || null;
-      const lng = freshLng || savedCoords?.lng || null;
+const lat = freshLat || existingRow?.lat || null;
+const lng = freshLng || existingRow?.lng || null;
+
+const addressKey = clean(getNormalizedAddress(listing));
+
+const fallbackImages =
+  existingAddressImages.get(addressKey);
+
+const finalImages =
+  images.length > 0
+    ? images
+    : fallbackImages?.images || [];
+
+const finalImageUrl =
+  finalImages[0] ||
+  fallbackImages?.image_url ||
+  null;
 if (
   String(
     listing?.details?.viewType ||
@@ -1365,8 +1398,8 @@ view_type:
 
 status: "A",
 
-image_url: images[0] || null,
-        images,
+image_url: finalImageUrl,
+images: finalImages,
 
         description: getDescription(listing),
 

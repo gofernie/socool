@@ -102,7 +102,7 @@ export const GET: APIRoute = async ({ url }) => {
 
         params.set("city", fetchCity);
         params.set("pageNum", String(page));
-        params.set("resultsPerPage", "100");
+        params.set("resultsPerPage", "50");
         params.set("include", "details,address,images");
         params.set("status", "A");
 
@@ -124,7 +124,7 @@ export const GET: APIRoute = async ({ url }) => {
           });
         }
 
-        hasMore = listings.length === 100;
+        hasMore = listings.length === 50;
         page++;
       }
     }
