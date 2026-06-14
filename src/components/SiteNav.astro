@@ -176,13 +176,30 @@ const finalNavLinks: NavItem[] = intentLinks.length > 0 ? intentLinks : typeLink
     transform: translateY(-1px);
   }
 
-  .site-nav__links,
-  .site-subnav__inner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+.site-nav__links,
+.site-subnav__inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-nav__links {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site-nav__links::-webkit-scrollbar {
+  display: none;
+}
+
+.site-subnav__inner {
+  flex-wrap: wrap;
+}
+
+.site-nav__links a {
+  white-space: nowrap;
+}
 
   .site-nav__links a,
   .site-subnav__inner a {
