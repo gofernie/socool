@@ -455,6 +455,7 @@ const { data: cityListings = [] } = await supabase
   .from("listing_rows")
   .select("*")
   .eq("normalized_city", city)
+  .eq("status", "A")
   .order("listed_at", { ascending: false });
 
 function pointInPolygon(point, polygon) {

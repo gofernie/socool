@@ -144,13 +144,13 @@ const condoCount    = allListings.filter((l) => l.normalized_type === "condo").l
 const houseCount    = allListings.filter((l) => l.normalized_type === "house").length;
 const townhomeCount = allListings.filter((l) => l.normalized_type === "townhouse").length;
 
-const areaCounts = allListings.reduce((acc, listing) => {
+let areaCounts = allListings.reduce((acc, listing) => {
   const area = listing.normalized_area || "other";
   acc[area] = (acc[area] || 0) + 1;
   return acc;
 }, {});
 
-const topAreas = Object.entries(areaCounts)
+let topAreas = Object.entries(areaCounts)
   .sort((a, b) => b[1] - a[1])
   .slice(0, 10);
 
@@ -259,6 +259,31 @@ function pointInPolygon(point, polygon) {
 
   return inside;
 }
+
+areaCounts = Object.fromEntries(
+  (areaMetaRows || []).map((row: any) => {
+    const slug = areaToSlug(row.area_slug || row.area_name);
+    const label = row.area_name || String(row.area_slug || "").replace(/-/g, " ");
+    const polygon = row.polygon_geojson?.coordinates?.[0];
+
+   const count = polygon?.length
+  ? allListings.filter((listing) => {
+      const lat = Number(listing.lat || 0);
+      const lng = Number(listing.lng || 0);
+
+      if (!lat || !lng) return false;
+
+      return pointInPolygon([lng, lat], polygon);
+    }).length
+  : 0;
+
+    return [label, count];
+  })
+);
+
+topAreas = Object.entries(areaCounts)
+  .filter(([, count]) => Number(count) > 0)
+  .sort((a, b) => Number(b[1]) - Number(a[1]));
 
 function getAreaCardCount(area, fallbackCount) {
   const boundary = areaBoundariesBySlug[areaToSlug(area)];
