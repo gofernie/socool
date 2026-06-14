@@ -60,7 +60,8 @@ console.log("COLOUR SOURCE DEBUG", {
 const { data: allListings = [], error } = await supabase
   .from("listing_rows")
   .select("*")
-.eq("normalized_city", city);
+  .eq("normalized_city", city)
+  .eq("status", "A");
 
 const { data: featuredIntentPages = [], error: featuredIntentError } =
   await supabase
@@ -297,7 +298,7 @@ const normalizedAreaListings = allListings.filter(
   (listing) => areaToSlug(listing.normalized_area) === areaToSlug(area)
 );
 
-return normalizedAreaListings.filter((listing) => {
+return allListings.filter((listing) => {
   const lat = Number(listing.lat || 0);
   const lng = Number(listing.lng || 0);
 
