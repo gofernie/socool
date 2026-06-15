@@ -3159,4 +3159,26 @@ body.edit-mode .agent-edit-grid {
   margin: 0 !important;
   overflow: hidden !important;
 }
+@media (max-width: 660px) {
+  .panel .panel__meta-item,
+  #preview-sheet .panel__meta-item {
+    min-width: auto !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    font-size: 0.72rem !important;
+  }
 
+  .panel .panel__meta-item strong,
+  #preview-sheet .panel__meta-item strong {
+    font-size: 0.72rem !important;
+  }
+
+  .panel .panel__meta-label,
+  #preview-sheet .panel__meta-label {
+    font-size: 0.68rem !important;
+  }
+}
+#preview-sheet .decision-actions {
+    padding: 0 4px !important;
+    gap: 6px !important;
+  }
