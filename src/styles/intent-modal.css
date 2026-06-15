@@ -3180,8 +3180,12 @@ body.edit-mode .agent-edit-grid {
   }
 }
 #preview-sheet .decision-actions {
-    padding: 0 4px !important;
+    padding: 0 !important;
     gap: 6px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
   }
 
 
