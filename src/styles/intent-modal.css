@@ -3210,3 +3210,8 @@ body.edit-mode .agent-edit-grid {
   bottom: auto !important;
   right: 14px !important;
 }
+
+#preview-sheet .panel__summary.open {
+  background: #fff !important;
+  padding: 0 !important;
+}
