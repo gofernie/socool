@@ -38,11 +38,6 @@
   line-height: 1.04;
   letter-spacing: -0.055em;
   font-weight: 500;
-
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .page-hero__copy {
