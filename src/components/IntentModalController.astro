@@ -788,9 +788,11 @@ function getActiveListingLeadData() {
 function showLeadCaptureForm(options = {}) {
   if (!sheetContent || !sheetSummary) return;
 
-  sheetContent.classList.remove("open");
+sheetContent.classList.remove("open");
   sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
+  sheet.querySelector(".panel__view")?.scrollTo({ top: 0, behavior: "instant" });
+  sheet.scrollTo({ top: 0, behavior: "instant" });
 
   sheetSummary.innerHTML = `
     <div style="min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:48px 18px 32px;background:#f7f4ef;">
@@ -982,6 +984,8 @@ function showIntentSummaryCard() {
 sheetContent.classList.remove("open");
   sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
+  sheet.querySelector(".panel__view")?.scrollTo({ top: 0, behavior: "instant" });
+  sheet.scrollTo({ top: 0, behavior: "instant" });
 
 const positiveCards = Array.from(document.querySelectorAll(".original-card"))
   .filter((c) => c.dataset.decision === "love" || c.dataset.decision === "maybe")
