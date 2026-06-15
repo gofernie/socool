@@ -30,7 +30,7 @@
 }
 
 .page-hero h1 {
-  max-width: 760px;
+  max-width: 980px;
   min-height: 2.1em;
   margin: 0 0 24px;
   font-family: var(--f-display, "Lora", Georgia, serif);
