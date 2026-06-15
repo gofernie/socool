@@ -3184,19 +3184,7 @@ body.edit-mode .agent-edit-grid {
     gap: 6px !important;
   }
 
-  @media (max-width: 660px) {
-  #preview-sheet .decision-btn {
-    padding: 0 8px !important;
-    font-size: 0.76rem !important;
-    gap: 4px !important;
-  }
 
-  #preview-sheet .decision-actions {
-    gap: 6px !important;
-    max-width: 100% !important;
-    margin: 14px 12px 0 !important;
-  }
-}
 
 @media (max-width: 480px) {
   #preview-sheet .decision-actions {

@@ -789,6 +789,7 @@ function showLeadCaptureForm(options = {}) {
   if (!sheetContent || !sheetSummary) return;
 
   sheetContent.classList.remove("open");
+  sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
 
   sheetSummary.innerHTML = `
@@ -888,7 +889,8 @@ function showSaveSearchCTA(options = {}) {
   hasShownSaveSearchCTA = true;
   isExitSaveSearchPrompt = Boolean(options.isExitPrompt);
 
-  sheetContent.classList.remove("open");
+sheetContent.classList.remove("open");
+  sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
 
   sheetSummary.innerHTML = `
@@ -977,7 +979,8 @@ function showIntentSummaryCard() {
       <span class="modal-intent-chip">More homes like these</span>
     `;
 
-  sheetContent.classList.remove("open");
+sheetContent.classList.remove("open");
+  sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
 
 const positiveCards = Array.from(document.querySelectorAll(".original-card"))
