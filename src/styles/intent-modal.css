@@ -3212,3 +3212,9 @@ body.edit-mode .agent-edit-grid {
     min-height: 40px !important;
   }
 }
+
+#preview-sheet .panel__photo-count {
+  top: 14px !important;
+  bottom: auto !important;
+  right: 14px !important;
+}

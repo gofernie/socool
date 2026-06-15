@@ -220,7 +220,7 @@ function getHighlightChips(description = "") {
   return HIGHLIGHT_RULES
     .filter(rule => rule.keywords.some(kw => lower.includes(kw)))
     .map(rule => rule.label)
-    .slice(0, 5);
+    .slice(0, 3);
 }
 
 function getCards() {
