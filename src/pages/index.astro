@@ -130,7 +130,8 @@ const heroHeading =
   site?.hero_heading ||
   `${(city || "Nanaimo").replace(/\b\w/g, (char) => char.toUpperCase())} Homes For Sale`;
 
-const heroHeadingClean = heroHeading.replace(/\.$/, "");const buildFilterUrl = (updates: Record<string, string | number | null>) => {
+
+const buildFilterUrl = (updates: Record<string, string | number | null>) => {
   const params = new URLSearchParams();
 
   params.set("city", city || "nanaimo");
@@ -474,10 +475,12 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   {site?.hero_eyebrow || "Homes worth watching"}
 </p>
 
-<h1>
-  <span set:html={heroHeadingClean.replace(/\s*\|\s*/g, "<br />")} />
-<span class="accent-period">.</span>
-</h1>
+<h1 set:html={
+  heroHeading
+    .replace(/\.$/, "")
+    .replace(/\s*\|\s*/g, "<br />")
+    + '<span class="accent-period">.</span>'
+} />
 
 
 
