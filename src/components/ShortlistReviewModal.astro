@@ -99,7 +99,7 @@ import "../styles/intent-modal.css";
         
 
        <section class="panel__content has-scroll-hint" id="sheet-content">
-          <div class="panel__image-stage">
+         <div class="panel__image-stage">
            <img
   id="sheet-image"
   class="panel__image"
@@ -111,62 +111,42 @@ import "../styles/intent-modal.css";
 />
         <button type="button" class="photo-nav photo-nav--prev" id="photo-prev-btn">&#8249;</button>
 <button type="button" class="photo-nav photo-nav--next" id="photo-next-btn">&#8250;</button><div class="panel__photo-count" id="sheet-photo-count">1 / 1 photos</div>
+<div class="panel__image-overlay" id="sheet-image-overlay">
+  <h2 class="panel__price" id="sheet-price">—</h2>
+  <p class="panel__address" id="sheet-address">Address</p>
+  <div class="panel__meta" id="sheet-meta">—</div>
+</div>
           </div>
 
           <div id="sheet-mini-map" class="panel__mini-map" hidden></div>
 
          <div class="panel__body">
-  <div class="panel__headline">
-  <div class="panel__headline-left">
-    <h2 class="panel__price" id="sheet-price">—</h2>
-    <p class="panel__address" id="sheet-address">Address</p>
-    <div class="panel__meta" id="sheet-meta">—</div>
-  </div>
 
-    <div class="panel__headline-right">
-    <div class="panel__intelligence" id="sheet-intelligence">
-      Strongest match based on your criteria
-    </div>
-
-    <div class="panel__detail-row" id="sheet-detail-row"></div>
-
-    <div class="panel__highlights" id="sheet-highlights"></div>
-  </div>
-
-</div>
-
-<div class="panel__desc-wrap">
-   <p class="panel__desc" id="sheet-description"></p>
-
-<button type="button" class="panel__desc-toggle" id="sheet-desc-toggle" hidden>
-  Read more
-</button>
-  </div>
 
 <div class="panel__feedback" id="sheet-feedback"></div>
 
+<div class="panel__desc-wrap">
+  <p class="panel__desc" id="sheet-description"></p>
+  <button type="button" class="panel__desc-toggle" id="sheet-desc-toggle" hidden>
+    Read more
+  </button>
+</div>
 
-
-<div class="decision-wrap">
-    <p class="decision-title">How does this one feel?</p>
-
-    <div class="decision-actions">
-     <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">
-  <span aria-hidden="true">&#10084;&#65039;</span>
-  <span>Love this</span>
-</button>
-
-<button class="decision-btn decision-btn--maybe" type="button" id="decision-maybe-btn">
-  <span aria-hidden="true">&#128076;</span>
-  <span>Kinda like</span>
-</button>
-
-<button class="decision-btn decision-btn--pass" type="button" id="decision-pass-btn">
-  <span aria-hidden="true">&times;</span>
-  <span>Not for me</span>
-</button>
-    </div>
-  </div>
+<div class="decision-actions">
+  <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">
+    <span aria-hidden="true">&#10084;&#65039;</span>
+    <span>Love this</span>
+  </button>
+  <button class="decision-btn decision-btn--maybe" type="button" id="decision-maybe-btn">
+    <span aria-hidden="true">&#128076;</span>
+    <span>Kinda like</span>
+  </button>
+  <button class="decision-btn decision-btn--pass" type="button" id="decision-pass-btn">
+    <span aria-hidden="true">&times;</span>
+    <span>Not for me</span>
+  </button>
+</div>
+</div>
 <div class="panel__engage" id="sheet-engage">
   <div class="panel__engage-copy">
     Want to know more?

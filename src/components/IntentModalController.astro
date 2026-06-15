@@ -63,6 +63,24 @@ function loadGoogleMaps() {
 const sheetEngage = document.getElementById("sheet-engage");
 const askQuestionBtn = document.getElementById("ask-question-btn");
 const bookShowingBtn = document.getElementById("book-showing-btn");
+
+if (askQuestionBtn) {
+  askQuestionBtn.style.setProperty("height", "40px", "important");
+  askQuestionBtn.style.setProperty("min-height", "40px", "important");
+  askQuestionBtn.style.setProperty("max-height", "40px", "important");
+  askQuestionBtn.style.setProperty("padding-top", "0", "important");
+  askQuestionBtn.style.setProperty("padding-bottom", "0", "important");
+  askQuestionBtn.style.setProperty("box-sizing", "border-box", "important");
+}
+
+if (bookShowingBtn) {
+  bookShowingBtn.style.setProperty("height", "40px", "important");
+  bookShowingBtn.style.setProperty("min-height", "40px", "important");
+  bookShowingBtn.style.setProperty("max-height", "40px", "important");
+  bookShowingBtn.style.setProperty("padding-top", "0", "important");
+  bookShowingBtn.style.setProperty("padding-bottom", "0", "important");
+  bookShowingBtn.style.setProperty("box-sizing", "border-box", "important");
+}
 let likeTagsEl = document.getElementById("intent-like-tags");
 function getLikeTagsForType(propertyType = "") {
   const type = String(propertyType || "").toLowerCase();
@@ -123,14 +141,7 @@ if (type.includes("mobile") || type.includes("manufactured")) {
 if (!likeTagsEl) {
   likeTagsEl = document.createElement("div");
   likeTagsEl.id = "intent-like-tags";
-
-  const decisionWrap = document.querySelector("#preview-sheet .decision-wrap");
-
-  if (decisionWrap) {
-    decisionWrap.after(likeTagsEl);
-  } else if (feedback) {
-    feedback.after(likeTagsEl);
-  }
+  likeTagsEl.hidden = true;
 }
         const sheetContent = document.getElementById("sheet-content");
         const sheetSummary = document.getElementById("sheet-summary");
@@ -186,6 +197,30 @@ const SAVE_SEARCH_RESHOW_AFTER = 10;
     lng >= Number(bounds.west) &&
     lng <= Number(bounds.east)
   );
+}
+
+const HIGHLIGHT_RULES = [
+  { keywords: ["ocean view", "peek-a-boo ocean", "water view", "sea view", "ocean views"], label: "Ocean views" },
+  { keywords: ["legal suite", "in-law suite", "carriage house", "mortgage helper", "self-contained suite"], label: "Suite potential" },
+  { keywords: ["r14 zoning", "r14 –", "fourplex", "four-plex", "duplex zoning"], label: "R14 zoning" },
+  { keywords: ["rental income", "income property", "investor alert", "income generator", "revenue property"], label: "Investor opportunity" },
+  { keywords: ["double garage", "triple garage", "detached garage", "oversized garage"], label: "Garage" },
+  { keywords: ["viu", "vancouver island university"], label: "Near VIU" },
+  { keywords: ["old city", "downtown nanaimo", "bowen park", "departure bay"], label: "Central location" },
+  { keywords: ["fully renovated", "completely updated", "newly renovated", "new kitchen", "new roof", "new windows"], label: "Updated" },
+  { keywords: ["heat pump installed", "new heat pump", "ductless heat pump", "mini split"], label: "Heat pump" },
+  { keywords: ["septic system", "drilled well", "well water", "water well"], label: "Rural services" },
+  { keywords: ["swimming pool", "hot tub", "inground pool"], label: "Pool / hot tub" },
+{ keywords: ["waterfront home", "waterfront property", "waterfront lot", "beachfront", "lakefront", "oceanfront", "on the water", "steps to the water", "direct water access"], label: "Waterfront" },  { keywords: ["acreage", "hobby farm", "farm land"], label: "Acreage" },
+  { keywords: ["new build", "new home", "brand new construction", "newly built"], label: "New build" },
+];
+
+function getHighlightChips(description = "") {
+  const lower = description.toLowerCase();
+  return HIGHLIGHT_RULES
+    .filter(rule => rule.keywords.some(kw => lower.includes(kw)))
+    .map(rule => rule.label)
+    .slice(0, 5);
 }
 
 function getCards() {
@@ -416,9 +451,33 @@ if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
             `;
           }
 
-          if (sheetDescription) {
-            sheetDescription.textContent = card.dataset.description || "";
-          }
+      if (sheetDescription) {
+  sheetDescription.textContent = card.dataset.description || "";
+  sheetDescription.classList.add("is-collapsed");
+}
+
+const chips = getHighlightChips(card.dataset.description || "");
+let chipsEl = document.getElementById("sheet-highlight-chips");
+if (!chipsEl) {
+  chipsEl = document.createElement("div");
+  chipsEl.id = "sheet-highlight-chips";
+  chipsEl.className = "panel__highlight-chips";
+  document.querySelector("#preview-sheet .panel__desc-wrap")?.before(chipsEl);
+}
+chipsEl.innerHTML = chips.map(label =>
+  `<span class="panel__highlight-chip">${label}</span>`
+).join("");
+chipsEl.hidden = chips.length === 0;
+
+const descToggle = document.getElementById("sheet-desc-toggle");
+if (descToggle) {
+  descToggle.hidden = false;
+  descToggle.textContent = "Read more";
+  descToggle.onclick = () => {
+    const collapsed = sheetDescription.classList.toggle("is-collapsed");
+    descToggle.textContent = collapsed ? "Read more" : "Show less";
+  };
+}
 
           if (sheetPosition) {
             sheetPosition.textContent = `${index + 1} of ${total}`;
