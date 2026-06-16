@@ -59,7 +59,55 @@ function loadGoogleMaps() {
         const loveBtn = document.getElementById("decision-love-btn");
         const maybeBtn = document.getElementById("decision-maybe-btn");
         const passBtn = document.getElementById("decision-pass-btn");
-       const feedback = document.getElementById("sheet-feedback");
+       function popDecisionEmojisFromButton(button, emojiList = ["❤️"], count = 8) {
+  if (!button) return;
+
+  const rect = button.getBoundingClientRect();
+  const startX = rect.left + rect.width / 2;
+  const startY = rect.top + rect.height / 2;
+
+  for (let i = 0; i < count; i++) {
+    const emoji = document.createElement("span");
+
+    emoji.textContent = emojiList[i % emojiList.length];
+    emoji.style.position = "fixed";
+    emoji.style.left = `${startX}px`;
+    emoji.style.top = `${startY}px`;
+    emoji.style.zIndex = "2147483647";
+    emoji.style.pointerEvents = "none";
+    emoji.style.fontSize = i === 0 ? "34px" : "26px";
+    emoji.style.lineHeight = "1";
+    emoji.style.transform = "translate(-50%, -50%) scale(0.6)";
+    emoji.style.opacity = "1";
+    emoji.style.filter = "drop-shadow(0 6px 10px rgba(0,0,0,0.22))";
+
+    document.body.appendChild(emoji);
+
+    const driftX = (Math.random() - 0.5) * 150;
+    const driftY = -80 - Math.random() * 80;
+    const rotate = (Math.random() - 0.5) * 45;
+
+    emoji.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0 },
+        { transform: "translate(-50%, -70%) scale(1.15)", opacity: 1, offset: 0.18 },
+        {
+          transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(1.45) rotate(${rotate}deg)`,
+          opacity: 0
+        }
+      ],
+      {
+        duration: 1100,
+        delay: i * 35,
+        easing: "ease-out",
+        fill: "forwards"
+      }
+    );
+
+    window.setTimeout(() => emoji.remove(), 1500);
+  }
+}
+        const feedback = document.getElementById("sheet-feedback");
 const sheetEngage = document.getElementById("sheet-engage");
 const askQuestionBtn = document.getElementById("ask-question-btn");
 const bookShowingBtn = document.getElementById("book-showing-btn");
@@ -141,7 +189,12 @@ if (type.includes("mobile") || type.includes("manufactured")) {
 if (!likeTagsEl) {
   likeTagsEl = document.createElement("div");
   likeTagsEl.id = "intent-like-tags";
+  likeTagsEl.className = "intent-like-tags";
   likeTagsEl.hidden = true;
+
+ document
+  .querySelector("#preview-sheet .decision-actions")
+  ?.insertAdjacentElement("beforebegin", likeTagsEl);
 }
         const sheetContent = document.getElementById("sheet-content");
         const sheetSummary = document.getElementById("sheet-summary");
@@ -586,6 +639,61 @@ badge.classList.remove("is-love", "is-maybe", "is-pass");
     .filter(Boolean);
 }
 
+function getContextualLikeTags(card) {
+  const text = [
+    card?.dataset?.type,
+    card?.dataset?.propertyType,
+    card?.dataset?.description,
+    card?.dataset?.address,
+    card?.dataset?.area,
+  ].join(" ").toLowerCase();
+
+  if (
+    text.includes("waterfront") ||
+    text.includes("oceanfront") ||
+    text.includes("beachfront") ||
+    text.includes("water view") ||
+    text.includes("ocean view")
+  ) {
+    return [
+      ["waterfront", "🌊 Waterfront"],
+      ["location", "📍 Location"],
+      ["views", "🌅 Views"],
+    ];
+  }
+
+  if (
+    text.includes("condo") ||
+    text.includes("apartment") ||
+    text.includes("strata")
+  ) {
+    return [
+      ["walkability", "🚶 Walkability"],
+      ["location", "📍 Location"],
+      ["updated", "✨ Updated interior"],
+    ];
+  }
+
+  if (
+    text.includes("family") ||
+    text.includes("yard") ||
+    text.includes("garage") ||
+    text.includes("bedroom")
+  ) {
+    return [
+      ["layout", "🏡 Layout"],
+      ["yard", "🌳 Yard"],
+      ["location", "📍 Location"],
+    ];
+  }
+
+  return [
+    ["location", "📍 Location"],
+    ["views", "🌊 Views"],
+    ["layout", "🏡 Layout"],
+  ];
+}
+
 function renderLikeTags(card) {
   if (!likeTagsEl) return;
 
@@ -594,40 +702,60 @@ function renderLikeTags(card) {
 
   likeTagsEl.classList.toggle("open", shouldShow);
 
-let savedTags = [];
+  if (!shouldShow) {
+    likeTagsEl.hidden = true;
+    likeTagsEl.innerHTML = "";
+    return;
+  }
 
-try {
-  savedTags = JSON.parse(card.dataset.likedTags || "[]");
-} catch {
-  savedTags = [];
+
+
+  let savedTags = [];
+
+  try {
+    savedTags = JSON.parse(card.dataset.likedTags || "[]");
+  } catch {
+    savedTags = [];
+  }
+
+  const tagOptions =
+  decision === "love"
+    ? getContextualLikeTags(card)
+    : [
+        ["location", "📍 Location"],
+        ["value", "💰 Value"],
+        ["layout", "🏡 Layout"],
+      ];
+
+  likeTagsEl.innerHTML = `
+    <div class="intent-like-tags-kicker">What stood out?</div>
+    <div class="intent-like-tags-row">
+      ${tagOptions
+        .map(([key, label]) => {
+          const activeClass = savedTags.includes(key) ? " active" : "";
+
+          return `
+            <button
+              type="button"
+              class="intent-like-tag${activeClass}"
+              data-like-tag="${key}"
+            >
+              ${label}
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+
+  likeTagsEl.hidden = false;
+likeTagsEl.classList.remove("is-visible");
+
+setTimeout(() => {
+  likeTagsEl.classList.add("is-visible");
+}, 120);
 }
 
-const pagePropertyType =
-  document.querySelector(".stat-card:nth-child(2) .stat-value")?.textContent || "";
-
-const propertyType =
-  card?.dataset?.type ||
-  pagePropertyType ||
-  "";
-
-const tagOptions = getLikeTagsForType(propertyType);
-
-likeTagsEl.innerHTML = tagOptions
-  .map(([key, label]) => {
-    const activeClass = savedTags.includes(key) ? " active" : "";
-
-    return `
-      <button
-        type="button"
-        class="intent-like-tag${activeClass}"
-        data-like-tag="${key}"
-      >
-        ${label}
-      </button>
-    `;
-  })
-  .join("");
-}
 function getSharedIntentSessionId() {
   if (typeof window.getSharedIntentSessionId === "function") {
     return window.getSharedIntentSessionId();
@@ -715,22 +843,25 @@ function showRefiningState(chips = []) {
 
   const chipHtml = chips.length
     ? chips
-        .map((label) => {
-          return `<span class="modal-intent-chip">${label}</span>`;
-        })
+        .map((label) => `<span class="modal-intent-chip">${label}</span>`)
         .join("")
-    : "";
+    : `
+      <span class="modal-intent-chip">Better matches</span>
+      <span class="modal-intent-chip">More homes like these</span>
+    `;
 
   sheetSummary.innerHTML = `
-    <div class="modal-intent-summary is-refining">
-      <div class="modal-intent-kicker">
-        Refining around what you liked
+    <div class="modal-intent-summary modal-intent-summary--refining">
+      <div class="modal-intent-kicker">Refining your matches</div>
+
+      <div class="intent-refining-orb" aria-hidden="true">
+        <span></span>
       </div>
 
       <h2>Finding stronger matches...</h2>
 
       <p>
-        We’re adjusting the search around the homes, features,
+        We’re adjusting the next batch around the homes, features,
         and areas you responded to most positively.
       </p>
 
@@ -1017,28 +1148,38 @@ const positiveCards = Array.from(document.querySelectorAll(".original-card"))
     </div>
   ` : "";
 
-  sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
-      <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
-      <h2>Want better matches like these?</h2>
+ sheetSummary.innerHTML = `
+  <div class="modal-intent-summary modal-intent-summary--polished">
+    <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
 
-      ${thumbsHtml}
+    <h2>Want better matches like these?</h2>
 
-  <p>You've reacted positively to ${positiveCards.length || "a few"} home${positiveCards.length !== 1 ? "s" : ""}. We can refine the next batch around what you seem drawn to.</p>
+    ${thumbsHtml}
 
-      ${featureHtml}
+    <p>
+      You reacted positively to ${positiveCards.length || "a few"} home${positiveCards.length !== 1 ? "s" : ""}.
+      We can refine the next batch around what you seem drawn to.
+    </p>
 
-      <div class="modal-intent-save-copy">
-        Your preferences can be saved privately so your next batch keeps improving.
-      </div>
+    ${featureHtml}
 
-      <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="summary-refine-btn">Show better matches</button>
-        <button type="button" class="modal-intent-secondary" id="summary-nearby-btn">Compare nearby areas</button>
-        <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">Keep browsing</button>
-      </div>
+    <p class="modal-intent-save-copy">
+      Your preferences can be saved privately so your next batch keeps improving.
+    </p>
+
+    <div class="modal-intent-actions">
+      <button type="button" class="modal-intent-primary" id="summary-refine-btn">
+        Show better matches
+      </button>
+      <button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
+        Compare nearby areas
+      </button>
+      <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
+        Keep browsing
+      </button>
     </div>
-  `;
+  </div>
+`;
 
 document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
   event.currentTarget.classList.add("is-selected");  const generatedChips = Array.from(
@@ -1075,7 +1216,13 @@ combinedAreaChip.textContent =
 setTimeout(async () => {
   closeSheet({ force: true });
 
+ if (typeof window.runIntentRefine === "function") {
+  await window.runIntentRefine(combinedAreaChip, { openFirstResult: true });
+} else if (typeof runIntentRefine === "function") {
   await runIntentRefine(combinedAreaChip, { openFirstResult: true });
+} else {
+  console.warn("runIntentRefine is not available from modal");
+}
 
   const refinedAnchor =
     document.getElementById("refined-results") ||
@@ -1196,7 +1343,12 @@ updateCardDecisionBadge(activeCard);
   }
 
   updateDecisionButtons(activeCard);
- renderLikeTags(activeCard);
+likeTagsEl.hidden = true;
+likeTagsEl.classList.remove("open");
+
+window.setTimeout(() => {
+  renderLikeTags(activeCard);
+}, decision === "love" ? 300 : 150);
 
  sheet.classList.toggle(
   "has-decision",
@@ -1345,9 +1497,20 @@ try {
         prevBtn?.addEventListener("click", goPrev);
         prevTopBtn?.addEventListener("click", goPrev);
 
-   loveBtn?.addEventListener("click", () => saveIntentDecision("love"));
-maybeBtn?.addEventListener("click", () => saveIntentDecision("maybe"));
-passBtn?.addEventListener("click", () => saveIntentDecision("pass"));
+ loveBtn?.addEventListener("click", () => {
+  popDecisionEmojisFromButton(loveBtn, ["❤️", "🧡", "💛"], 1);
+  saveIntentDecision("love");
+});
+
+maybeBtn?.addEventListener("click", () => {
+  popDecisionEmojisFromButton(maybeBtn, ["👍"], 1);
+  saveIntentDecision("maybe");
+});
+
+passBtn?.addEventListener("click", () => {
+  popDecisionEmojisFromButton(passBtn, ["✕"], 1);
+  saveIntentDecision("pass");
+});
 
 askQuestionBtn?.addEventListener("click", () => {
   sheet.classList.add("is-engagement-mode");

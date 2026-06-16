@@ -15,12 +15,15 @@
         "npm:@astrojs/netlify@^7.0.7",
         "npm:@supabase/ssr@~0.10.3",
         "npm:@supabase/supabase-js@^2.103.3",
+        "npm:@tmcw/togeojson@^7.1.2",
         "npm:@turf/boolean-point-in-polygon@^7.3.5",
         "npm:@turf/helpers@^7.3.5",
         "npm:astro@^6.1.8",
         "npm:dotenv@^17.4.2",
+        "npm:slugify@^1.6.9",
         "npm:twilio@6",
-        "npm:typescript@^5.9.3"
+        "npm:typescript@^5.9.3",
+        "npm:xmldom@0.6"
       ]
     }
   }

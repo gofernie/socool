@@ -131,14 +131,7 @@ if (slug) {
   .map((item: any) => String(item.address || "").trim())
   .filter(Boolean);
 
-const reactedAddresses = behaviourRows
-  .map((row) => String(row.address || "").trim())
-  .filter(Boolean);
-
-const allExcludedAddresses = new Set([
-  ...excludeAddresses,
-  ...reactedAddresses,
-]);
+const allExcludedAddresses = new Set(excludeAddresses);
 
 const visiblePriceByAddress = new Map(
   visibleListings
@@ -177,6 +170,13 @@ const visiblePriceByAddress = new Map(
       }
 
       behaviourRows = behaviourData || [];
+      const reactedAddresses = behaviourRows
+  .map((row) => String(row.address || "").trim())
+  .filter(Boolean);
+
+reactedAddresses.forEach((address) => {
+  allExcludedAddresses.add(address);
+});
     }
 
     const generatedChips = generateBehaviourRefineChips(behaviourRows);
@@ -263,7 +263,10 @@ if (lockedPageType) {
   query = query.eq("normalized_type", lockedPageType);
 }
 
-if (intentPage?.area) {
+if (
+  intentPage?.area &&
+  behaviourRows.length < 6
+) {
   query = query.eq(
     "normalized_area",
     String(intentPage.area).toLowerCase().trim()
@@ -315,8 +318,13 @@ if (wantsPremium) {
   query = query.gte("price", premiumFloor);
 }
 
-    let targetMaxPrice =
-      visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 1.12) : 0;
+   let targetMaxPrice =
+  visibleMaxPrice > 0
+    ? Math.min(
+        Math.round(visibleMaxPrice * 1.10),
+        visibleMaxPrice + 100000
+      )
+    : 0;
 
     if (refineLabel.includes("stay close")) {
       targetMaxPrice = visibleMaxPrice;
@@ -472,7 +480,15 @@ if (mapBounds) {
 
     if (error) {
       console.error(error);
-
+console.log("REFINE DEBUG", {
+  behaviourRows: behaviourRows.length,
+  lovedAreas: [...lovedAreas],
+  maybeAreas: [...maybeAreas],
+  preferredAreas,
+  scoredAll: scoredAll.length,
+  unviewedScored: unviewedScored.length,
+  finalReturned: paged.length,
+});
       return new Response(
         JSON.stringify({
           listings: [],
@@ -638,13 +654,20 @@ if (wantsNearbyAreas) {
     return Number(a.listing.price || 0) - Number(b.listing.price || 0);
   }
 
-  return Number(b.listing.price || 0) - Number(a.listing.price || 0);
+   if (preferredAvgPrice > 0) {
+    return (
+      Math.abs(Number(a.listing.price || 0) - preferredAvgPrice) -
+      Math.abs(Number(b.listing.price || 0) - preferredAvgPrice)
+    );
+  }
+
+  return Number(a.listing.price || 0) - Number(b.listing.price || 0);
 });
 
 const unviewedScored = scoredAll.filter((item) => {
   const address = String(item.listing.address || "").trim();
 
-  return !reactedAddresses.includes(address);
+  return address && !allExcludedAddresses.has(address);
 });
 
    const scored =

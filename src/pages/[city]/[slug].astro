@@ -3044,6 +3044,53 @@ city: document.querySelector("[data-city]")?.dataset.city,
      const json = await response.json();
 
 let listings = json.listings || [];
+
+const seenKeys = new Set([
+  ...getViewedIntentListingKeys(),
+  ...getVisibleCards().map((card) =>
+    String(
+      card.dataset.listingId ||
+      card.dataset.mls ||
+      card.dataset.itemId ||
+      card.dataset.address ||
+      ""
+    )
+      .trim()
+      .toLowerCase()
+  ),
+]);
+
+const seenAddresses = new Set([
+  ...getViewedIntentAddresses(),
+  ...getVisibleCards().map((card) =>
+    String(card.dataset.address || "").trim().toLowerCase()
+  ),
+]);
+
+const unseenListings = listings.filter((listing) => {
+  const key = String(
+    listing.id ||
+    listing.mls_number ||
+    listing.address ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const address = String(listing.address || "").trim().toLowerCase();
+
+  return !seenKeys.has(key) && !seenAddresses.has(address);
+});
+
+if (unseenListings.length >= 8) {
+  listings = unseenListings;
+}
+
+console.log("REFINE FILTER", {
+  returned: json.listings?.length || 0,
+  unseen: unseenListings.length,
+  showing: listings.length,
+});
 const generatedChips = json.generated_chips || [];
 
 // Area is now handled by backend scoring.
@@ -3156,9 +3203,12 @@ if (options.openFirstResult) {
          
         }
 
-        chip.classList.remove("is-loading");
+               chip.classList.remove("is-loading");
         interruptCard.classList.remove("is-refining");
       }
+
+window.runIntentRefine = runIntentRefine;
+
 document.addEventListener("click", async (event) => {
   const loadMoreBtn = event.target.closest("#load-more-refined");
 
