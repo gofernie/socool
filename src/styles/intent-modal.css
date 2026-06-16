@@ -1964,13 +1964,16 @@ body.edit-mode .agent-edit-grid {
 
 /* Primary Love / Like / Pass buttons */
 #preview-sheet .decision-actions {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 8px !important;
-  max-width: 540px !important;
-  margin: 0 auto 20px !important;
-  width: 100% !important;
-}
+    padding: 0 20px !important;
+    gap: 8px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+  }
 
 #preview-sheet .decision-btn {
   min-height: 52px !important;
@@ -3179,14 +3182,7 @@ body.edit-mode .agent-edit-grid {
     font-size: 0.68rem !important;
   }
 }
-#preview-sheet .decision-actions {
-    padding: 0 !important;
-    gap: 6px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-  }
+
 
 
 
@@ -3214,4 +3210,13 @@ body.edit-mode .agent-edit-grid {
 #preview-sheet .panel__summary.open {
   background: #fff !important;
   padding: 0 !important;
+}
+
+#preview-sheet {
+  overflow-x: hidden !important;
+}
+
+#preview-sheet .panel__content,
+#preview-sheet .panel__view {
+  overflow-x: hidden !important;
 }
