@@ -16,11 +16,14 @@
     "@astrojs/netlify": "^7.0.7",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.103.3",
+    "@tmcw/togeojson": "^7.1.2",
     "@turf/boolean-point-in-polygon": "^7.3.5",
     "@turf/helpers": "^7.3.5",
     "astro": "^6.1.8",
     "dotenv": "^17.4.2",
+    "slugify": "^1.6.9",
     "twilio": "^6.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "xmldom": "^0.6.0"
   }
 }

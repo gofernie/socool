@@ -97,13 +97,13 @@ const sitesJson = JSON.stringify(sites);
       }
 
       .main {
-  padding: 48px 32px 64px;
-  min-width: 0;
-  overflow-x: hidden;
-  max-width: 1200px;
-}
+        padding: 48px 32px 64px;
+        min-width: 0;
+        overflow-x: hidden;
+        max-width: 1200px;
+      }
 
-    .main h1 {
+      .main h1 {
         margin: 0 0 8px;
         font-family: var(--font-display);
         font-size: 2.6rem;
@@ -125,29 +125,29 @@ const sitesJson = JSON.stringify(sites);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
       }
 
-   .controls {
-  display: grid;
-  grid-template-columns:
-    minmax(220px, 1fr)
-    minmax(220px, 1fr)
-    minmax(220px, 1fr)
-    minmax(220px, 1fr);
-  gap: 12px;
-  align-items: end;
-  margin-bottom: 18px;
-}
+      .controls {
+        display: grid;
+        grid-template-columns:
+          minmax(220px, 1fr)
+          minmax(220px, 1fr)
+          minmax(220px, 1fr)
+          minmax(220px, 1fr);
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
 
-.control-actions {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
-  gap: 12px;
-}
+      .control-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        gap: 12px;
+      }
 
-.controls button {
-  width: 100%;
-  min-width: 0;
-}
+      .controls button {
+        width: 100%;
+        min-width: 0;
+      }
 
       .main label {
         display: grid;
@@ -157,31 +157,31 @@ const sitesJson = JSON.stringify(sites);
         color: #514a43;
       }
 
-   .main select,
-.main input,
-.main button {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid #ddd3c8;
-  padding: 0 14px;
-  font: inherit;
-  background: #fff;
-}
+      .main select,
+      .main input,
+      .main button {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        height: 44px;
+        border-radius: 999px;
+        border: 1px solid #ddd3c8;
+        padding: 0 14px;
+        font: inherit;
+        background: #fff;
+      }
 
       .main button {
         cursor: pointer;
         font-weight: 800;
       }
 
-     .main button.primary {
-  background: #181614;
-  color: #fff;
-  border-color: #181614;
-}
+      .main button.primary {
+        background: #181614;
+        color: #fff;
+        border-color: #181614;
+      }
 
       .danger {
         color: #9f1d1d;
@@ -220,33 +220,16 @@ const sitesJson = JSON.stringify(sites);
         color: #766f66;
         font-size: 14px;
       }
+
       @media (max-width: 1150px) {
-  .controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+        .controls {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
 
-  .control-actions {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .page {
-    display: block;
-  }
-
-  .main {
-    padding: 28px 18px 48px;
-  }
-
-  .controls {
-    grid-template-columns: 1fr;
-  }
-
-  #map {
-    height: 520px;
-  }
-}
+        .control-actions {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
 
       @media (max-width: 900px) {
         .page {
@@ -257,7 +240,8 @@ const sitesJson = JSON.stringify(sites);
           padding: 28px 18px 48px;
         }
 
-        .controls {
+        .controls,
+        .control-actions {
           grid-template-columns: 1fr;
         }
 
@@ -304,36 +288,30 @@ const sitesJson = JSON.stringify(sites);
               <select id="areaSelect"></select>
             </label>
 
-         <label>
-  Short Description
-  <input
-    id="shortDescription"
-    type="text"
-    placeholder="Ocean views • Shopping"
-  />
-</label>
+            <label>
+              Short Description
+              <input id="shortDescription" type="text" placeholder="Ocean views • Shopping" />
+            </label>
 
-<label>
-  Hero Image URL
-  <input
-    id="heroImageUrl"
-    type="text"
-    placeholder="https://images.unsplash.com/..."
-  />
-</label>
+            <label>
+              Hero Image URL
+              <input id="heroImageUrl" type="text" placeholder="https://images.unsplash.com/..." />
+            </label>
 
-           <div class="control-actions">
-  <button type="button" id="drawBtn">Draw Boundary</button>
-  <button type="button" class="danger" id="clearBtn">Clear</button>
-  <button type="button" class="primary" id="saveBtn">Save Boundary</button>
-</div>
+            <div class="control-actions">
+              <button type="button" id="drawBtn">Draw Boundary</button>
+              <button type="button" id="loadLinesBtn">Load Boundary Lines</button>
+              <button type="button" id="buildPolygonBtn">Build Path</button>
+              <button type="button" class="danger" id="clearBtn">Clear</button>
+              <button type="button" class="primary" id="saveBtn">Save Boundary</button>
+            </div>
           </div>
 
           <div id="map"></div>
 
           <div class="status" id="status">Draw a polygon on the map, then save it.</div>
           <div class="hint">
-            Tip: click around the neighbourhood edge to draw. Double-click or return to the first point to finish.
+            Tip: load boundary lines, click only the red pieces you want, then build a path. Saving closes it into a polygon.
           </div>
         </section>
       </main>
@@ -347,7 +325,7 @@ const sitesJson = JSON.stringify(sites);
       const citySelect = document.getElementById("citySelect");
       const areaSelect = document.getElementById("areaSelect");
       const shortDescriptionInput = document.getElementById("shortDescription");
-const heroImageUrlInput = document.getElementById("heroImageUrl");
+      const heroImageUrlInput = document.getElementById("heroImageUrl");
       const drawBtn = document.getElementById("drawBtn");
       const clearBtn = document.getElementById("clearBtn");
       const saveBtn = document.getElementById("saveBtn");
@@ -355,6 +333,8 @@ const heroImageUrlInput = document.getElementById("heroImageUrl");
 
       let map;
       let activePolygon = null;
+      let importedLines = [];
+      let selectedLines = [];
       let drawingPath = [];
       let drawingMarkers = [];
       let isDrawing = false;
@@ -384,7 +364,6 @@ const heroImageUrlInput = document.getElementById("heroImageUrl");
 
       function moveMapToCity() {
         if (!map) return;
-
         const center = cityCenters[citySelect.value] || cityCenters.nanaimo;
         map.setCenter({ lat: center.lat, lng: center.lng });
         map.setZoom(center.zoom);
@@ -401,6 +380,67 @@ const heroImageUrlInput = document.getElementById("heroImageUrl");
         moveMapToCity();
       }
 
+      function addDeletePointListener(shape) {
+        shape.addListener("rightclick", (event) => {
+          if (event.vertex == null) return;
+
+          const path = shape.getPath();
+
+          if (path.getLength() <= 3) {
+            setStatus("Boundary needs at least 3 points.");
+            return;
+          }
+
+          path.removeAt(event.vertex);
+          setStatus("Point removed. Keep cleaning the shape, then Save Boundary.");
+        });
+      }
+
+      async function loadImportedLines() {
+        importedLines.forEach((line) => line.setMap(null));
+        importedLines = [];
+        selectedLines = [];
+
+        const response = await fetch(
+          `/api/admin/imported-boundary-lines?city=${encodeURIComponent(citySelect.value)}&site_id=${encodeURIComponent(siteSelect.value)}`
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          setStatus(`Could not load boundary lines: ${result.error || "Unknown error"}`);
+          return;
+        }
+
+        result.lines.forEach((row) => {
+          const coords = row.geometry_geojson.coordinates.map(([lng, lat]) => ({
+            lat,
+            lng,
+          }));
+
+          for (let i = 0; i < coords.length - 1; i++) {
+            const line = new google.maps.Polyline({
+  path: [coords[i], coords[i + 1]],
+  map,
+  strokeColor: "#cc4444",
+  strokeOpacity: 0.55,
+  strokeWeight: 2,
+  clickable: false,
+});
+
+            line.__selected = false;
+            line.__row = row;
+            line.__segmentIndex = i;
+
+            
+
+            importedLines.push(line);
+          }
+        });
+
+        setStatus(`${importedLines.length} boundary segments loaded. Click only the pieces you want.`);
+      }
+
       function clearPolygon(options = {}) {
         const { quiet = false } = options;
 
@@ -410,9 +450,13 @@ const heroImageUrlInput = document.getElementById("heroImageUrl");
         }
 
         drawingMarkers.forEach((marker) => marker.setMap(null));
-        drawingMarkers = [];
-        drawingPath = [];
-        isDrawing = false;
+     drawingMarkers = [];
+drawingPath = [];
+isDrawing = false;
+
+if (map) {
+  map.setOptions({ draggableCursor: null });
+}
 
         if (!quiet) {
           setStatus("Boundary cleared. Choose Draw Boundary to start again.");
@@ -426,26 +470,27 @@ const heroImageUrlInput = document.getElementById("heroImageUrl");
         setActiveAction(null);
 
         const response = await fetch(
-          `/api/admin/area-boundary?city=${encodeURIComponent(citySelect.value)}&area_slug=${encodeURIComponent(areaSelect.value)}`
+          `/api/admin/area-boundary?city=${encodeURIComponent(citySelect.value)}&area_slug=${encodeURIComponent(areaSelect.value)}&site_id=${encodeURIComponent(siteSelect.value)}`
         );
 
         if (!response.ok) {
           shortDescriptionInput.value = "";
+          heroImageUrlInput.value = "";
           setStatus("No saved boundary found for this area.");
           return;
         }
 
         const result = await response.json();
 
-       shortDescriptionInput.value =
-  result?.boundary?.short_description ||
-  result?.short_description ||
-  "";
+        shortDescriptionInput.value =
+          result?.boundary?.short_description ||
+          result?.short_description ||
+          "";
 
-heroImageUrlInput.value =
-  result?.boundary?.hero_image_url ||
-  result?.hero_image_url ||
-  "";
+        heroImageUrlInput.value =
+          result?.boundary?.hero_image_url ||
+          result?.hero_image_url ||
+          "";
 
         const polygon =
           result?.boundary?.polygon_geojson ||
@@ -467,6 +512,8 @@ heroImageUrlInput.value =
           strokeWeight: 3,
         });
 
+        addDeletePointListener(activePolygon);
+
         const bounds = new google.maps.LatLngBounds();
         coords.forEach((point) => bounds.extend(point));
 
@@ -484,13 +531,14 @@ heroImageUrlInput.value =
         }
 
         clearPolygon({ quiet: true });
-        isDrawing = true;
-        setActiveAction("draw");
+      isDrawing = true;
+map.setOptions({ draggableCursor: "crosshair" });
+setActiveAction("draw");
         setStatus("Draw mode selected. Click points around the area boundary.");
       });
 
-      function polygonToGeoJson(polygon) {
-        const path = polygon.getPath();
+      function polygonToGeoJson(shape) {
+        const path = shape.getPath();
         const coordinates = [];
 
         for (let i = 0; i < path.getLength(); i++) {
@@ -513,9 +561,9 @@ heroImageUrlInput.value =
         };
       }
 
-      function getPolygonCenter(polygon) {
+      function getPolygonCenter(shape) {
         const bounds = new google.maps.LatLngBounds();
-        polygon.getPath().forEach((point) => bounds.extend(point));
+        shape.getPath().forEach((point) => bounds.extend(point));
         const center = bounds.getCenter();
 
         return {
@@ -524,9 +572,94 @@ heroImageUrlInput.value =
         };
       }
 
+      function buildPolygonFromSelectedLines() {
+        if (!selectedLines.length) {
+          setStatus("Select boundary segments first.");
+          return;
+        }
+
+        if (activePolygon) {
+          activePolygon.setMap(null);
+          activePolygon = null;
+        }
+
+        const segments = selectedLines.map((line) => {
+          const path = line.getPath();
+          const a = path.getAt(0);
+          const b = path.getAt(1);
+
+          return [
+            { lat: a.lat(), lng: a.lng() },
+            { lat: b.lat(), lng: b.lng() },
+          ];
+        });
+
+        function key(point) {
+          return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+        }
+
+        const used = new Set();
+        const points = [...segments[0]];
+        used.add(0);
+
+        let changed = true;
+
+        while (changed) {
+          changed = false;
+
+          for (let i = 0; i < segments.length; i++) {
+            if (used.has(i)) continue;
+
+            const [a, b] = segments[i];
+            const first = points[0];
+            const last = points[points.length - 1];
+
+            if (key(a) === key(last)) {
+              points.push(b);
+              used.add(i);
+              changed = true;
+            } else if (key(b) === key(last)) {
+              points.push(a);
+              used.add(i);
+              changed = true;
+            } else if (key(b) === key(first)) {
+              points.unshift(a);
+              used.add(i);
+              changed = true;
+            } else if (key(a) === key(first)) {
+              points.unshift(b);
+              used.add(i);
+              changed = true;
+            }
+          }
+        }
+
+        if (points.length < 3) {
+          setStatus("Need at least 3 connected segments.");
+          return;
+        }
+
+        activePolygon = new google.maps.Polyline({
+          path: points,
+          map,
+          editable: true,
+          draggable: true,
+          strokeColor: "#2563eb",
+          strokeWeight: 5,
+        });
+
+        addDeletePointListener(activePolygon);
+
+        const bounds = new google.maps.LatLngBounds();
+        points.forEach((point) => bounds.extend(point));
+        map.fitBounds(bounds);
+
+        setStatus(`Editable path built from ${used.size} connected segment(s). Adjust if needed, then Save Boundary.`);
+      }
+
       async function saveBoundary() {
         if (!activePolygon) {
-          setStatus("Draw a polygon first.");
+          setStatus("Draw or build a boundary first.");
           return;
         }
 
@@ -534,17 +667,17 @@ heroImageUrlInput.value =
         const areaName = selectedOption?.textContent || areaSelect.value;
         const center = getPolygonCenter(activePolygon);
 
-    const payload = {
-  site_id: siteSelect.value,
-  city: citySelect.value,
-  area_slug: areaSelect.value,
-  area_name: areaName,
-  short_description: shortDescriptionInput.value.trim(),
-  hero_image_url: heroImageUrlInput.value.trim(),
-  polygon_geojson: polygonToGeoJson(activePolygon),
-  center_lat: center.lat,
-  center_lng: center.lng,
-};
+        const payload = {
+          site_id: siteSelect.value,
+          city: citySelect.value,
+          area_slug: areaSelect.value,
+          area_name: areaName,
+          short_description: shortDescriptionInput.value.trim(),
+          hero_image_url: heroImageUrlInput.value.trim(),
+          polygon_geojson: polygonToGeoJson(activePolygon),
+          center_lat: center.lat,
+          center_lng: center.lng,
+        };
 
         setStatus("Saving boundary...");
 
@@ -609,6 +742,8 @@ heroImageUrlInput.value =
             strokeWeight: 3,
           });
 
+          addDeletePointListener(activePolygon);
+
           setStatus(`${drawingPath.length} points added. Add at least 3, then click Save Boundary.`);
         });
 
@@ -651,6 +786,14 @@ heroImageUrlInput.value =
         setActiveAction("clear");
         clearPolygon();
       });
+
+      document
+        .getElementById("loadLinesBtn")
+        ?.addEventListener("click", loadImportedLines);
+
+      document
+        .getElementById("buildPolygonBtn")
+        ?.addEventListener("click", buildPolygonFromSelectedLines);
 
       saveBtn?.addEventListener("click", saveBoundary);
     </script>
