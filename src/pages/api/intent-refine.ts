@@ -318,11 +318,11 @@ if (wantsPremium) {
   query = query.gte("price", premiumFloor);
 }
 
-   let targetMaxPrice =
+let targetMaxPrice =
   visibleMaxPrice > 0
     ? Math.min(
-        Math.round(visibleMaxPrice * 1.10),
-        visibleMaxPrice + 100000
+        Math.round(visibleMaxPrice * 1.20),
+        visibleMaxPrice + 200000
       )
     : 0;
 

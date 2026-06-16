@@ -2709,6 +2709,8 @@ document.addEventListener("click", (event) => {
   const card = event.target.closest(".card");
   if (card) {
     window.__activeIntentCard = card;
+    saveViewedIntentListingKey(card);
+    saveViewedIntentAddress(card.dataset.address || "");
     return;
   }
 
@@ -3060,10 +3062,18 @@ const seenKeys = new Set([
   ),
 ]);
 
+function normalizeSeenAddress(value) {
+  return String(value || "")
+    .replace(/^#\d+\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 const seenAddresses = new Set([
-  ...getViewedIntentAddresses(),
+  ...getViewedIntentAddresses().map(normalizeSeenAddress),
   ...getVisibleCards().map((card) =>
-    String(card.dataset.address || "").trim().toLowerCase()
+    normalizeSeenAddress(card.dataset.address || "")
   ),
 ]);
 
@@ -3077,14 +3087,16 @@ const unseenListings = listings.filter((listing) => {
     .trim()
     .toLowerCase();
 
-  const address = String(listing.address || "").trim().toLowerCase();
+  const address = String(listing.address || "")
+  .replace(/^#\d+\s+/i, "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLowerCase();
 
   return !seenKeys.has(key) && !seenAddresses.has(address);
 });
 
-if (unseenListings.length >= 8) {
-  listings = unseenListings;
-}
+listings = unseenListings;
 
 console.log("REFINE FILTER", {
   returned: json.listings?.length || 0,
