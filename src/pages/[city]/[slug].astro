@@ -643,6 +643,11 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   gap: 6px;
 }
 
+.page-hero__eyebrow { color: rgba(255,255,255,0.75) !important; }
+.page-hero h1 { color: #fff !important; text-shadow: 0 2px 24px rgba(0,0,0,0.5) !important; }
+.page-hero__copy { color: rgba(255,255,255,0.85) !important; }
+.hero-market-meta { color: rgba(255,255,255,0.65) !important; }
+
 :global(.hero-title-dot) {
   color: var(--accent) !important;
 }
@@ -1707,7 +1712,7 @@ color: var(--accent) !important;
 >
   <div class="page-hero__inner">
 <p class="page-hero__eyebrow">{city.charAt(0).toUpperCase() + city.slice(1)} Intent Search</p>
-   <h1 set:html={`${cleanHeroHeading}<span style="color:${accentColor} !important">.</span>`} />
+   <h1 set:html={`${cleanHeroHeading.replace(/\|/g, '<br>')}<span style="color:${accentColor} !important">.</span>`} />
 
   <p class="page-hero__copy">{page.intro_copy}</p>
 
@@ -1773,7 +1778,7 @@ color: var(--accent) !important;
 
       <div class="section-head">
   <div>
-    <h2>{page.seo_heading || page.hero_heading}</h2>
+   <h2>{(page.seo_heading || page.hero_heading || "").replace(/\|/g, " ")}</h2>
     <p class="section-subcopy">Updated just now</p>
   </div>
 

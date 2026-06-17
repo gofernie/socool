@@ -51,6 +51,7 @@ if (Astro.request.method === "POST") {
 hero_image_url: clean(form.get("hero_image_url")) || null,
 nav_label: clean(form.get("nav_label")) || null,
 intro_copy: clean(form.get("intro_copy")),
+      seo_heading: clean(form.get("seo_heading")) || null,
       seo_title: clean(form.get("seo_title")),
 default_sort: clean(form.get("default_sort")) || "newest",
 lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
@@ -484,10 +485,7 @@ select {
           </select>
         </div>
 
-        <div class="field">
-  <label>Hero heading</label>
-  <input name="hero_heading" value={page.hero_heading || ""} required />
-</div>
+        
 
 <div class="field">
   <label>Hero image URL</label>
@@ -522,9 +520,19 @@ select {
           <textarea name="intro_copy" required>{page.intro_copy || ""}</textarea>
         </div>
 
+      <div class="field">
+          <label>Hero heading h1 <span style="font-weight:400;color:var(--muted);">— use | for line break</span></label>
+          <input name="hero_heading" value={page.hero_heading || ""} />
+        </div>
+
         <div class="field">
-          <label>SEO title</label>
-          <input name="seo_title" value={page.seo_title || ""} required />
+          <label>Section heading h2 <span style="font-weight:400;color:var(--muted);">— single line, below the hero</span></label>
+          <input name="seo_heading" value={page.seo_heading || ""} placeholder="Same as hero heading if blank" />
+        </div>
+
+        <div class="field">
+          <label>SEO title <span style="font-weight:400;color:var(--muted);">— browser tab</span></label>
+          <input name="seo_title" value={page.seo_title || ""} />
         </div>
 
         <div class="feature-section">
