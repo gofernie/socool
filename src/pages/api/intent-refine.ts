@@ -125,6 +125,9 @@ if (slug) {
     const visibleListings = Array.isArray(body.visible_listings)
       ? body.visible_listings
       : [];
+      const positiveReactions = Array.isArray(body.positive_reactions)
+  ? body.positive_reactions
+  : [];
       const mapBounds = body.map_bounds || null;
 
   const excludeAddresses = visibleListings
@@ -189,7 +192,10 @@ const passedAreas = new Set<string>();
 const positivePrices: number[] = [];
 let preferredAreas: string[] = [];
 
-    behaviourRows.forEach((row) => {
+    [
+  ...behaviourRows,
+  ...positiveReactions
+].forEach((row) => {
   const decision = String(row.decision || "");
 const area = String(row.area || "").toLowerCase();
 const tags = normalizeTags(row.liked_tags);
@@ -230,7 +236,26 @@ if (decision === "maybe") {
 const preferredAvgPrice = positivePrices.length
   ? positivePrices.reduce((sum, price) => sum + price, 0) / positivePrices.length
   : 0;
+  const priceBandRule = body.price_band_rule || {};
 
+const priceDelta = Math.min(
+  preferredAvgPrice * Number(priceBandRule.percent || 0.3),
+  Number(priceBandRule.max_delta || 175000)
+);
+
+const minPreferredPrice =
+  preferredAvgPrice > 0
+    ? Math.round(preferredAvgPrice - priceDelta)
+    : 0;
+
+const maxPreferredPrice =
+  preferredAvgPrice > 0
+    ? Math.round(preferredAvgPrice + priceDelta)
+    : 0;
+
+const anchorPrice = positivePrices.length
+  ? Math.max(...positivePrices)
+  : 0;
 let query = supabase
       .from("listing_rows")
       .select("*")
@@ -258,14 +283,24 @@ let query = supabase
 const lockedPageType =
   propertyTypeMap[pageType] || pageType;
 
+// Do not hard-filter property type during refine.
+// First return listings in the liked/loved price band.
+// Then boost same-type listings in scoring.
 if (lockedPageType) {
-  console.log("REFINE LOCKED PROPERTY TYPE:", lockedPageType);
-  query = query.eq("normalized_type", lockedPageType);
+  console.log("REFINE PREFERRED PROPERTY TYPE:", lockedPageType);
 }
+
+const totalPositiveSignals =
+  behaviourRows.filter((row) =>
+    ["love", "maybe"].includes(String(row.decision || ""))
+  ).length +
+  positiveReactions.filter((row) =>
+    ["love", "maybe"].includes(String(row.decision || ""))
+  ).length;
 
 if (
   intentPage?.area &&
-  behaviourRows.length < 6
+  totalPositiveSignals < 2
 ) {
   query = query.eq(
     "normalized_area",
@@ -273,24 +308,9 @@ if (
   );
 }
 
-if (intentPage?.waterfront_type === "waterfront") {
-  query = query.eq("waterfront", true);
-}
-
-if (
-  intentPage?.waterfront_type &&
-  intentPage.waterfront_type !== "waterfront"
-) {
-  query = query.eq("waterfront_type", intentPage.waterfront_type);
-}
-
-if (!intentPage?.waterfront_type && intentPage?.requires_waterfront) {
-  query = query.eq("waterfront", true);
-}
-
-if (intentPage?.requires_ocean_view) {
-  query = query.eq("ocean_view", true);
-}
+// Do not hard-filter waterfront / ocean view during behavioural refine.
+// Buyers may like "close to ocean" without needing MLS waterfront/ocean_view flags.
+// These should be scored later, not required here.
 
    const lowerCeiling =
   visibleMaxPrice > 0
@@ -337,23 +357,23 @@ let targetMaxPrice =
     }
 
 if (
+  minPreferredPrice > 0 &&
+  maxPreferredPrice > 0 &&
+  !wantsLowerPrice &&
+  !wantsMidRange &&
+  !wantsPremium
+) {
+  // Wider gate: ±40% buffer so scoring can do the real work
+  query = query
+    .gte("price", Math.round(minPreferredPrice * 0.6))
+    .lte("price", Math.round(maxPreferredPrice * 1.4));
+} else if (
   targetMaxPrice > 0 &&
   !wantsLowerPrice &&
   !wantsMidRange &&
   !wantsPremium
 ) {
   query = query.lte("price", targetMaxPrice);
-}
-
-// If the buyer is clearly liking higher-priced listings,
-// do not let refine fall way below that band unless they explicitly chose a price direction.
-if (
-  preferredMinPrice > 0 &&
-  !wantsLowerPrice &&
-  !wantsMidRange &&
-  !wantsPremium
-) {
-  query = query.gte("price", Math.round(preferredMinPrice * 0.75));
 }
 
       if (refineLabel.includes("show up to")) {
@@ -425,10 +445,70 @@ const wantsNearbyAreas = refineLabel.includes("nearby");
     });
 
 const { data, error } = await query
-  .order("price", { ascending: !wantsPremium })
-  .limit(120);
+  .order("listed_at", { ascending: false })
+  .limit(300);
 
 let filteredData = data || [];
+
+if (anchorPrice >= 1000000) {
+
+  filteredData = filteredData.filter((listing) => {
+    const price = Number(listing.price || 0);
+    const type = String(
+      listing.normalized_type ||
+      listing.property_type ||
+      listing.type ||
+      ""
+    ).toLowerCase();
+
+    if (type.includes("mobile")) return false;
+    if (type.includes("land") || type.includes("lot")) return false;
+
+    return price >= anchorPrice * 0.7;
+  });
+
+  console.log("ANCHOR PRICE FILTER", anchorPrice, filteredData.length);
+}
+/**
+ * Safety lock: refined results must stay inside the intent page property type.
+ * This prevents a "homes" intent from drifting into condos/mobiles/land.
+ */
+if (lockedPageType) {
+  filteredData = filteredData.filter((listing) => {
+    const type = String(
+      listing.normalized_type ||
+      listing.property_type ||
+      listing.type ||
+      ""
+    ).toLowerCase();
+
+    if (lockedPageType === "house") {
+      return type === "house" || type.includes("house");
+    }
+
+    if (lockedPageType === "condo") {
+      return type === "condo" || type.includes("condo") || type.includes("apartment");
+    }
+
+    if (lockedPageType === "townhouse") {
+      return type === "townhouse" || type.includes("townhouse") || type.includes("townhome");
+    }
+
+    if (lockedPageType === "mobile") {
+      return type === "mobile" || type.includes("mobile") || type.includes("manufactured");
+    }
+
+    if (lockedPageType === "land") {
+      return type === "land" || type.includes("land") || type.includes("lot");
+    }
+
+    return type === lockedPageType;
+  });
+
+  console.log("PROPERTY TYPE HARD FILTER", lockedPageType, filteredData.length);
+}
+
+
 
 if (preferredFeatureLabels.income) {
   filteredData = filteredData.filter((listing) => {
@@ -506,14 +586,43 @@ console.log("REFINE DEBUG", {
       );
     }
 
-    const scoredAll = filteredData
-      .map((listing) => {
-        const description = String(listing.description || "").toLowerCase();
-        const area = String(
-          listing.normalized_area || listing.area || ""
-        ).toLowerCase();
+   const wantsBeachOrViews =
+  pageClues.includes("beach") ||
+  pageClues.includes("ocean") ||
+  pageClues.includes("view") ||
+  refineLabel.includes("view") ||
+  refineLabel.includes("beach") ||
+  refineLabel.includes("ocean");
 
-        let score = 0;
+if (wantsBeachOrViews) {
+  filteredData = filteredData.filter((listing) => {
+    const type = String(
+      listing.normalized_type ||
+      listing.property_type ||
+      ""
+    ).toLowerCase();
+
+    if (type.includes("mobile")) return false;
+    if (type.includes("land") || type.includes("lot")) return false;
+
+    return true;
+  });
+
+  console.log("BEACH / VIEW TYPE FILTER", filteredData.length);
+}
+
+const scoredAll = filteredData
+  .map((listing) => {
+       const description = String(listing.description || "").toLowerCase();
+const area = String(
+  listing.normalized_area || listing.area || ""
+).toLowerCase();
+
+const type = String(listing.normalized_type || listing.property_type || "").toLowerCase();
+const viewType = String(listing.view_type || "").toLowerCase();
+const waterfrontType = String(listing.waterfront_type || "").toLowerCase();
+
+let score = 0;
 
         lovedTags.forEach((tag) => {
           const terms = tagTerms[tag] || [];
@@ -592,9 +701,12 @@ if (preferredAvgPrice > 0 && listingPrice > 0) {
   }
 }
 
-if (lovedAreas.has(area)) score += 35;
-if (maybeAreas.has(area)) score += 18;
-if (preferredAreas.includes(area)) score += 16;
+if (lockedPageType && type === lockedPageType) score += 35;
+
+// Area/chip is secondary — price proximity (scored above) takes priority
+if (lovedAreas.has(area)) score += 20;
+if (maybeAreas.has(area)) score += 10;
+if (preferredAreas.includes(area)) score += 10;
 
 if (wantsNearbyAreas) {
   const nearbyAreaGroups: Record<string, string[]> = {
@@ -670,15 +782,52 @@ const unviewedScored = scoredAll.filter((item) => {
   return address && !allExcludedAddresses.has(address);
 });
 
-   const scored =
+const scored =
   unviewedScored.length >= 12
     ? unviewedScored
     : scoredAll;
+
+const targetPrice = preferredAvgPrice || targetMaxPrice || 0;
+
+const priceSorted = scored.sort((a, b) => {
+  const priceA = Number(a.listing.price || 0);
+  const priceB = Number(b.listing.price || 0);
+
+  const priceDistanceA = targetPrice
+    ? Math.abs(priceA - targetPrice)
+    : 0;
+
+  const priceDistanceB = targetPrice
+    ? Math.abs(priceB - targetPrice)
+    : 0;
+
+  return (
+    priceDistanceA - priceDistanceB ||
+    Number(b.score || 0) - Number(a.score || 0)
+  );
+});
+
 console.log("SCORED ALL", scoredAll.length);
 console.log("UNVIEWED", unviewedScored.length);
 console.log("FINAL", scored.length);
-    const filtered = scored.map((item) => item.listing);
-    const paged = filtered.slice(offset, offset + limit);
+console.log("TARGET PRICE", targetPrice);
+console.log("REFINE PRICE DEBUG", {
+  preferredAvgPrice,
+  preferredMinPrice,
+  minPreferredPrice,
+  maxPreferredPrice,
+  anchorPrice,
+  visibleMaxPrice,
+  targetMaxPrice,
+  wantsLowerPrice,
+  wantsMidRange,
+  wantsPremium,
+  rawQueryCount: data?.length ?? 0,
+  afterAnchorFilter: filteredData.length,
+});
+
+const filtered = priceSorted.map((item) => item.listing);
+const paged = filtered.slice(offset, offset + limit);
 
     const listings = paged.map((listing) => ({
       id: listing.id,

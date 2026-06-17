@@ -47,7 +47,8 @@ export const POST: APIRoute = async ({ request }) => {
         beds: body.beds || null,
         baths: body.baths || null,
         sqft: body.sqft || null,
-        area: body.area || null,
+       area: body.area || null,
+        normalized_type: body.normalized_type || null,
 
         decision,
         liked_tags: body.liked_tags || [],

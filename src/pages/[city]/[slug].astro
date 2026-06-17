@@ -2968,8 +2968,32 @@ updateGeneratedRefineChips(generatedChips);
   }
 }
 
-     async function runIntentRefine(chip, options = {}) {
-        const interruptCard = document.getElementById("intent-interrupt-card");
+function getPositiveIntentReactions() {
+  return Array.from(document.querySelectorAll(".original-card, .refined-card"))
+    .filter((card) => card.dataset.decision === "love" || card.dataset.decision === "maybe")
+    .map((card) => {
+      let likedTags = [];
+
+      try {
+        likedTags = JSON.parse(card.dataset.likedTags || "[]");
+      } catch {
+        likedTags = [];
+      }
+
+      return {
+        listing_id: card.dataset.listingId || card.dataset.itemId || "",
+        mls_number: card.dataset.mls || "",
+        address: card.dataset.address || "",
+        price: card.dataset.rawPrice || card.dataset.price || "",
+        area: card.dataset.area || "",
+        type: card.dataset.type || "",
+        decision: card.dataset.decision || "",
+        liked_tags: likedTags,
+      };
+    });
+}
+
+window.runIntentRefine = async function runIntentRefine(chip, options = {}) {        const interruptCard = document.getElementById("intent-interrupt-card");
         const refinedResults = document.getElementById("refined-results");
 
         if (!interruptCard || !refinedResults) return;
@@ -3036,6 +3060,15 @@ city: document.querySelector("[data-city]")?.dataset.city,
   refine_label: label,
   visible_max_price: getVisibleMaxPrice(),
   visible_listings: visibleListings,
+   positive_reactions: getPositiveIntentReactions(),
+  price_band_rule: {
+    percent: 0.2,
+    max_delta: 100000,
+  },
+  required_type:
+    getPositiveIntentReactions()[0]?.type ||
+    document.querySelector(".original-card")?.dataset.type ||
+    "",
   map_bounds:
     document.body.classList.contains("is-map-mode") && currentIntentMapBounds
       ? currentIntentMapBounds
@@ -3046,54 +3079,88 @@ city: document.querySelector("[data-city]")?.dataset.city,
      const json = await response.json();
 
 let listings = json.listings || [];
+const positiveReactions = getPositiveIntentReactions();
 
-const seenKeys = new Set([
-  ...getViewedIntentListingKeys(),
-  ...getVisibleCards().map((card) =>
-    String(
-      card.dataset.listingId ||
-      card.dataset.mls ||
-      card.dataset.itemId ||
-      card.dataset.address ||
-      ""
-    )
-      .trim()
-      .toLowerCase()
-  ),
-]);
+function normalizePropertyType(value = "") {
+  const type = String(value || "").toLowerCase().trim();
 
-function normalizeSeenAddress(value) {
+  if (["home", "homes", "house", "houses"].includes(type)) return "house";
+  if (["condo", "condos", "apartment", "apartments"].includes(type)) return "condo";
+  if (["townhome", "townhomes", "townhouse", "townhouses"].includes(type)) return "townhouse";
+  if (["mobile", "mobiles", "manufactured"].includes(type)) return "mobile";
+
+  return type;
+}
+
+const lovedTypes = positiveReactions
+  .map((r) => normalizePropertyType(r.type))
+  .filter(Boolean);
+
+const requiredType =
+  lovedTypes[0] ||
+  normalizePropertyType(document.querySelector(".original-card")?.dataset.type || "");
+
+const positivePrices = positiveReactions
+  .map((r) => Number(String(r.price || "").replace(/[^0-9]/g, "")))
+  .filter((price) => Number.isFinite(price) && price > 0);
+
+// Do not hard-filter type on the frontend.
+// Price range is the first safety net.
+// Type should be scored by the backend, not used to delete all results.
+
+if (positivePrices.length) {
+  const avg =
+    positivePrices.reduce((sum, price) => sum + price, 0) /
+    positivePrices.length;
+
+  const delta = Math.min(avg * 0.35, 200000);
+  const minPrice = avg - delta;
+  const maxPrice = avg + delta;
+
+  listings = listings.filter((listing) => {
+    const price = Number(listing.price || listing.raw_price || 0);
+    return price >= minPrice * 0.85 && price <= maxPrice * 1.15;
+  });
+}
+function normalizeSeenValue(value) {
   return String(value || "")
     .replace(/^#\d+\s+/i, "")
+    .replace(/\bunit\s+#?\d+\b/i, "")
+    .replace(/\bapt\s+#?\d+\b/i, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 }
 
-const seenAddresses = new Set([
-  ...getViewedIntentAddresses().map(normalizeSeenAddress),
-  ...getVisibleCards().map((card) =>
-    normalizeSeenAddress(card.dataset.address || "")
-  ),
+function getListingSeenKeys(item = {}) {
+  return [
+    item.dataset?.listingId,
+    item.dataset?.mls,
+    item.dataset?.itemId,
+    item.dataset?.address,
+    item.id,
+    item.mls_number,
+    item.listing_id,
+    item.address,
+  ]
+    .map(normalizeSeenValue)
+    .filter(Boolean);
+}
+
+const viewedCards = Array.from(
+  document.querySelectorAll(".original-card, .refined-card")
+).filter((card) => card.dataset.viewed === "true");
+
+const seenKeys = new Set([
+  ...getViewedIntentListingKeys().map(normalizeSeenValue),
+  ...getViewedIntentAddresses().map(normalizeSeenValue),
+  ...viewedCards.flatMap((card) => getListingSeenKeys(card)),
 ]);
 
 const unseenListings = listings.filter((listing) => {
-  const key = String(
-    listing.id ||
-    listing.mls_number ||
-    listing.address ||
-    ""
-  )
-    .trim()
-    .toLowerCase();
+  const listingKeys = getListingSeenKeys(listing);
 
-  const address = String(listing.address || "")
-  .replace(/^#\d+\s+/i, "")
-  .replace(/\s+/g, " ")
-  .trim()
-  .toLowerCase();
-
-  return !seenKeys.has(key) && !seenAddresses.has(address);
+  return !listingKeys.some((key) => seenKeys.has(key));
 });
 
 listings = unseenListings;
@@ -3219,7 +3286,7 @@ if (options.openFirstResult) {
         interruptCard.classList.remove("is-refining");
       }
 
-window.runIntentRefine = runIntentRefine;
+console.log("INTENT REFINE EXPOSED", typeof window.runIntentRefine);
 
 document.addEventListener("click", async (event) => {
   const loadMoreBtn = event.target.closest("#load-more-refined");
@@ -3246,11 +3313,20 @@ city: document.querySelector("[data-city]")?.dataset.city,
   slug: document.querySelector("[data-slug]")?.dataset.slug,
   refine_label: loadMoreBtn.dataset.refineLabel || "",
         visible_max_price: getVisibleMaxPrice(),
-        visible_listings: getVisibleCards().map((card) => ({
+            visible_listings: getVisibleCards().map((card) => ({
           address: card.dataset.address || "",
           price: card.dataset.price || "",
           area: card.dataset.area || "",
         })),
+        positive_reactions: getPositiveIntentReactions(),
+               price_band_rule: {
+          percent: 0.2,
+          max_delta: 100000,
+        },
+        required_type:
+          getPositiveIntentReactions()[0]?.type ||
+          document.querySelector(".original-card")?.dataset.type ||
+          "",
         offset: Number(loadMoreBtn.dataset.nextOffset || 24),
         limit: 24,
       }),

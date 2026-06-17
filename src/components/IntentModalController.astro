@@ -277,7 +277,9 @@ function getHighlightChips(description = "") {
 }
 
 function getCards() {
-  return Array.from(document.querySelectorAll(".original-card")).filter((card) => {
+  return Array.from(
+    document.querySelectorAll(".original-card:not(.is-hidden-by-refine), .refined-card")
+  ).filter((card) => {
     const wrapper = card.closest(".listing-card-wrap");
 
     return (
@@ -793,8 +795,15 @@ function saveCurrentReaction() {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         return isUuid ? id : null;
       })(),
-      city: document.body.dataset.city,
-      slug: document.body.dataset.slug,
+     city:
+  document.querySelector("[data-city]")?.dataset.city ||
+  document.body.dataset.city ||
+  "",
+
+slug:
+  document.querySelector("[data-slug]")?.dataset.slug ||
+  document.body.dataset.slug ||
+  "",
 
       listing_id:
         activeCard.dataset.listingId ||
@@ -819,8 +828,11 @@ function saveCurrentReaction() {
       sqft:
         activeCard.dataset.sqft || "",
 
-      area:
+     area:
         activeCard.dataset.area || "",
+
+      normalized_type:
+        activeCard.dataset.type || "",
 
       decision: activeCard.dataset.decision || "",
       liked_tags: likedTags,
@@ -1022,14 +1034,46 @@ function showSaveSearchCTA(options = {}) {
   hasShownSaveSearchCTA = true;
   isExitSaveSearchPrompt = Boolean(options.isExitPrompt);
 
-sheetContent.classList.remove("open");
+  sheetContent.classList.remove("open");
   sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
   sheet.querySelector(".panel__view")?.scrollTo({ top: 0, behavior: "instant" });
   sheet.scrollTo({ top: 0, behavior: "instant" });
 
+  const isRefineAgain = options.primaryLabel === "Refine again";
+
+  // Pull chips from the interrupt card or generated chip targets
+  const refineChipLabels = Array.from(
+    document.querySelectorAll(
+      ".interrupt-groups .generated-refine-chip, .refine-options .generated-refine-chip"
+    )
+  )
+    .map((el) => el.textContent.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const chipHtml = isRefineAgain && refineChipLabels.length
+    ? `
+      <div style="margin:20px 0 0;">
+        <div style="font-size:0.72rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">
+          What would make the next homes a better fit?
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;" id="rerefine-chip-row">
+          ${refineChipLabels.map((label) => `
+            <button
+              type="button"
+              class="modal-intent-secondary"
+              data-rerefine-label="${label}"
+              style="font-size:0.85rem;padding:9px 16px;"
+            >${label}</button>
+          `).join("")}
+        </div>
+      </div>
+    `
+    : "";
+
   sheetSummary.innerHTML = `
-    <div class="modal-intent-summary">
+    <div class="modal-intent-summary modal-intent-summary--polished">
       <div class="modal-intent-kicker">
         ${options.kicker || "Your refined search is ready"}
       </div>
@@ -1040,54 +1084,88 @@ sheetContent.classList.remove("open");
         ${options.body || "We can save this direction and send you better matches when similar homes appear."}
       </p>
 
-      <div class="modal-intent-actions">
-        <button type="button" class="modal-intent-primary" id="save-search-lead-btn">
-          Save this search
-        </button>
+      ${chipHtml}
+
+      <div class="modal-intent-actions" style="margin-top:24px;">
+        ${!isRefineAgain ? `
+          <button type="button" class="modal-intent-primary" id="save-search-lead-btn">
+            Save this search
+          </button>
+        ` : ""}
 
         <button type="button" class="modal-intent-secondary" id="save-search-keep-browsing-btn">
-          ${isExitSaveSearchPrompt ? "Not right now" : "Keep browsing"}
+          ${isExitSaveSearchPrompt ? "Not right now" : (options.keepBrowsingLabel || "Keep browsing")}
         </button>
       </div>
     </div>
   `;
 
-document.getElementById("save-search-lead-btn")?.addEventListener("click", () => {
- saveSearchDismissedAtCardKey = null;
-hasDismissedSaveSearchCTA = false;
-  isExitSaveSearchPrompt = false;
-  hasShownSaveSearchCTA = true;
+  // Chip click → fire runIntentRefine and close modal
+  document.getElementById("rerefine-chip-row")?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-rerefine-label]");
+    if (!btn) return;
 
-  showLeadCaptureForm();
-});
+    btn.classList.add("is-selected");
+
+    const label = btn.dataset.rerefineLabel;
+
+    closeSheet({ force: true });
+
+    let attempts = 0;
+    while (typeof window.runIntentRefine !== "function" && attempts < 30) {
+      await new Promise((r) => setTimeout(r, 100));
+      attempts++;
+    }
+
+    if (typeof window.runIntentRefine === "function") {
+      const fakeChip = document.createElement("button");
+      fakeChip.type = "button";
+      fakeChip.className = "refine-chip generated-refine-chip";
+      fakeChip.textContent = label;
+
+      await window.runIntentRefine(fakeChip, { openFirstResult: true });
+
+      document.getElementById("refined-results")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  });
+
+  document.getElementById("save-search-lead-btn")?.addEventListener("click", () => {
+    saveSearchDismissedAtCardKey = null;
+    hasDismissedSaveSearchCTA = false;
+    isExitSaveSearchPrompt = false;
+    hasShownSaveSearchCTA = true;
+    showLeadCaptureForm();
+  });
 
   document.getElementById("save-search-keep-browsing-btn")?.addEventListener("click", () => {
- if (isExitSaveSearchPrompt) {
-  closeSheet({ force: true });
+    if (isExitSaveSearchPrompt) {
+      closeSheet({ force: true });
 
-  const refinedAnchor =
-    document.getElementById("refined-results") ||
-    document.getElementById("refined-results-anchor");
+      const refinedAnchor =
+        document.getElementById("refined-results") ||
+        document.getElementById("refined-results-anchor");
 
-  window.setTimeout(() => {
-    refinedAnchor?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 120);
+      window.setTimeout(() => {
+        refinedAnchor?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
 
-  return;
-}
+      return;
+    }
 
-   saveSearchDismissedAtCardKey = getCardKey(activeCard);
-hasDismissedSaveSearchCTA = true;
-hasShownSaveSearchCTA = false;
-refinedBrowseCount = 0;
+    saveSearchDismissedAtCardKey = getCardKey(activeCard);
+    hasDismissedSaveSearchCTA = true;
+    hasShownSaveSearchCTA = false;
+    refinedBrowseCount = 0;
+    window.__keepBrowsingActive = true;
+    window.__keepBrowsingCount = 0;
 
-sheetSummary.classList.remove("open");
-sheetContent.classList.add("open");
+    sheetSummary.classList.remove("open");
+    sheetContent.classList.add("open");
 
-goNext();
+    goNext();
   });
 }
 
@@ -1208,21 +1286,32 @@ const preferredAreas = generatedAreaLabels
 const combinedAreaChip = document.createElement("button");
 combinedAreaChip.type = "button";
 combinedAreaChip.className = "refine-chip generated-refine-chip";
-combinedAreaChip.textContent =
-  preferredAreas.length > 1
-    ? `Stay in ${preferredAreas.join(" and ")}`
-    : generatedAreaLabels[0] || "Show better matches";
+combinedAreaChip.textContent = generatedAreaLabels[0] || "Show better matches";
 
 setTimeout(async () => {
   closeSheet({ force: true });
 
- if (typeof window.runIntentRefine === "function") {
-  await window.runIntentRefine(combinedAreaChip, { openFirstResult: true });
-} else if (typeof runIntentRefine === "function") {
-  await runIntentRefine(combinedAreaChip, { openFirstResult: true });
-} else {
-  console.warn("runIntentRefine is not available from modal");
-}
+  let attempts = 0;
+
+  while (
+    typeof window.runIntentRefine !== "function" &&
+    attempts < 30
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    attempts++;
+  }
+
+  if (typeof window.runIntentRefine === "function") {
+    await window.runIntentRefine(combinedAreaChip, {
+      openFirstResult: true,
+    });
+  } else {
+    console.error(
+      "runIntentRefine never became available",
+      typeof window.runIntentRefine
+    );
+    return;
+  }
 
   const refinedAnchor =
     document.getElementById("refined-results") ||
@@ -1256,9 +1345,134 @@ document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", 
   });
 }
 
+function showEndOfListCTA() {
+  if (!sheetContent || !sheetSummary) return;
+
+  sheetContent.classList.remove("open");
+  sheetSummary.removeAttribute("hidden");
+  sheetSummary.classList.add("open");
+  sheet.querySelector(".panel__view")?.scrollTo({ top: 0, behavior: "instant" });
+  sheet.scrollTo({ top: 0, behavior: "instant" });
+
+  const positiveCount = Array.from(document.querySelectorAll(".card"))
+    .filter((c) => c.dataset.decision === "love" || c.dataset.decision === "maybe").length;
+
+  const refineChipLabels = Array.from(
+    document.querySelectorAll(
+      ".interrupt-groups .generated-refine-chip, .refine-options .generated-refine-chip"
+    )
+  )
+    .map((el) => el.textContent.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+
+  const chipHtml = refineChipLabels.length ? `
+    <div style="margin:20px 0 0;">
+      <div style="font-size:0.72rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">
+        Try a different direction
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;" id="end-rerefine-chip-row">
+        ${refineChipLabels.map((label) => `
+          <button
+            type="button"
+            class="modal-intent-secondary"
+            data-rerefine-label="${label}"
+            style="font-size:0.85rem;padding:9px 16px;"
+          >${label}</button>
+        `).join("")}
+      </div>
+    </div>
+  ` : "";
+
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary modal-intent-summary--polished">
+      <div class="modal-intent-kicker">You've seen them all</div>
+
+      <h2>${positiveCount > 0 ? `You liked ${positiveCount} home${positiveCount !== 1 ? "s" : ""} — let's find more.` : "Want us to find better matches?"}</h2>
+
+      <p>
+        New listings come to market regularly. We can watch for homes that match what you responded to and let you know when they appear.
+      </p>
+
+      ${chipHtml}
+
+      <div class="modal-intent-actions" style="margin-top:24px;">
+        <button type="button" class="modal-intent-primary" id="end-save-search-btn">
+          Save this search
+        </button>
+        <button type="button" class="modal-intent-secondary" id="end-close-btn">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("end-rerefine-chip-row")?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-rerefine-label]");
+    if (!btn) return;
+
+    btn.classList.add("is-selected");
+    const label = btn.dataset.rerefineLabel;
+
+    closeSheet({ force: true });
+
+    let attempts = 0;
+    while (typeof window.runIntentRefine !== "function" && attempts < 30) {
+      await new Promise((r) => setTimeout(r, 100));
+      attempts++;
+    }
+
+    if (typeof window.runIntentRefine === "function") {
+      const fakeChip = document.createElement("button");
+      fakeChip.type = "button";
+      fakeChip.className = "refine-chip generated-refine-chip";
+      fakeChip.textContent = label;
+
+      await window.runIntentRefine(fakeChip, { openFirstResult: true });
+
+      document.getElementById("refined-results")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  });
+
+  document.getElementById("end-save-search-btn")?.addEventListener("click", () => {
+    showLeadCaptureForm({
+      kicker: "Save your search",
+      title: "Want to hear about new matches?",
+      body: "We'll watch for homes that match what you responded to and let you know when they appear.",
+      button: "Notify me of new matches",
+      note: "Buyer reached end of listings and wants to be notified of new matches.",
+    });
+  });
+
+  document.getElementById("end-close-btn")?.addEventListener("click", () => {
+    closeSheet({ force: true });
+  });
+}
+
         function goNext() {
           const cards = getCards();
           const index = currentIndex();
+
+if (window.__keepBrowsingActive) {
+  window.__keepBrowsingCount = (window.__keepBrowsingCount || 0) + 1;
+
+  if (window.__keepBrowsingCount >= 6) {
+    window.__keepBrowsingActive = false;
+    window.__keepBrowsingCount = 0;
+    showSaveSearchCTA({
+      kicker: "Still searching?",
+      title: "Not quite finding it?",
+      body: "We can narrow this down further — tell us what's missing and we'll surface better fits.",
+      primaryLabel: "Refine again",
+      keepBrowsingLabel: "Keep going",
+    });
+    return;
+  }
+}
+
 if (
   hasShownIntentSummary &&
   !hasShownSaveSearchCTA &&
@@ -1313,7 +1527,7 @@ if (
 }
 
 if (index >= cards.length - 1) {
-  closeSheet();
+  showEndOfListCTA();
   return;
 }
 

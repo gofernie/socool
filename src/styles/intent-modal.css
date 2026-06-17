@@ -3409,3 +3409,41 @@ body.edit-mode .agent-edit-grid {
     transform: translateX(250%);
   }
 }
+
+.modal-intent-summary--polished {
+  min-height: 100%;
+  padding: 34px 28px;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  background: #fff;
+}
+
+.modal-intent-summary--polished .modal-intent-kicker {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.modal-intent-summary--polished h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.modal-intent-summary--polished p {
+  margin: 0;
+  max-width: 560px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.modal-intent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}

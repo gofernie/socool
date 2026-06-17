@@ -15,6 +15,43 @@ const { data: reactions, error } = await supabase
   .order("created_at", { ascending: false })
   .limit(500);
 
+// Pull images for loved listings from listing_rows
+const allAddresses = [...new Set((reactions || []).map(r => r.address).filter(Boolean))];
+
+const { data: listingImageRows } = allAddresses.length
+  ? await supabase
+      .from("listing_rows")
+      .select("address, image_url, images")
+      .in("address", allAddresses.slice(0, 200))
+  : { data: [] };
+
+const imageByAddress = new Map(
+  (listingImageRows || []).map((row) => {
+    let images = row.images;
+    if (typeof images === "string") {
+      try { images = JSON.parse(images); } catch { images = []; }
+    }
+    images = Array.isArray(images) ? images : [];
+
+    const firstImage = images[0];
+    const raw = row.image_url ||
+      (typeof firstImage === "string" ? firstImage : null) ||
+      firstImage?.highRes ||
+      firstImage?.mediumRes ||
+      firstImage?.lowRes ||
+      firstImage?.url ||
+      "";
+
+    const normalized = raw.startsWith("/vreb/") || raw.startsWith("/")
+      ? `https://cdn.repliers.io${raw}`
+      : raw.startsWith("vreb/")
+        ? `https://cdn.repliers.io/${raw}`
+        : raw;
+
+    return [String(row.address || "").trim().toLowerCase(), normalized];
+  })
+);
+
 const rows = reactions || [];
 
 const { data: leads } = await supabase
@@ -26,13 +63,8 @@ const leadBySessionId = new Map();
 
 (leads || []).forEach((lead) => {
   if (!lead.session_id) return;
-
   const existing = leadBySessionId.get(lead.session_id);
-
-  if (
-    !existing ||
-    new Date(lead.created_at).getTime() > new Date(existing.created_at).getTime()
-  ) {
+  if (!existing || new Date(lead.created_at).getTime() > new Date(existing.created_at).getTime()) {
     leadBySessionId.set(lead.session_id, lead);
   }
 });
@@ -40,31 +72,32 @@ const leadBySessionId = new Map();
 const sessions = Object.values(
   rows.reduce((acc, row) => {
     const key = row.session_id;
-
     if (!acc[key]) {
       acc[key] = {
         session_id: row.session_id,
         slug: row.slug,
         city: row.city || "nanaimo",
         last_activity: row.created_at,
+        first_activity: row.created_at,
         reactions: [],
         lead: leadBySessionId.get(row.session_id) || null,
       };
     }
-
     acc[key].reactions.push(row);
-
-    if (new Date(row.created_at) > new Date(acc[key].last_activity)) {
-      acc[key].last_activity = row.created_at;
-    }
-
+    if (new Date(row.created_at) > new Date(acc[key].last_activity)) acc[key].last_activity = row.created_at;
+    if (new Date(row.created_at) < new Date(acc[key].first_activity)) acc[key].first_activity = row.created_at;
     return acc;
   }, {})
-);
+).sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime());
 
 function fmtDate(value) {
   if (!value) return "";
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function fmtDateShort(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
 
 function countDecision(reactions, decision) {
@@ -77,40 +110,26 @@ function byDecision(reactions, decision) {
 
 function getTags(row) {
   if (Array.isArray(row.liked_tags)) return row.liked_tags;
-
-  try {
-    return JSON.parse(row.liked_tags || "[]");
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(row.liked_tags || "[]"); } catch { return []; }
 }
 
 function parsePrice(value) {
-  return Number(
-    String(value || "")
-      .replace(/\$/g, "")
-      .replace(/,/g, "")
-      .trim()
-  ) || 0;
+  return Number(String(value || "").replace(/\$/g, "").replace(/,/g, "").trim()) || 0;
 }
 
 function avgPrice(rows) {
   const prices = rows.map((r) => parsePrice(r.price)).filter((p) => p > 0);
   if (!prices.length) return 0;
-
-  return Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
+  return Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length);
 }
 
 function priceRange(rows) {
-  const prices = rows.map((r) => parsePrice(r.price)).filter((p) => p > 0);
+  const prices = rows.map((r) => parsePrice(r.price)).filter((p) => p > 0).sort((a, b) => a - b);
   if (!prices.length) return "";
-
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-
-  if (min === max) return formatMoney(min);
-
-  return `${formatMoney(min)} - ${formatMoney(max)}`;
+  const p20 = prices[Math.floor(prices.length * 0.2)];
+  const p80 = prices[Math.floor(prices.length * 0.8)];
+  if (p20 === p80) return formatMoneyShort(p20);
+  return `${formatMoneyShort(p20)} – ${formatMoneyShort(p80)}`;
 }
 
 function formatMoney(price) {
@@ -118,47 +137,249 @@ function formatMoney(price) {
   return `$${Number(price).toLocaleString()}`;
 }
 
-function inferPriceTrend(reactions) {
+function formatMoneyShort(price) {
+  if (!price) return "—";
+  if (price >= 1000000) return `$${(price / 1000000).toFixed(1)}M`;
+  if (price >= 1000) return `$${Math.round(price / 1000)}K`;
+  return `$${price}`;
+}
+
+function getReadiness(reactions) {
+  const loves = byDecision(reactions, "love");
+  const maybes = byDecision(reactions, "maybe");
+  return Math.min(100, loves.length * 12 + maybes.length * 5 + reactions.length * 2);
+}
+
+function getReadinessLabel(score) {
+  if (score >= 75) return { label: "High Intent", color: "#16a34a", bg: "#dcfce7" };
+  if (score >= 45) return { label: "Warming Up", color: "#d97706", bg: "#fef3c7" };
+  return { label: "Early Stage", color: "#6b7280", bg: "#f3f4f6" };
+}
+
+function getTopTags(reactions) {
+  const loves = byDecision(reactions, "love");
+  const maybes = byDecision(reactions, "maybe");
+  const allTags = [...loves.flatMap(getTags), ...maybes.flatMap(getTags)];
+  const counts = {};
+  allTags.forEach((t) => { counts[t] = (counts[t] || 0) + 1; });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+}
+
+function getTopAreas(reactions) {
   const loves = byDecision(reactions, "love");
   const maybes = byDecision(reactions, "maybe");
   const passes = byDecision(reactions, "pass");
+  const loveAreas = {};
+  const maybeAreas = {};
+  const passAreas = {};
+  loves.forEach((r) => { if (r.area) loveAreas[r.area] = (loveAreas[r.area] || 0) + 1; });
+  maybes.forEach((r) => { if (r.area) maybeAreas[r.area] = (maybeAreas[r.area] || 0) + 1; });
+  passes.forEach((r) => { if (r.area) passAreas[r.area] = (passAreas[r.area] || 0) + 1; });
+
+  const allAreas = new Set([
+    ...Object.keys(loveAreas),
+    ...Object.keys(maybeAreas),
+    ...Object.keys(passAreas),
+  ]);
+
+  const areaScores = {};
+  allAreas.forEach((area) => {
+    areaScores[area] =
+      (loveAreas[area] || 0) * 2 +
+      (maybeAreas[area] || 0) * 1 -
+      (passAreas[area] || 0) * 1.5;
+  });
+
+  const sorted = Object.entries(areaScores).sort((a, b) => b[1] - a[1]);
+
+  const strong = sorted.filter(([, score]) => score >= 4).map(([a]) => a).slice(0, 3);
+  const some = sorted.filter(([, score]) => score >= 1 && score < 4).map(([a]) => a).slice(0, 3);
+  const little = sorted.filter(([, score]) => score < 1).map(([a]) => a).slice(0, 3);
+
+  return { strong, some, little };
+}
+
+function getTypeBreakdown(reactions) {
+  const positive = reactions.filter(r => r.decision === "love" || r.decision === "maybe");
+  const counts = {};
+  positive.forEach((r) => {
+    const t = String(r.property_type || r.normalized_type || "Other").replace(/^\w/, c => c.toUpperCase());
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  const total = positive.length || 1;
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([type, count]) => ({ type, pct: Math.round((count / total) * 100) }));
+}
+
+function getPassReasons(reactions) {
+  const passes = reactions.filter(r => r.decision === "pass");
+  const loves = reactions.filter(r => r.decision === "love");
+  const maybes = reactions.filter(r => r.decision === "maybe");
 
   const loveAvg = avgPrice(loves);
-  const maybeAvg = avgPrice(maybes);
   const passAvg = avgPrice(passes);
+  const maybeAvg = avgPrice(maybes);
 
-  if (loveAvg && passAvg && loveAvg > passAvg * 1.08) {
-    return `Buyer is leaning higher-budget. Loved listings average ${formatMoney(loveAvg)}, while passes average ${formatMoney(passAvg)}.`;
-  }
+  const reasons = { Price: 0, Condition: 0, Area: 0, Layout: 0, Other: 0 };
 
-  if (loveAvg && passAvg && loveAvg < passAvg * 0.92) {
-    return `Buyer may be value-sensitive. Loved listings average ${formatMoney(loveAvg)}, below passed listings at ${formatMoney(passAvg)}.`;
-  }
+  passes.forEach((r) => {
+    const price = parsePrice(r.price);
+    const passedAreas = passes.map(p => p.area).filter(Boolean);
+    const lovedAreas = loves.map(l => l.area).filter(Boolean);
+    const areaMismatch = r.area && lovedAreas.length && !lovedAreas.includes(r.area);
 
-  if (loveAvg) return `Loved-listing price centre is around ${formatMoney(loveAvg)}.`;
-  if (maybeAvg) return `Soft interest is clustering around ${formatMoney(maybeAvg)}.`;
+    if (loveAvg && price && price > loveAvg * 1.12) {
+      reasons.Price += 1;
+    } else if (loveAvg && price && price < loveAvg * 0.88) {
+      reasons.Price += 1;
+    } else if (areaMismatch) {
+      reasons.Area += 1;
+    } else {
+      reasons.Other += 1;
+    }
+  });
 
-  return `Not enough price signal yet.`;
+  // Boost condition and layout as secondary signals from tag absence
+  const lovedTags = loves.flatMap(r => getTags(r));
+  if (lovedTags.includes("modern") || lovedTags.includes("updated")) reasons.Condition += Math.floor(passes.length * 0.2);
+  if (lovedTags.includes("layout")) reasons.Layout += Math.floor(passes.length * 0.15);
+
+  const total = Object.values(reasons).reduce((s, v) => s + v, 0) || 1;
+  return Object.entries(reasons)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, pct: Math.round((count / total) * 100) }));
 }
 
-function inferSession(reactions) {
+function getWhatWeLearned(reactions) {
   const loves = byDecision(reactions, "love");
   const maybes = byDecision(reactions, "maybe");
   const passes = byDecision(reactions, "pass");
+  const tags = getTopTags(reactions);
+  const loveAvg = avgPrice(loves);
+  const passAvg = avgPrice(passes);
+  const insights = [];
 
-  const lovedAreas = [...new Set(loves.map((r) => r.area).filter(Boolean))];
-  const passedAreas = [...new Set(passes.map((r) => r.area).filter(Boolean))];
+  // Tag-based insights — check all tags, not just the top one
+  const tagKeys = tags.map(([t]) => t);
 
-  if (loves.length && passes.length) {
-    return `Loved ${lovedAreas.join(", ") || "one listing"} but passed on ${passedAreas.join(", ") || "another option"} - likely not choosing on price alone.`;
+  if (tagKeys.some(t => ["views", "ocean", "waterfront"].includes(t))) {
+    insights.push({ icon: "🌊", title: "Views or waterfront matter", body: `Came up in ${tags.find(([t]) => ["views","ocean","waterfront"].includes(t))?.[1] || "several"} positive reactions.` });
+  }
+  if (tagKeys.includes("yard")) {
+    insights.push({ icon: "🌳", title: "Outdoor space is a priority", body: `Yard or patio noted in ${tags.find(([t]) => t === "yard")?.[1] || "multiple"} loved/liked homes.` });
+  }
+  if (tagKeys.includes("garage")) {
+    insights.push({ icon: "🚗", title: "Garage space matters", body: `Garage mentioned across ${tags.find(([t]) => t === "garage")?.[1] || "several"} positive reactions.` });
+  }
+  if (tagKeys.includes("suite")) {
+    insights.push({ icon: "🏠", title: "Income potential is a factor", body: "Suite or mortgage helper homes were responded to positively." });
+  }
+  if (tagKeys.includes("modern") || tagKeys.includes("updated")) {
+    insights.push({ icon: "✨", title: "Updated interiors preferred", body: "Modern or renovated homes consistently performed better." });
+  }
+  if (tagKeys.includes("layout")) {
+    insights.push({ icon: "🏡", title: "Layout is a priority", body: "Floor plan and flow came up repeatedly in positive reactions." });
+  }
+  if (tagKeys.includes("area") || tagKeys.includes("location")) {
+    const topArea = loves.map(r => r.area).filter(Boolean).sort((a, b) =>
+      loves.filter(r => r.area === b).length - loves.filter(r => r.area === a).length
+    )[0];
+    insights.push({ icon: "📍", title: "Location is a deciding factor", body: topArea ? `${topArea} appears most in loved homes.` : "Area came up consistently in positive reactions." });
   }
 
-  if (loves.length) return `Positive signal - this session has at least one strong match.`;
-  if (maybes.length && !loves.length) return `Interest is soft - buyer may need a better fit or more refined options.`;
-  if (passes.length && !loves.length && !maybes.length) return `Mostly negative signal - current page may not be matching their intent.`;
+  // Area concentration insight
+  const lovedAreaCounts = {};
+  loves.forEach(r => { if (r.area) lovedAreaCounts[r.area] = (lovedAreaCounts[r.area] || 0) + 1; });
+  const topArea = Object.entries(lovedAreaCounts).sort((a, b) => b[1] - a[1])[0];
+  if (topArea && topArea[1] >= 3 && !tagKeys.includes("area") && !tagKeys.includes("location")) {
+    insights.push({ icon: "📍", title: `${topArea[0]} is the preferred area`, body: `${topArea[1]} of ${loves.length} loved homes are in ${topArea[0]}.` });
+  }
 
-  return `Not enough behaviour yet.`;
+  // Price behaviour insight
+  if (loveAvg && passAvg) {
+    if (loveAvg > passAvg * 1.08) {
+      insights.push({ icon: "💰", title: "Leaning higher-budget", body: `Loved listings avg ${formatMoney(loveAvg)} vs passed at ${formatMoney(passAvg)}.` });
+    } else if (loveAvg < passAvg * 0.92) {
+      insights.push({ icon: "💰", title: "Value-conscious buyer", body: `Loved avg ${formatMoney(loveAvg)} is below passed listings at ${formatMoney(passAvg)}.` });
+    } else {
+      insights.push({ icon: "💰", title: "Price is not the main factor", body: `Loved and passed listings are close in price — other factors are driving decisions.` });
+    }
+  } else if (loveAvg) {
+    insights.push({ icon: "💰", title: "Price centre is clear", body: `Loved listings cluster around ${formatMoney(loveAvg)}.` });
+  }
+
+  // Bed/sqft preference
+  const loveBeds = loves.map(r => Number(r.beds || 0)).filter(b => b > 0);
+  if (loveBeds.length >= 3) {
+    const avgBeds = Math.round(loveBeds.reduce((s, b) => s + b, 0) / loveBeds.length);
+    insights.push({ icon: "🛏", title: `Prefers ${avgBeds}+ bedroom homes`, body: `Average of ${avgBeds} beds across loved listings.` });
+  }
+
+  // Volume signal
+  if (loves.length >= 5) {
+    insights.push({ icon: "🔥", title: "High engagement buyer", body: `Loved ${loves.length} homes and liked ${maybes.length} — clear interest in this market.` });
+  }
+
+  // Fallback only if truly nothing found
+  if (!insights.length) {
+    insights.push({ icon: "📊", title: "Still gathering signals", body: "More browsing will sharpen this picture." });
+  }
+
+  return insights.slice(0, 4);
 }
+
+function getConversationStarters(reactions, areas) {
+  const starters = [];
+  const loves = byDecision(reactions, "love");
+  const tags = getTopTags(reactions);
+  const topArea = areas.strong[0];
+  const topTag = tags[0]?.[0];
+  const loveAvg = avgPrice(loves);
+
+  if (topArea && topTag) {
+    starters.push(`You seemed to love homes with ${topTag.replace("_", " ")} in ${topArea}. Are ${topTag.replace("_", " ")}s the top priority for you?`);
+  }
+  starters.push(`You passed on a few homes due to price. What's your ideal price range to stay comfortable?`);
+  if (tags.some(([t]) => t === "modern" || t === "updated")) {
+    starters.push(`You prefer move-in ready homes. How important is a renovated kitchen or bathrooms?`);
+  } else {
+    starters.push(`What would make you fall in love with the next home you see?`);
+  }
+
+  return starters.slice(0, 3);
+}
+
+function getNextMove(reactions) {
+  const loves = byDecision(reactions, "love");
+  const maybes = byDecision(reactions, "maybe");
+  if (loves.length >= 3) return "Book a showing for the top 3 matched homes.";
+  if (maybes.length >= 3) return "Refine search and surface stronger matches.";
+  if (reactions.length >= 10) return "Follow up — buyer has been active but hasn't found a strong match.";
+  return "Gather more behaviour — let the buyer browse further.";
+}
+
+function getBuyerProfile(reactions) {
+  const loves = byDecision(reactions, "love");
+  const tags = getTopTags(reactions);
+  const loveAvg = avgPrice(loves);
+  const lifestyleScore = tags.filter(([t]) => ["views", "yard", "area", "privacy"].includes(t)).length;
+  const valueScore = tags.filter(([t]) => ["value", "suite", "modern"].includes(t)).length;
+  const total = lifestyleScore + valueScore || 1;
+  return {
+    lifestyle: Math.round((lifestyleScore / total) * 100),
+    value: Math.round((valueScore / total) * 100),
+  };
+}
+
+const selectedSession = Astro.url.searchParams.get("session");
+
+const { data: sessionNotes } = selectedSession
+  ? await supabase
+      .from("intent_sessions")
+      .select("notes")
+      .eq("session_id", selectedSession)
+      .maybeSingle()
+  : { data: null };
 ---
 
 <html lang="en">
@@ -167,603 +388,1180 @@ function inferSession(reactions) {
     <title>Intent Sessions</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
     <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
-        --bg: #f7f4ef;
-        --surface: #fff;
-        --border: rgba(24,22,20,0.10);
-        --border-strong: rgba(24,22,20,0.22);
-        --ink: #181614;
-        --muted: rgba(24,22,20,0.52);
-        --accent: #181614;
+        --bg: #f5f4f1;
+        --surface: #ffffff;
+        --border: rgba(0,0,0,0.08);
+        --border-md: rgba(0,0,0,0.13);
+        --ink: #111110;
+        --muted: #6b6864;
+        --accent: #111110;
+        --green: #16a34a;
+        --green-bg: #dcfce7;
         --radius: 16px;
-        --font-body: "DM Sans", system-ui, sans-serif;
-        --font-display: "Instrument Serif", Georgia, serif;
+        --sidebar: 220px;
+        --sans: "DM Sans", system-ui, sans-serif;
+        --serif: "Instrument Serif", Georgia, serif;
       }
 
-      body {
-        font-family: var(--font-body);
-        background: var(--bg);
-        color: var(--ink);
-        font-size: 15px;
-        line-height: 1.5;
-        margin: 0;
-      }
+      body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
 
-      .page {
-        display: grid;
-        grid-template-columns: 220px 1fr;
-        min-height: 100vh;
-      }
+      .layout { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100vh; }
 
-     
-      /* ── Main ── */
-      .main {
-        padding: 40px 48px 80px;
-        max-width: 1000px;
-      }
-
-      .page-header {
-        margin-bottom: 32px;
-      }
-
-      .page-header h1 {
-        font-family: var(--font-display);
-        font-size: 2.6rem;
-        font-weight: 400;
-        line-height: 1;
-        letter-spacing: -0.03em;
-        margin: 0 0 6px;
-      }
-
-      .page-header p {
-        color: var(--muted);
-        font-size: 0.9rem;
-        margin: 0;
-      }
-
-      /* ── Session cards ── */
-      .session {
+      /* ── Sessions list panel ── */
+      .sessions-panel {
+        padding: 32px 0 80px;
+        border-right: 1px solid var(--border);
         background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        margin-bottom: 10px;
-        overflow: hidden;
+        overflow-y: auto;
+        height: 100vh;
+        position: sticky;
+        top: 0;
       }
 
-      .session-trigger {
-        width: 100%;
+      .sessions-panel-head {
+        padding: 0 20px 20px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 8px;
+      }
+
+     .sessions-panel-head h2 {
+        font-family: var(--sans);
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin-bottom: 2px;
+      }
+
+      .sessions-panel-head p { font-size: 0.78rem; color: var(--muted); }
+
+      .session-row {
+        display: block;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.12s;
+      }
+
+      .session-row:hover { background: var(--bg); }
+      .session-row.is-active { background: #f0f0ee; border-left: 3px solid var(--ink); }
+
+      .session-row-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 18px 22px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font: inherit;
-        text-align: left;
-        gap: 16px;
+        gap: 8px;
+        margin-bottom: 3px;
       }
 
-      .session-trigger:hover { background: rgba(24,22,20,0.02); }
+      .session-row-name {
+        font-size: 0.82rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 130px;
+      }
 
-      .session.is-open { background: #edeae3; }
+      .intent-badge {
+        display: inline-flex;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
 
-      .session-trigger-left {
+      .session-row-meta { font-size: 0.72rem; color: var(--muted); }
+
+      .session-row-stats { display: flex; gap: 10px; margin-top: 5px; }
+      .session-row-stat { font-size: 0.72rem; color: var(--muted); }
+      .session-row-stat strong { color: var(--ink); font-weight: 700; }
+
+      /* ── Detail panel ── */
+      .detail-panel {
+        overflow-y: auto;
+        height: 100vh;
+        background: var(--bg);
+      }
+
+      .detail-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+        padding: 14px 32px;
+        background: rgba(245,244,241,0.92);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--border);
       }
 
-      .session-icon {
-        width: 34px;
-        height: 34px;
+      .detail-topbar-left { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+
+      .detail-topbar-actions { display: flex; gap: 8px; }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 16px;
+        border-radius: 999px;
+        font: inherit;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid var(--border-md);
+        background: var(--surface);
+        color: var(--ink);
+        text-decoration: none;
+        transition: background 0.12s;
+      }
+
+      .btn:hover { background: var(--bg); }
+      .btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+      .btn-primary:hover { background: #333; }
+
+      /* ── Lead header ── */
+      .lead-header {
+        padding: 32px 32px 24px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .lead-header-eyebrow {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+
+      .lead-header-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+
+      .lead-name-block { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+    .lead-name {
+        font-family: var(--sans);
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+
+      .lead-contact { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+      .lead-contact span { display: inline-flex; align-items: center; gap: 5px; font-size: 0.84rem; color: var(--muted); }
+
+      .lead-meta-right { text-align: right; flex-shrink: 0; }
+      .lead-meta-right div { font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+      .lead-meta-right strong { display: block; font-size: 0.84rem; color: var(--ink); }
+
+      /* ── Stats bar ── */
+      .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .stat-cell {
+        padding: 20px 24px;
+        border-right: 1px solid var(--border);
+      }
+
+      .stat-cell:last-child { border-right: 0; }
+
+   .stat-num {
+        font-family: var(--sans);
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+
+      .stat-icon { margin-right: 4px; }
+      .stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+      /* ── Two-col body ── */
+      .detail-body {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 0;
+        align-items: start;
+      }
+
+      .detail-main { padding: 28px 32px; display: flex; flex-direction: column; gap: 20px; }
+      .detail-sidebar { padding: 28px 24px 28px 0; display: flex; flex-direction: column; gap: 16px; }
+
+      /* ── Cards ── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px;
+      }
+
+      .card-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .card h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+      }
+
+      .card > p { font-size: 0.84rem; color: var(--muted); margin-bottom: 16px; }
+
+      /* ── What we learned ── */
+      .learned-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .learned-row:first-of-type { border-top: 0; padding-top: 0; }
+
+      .learned-icon {
+        width: 38px;
+        height: 38px;
         border-radius: 10px;
         background: var(--bg);
         border: 1px solid var(--border);
         display: grid;
         place-items: center;
-        font-size: 0.7rem;
-        font-weight: 900;
-        flex-shrink: 0;
-        color: var(--ink);
-      }
-
-      .session-title {
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: var(--ink);
-      }
-
-      .session-meta {
-        font-size: 0.76rem;
-        color: var(--muted);
-        margin-top: 1px;
-      }
-
-      .session-chevron {
-        width: 20px;
-        height: 20px;
-        color: var(--muted);
-        transition: transform 0.22s ease;
+        font-size: 1.1rem;
         flex-shrink: 0;
       }
 
-      .session.is-open .session-chevron { transform: rotate(180deg); }
+      .learned-title { font-size: 0.88rem; font-weight: 700; margin-bottom: 2px; }
+      .learned-body { font-size: 0.82rem; color: var(--muted); }
 
-      .session-body {
-        display: none;
-        padding: 0 22px 22px;
-        border-top: 1px solid var(--border);
-      }
+      /* ── Areas ── */
+      .areas-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
 
-      .session.is-open .session-body { display: block; }
+      .areas-col { padding: 0 16px 0 0; }
+      .areas-col:first-child { padding-left: 0; }
+      .areas-col + .areas-col { border-left: 1px solid var(--border); padding-left: 16px; }
 
-      .badges {
+      .areas-col-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+
+      .area-item {
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
         align-items: center;
+        gap: 7px;
+        font-size: 0.84rem;
+        margin-bottom: 7px;
       }
 
-      .badge {
-        padding: 5px 10px;
+      .area-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+      /* ── Doughnut chart ── */
+      .doughnut-wrap { display: flex; align-items: center; gap: 20px; margin-top: 12px; }
+
+      .doughnut-legend { flex: 1; }
+      .doughnut-legend-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.82rem; }
+      .doughnut-legend-row:first-child { border-top: 0; }
+      .doughnut-legend-left { display: flex; align-items: center; gap: 8px; }
+      .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+      .legend-pct { font-weight: 700; color: var(--muted); }
+
+      /* ── Price comfort zone ── */
+      .price-range-big {
+        font-family: var(--serif);
+        font-size: 2rem;
+        font-weight: 400;
+        letter-spacing: -0.04em;
+        margin: 8px 0 12px;
+      }
+
+      .price-bar-track {
+        position: relative;
+        height: 6px;
+        background: var(--border);
         border-radius: 999px;
-        font-size: 0.76rem;
-        font-weight: 700;
-        background: var(--bg);
-        border: 1px solid var(--border);
+        margin: 12px 0 8px;
+        overflow: hidden;
+      }
+
+      .price-bar-fill {
+        position: absolute;
+        height: 100%;
+        background: var(--ink);
+        border-radius: 999px;
+      }
+
+      .price-bar-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.72rem;
         color: var(--muted);
       }
 
-      /* ── Inner blocks ── */
-      .block {
-        margin-top: 16px;
-        padding: 16px;
-        border-radius: 12px;
-        background: var(--bg);
-        border: 1px solid var(--border);
+      /* ── Activity timeline ── */
+      .timeline {
+        display: flex;
+        gap: 0;
+        position: relative;
+        padding: 8px 0 0;
       }
 
-      .block-label {
-        font-size: 0.68rem;
-        font-weight: 800;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 10px;
+      .timeline::before {
+        content: "";
+        position: absolute;
+        top: 22px;
+        left: 16px;
+        right: 16px;
+        height: 2px;
+        background: var(--border);
+        z-index: 0;
       }
 
-      .insight {
-        margin-top: 16px;
-        padding: 14px 16px;
-        border-radius: 12px;
-        background: var(--bg);
-        border: 1px solid var(--border);
-        font-size: 0.9rem;
-        color: var(--ink);
+      .timeline-step {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
       }
 
-      .columns {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 16px;
-      }
-
-      .col {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 14px;
+      .timeline-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 2px solid var(--border-md);
         background: var(--surface);
+        display: grid;
+        place-items: center;
+        font-size: 0.7rem;
       }
 
-      .col summary {
-        cursor: pointer;
-        list-style: none;
-        font-size: 0.76rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+      .timeline-dot.done { background: var(--ink); border-color: var(--ink); color: #fff; }
+      .timeline-dot.active { background: var(--surface); border-color: var(--ink); border-width: 3px; }
+
+      .timeline-label { font-size: 0.72rem; font-weight: 600; text-align: center; color: var(--muted); }
+      .timeline-date { font-size: 0.68rem; color: var(--muted); text-align: center; }
+
+      /* ── Lead quality score ── */
+     .score-footer {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px 28px;
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        flex-wrap: wrap;
+      }
+
+      .score-circle-wrap { position: relative; flex-shrink: 0; width: 90px; height: 90px; }
+
+      .score-circle-label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .score-num { font-family: var(--sans); font-size: 1.8rem; font-weight: 700; line-height: 1; letter-spacing: -0.04em; }
+      .score-denom { font-size: 0.62rem; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+      .score-right { flex: 1; }
+      .score-right .card-label { margin-bottom: 4px; }
+      .score-right p { font-size: 0.82rem; color: var(--muted); margin: 0 0 14px; }
+
+      .score-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+      .score-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--green-bg);
+        color: var(--green);
+      }
+      .score-check::before { content: "✓"; font-weight: 900; }
+
+      /* ── Sidebar cards ── */
+      .sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+      .sidebar-card-label { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+      .sidebar-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+      .sidebar-card > p { font-size: 0.82rem; color: var(--muted); margin-bottom: 14px; }
+
+      /* ── Buyer profile donut ── */
+      .profile-donut-wrap { display: flex; flex-direction: column; align-items: center; padding: 8px 0 12px; }
+      .profile-donut-center { font-family: var(--serif); font-size: 2rem; }
+      .profile-donut-legend { display: flex; justify-content: space-around; width: 100%; margin-top: 12px; }
+      .profile-donut-leg-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .profile-donut-leg-pct { font-size: 0.88rem; font-weight: 700; }
+      .profile-donut-leg-label { font-size: 0.72rem; color: var(--muted); }
+
+      /* ── Conversation starters ── */
+      .starter {
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        font-size: 0.84rem;
+        color: var(--ink);
+        line-height: 1.5;
+        margin-bottom: 8px;
+        position: relative;
+        padding-left: 28px;
+      }
+
+      .starter::before {
+        content: "\201C";
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        font-family: var(--serif);
+        font-size: 1.2rem;
         color: var(--muted);
+        line-height: 1;
       }
 
-      .col summary::-webkit-details-marker { display: none; }
-      .col summary::after { content: " +"; }
-      .col[open] summary::after { content: " −"; }
-
-      .col h3 {
-        margin: 0 0 10px;
-        font-size: 0.76rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
-      }
-
-      .listing {
+      /* ── Top loved homes ── */
+      .loved-home {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         padding: 10px 0;
         border-top: 1px solid var(--border);
-        font-size: 0.88rem;
       }
 
-      .listing:first-of-type { border-top: 0; }
-      .listing strong { display: block; font-size: 0.9rem; }
-      .listing span { display: block; color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+      .loved-home:first-of-type { border-top: 0; padding-top: 0; }
 
-      .intent-open-btn {
-        display: inline-flex;
-        margin-top: 6px;
-        padding: 5px 10px;
-        border-radius: 999px;
-        background: var(--surface);
-        color: var(--ink);
-        border: 1px solid var(--border-strong);
-        font: inherit;
-        font-size: 0.72rem;
-        font-weight: 700;
-        cursor: pointer;
-        text-decoration: none;
-        transition: background 0.14s;
-      }
-
-      .intent-open-btn:hover { background: var(--bg); }
-
-      .tag-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 7px;
-      }
-
-      .tag {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 8px;
-        border-radius: 999px;
+      .loved-home-img {
+        width: 52px;
+        height: 42px;
+        border-radius: 8px;
+        object-fit: cover;
         background: var(--bg);
-        color: var(--muted);
-        border: 1px solid var(--border);
-        font-size: 0.68rem;
-        font-weight: 700;
-        text-transform: capitalize;
+        flex-shrink: 0;
       }
 
-      .empty {
-        color: var(--muted);
-        font-size: 0.88rem;
-        padding: 8px 0;
+      .loved-home-info { flex: 1; min-width: 0; }
+      .loved-home-price { font-size: 0.88rem; font-weight: 700; }
+      .loved-home-area { font-size: 0.76rem; color: var(--muted); margin-top: 1px; }
+      .loved-home-heart { font-size: 0.9rem; flex-shrink: 0; }
+
+      /* ── Next move ── */
+      .next-move-card {
+        background: var(--ink);
+        color: #fff;
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 0.84rem;
+        line-height: 1.5;
       }
 
-      .readiness-score {
-        font-family: var(--font-display);
-        font-size: 2.8rem;
-        font-weight: 400;
-        line-height: 1;
-        letter-spacing: -0.04em;
-        margin-bottom: 4px;
-      }
-
-      .readiness-label {
+      .next-move-card strong {
+        display: block;
         font-size: 0.68rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        color: var(--muted);
-        margin-bottom: 16px;
-      }
-
-      .scout-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 14px;
-      }
-
-      .scout-cell strong {
-        display: block;
-        font-size: 0.8rem;
-        margin-bottom: 4px;
-      }
-
-      .scout-cell div {
-        color: var(--muted);
-        font-size: 0.88rem;
-      }
-
-      .next-move {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border-radius: 10px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        font-size: 0.88rem;
-      }
-
-      .next-move strong {
-        display: block;
-        font-size: 0.72rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--muted);
+        opacity: 0.5;
         margin-bottom: 6px;
       }
 
-      .lead-block {
-        margin-top: 16px;
-        padding: 14px 16px;
-        border-radius: 12px;
-        background: var(--bg);
-        border: 1px solid var(--border);
+      /* ── Empty state ── */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 400px;
+        color: var(--muted);
+        text-align: center;
+        padding: 48px;
       }
 
-      .lead-block .block-label { color: #2d7a2d; }
-@media (max-width: 860px) {
-  .page { grid-template-columns: 1fr; }
-  .main { padding: 24px 20px 60px; }
-  .columns { grid-template-columns: 1fr; }
-}
+      .empty-state h2 { font-family: var(--serif); font-size: 1.8rem; font-weight: 400; margin-bottom: 8px; color: var(--ink); }
+      .empty-state p { font-size: 0.88rem; max-width: 320px; line-height: 1.6; }
+
+      /* ── Loved/liked listing columns ── */
+      .listing-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 4px; }
+      .listing-col-head { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+      .listing-item { padding: 10px 0; border-top: 1px solid var(--border); }
+      .listing-item:first-of-type { border-top: 0; padding-top: 0; }
+      .listing-item strong { display: block; font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .listing-item span { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+      .listing-open { display: inline-flex; margin-top: 6px; padding: 3px 9px; border-radius: 999px; background: var(--bg); color: var(--ink); border: 1px solid var(--border-md); font: inherit; font-size: 0.7rem; font-weight: 700; text-decoration: none; }
+
+      @media (max-width: 1100px) {
+        .detail-body { grid-template-columns: 1fr; }
+        .detail-sidebar { padding: 0 32px 28px; }
+        .stats-bar { grid-template-columns: repeat(3, 1fr); }
+        .listing-cols { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 720px) {
+        .layout { grid-template-columns: 1fr; }
+        .sessions-panel { height: auto; position: static; border-right: 0; border-bottom: 1px solid var(--border); }
+        .detail-panel { height: auto; }
+        .areas-grid { grid-template-columns: 1fr; gap: 12px; }
+        .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      }
     </style>
   </head>
 
   <body>
-    <div class="page">
-   <AdminSidebar active="sessions" />
+    <div class="layout">
+      <AdminSidebar active="sessions" />
 
-      <main class="main">
-        <div class="page-header">
-          <h1>Intent sessions</h1>
-          <p>Anonymous buyer behaviour from intent pages — grouped by session and page.</p>
-        </div>
+      <!-- Sessions list -->
+      <div style="display:grid;grid-template-columns:280px 1fr;min-height:100vh;">
+        <div class="sessions-panel">
+          <div class="sessions-panel-head">
+            <h2>Intent Sessions</h2>
+            <p>{sessions.length} sessions tracked</p>
+          </div>
 
-      {error && <p>Error loading sessions: {error.message}</p>}
+          {sessions.map((session) => {
+            const readiness = getReadiness(session.reactions);
+            const { label, color, bg } = getReadinessLabel(readiness);
+            const isActive = selectedSession === session.session_id;
+            const loves = countDecision(session.reactions, "love");
+            const name = session.lead?.name || null;
+            const displayName = name || (session.slug || "").replace(/-/g, " ");
 
-      {sessions.map((session) => {
-        const loves = byDecision(session.reactions, "love");
-        const maybes = byDecision(session.reactions, "maybe");
-        const passes = byDecision(session.reactions, "pass");
-        const city = session.city || "nanaimo";
-
-        return (
-       <article class="session" data-session-id={session.session_id}>
-            <button type="button" class="session-trigger">
-              <div class="session-trigger-left">
-                <div class="session-icon">{countDecision(session.reactions, "love")}♥</div>
-                <div>
-                  <div class="session-title">{session.slug}</div>
-                  <div class="session-meta">{city} · Last active: {fmtDate(session.last_activity)}</div>
+            return (
+              <a
+                class={`session-row${isActive ? " is-active" : ""}`}
+                href={`?session=${encodeURIComponent(session.session_id)}`}
+              >
+                <div class="session-row-top">
+                  <div class="session-row-name">{displayName}</div>
+                  <span class="intent-badge" style={`background:${bg};color:${color};`}>{label}</span>
                 </div>
-              </div>
-              <div class="badges">
-                <span class="badge">{session.reactions.length} reactions</span>
-                <span class="badge">{countDecision(session.reactions, "love")} loves</span>
-                <span class="badge">{countDecision(session.reactions, "maybe")} maybe</span>
-                <span class="badge">{countDecision(session.reactions, "pass")} pass</span>
-              </div>
-              <svg class="session-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7.5l5 5 5-5"/></svg>
-            </button>
-
-            <div class="session-body">
-            <div class="insight">
-              {inferSession(session.reactions)}
-            </div>
-
-         <div class="block">
-              <div class="block-label">Price signal</div>
-
-              <div style="font-weight:850;margin-bottom:10px;">
-                {inferPriceTrend(session.reactions)}
-              </div>
-
-              <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                <span class="badge">Loved avg: {formatMoney(avgPrice(loves))}</span>
-                <span class="badge">Loved range: {priceRange(loves) || "Unknown"}</span>
-                <span class="badge">Maybe avg: {formatMoney(avgPrice(maybes))}</span>
-                <span class="badge">Pass avg: {formatMoney(avgPrice(passes))}</span>
-              </div>
-           </div>
-
-{(() => {
-  const loves = byDecision(session.reactions, "love");
-  const maybes = byDecision(session.reactions, "maybe");
-  const passes = byDecision(session.reactions, "pass");
-
-  const allTags = [
-    ...loves.flatMap((r) => getTags(r)),
-    ...maybes.flatMap((r) => getTags(r)),
-  ];
-
-  const tagCounts = {};
-
-  allTags.forEach((tag) => {
-    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-  });
-
-  const strongestTags = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
-
-  const lovedAreas = {};
-
-  loves.forEach((r) => {
-    if (!r.area) return;
-    lovedAreas[r.area] = (lovedAreas[r.area] || 0) + 1;
-  });
-
-  const topAreas = Object.entries(lovedAreas)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  const readiness =
-    Math.min(
-      100,
-      loves.length * 12 +
-      maybes.length * 5 +
-      session.reactions.length * 2
-    );
-
-  return (
-   <div class="block">
-        <div class="block-label">Buyer Scout Report</div>
-        <div class="readiness-score">{readiness}/100</div>
-        <div class="readiness-label">Buyer Readiness</div>
-        <div class="scout-grid">
-          <div class="scout-cell">
-            <strong>Searching</strong>
-            <div>{(session.slug || "").replaceAll("-", " ")}</div>
-          </div>
-          <div class="scout-cell">
-            <strong>Target Price</strong>
-            <div>{priceRange(loves) || "Unknown"}</div>
-          </div>
-          <div class="scout-cell">
-            <strong>Strongest Preferences</strong>
-            <div>{strongestTags.length ? strongestTags.map(([tag]) => <div>✓ {tag.replaceAll("_", " ")}</div>) : <div>No clear preference yet</div>}</div>
-          </div>
-          <div class="scout-cell">
-            <strong>Top Areas</strong>
-            <div>{topAreas.length ? topAreas.map(([area]) => <div>{area}</div>) : <div>Still exploring</div>}</div>
-          </div>
+                <div class="session-row-meta">{session.slug} · {fmtDateShort(session.last_activity)}</div>
+                <div class="session-row-stats">
+                  <div class="session-row-stat"><strong>{session.reactions.length}</strong> reactions</div>
+                  <div class="session-row-stat"><strong>{loves}</strong> loved</div>
+                  <div class="session-row-stat"><strong>{readiness}</strong>/100</div>
+                </div>
+              </a>
+            );
+          })}
         </div>
-        <div class="next-move">
-          <strong>Suggested Next Move</strong>
-          {loves.length >= 3 ? "Book showing for top 3 matches." : maybes.length >= 3 ? "Refine search and surface stronger matches." : "Gather more behaviour."}
+
+        <!-- Detail panel -->
+        <div class="detail-panel">
+          {(() => {
+            const session = sessions.find(s => s.session_id === selectedSession) || sessions[0];
+
+            if (!session) {
+              return (
+                <div class="empty-state">
+                  <h2>No sessions yet</h2>
+                  <p>Buyer sessions will appear here as people browse your intent pages and react to listings.</p>
+                </div>
+              );
+            }
+
+            const loves = byDecision(session.reactions, "love");
+            const maybes = byDecision(session.reactions, "maybe");
+            const passes = byDecision(session.reactions, "pass");
+            const city = session.city || "nanaimo";
+            const readiness = getReadiness(session.reactions);
+            const { label: intentLabel, color: intentColor, bg: intentBg } = getReadinessLabel(readiness);
+            const areas = getTopAreas(session.reactions);
+            const learned = getWhatWeLearned(session.reactions);
+            const starters = getConversationStarters(session.reactions, areas);
+            const profile = getBuyerProfile(session.reactions);
+            const typeBreakdown = getTypeBreakdown(session.reactions);
+            const loveAvg = avgPrice(loves);
+            const allPrices = session.reactions.map(r => parsePrice(r.price)).filter(p => p > 0);
+            const minAll = allPrices.length ? Math.min(...allPrices) : 0;
+            const maxAll = allPrices.length ? Math.max(...allPrices) : 0;
+            const loveMin = loves.map(r => parsePrice(r.price)).filter(p => p > 0).sort((a, b) => a - b);
+            const loveP20 = loveMin.length ? loveMin[Math.floor(loveMin.length * 0.2)] : 0;
+            const loveP80 = loveMin.length ? loveMin[Math.floor(loveMin.length * 0.8)] : 0;
+            const loveRange = loveMin.length ? { min: loveP20, max: loveP80 } : null;
+            const fillLeft = loveRange && maxAll > minAll ? ((loveRange.min - minAll) / (maxAll - minAll)) * 100 : 20;
+            const fillRight = loveRange && maxAll > minAll ? ((loveRange.max - minAll) / (maxAll - minAll)) * 100 : 75;
+            const score = Math.min(92, readiness + (session.lead ? 10 : 0) + (loves.length >= 3 ? 8 : 0));
+            const hasShowing = session.lead?.message?.toLowerCase().includes("showing");
+            const hasQuestion = session.lead?.message?.toLowerCase().includes("question");
+
+            // donut chart SVG for buyer profile
+            const lifePct = profile.lifestyle;
+            const valPct = profile.value;
+            const r = 44, cx = 56, cy = 56, circ = 2 * Math.PI * r;
+            const lifeDash = (lifePct / 100) * circ;
+            const valDash = (valPct / 100) * circ;
+
+            // score donut
+            const sr = 36, scirc = 2 * Math.PI * sr;
+            const scoreDash = (score / 100) * scirc;
+
+            return (
+              <>
+                <div class="detail-topbar">
+                  <div class="detail-topbar-left">Lead Report</div>
+                 <div class="detail-topbar-actions">
+                    {session.lead?.email && (
+                      <a class="btn btn-primary" href={`mailto:${session.lead.email}?subject=Showing request&body=Hi ${session.lead.name || "there"}, I'd love to arrange a showing for one of the homes you've been looking at.`}>
+                        Book a showing
+                      </a>
+                    )}
+                    {session.lead?.email && (
+                      <a class="btn" href={`mailto:${session.lead.email}?subject=Your home search&body=Hi ${session.lead.name || "there"}, I noticed you've been browsing homes in ${city} and wanted to reach out.`}>
+                        Ask a question
+                      </a>
+                    )}
+                    {!session.lead?.email && (
+                      <span style="font-size:0.8rem;color:var(--muted);">No contact info captured yet</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Lead header */}
+                <div class="lead-header">
+                  <div class="lead-header-eyebrow">Lead Report</div>
+                  <div class="lead-header-row">
+                    <div>
+                      <div class="lead-name-block">
+                        <div class="lead-name">{session.lead?.name || "Anonymous Buyer"}</div>
+                        <span class="intent-badge" style={`background:${intentBg};color:${intentColor};font-size:0.78rem;padding:4px 12px;`}>{intentLabel}</span>
+                        {readiness >= 60 && (
+                          <span style="display:inline-flex;align-items:center;gap:3px;font-size:0.84rem;color:#f59e0b;">
+                            {"★★★★".slice(0, Math.round(readiness / 20))}
+                            <span style="font-weight:700;margin-left:4px;">{(readiness / 20).toFixed(1)}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div class="lead-contact">
+                        {session.lead?.email && <span>✉ {session.lead.email}</span>}
+                        {session.lead?.phone && <span>📞 {session.lead.phone}</span>}
+                        <span>📍 {city.charAt(0).toUpperCase() + city.slice(1)}, BC</span>
+                      </div>
+                    </div>
+                    <div class="lead-meta-right">
+                      {session.lead && <>
+                        <div>Lead captured</div>
+                        <strong>{fmtDate(session.lead.created_at)}</strong>
+                      </>}
+                      <div style="margin-top:8px;">Last active</div>
+                      <strong>{fmtDate(session.last_activity)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats bar */}
+                <div class="stats-bar">
+                  <div class="stat-cell">
+                    <div class="stat-num">{session.reactions.length}</div>
+                    <div class="stat-label">Homes Viewed</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-num"><span class="stat-icon">❤️</span>{loves.length}</div>
+                    <div class="stat-label">Loved</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-num"><span class="stat-icon">👍</span>{maybes.length}</div>
+                    <div class="stat-label">Liked</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-num"><span class="stat-icon">💬</span>{session.lead ? "1" : "0"}</div>
+                    <div class="stat-label">Intent Answers</div>
+                  </div>
+                  <div class="stat-cell">
+                    <div class="stat-num"><span class="stat-icon">📅</span>{hasShowing ? "1" : "0"}</div>
+                    <div class="stat-label">Showing Requests</div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div class="detail-body">
+                  <div class="detail-main">
+
+                    {/* What we learned */}
+                    <div class="card">
+                      <h3>What we learned</h3>
+                      <p>From their reactions and answers</p>
+                      {learned.map((item) => (
+                        <div class="learned-row">
+                          <div class="learned-icon">{item.icon}</div>
+                          <div>
+                            <div class="learned-title">{item.title}</div>
+                            <div class="learned-body">{item.body}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Preferred areas */}
+                    <div class="card">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                        <h3 style="margin:0;">Preferred areas</h3>
+                        <a class="btn" href={`/${city}/${session.slug}`} target="_blank" style="font-size:0.76rem;padding:5px 12px;">View on map</a>
+                      </div>
+                      <div class="areas-grid">
+                        <div class="areas-col">
+                          <div class="areas-col-label">Strong interest</div>
+                          {areas.strong.length ? areas.strong.map(a => (
+                            <div class="area-item">
+                              <div class="area-dot" style="background:#16a34a;"></div>
+                              <span style="text-transform:capitalize;">{a}</span>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);">Not yet clear</div>}
+                        </div>
+                        <div class="areas-col">
+                          <div class="areas-col-label">Some interest</div>
+                          {areas.some.length ? areas.some.map(a => (
+                            <div class="area-item">
+                              <div class="area-dot" style="background:#f59e0b;"></div>
+                              <span style="text-transform:capitalize;">{a}</span>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);">Not yet clear</div>}
+                        </div>
+                        <div class="areas-col">
+                          <div class="areas-col-label">Little to no interest</div>
+                          {areas.little.length ? areas.little.map(a => (
+                            <div class="area-item">
+                              <div class="area-dot" style="background:#d1d5db;"></div>
+                              <span style="text-transform:capitalize;">{a}</span>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);">None identified</div>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* What's holding homes back + home type */}
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                      <div class="card">
+                        <h3>What's holding homes back</h3>
+                        <p>Most common reasons from 'liked' homes</p>
+                        <div class="doughnut-wrap">
+                          <svg width="100" height="100" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="38" fill="none" stroke="#f3f4f6" stroke-width="14" />
+                            {typeBreakdown.slice(0, 4).map((item, i) => {
+                              const colors = ["#111110","#6b7280","#d1d5db","#f3f4f6"];
+                              const prev = typeBreakdown.slice(0, i).reduce((s, t) => s + t.pct, 0);
+                              const dash = (item.pct / 100) * (2 * Math.PI * 38);
+                              const gap = (2 * Math.PI * 38) - dash;
+                              const offset = (prev / 100) * (2 * Math.PI * 38);
+                              return (
+                                <circle
+                                  cx="50" cy="50" r="38"
+                                  fill="none"
+                                  stroke={colors[i]}
+                                  stroke-width="14"
+                                  stroke-dasharray={`${dash} ${gap}`}
+                                  stroke-dashoffset={-offset}
+                                  transform="rotate(-90 50 50)"
+                                />
+                              );
+                            })}
+                            <text x="50" y="46" text-anchor="middle" font-size="9" fill="#6b6864" font-family="DM Sans,sans-serif">Top</text>
+                            <text x="50" y="58" text-anchor="middle" font-size="11" fill="#111110" font-weight="700" font-family="DM Sans,sans-serif">Price</text>
+                          </svg>
+                         <div class="doughnut-legend">
+                            {(() => {
+                              const reasons = getPassReasons(session.reactions);
+                              const colors = ["#111110","#6b7280","#d1d5db","#e5e7eb","#f3f4f6"];
+                              return reasons.length
+                                ? reasons.map(({ name, pct }, i) => (
+                                    <div class="doughnut-legend-row">
+                                      <div class="doughnut-legend-left">
+                                        <div class="legend-dot" style={`background:${colors[i] || "#ccc"};`}></div>
+                                        <span>{name}</span>
+                                      </div>
+                                      <span class="legend-pct">{pct}%</span>
+                                    </div>
+                                  ))
+                                : <div style="font-size:0.8rem;color:var(--muted);">Not enough pass data yet.</div>;
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="card">
+                        <h3>Price comfort zone</h3>
+                        <p>Homes viewed most often</p>
+                        <div class="price-range-big">{loveRange ? `${formatMoneyShort(loveRange.min)} – ${formatMoneyShort(loveRange.max)}` : "Still gathering"}</div>
+                        <div class="price-bar-track">
+                          <div class="price-bar-fill" style={`left:${fillLeft}%;width:${fillRight - fillLeft}%;`}></div>
+                        </div>
+                        <div class="price-bar-labels">
+                          <span>{formatMoneyShort(minAll) || "Min"}</span>
+                          <span style="font-weight:700;color:var(--ink);">{loveRange ? `${formatMoneyShort(loveRange.min)} – ${formatMoneyShort(loveRange.max)}` : "Most viewed"}</span>
+                          <span>{formatMoneyShort(maxAll) || "Max"}+</span>
+                        </div>
+
+                        <div style="margin-top:18px;">
+                          <div class="card-label" style="margin-bottom:8px;">Home type preference</div>
+                          <div class="card-label" style="color:var(--muted);margin-bottom:10px;font-size:0.7rem;">Based on loved + liked homes</div>
+                          {typeBreakdown.slice(0, 4).map(({ type, pct }) => (
+                            <div style="margin-bottom:7px;">
+                              <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:3px;">
+                                <span>{type || "Single Family"}</span>
+                                <span style="font-weight:700;">{pct}%</span>
+                              </div>
+                              <div style="height:4px;background:var(--border);border-radius:999px;overflow:hidden;">
+                                <div style={`height:100%;width:${pct}%;background:var(--ink);border-radius:999px;`}></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Activity timeline */}
+                    <div class="card">
+                      <h3>Activity timeline</h3>
+                      <div class="timeline" style="margin-top:16px;">
+                        {[
+                          { label: "Session started", date: fmtDateShort(session.first_activity), done: true },
+                          { label: `Viewed ${Math.min(session.reactions.length, 10)} homes`, date: fmtDateShort(session.first_activity), done: session.reactions.length >= 5 },
+                          { label: "Answered questions", date: session.lead ? fmtDateShort(session.lead.created_at) : "—", done: Boolean(session.lead) },
+                          { label: "Requested showing", date: hasShowing ? fmtDateShort(session.lead?.created_at) : "—", done: hasShowing, active: !hasShowing && Boolean(session.lead) },
+                          { label: "Last active", date: fmtDateShort(session.last_activity), done: true, active: false },
+                        ].map((step) => (
+                          <div class="timeline-step">
+                            <div class={`timeline-dot${step.done ? " done" : step.active ? " active" : ""}`}>
+                              {step.done ? "✓" : "○"}
+                            </div>
+                            <div class="timeline-label">{step.label}</div>
+                            <div class="timeline-date">{step.date}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Loved listings */}
+                    <div class="card" id="all-reactions">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                        <h3 style="margin:0;">All reactions</h3>
+                      </div>
+                      <div class="listing-cols">
+                        <div>
+                          <div class="listing-col-head">Loved ({loves.length})</div>
+                          {loves.length ? loves.slice(0, 8).map((r) => (
+                            <div class="listing-item">
+                              <strong>{r.address}</strong>
+                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+                              <span style="text-transform:capitalize;">{r.area}</span>
+                              <a class="listing-open" href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.address || "")}`} target="_blank">Open →</a>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+                        </div>
+                        <div>
+                          <div class="listing-col-head">Liked ({maybes.length})</div>
+                          {maybes.length ? maybes.slice(0, 8).map((r) => (
+                            <div class="listing-item">
+                              <strong>{r.address}</strong>
+                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+                              <span style="text-transform:capitalize;">{r.area}</span>
+                              <a class="listing-open" href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.address || "")}`} target="_blank">Open →</a>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+                        </div>
+                        <div>
+                          <div class="listing-col-head">Passed ({passes.length})</div>
+                          {passes.length ? passes.slice(0, 8).map((r) => (
+                            <div class="listing-item">
+                              <strong>{r.address}</strong>
+                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+                              <span style="text-transform:capitalize;">{r.area}</span>
+                            </div>
+                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lead quality score */}
+                    <div class="score-footer">
+                      <div class="score-circle-wrap">
+                        <svg width="90" height="90" viewBox="0 0 90 90">
+                          <circle cx="45" cy="45" r={sr} fill="none" stroke="#f3f4f6" stroke-width="10" />
+                        <circle
+                            cx="45" cy="45" r={sr}
+                            fill="none"
+                            stroke={score >= 80 ? "#16a34a" : score >= 60 ? "#22c55e" : score >= 40 ? "#f59e0b" : score >= 20 ? "#f97316" : "#ef4444"}
+                            stroke-width="10"
+                            stroke-dasharray={`${scoreDash} ${scirc - scoreDash}`}
+                            stroke-dashoffset={0}
+                            transform="rotate(-90 45 45)"
+                          />
+                        </svg>
+                        <div class="score-circle-label">
+                          <div class="score-num" style={`color:${score >= 80 ? "#16a34a" : score >= 60 ? "#22c55e" : score >= 40 ? "#f59e0b" : score >= 20 ? "#f97316" : "#ef4444"}`}>{score}</div>
+                          
+                        </div>
+                      </div>
+                     <div class="score-right">
+                        <div class="card-label">Lead quality score</div>
+                        <p>Based on engagement and intent signals</p>
+                        <div class="score-checks">
+                          {session.reactions.length >= 5 && <div class="score-check">High engagement</div>}
+                          {(loves.length + maybes.length) >= 2 && <div class="score-check">Intent signals</div>}
+                          {new Date(session.last_activity) > new Date(Date.now() - 86400000 * 3) && <div class="score-check">Recent activity</div>}
+                          {hasShowing && <div class="score-check">Showing requests</div>}
+                          {session.lead && <div class="score-check">Lead captured</div>}
+                       </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Sidebar */}
+                  <div class="detail-sidebar">
+
+                    {/* Buyer profile */}
+                    <div class="sidebar-card">
+                      <div class="sidebar-card-label">Buyer profile</div>
+                      <p>We think this buyer is...</p>
+                      <div class="profile-donut-wrap">
+                        <svg width="112" height="112" viewBox="0 0 112 112">
+                          <circle cx="56" cy="56" r={r} fill="none" stroke="#f3f4f6" stroke-width="14" />
+                          <circle cx="56" cy="56" r={r} fill="none" stroke="#111110" stroke-width="14"
+                            stroke-dasharray={`${(lifePct / 100) * circ} ${circ}`}
+                            stroke-dashoffset={circ / 4}
+                            transform="rotate(-90 56 56)"
+                          />
+                          <circle cx="56" cy="56" r={r} fill="none" stroke="#d1d5db" stroke-width="14"
+                            stroke-dasharray={`${(valPct / 100) * circ} ${circ}`}
+                            stroke-dashoffset={circ / 4 - (lifePct / 100) * circ}
+                            transform="rotate(-90 56 56)"
+                          />
+                          <text x="56" y="52" text-anchor="middle" font-size="18" fill="#111110" font-weight="700" font-family="Instrument Serif,Georgia,serif">{lifePct || 78}%</text>
+                          <text x="56" y="66" text-anchor="middle" font-size="9" fill="#6b6864" font-family="DM Sans,sans-serif">Lifestyle</text>
+                        </svg>
+                        <div class="profile-donut-legend">
+                          <div class="profile-donut-leg-item">
+                            <div class="profile-donut-leg-pct">{lifePct || 78}%</div>
+                            <div class="profile-donut-leg-label">Lifestyle</div>
+                          </div>
+                          <div class="profile-donut-leg-item">
+                            <div class="profile-donut-leg-pct">{valPct || 22}%</div>
+                            <div class="profile-donut-leg-label">Value Buyer</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Conversation starters */}
+                    <div class="sidebar-card">
+                      <div class="sidebar-card-label">Conversation starters</div>
+                      <p>Use these insights to start the right conversation.</p>
+                      {starters.map((s) => <div class="starter">{s}</div>)}
+                      <a class="btn" href="#" style="width:100%;justify-content:center;margin-top:8px;font-size:0.78rem;">View all talking points</a>
+                    </div>
+
+                    {/* Top loved homes */}
+                    <div class="sidebar-card">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                        <div class="sidebar-card-label" style="margin:0;">Top loved homes</div>
+                     <a class="listing-open" href="#all-reactions" onclick="document.getElementById('all-reactions')?.scrollIntoView({behavior:'smooth',block:'start'});return false;">View all</a>
+                      </div>
+                  {loves.slice(0, 3).map((r) => (
+                        
+                        <a href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}
+                          target="_blank"
+                          style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);text-decoration:none;color:inherit;"
+                          class="loved-home"
+                        >
+                        {(() => {
+                            const img = imageByAddress.get(String(r.address || "").trim().toLowerCase()) || "";
+                            return img
+                              ? <img src={img} alt={r.address || ""} class="loved-home-img" style="width:52px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
+                              : <div class="loved-home-img" style="background:#e5e7eb;display:grid;place-items:center;font-size:1.2rem;width:52px;height:42px;border-radius:8px;flex-shrink:0;">🏠</div>;
+                          })()}
+                          <div class="loved-home-info" style="flex:1;min-width:0;">
+                            <div class="loved-home-price">{r.price}</div>
+                            <div class="loved-home-area" style="text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{r.address || r.area}</div>
+                            <div style="font-size:0.72rem;color:var(--muted);text-transform:capitalize;">{r.area}</div>
+                          </div>
+                          <div class="loved-home-heart">❤️</div>
+                        </a>
+                      ))}
+                      {!loves.length && <div style="font-size:0.82rem;color:var(--muted);">No loved homes yet.</div>}
+                    </div>
+
+                    {/* Next move */}
+                    <div class="next-move-card">
+                      <strong>Suggested Next Move</strong>
+                      {getNextMove(session.reactions)}
+                    </div>
+
+                  {/* Notes */}
+                    <div class="sidebar-card">
+                      <div class="sidebar-card-label">Notes</div>
+{sessionNotes?.notes && (() => {
+                        const entries = sessionNotes.notes.split(/\n\n+/).filter(Boolean);
+                        return (
+                          <div data-raw={sessionNotes.notes} style="margin-bottom:10px;display:flex;flex-direction:column;gap:10px;">
+                            {entries.map((entry) => {
+                              const [datePart, ...rest] = entry.split("|||");
+                              const noteText = rest.join("|||").trim();
+                              const hasFormat = entry.includes("|||");
+                              return (
+                                <div style="padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+                                  {hasFormat && (
+                                    <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">
+                                      {datePart.trim()}
+                                    </div>
+                                  )}
+                                  <div style="font-size:0.84rem;line-height:1.5;color:var(--ink);">
+                                    {hasFormat ? noteText : entry.trim()}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                      <textarea
+                        id="lead-notes-input"
+                        placeholder="Add a new note..."
+                        data-session-id={session.session_id}
+                        style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;font-size:0.82rem;resize:vertical;background:var(--bg);color:var(--ink);outline:none;"
+                      ></textarea>
+                      <button type="button" id="save-note-btn" class="btn" style="margin-top:8px;width:100%;justify-content:center;">Save note</button>
+                      <div id="note-save-status" style="font-size:0.76rem;color:var(--muted);text-align:center;margin-top:6px;min-height:16px;"></div>
+                    </div>
+
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
-  );
-})()}
-
-{session.lead && (
-              <div class="lead-block">
-                <div class="block-label">Lead captured</div>
-                <div style="font-weight:700;">{session.lead.name || "Unnamed buyer"}</div>
-                {session.lead.email && <div style="color:var(--muted);margin-top:4px;">{session.lead.email}</div>}
-                {session.lead.phone && <div style="color:var(--muted);margin-top:4px;">{session.lead.phone}</div>}
-              </div>
-            )}
-
-            <div class="columns">
-        <details class="col">
-<summary>Loved Listings ({loves.length})</summary>
-{loves.length ? loves.slice(0, 10).map((r) => (
-  
-  <div class="listing">
-                    <strong>{r.address}</strong>
-                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
-                    <span>{r.area}</span>
-
-                    <a
-                      class="intent-open-btn"
-href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
-                    >
-                      Open listing
-                    </a>
-
-                    {getTags(r).length > 0 && (
-                      <div class="tag-row">
-                        {getTags(r).map((tag) => (
-                          <span class="tag">{tag.replaceAll("_", " ")}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )) : <div class="empty">No loves yet.</div>}
-                {loves.length > 10 && (
-  <div class="empty">
-    + {loves.length - 10} more loved listings
-  </div>
-)}
-              </details>
-
-              <details class="col">
-<h3>
-  <a href={`/${city}/${session.slug}?intent=maybe`}>
-    Kinda Liked ({maybes.length})
-  </a>
-</h3>{maybes.length ? maybes.slice(0, 10).map((r) => (                  <div class="listing">
-                    <strong>{r.address}</strong>
-                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
-                    <span>{r.area}</span>
-
-                    <a
-                      class="intent-open-btn"
-href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
-                    >
-                      Open listing
-                    </a>
-
-                    {getTags(r).length > 0 && (
-                      <div class="tag-row">
-                        {getTags(r).map((tag) => (
-                          <span class="tag">{tag.replaceAll("_", " ")}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-             )) : <div class="empty">No maybes yet.</div>}
-
-{maybes.length > 10 && (
-  <div class="empty">
-    + {maybes.length - 10} more kinda liked listings
-  </div>
-)}
-</section>
-
-              <section class="col">
-<h3>
-  <a href={`/${city}/${session.slug}?intent=pass`}>
-    Passed ({passes.length})
-  </a>
-</h3>              {passes.length ? passes.slice(0, 10).map((r) => (
-                  <div class="listing">
-                    <strong>{r.address}</strong>
-                    <span>{r.price} · {r.beds} bed · {r.baths} bath · {r.sqft} sqft</span>
-                    <span>{r.area}</span>
-
-                    <a
-                      class="intent-open-btn"
-href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}                      target="_blank"
-                    >
-                      Open listing
-                    </a>
-                  </div>
-           )) : <div class="empty">No passes yet.</div>}
-
-{passes.length > 10 && (
-  <div class="empty">
-    + {passes.length - 10} more passed listings
-  </div>
-)}
-</section>
-            </div>
-         </div>
-          </article>
-        );
-      })}
-</main>
     </div>
 
-   <script>
-  document.querySelectorAll(".session-trigger").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const session = btn.closest(".session");
-      session.classList.toggle("is-open");
-    });
-  });
+    <script>
+document.getElementById("save-note-btn")?.addEventListener("click", async () => {
+        const textarea = document.getElementById("lead-notes-input");
+        const status = document.getElementById("note-save-status");
+        const sessionId = textarea?.dataset.sessionId;
+        const notes = textarea?.value || "";
 
-  const wantedSession = new URLSearchParams(window.location.search).get("session");
+        if (!sessionId) return;
 
-  if (wantedSession) {
-    const target = document.querySelector(
-      `.session[data-session-id="${CSS.escape(wantedSession)}"]`
-    );
+        status.textContent = "Saving...";
 
-    target?.classList.add("is-open");
-    target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-</script>
+        try {
+      const existing = document.querySelector("[data-raw]")?.dataset.raw || "";
+
+          const timestamp = new Date().toLocaleString("en-CA", {
+            month: "short", day: "numeric", year: "numeric",
+            hour: "numeric", minute: "2-digit"
+          });
+
+          const newEntry = `${timestamp}|||${notes.trim()}`;
+
+          const combined = existing
+            ? `${existing.trim()}\n\n${newEntry}`
+            : newEntry;
+
+          const res = await fetch("/api/save-session-note", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, notes: combined }),
+          });
+
+          const json = await res.json();
+       if (json.ok) {
+            status.textContent = "Saved ✓";
+            textarea.value = "";
+
+            // Update the notes display without reloading
+            const notesContainer = document.querySelector("[data-raw]")?.parentElement
+              || (() => {
+                const el = document.createElement("div");
+                el.style.cssText = "margin-bottom:10px;display:flex;flex-direction:column;gap:10px;";
+                textarea.closest(".sidebar-card")?.prepend(el);
+                return el;
+              })();
+
+            const rawEl = document.querySelector("[data-raw]");
+            const prevRaw = rawEl?.dataset.raw || "";
+
+            const newEntry = `${timestamp}|||${notes.trim()}`;
+            const newRaw = prevRaw ? `${prevRaw}\n\n${newEntry}` : newEntry;
+
+            // Re-render notes in place
+            const entries = newRaw.split(/\n\n+/).filter(Boolean);
+            const html = entries.map((entry) => {
+              const hasSep = entry.includes("|||");
+              const [datePart, ...rest] = entry.split("|||");
+              const noteText = rest.join("|||").trim();
+              return `
+                <div style="padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+                  ${hasSep ? `<div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">${datePart.trim()}</div>` : ""}
+                  <div style="font-size:0.84rem;line-height:1.5;color:var(--ink);">${hasSep ? noteText : entry.trim()}</div>
+                </div>
+              `;
+            }).join("");
+
+            if (rawEl) {
+              rawEl.dataset.raw = newRaw;
+              rawEl.innerHTML = entries.map((entry) => {
+                const hasSep = entry.includes("|||");
+                const [datePart, ...rest] = entry.split("|||");
+                const noteText = rest.join("|||").trim();
+                return `
+                  <div style="padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+                    ${hasSep ? `<div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">${datePart.trim()}</div>` : ""}
+                    <div style="font-size:0.84rem;line-height:1.5;color:var(--ink);">${hasSep ? noteText : entry.trim()}</div>
+                  </div>
+                `;
+              }).join("");
+            } else {
+              const newContainer = document.createElement("div");
+              newContainer.dataset.raw = newRaw;
+              newContainer.style.cssText = "margin-bottom:10px;display:flex;flex-direction:column;gap:10px;";
+              newContainer.innerHTML = html;
+              textarea.before(newContainer);
+            }
+
+            setTimeout(() => { status.textContent = ""; }, 2000);
+          } else {
+            status.textContent = "Error saving";
+          }
+        } catch {
+          status.textContent = "Error saving";
+        }
+      });
+
+      const wantedSession = new URLSearchParams(window.location.search).get("session");      if (wantedSession) {
+        const target = document.querySelector(`.session-row[href*="${CSS.escape(wantedSession)}"]`);
+        target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    </script>
   </body>
 </html>
