@@ -17,8 +17,29 @@ const { title, accentColor = "#2f6f73" } = Astro.props;
 
   </head>
 
- <body data-google-maps-api-key={import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
+<body data-google-maps-api-key={import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || ""}>
     <slot />
+
+    <nav class="mobile-bottom-nav">
+      <a class="mobile-bottom-nav__item" href="/nanaimo-real-estate-market">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Areas</span>
+      </a>
+      <a class="mobile-bottom-nav__item" href="/nanaimo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Browse</span>
+      </a>
+      <button class="mobile-bottom-nav__item" id="mobile-saved-btn" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span>Saved</span>
+      </button>
+    </nav>
+
+    <script is:inline>
+      document.getElementById("mobile-saved-btn")?.addEventListener("click", () => {
+        document.getElementById("shortlist-modal")?.removeAttribute("hidden");
+      });
+    </script>
   </body>
 </html>
 
@@ -79,7 +100,53 @@ const { title, accentColor = "#2f6f73" } = Astro.props;
     color: var(--accent);
   }
 
-  .accent-soft {
+.accent-soft {
     background: var(--accent-soft);
+  }
+
+  .mobile-bottom-nav {
+    display: none;
+  }
+
+  @media (max-width: 760px) {
+    .mobile-bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--surface) 96%, transparent);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .mobile-bottom-nav__item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 0;
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-decoration: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .mobile-bottom-nav__item:hover,
+    .mobile-bottom-nav__item.active {
+      color: var(--accent);
+    }
+
+    body {
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    }
   }
 </style>

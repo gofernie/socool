@@ -8,25 +8,24 @@ const supabase = createClient(
 export async function getSite(hostname: string) {
   const host = hostname.replace(/^www\./, "");
 
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .or(`domain.eq.${host},domain.eq.www.${host}`)
-    .single();
-
- if (!error && data) return data;
-
-  // Fallback for local dev
+  // Local dev default
   if (host === "localhost" || host.startsWith("localhost:")) {
     const { data: fallback } = await supabase
       .from("sites")
       .select("*")
-      .order("created_at", { ascending: true })
-      .limit(1)
+      .eq("city", "nanaimo")
       .maybeSingle();
 
     return fallback;
   }
+
+  const { data, error } = await supabase
+    .from("sites")
+    .select("*")
+    .or(`domain.eq.${host},domain.eq.www.${host}`)
+    .maybeSingle();
+
+  if (!error && data) return data;
 
   console.error("Site lookup failed:", error);
   return null;

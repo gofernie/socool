@@ -1711,7 +1711,7 @@ color: var(--accent) !important;
   style={`--hero-image: url('${page.hero_image_url || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80"}')`}
 >
   <div class="page-hero__inner">
-<p class="page-hero__eyebrow">{city.charAt(0).toUpperCase() + city.slice(1)} Intent Search</p>
+<p class="page-hero__eyebrow">{page.eyebrow || `${city.charAt(0).toUpperCase() + city.slice(1)} Intent Search`}</p>
    <h1 set:html={`${cleanHeroHeading.replace(/\|/g, '<br>')}<span style="color:${accentColor} !important">.</span>`} />
 
   <p class="page-hero__copy">{page.intro_copy}</p>

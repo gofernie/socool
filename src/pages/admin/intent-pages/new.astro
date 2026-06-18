@@ -700,6 +700,7 @@ textarea:focus {
               <option value="condo">Condo</option>
               <option value="townhouse">Townhouse</option>
               <option value="mobile">Mobile</option>
+              <option value="land">Land</option>
             </select>
           </div>
 
@@ -829,12 +830,13 @@ riverfront: ["views", "waterfront"],
           .replace(/^-+|-+$/g, "");
       }
 
-      function pluralType(value) {
+     function pluralType(value) {
         if (!value) return "Homes";
         if (value === "house") return "Homes";
         if (value === "mobile") return "Mobile Homes";
         if (value === "condo") return "Condos";
         if (value === "townhouse") return "Townhomes";
+        if (value === "land") return "Land";
         return `${titleCase(value)}s`;
       }
 

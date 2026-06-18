@@ -43,6 +43,7 @@ const TYPE_PAGE_MAP: Record<string, string> = {
   condo: "condos",
   townhouse: "townhomes",
   townhome: "townhomes",
+  land: "land",
 };
 
 const cleanAreaLabel = (value: string) =>
@@ -57,7 +58,14 @@ const areaLinks: NavItem[] = areas.slice(0, 8).map((area: string) => ({
   href: `/${slugify(city)}/areas/${slugify(area)}`,
 }));
 
-const typeLinks: NavItem[] = types.slice(0, 5).map((type: string) => {
+const TYPE_ORDER = ["house", "condo", "townhouse", "mobile", "land"];
+const sortedTypes = [...types].sort(
+  (a, b) =>
+    (TYPE_ORDER.indexOf(a.toLowerCase()) + 1 || 99) -
+    (TYPE_ORDER.indexOf(b.toLowerCase()) + 1 || 99)
+);
+
+const typeLinks: NavItem[] = sortedTypes.slice(0, 5).map((type: string) => {
   const key = String(type).toLowerCase();
   const typePageSlug = TYPE_PAGE_MAP[key] || `${slugify(type)}s`;
 

@@ -597,7 +597,7 @@ const chartData = {
 };
 ---
 
-<Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
+<Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
   <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
   <link
@@ -792,10 +792,11 @@ const chartData = {
               ? `${labelize(area)} offers a more mixed market, with condos making up about ${condoPercent}% of current inventory.`
               : `${labelize(area)} has a balanced mix of homes, condos, and townhomes for buyers to compare.`}
         </p>
-        <ul class="market-points">
+<ul class="market-points">
           <li>{listings.length} active listings give buyers a current read on available inventory.</li>
           <li>{housePercent}% of listings are houses, {condoPercent}% are condos, and {townhomePercent}% are townhomes.</li>
           <li>The median price is ${medianPrice.toLocaleString()}, which is often the cleanest quick read on typical pricing.</li>
+          <li>Median house: ${(() => { const p = listings.filter(l => l.normalized_type === "house").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}  · Condo: ${(() => { const p = listings.filter(l => l.normalized_type === "condo").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}  · Townhome: ${(() => { const p = listings.filter(l => l.normalized_type === "townhouse").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}</li>
           <li>
             {condoCount === 0
               ? "Condo inventory is very limited here, so low-maintenance buyers may need to compare nearby areas."
@@ -1311,7 +1312,7 @@ if (window.google?.maps && document.getElementById("area-map")) {
       initPriceChart();
     });
   </script>
-  <style>
+ <style>
   .area-browse-nav a.active {
     background: var(--accent-soft);
     color: var(--accent);
@@ -1319,5 +1320,10 @@ if (window.google?.maps && document.getElementById("area-map")) {
     border-radius: 999px;
     font-weight: 700;
   }
+
+  .page-hero__eyebrow { color: rgba(255,255,255,0.75) !important; }
+  .page-hero h1 { color: #fff !important; text-shadow: 0 2px 24px rgba(0,0,0,0.5) !important; }
+  .page-hero__copy { color: rgba(255,255,255,0.85) !important; }
+  .page-hero__actions a { color: #fff !important; border-color: rgba(255,255,255,0.4) !important; }
 </style>
 </Layout>

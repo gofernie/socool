@@ -21,7 +21,7 @@ background-image: linear-gradient(90deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.24) 5
 
 .page-hero__eyebrow {
   margin: 0 0 14px;
-  color: var(--accent);
+  color: rgba(255,255,255,0.75);
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -37,14 +37,27 @@ background-image: linear-gradient(90deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.24) 5
   line-height: 1.04;
   letter-spacing: -0.055em;
   font-weight: 500;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.5);
 }
 
 .page-hero__copy {
   max-width: 720px;
   margin: 0;
-  color: var(--muted);
+  color: rgba(255,255,255,0.85);
   font-size: 1rem;
   line-height: 1.65;
+}
+
+.page-hero__actions a {
+  border-color: rgba(255,255,255,0.4);
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+}
+
+.page-hero__actions a:first-child {
+  background: var(--accent);
+  color: #fff;
 }
 
 .page-hero__actions {

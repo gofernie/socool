@@ -47,6 +47,7 @@ if (Astro.request.method === "POST") {
       property_type: clean(form.get("property_type")).toLowerCase() || null,
       price_min: form.get("price_min") ? Number(form.get("price_min")) : null,
       price_max: form.get("price_max") ? Number(form.get("price_max")) : null,
+      eyebrow: clean(form.get("eyebrow")) || null,
       hero_heading: clean(form.get("hero_heading")),
 hero_image_url: clean(form.get("hero_image_url")) || null,
 nav_label: clean(form.get("nav_label")) || null,
@@ -457,7 +458,8 @@ select {
               <option value="house" selected={page.property_type === "house"}>House</option>
               <option value="condo" selected={page.property_type === "condo"}>Condo</option>
               <option value="townhouse" selected={page.property_type === "townhouse"}>Townhouse</option>
-              <option value="mobile" selected={page.property_type === "mobile"}>Mobile</option>
+<option value="mobile" selected={page.property_type === "mobile"}>Mobile</option>
+              <option value="land" selected={page.property_type === "land"}>Land</option>
             </select>
           </div>
         </div>
@@ -521,6 +523,11 @@ select {
         </div>
 
       <div class="field">
+          <label>Eyebrow label <span style="font-weight:400;color:var(--muted);">— small text above h1</span></label>
+          <input name="eyebrow" value={page.eyebrow || ""} placeholder="Nanaimo Intent Search" />
+        </div>
+
+        <div class="field">
           <label>Hero heading h1 <span style="font-weight:400;color:var(--muted);">— use | for line break</span></label>
           <input name="hero_heading" value={page.hero_heading || ""} />
         </div>
