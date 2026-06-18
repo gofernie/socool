@@ -2606,7 +2606,31 @@ if (sort === "sqft-desc") return Number(b.dataset.sqft || 0) - Number(a.dataset.
   }
 areaSelect?.addEventListener("change", applyFilters);
 priceSelect?.addEventListener("change", applyFilters);
-typeSelect?.addEventListener("change", applyFilters);
+typeSelect?.addEventListener("change", (e) => {
+  const selectedType = e.target.value;
+  const currentCity = document.querySelector("[data-city]")?.dataset.city || "nanaimo";
+  const currentSlug = document.querySelector("[data-slug]")?.dataset.slug || "";
+
+  if (selectedType === "all") {
+    applyFilters();
+    return;
+  }
+
+  const typeSlugMap = {
+    house: `${currentCity}-homes`,
+    condo: `${currentCity}-condos`,
+    townhouse: `${currentCity}-townhomes`,
+    mobile: `${currentCity}-mobile-homes`,
+    land: `${currentCity}-land`,
+  };
+
+  const targetSlug = typeSlugMap[selectedType];
+  if (targetSlug && targetSlug !== currentSlug) {
+    window.location.href = `/${currentCity}/${targetSlug}`;
+  } else {
+    applyFilters();
+  }
+});
 sortSelect?.addEventListener("change", applySort);
 bedsSelect?.addEventListener("change", applyFilters);
 
