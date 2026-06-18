@@ -495,16 +495,12 @@ window.updateViewedBadges?.();
 if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
 if (sheetAddress) sheetAddress.textContent = card.dataset.address || "Address";
 
-          if (sheetMeta) {
-            sheetMeta.innerHTML = `
-              <span class="panel__meta-item"><strong>${card.dataset.beds || "-"}</strong> <span class="panel__meta-label">Bed</span></span>
-              <span class="panel__meta-item"><strong>${card.dataset.baths || "-"}</strong> <span class="panel__meta-label">Bath</span></span>
-              ${
-                card.dataset.sqft
-                  ? `<span class="panel__meta-item"><strong>${card.dataset.sqft}</strong> <span class="panel__meta-label">Sq Ft</span></span>`
-                  : ""
-              }
-            `;
+       if (sheetMeta) {
+            sheetMeta.textContent = [
+              `${card.dataset.beds || "-"} bd`,
+              `${card.dataset.baths || "-"} ba`,
+              card.dataset.sqft ? `${Number(card.dataset.sqft).toLocaleString()} sq ft` : "",
+            ].filter(Boolean).join(" · ");
           }
 
       if (sheetDescription) {
@@ -1711,19 +1707,40 @@ try {
         prevBtn?.addEventListener("click", goPrev);
         prevTopBtn?.addEventListener("click", goPrev);
 
- loveBtn?.addEventListener("click", () => {
+function scrollModalToBottom() {
+  setTimeout(() => {
+    const panelView = sheet.querySelector(".panel__view");
+    const content = document.getElementById("sheet-content");
+    if (content) content.scrollTo({ top: 99999, behavior: "smooth" });
+    if (panelView) panelView.scrollTo({ top: 99999, behavior: "smooth" });
+    sheet.scrollTo({ top: 99999, behavior: "smooth" });
+  }, 500);
+}
+
+loveBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(loveBtn, ["❤️", "🧡", "💛"], 1);
   saveIntentDecision("love");
+  setTimeout(scrollModalToBottom, 150);
 });
 
 maybeBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(maybeBtn, ["👍"], 1);
   saveIntentDecision("maybe");
+  setTimeout(scrollModalToBottom, 150);
 });
 
 passBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(passBtn, ["✕"], 1);
   saveIntentDecision("pass");
+
+  const nextBtn = document.getElementById("sheet-next-btn");
+  if (nextBtn) {
+    nextBtn.classList.add("is-pulsing");
+    setTimeout(() => {
+      nextBtn.classList.remove("is-pulsing");
+      goNext();
+    }, 900);
+  }
 });
 
 askQuestionBtn?.addEventListener("click", () => {
@@ -1749,7 +1766,10 @@ bookShowingBtn?.addEventListener("click", () => {
   });
 });
 
-likeTagsEl?.addEventListener("click", (event) => {  const tagBtn = event.target.closest(".intent-like-tag");
+let chipAdvanceTimer = null;
+
+likeTagsEl?.addEventListener("click", (event) => {
+  const tagBtn = event.target.closest(".intent-like-tag");
 
   if (!tagBtn || !activeCard) return;
 
@@ -1758,6 +1778,18 @@ likeTagsEl?.addEventListener("click", (event) => {  const tagBtn = event.target.
   activeCard.dataset.likedTags = JSON.stringify(getActiveLikedTags());
 
   saveCurrentReaction();
+
+  const nextBtn = document.getElementById("sheet-next-btn");
+
+  if (chipAdvanceTimer) clearTimeout(chipAdvanceTimer);
+
+  if (nextBtn) nextBtn.classList.add("is-pulsing");
+
+  chipAdvanceTimer = setTimeout(() => {
+    if (nextBtn) nextBtn.classList.remove("is-pulsing");
+    chipAdvanceTimer = null;
+    goNext();
+  }, 1800);
 });
 
         photoPrevBtn?.addEventListener("click", (event) => {

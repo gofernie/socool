@@ -1172,6 +1172,13 @@ body.is-map-mode .bottom-refine-cta {
   font-weight: 500;
 }
 
+@media (max-width: 760px) {
+  .meta {
+    gap: 10px;
+    font-size: 0.75rem;
+  }
+}
+
 .meta span {
   display: inline-flex;
   align-items: center;
@@ -1853,11 +1860,9 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   <div class="price">{formatPrice(listing.price)}</div>
   <div class="address">{listing.address}</div>
 <div class="card-city">{city.charAt(0).toUpperCase() + city.slice(1)}, BC</div>
-  <div class="meta">
-    <span>🛏 {listing.beds || "-"} bd</span>
-    <span>🛁 {listing.baths || "-"} ba</span>
-    {listing.sqft && <span>↗ {Number(listing.sqft).toLocaleString()} sq ft</span>}
-  </div>         
+<div class="meta">
+    {listing.beds || "-"} bd · {listing.baths || "-"} ba{listing.sqft ? ` · ${Number(listing.sqft).toLocaleString()} sq ft` : ""}
+  </div>  
 
 <div class="card-decision-badge" hidden></div>
                 </div>
@@ -2072,20 +2077,11 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
   font-weight: 500 !important;
 }
 
+.meta,
 #refined-results .meta {
-  display: flex !important;
-  align-items: center !important;
-  gap: 18px !important;
-  font-size: 0.86rem !important;
-  color: var(--ink-soft) !important;
+  font-size: 0.82rem !important;
+  color: var(--muted) !important;
   font-weight: 500 !important;
-}
-
-#refined-results .meta span {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  white-space: nowrap !important;
 }
 
 
@@ -2892,10 +2888,8 @@ style="position:absolute;top:16px;right:14px;display:inline-flex;align-items:cen
   <div class="address">${listing.address || ""}</div>
               <div class="card-city">${refinedCity}, BC</div>
 
-              <div class="meta">
-                <span>🛏 ${listing.beds || "-"} bd</span>
-                <span>🛁 ${listing.baths || "-"} ba</span>
-                ${listing.sqft ? `<span>↗ ${Number(listing.sqft).toLocaleString()} sq ft</span>` : ""}
+         <div class="meta">
+                ${listing.beds || "-"} bd · ${listing.baths || "-"} ba${listing.sqft ? ` · ${Number(listing.sqft).toLocaleString()} sq ft` : ""}
               </div>
             </div>
           </article>
