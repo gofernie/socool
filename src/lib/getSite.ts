@@ -14,10 +14,20 @@ export async function getSite(hostname: string) {
     .or(`domain.eq.${host},domain.eq.www.${host}`)
     .single();
 
-  if (error) {
-    console.error("Site lookup failed:", error);
-    return null;
+ if (!error && data) return data;
+
+  // Fallback for local dev
+  if (host === "localhost" || host.startsWith("localhost:")) {
+    const { data: fallback } = await supabase
+      .from("sites")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    return fallback;
   }
 
-  return data;
+  console.error("Site lookup failed:", error);
+  return null;
 }

@@ -476,7 +476,7 @@ function pointInPolygon(point, polygon) {
 
 const { data: boundary, error: boundaryError } = await supabase
   .from("area_boundaries")
-  .select("polygon_geojson, hero_image_url")
+  .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy")
   .eq("city", city)
   .eq("area_slug", String(areaSlug || "").toLowerCase())
   .maybeSingle();
@@ -597,7 +597,7 @@ const chartData = {
 };
 ---
 
-<Layout title={`${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
+<Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
   <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
   <link
@@ -633,9 +633,9 @@ const chartData = {
   <div class="page-hero__inner">
     <p class="page-hero__eyebrow">{cityLabel} Area Guide</p>
 
-    <h1>{labelize(area)}<br />Real Estate</h1>
+   <h1 set:html={`${(boundary?.hero_heading || `${labelize(area)}\nReal Estate`).replace(/\|/g, '<br>')}`}></h1>
 
-    <p class="page-hero__copy">{content.heroIntro}</p>
+    <p class="page-hero__copy">{boundary?.intro_copy || content.heroIntro}</p>
 
     <div class="page-hero__actions">
       <a href="#area-listings">View all listings</a>
