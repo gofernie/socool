@@ -533,6 +533,7 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
 <Layout
   title={page.seo_title || page.hero_heading}
   accentColor={accentColor}
+  city={city}
 >
  <meta
   name="description"
@@ -776,6 +777,23 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   padding: 8px 0;
   background: transparent;
   border: 0;
+}
+
+@media (max-width: 640px) {
+  .intent-controls {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding: 10px 14px;
+  }
+
+  .intent-controls .view-toggle {
+    width: 100%;
+  }
+
+  .intent-controls select {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
 }
 
 .intent-controls::-webkit-scrollbar {
