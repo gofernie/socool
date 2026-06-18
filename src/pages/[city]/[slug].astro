@@ -1783,16 +1783,12 @@ color: var(--accent) !important;
   <option value="1100-plus">$1.1M+</option>
 </select>
 
-{
-  !normalizedPropertyType && (
-    <select class="type-filter-select" aria-label="Filter by property type">
-      <option value="all">Any Type</option>
-      {propertyTypes.map((type) => (
-        <option value={type}>{titleCase(type)}</option>
-      ))}
-    </select>
-  )
-}
+<select class="type-filter-select" aria-label="Filter by property type">
+  <option value="all">Any Type</option>
+  {propertyTypes.map((type) => (
+    <option value={type} selected={type === normalizedPropertyType}>{titleCase(type)}</option>
+  ))}
+</select>
 
 <select class="beds-filter-select" aria-label="Filter by beds">
   <option value="all">Any beds</option>
