@@ -421,8 +421,8 @@ const navIntentPages = await getNavIntentPages(supabase, city);
 
     <section class="content-card area-picker">
   <div class="section-heading">
-    <span class="eyebrow">Browse by Area</span>
-    <h2>Choose a {cityLabel} neighbourhood</h2>
+   <span class="eyebrow">Browse by Area</span>
+    <h2 id="browse-by-area">Choose a {cityLabel} neighbourhood</h2>
     <p>Start with an area, then filter by property type, price, beds, and more.</p>
   </div>
 
@@ -917,6 +917,10 @@ background: color-mix(in srgb, var(--accent) calc(5% + var(--area-tint, 0%) / 2.
 
 .area-pick-card::after {
   display: none;
+}
+
+#browse-by-area {
+  scroll-margin-top: 120px;
 }
 
 @media (min-width: 760px) {

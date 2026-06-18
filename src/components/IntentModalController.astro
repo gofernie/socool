@@ -1717,16 +1717,45 @@ function scrollModalToBottom() {
   }, 500);
 }
 
+let idleAdvanceTimer = null;
+
+function startIdleAdvance() {
+  if (idleAdvanceTimer) clearTimeout(idleAdvanceTimer);
+  idleAdvanceTimer = setTimeout(() => {
+    startChipProgressBar();
+    chipAdvanceTimer = setTimeout(() => {
+      const nextBtn = document.getElementById("sheet-next-btn");
+      if (nextBtn) nextBtn.classList.add("is-pulsing");
+      setTimeout(() => {
+        if (nextBtn) nextBtn.classList.remove("is-pulsing");
+        chipAdvanceTimer = null;
+        goNext();
+      }, 600);
+    }, 1800);
+  }, 3000);
+}
+
+function cancelIdleAdvance() {
+  if (idleAdvanceTimer) {
+    clearTimeout(idleAdvanceTimer);
+    idleAdvanceTimer = null;
+  }
+}
+
 loveBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(loveBtn, ["❤️", "🧡", "💛"], 1);
   saveIntentDecision("love");
   setTimeout(scrollModalToBottom, 150);
+  cancelIdleAdvance();
+  startIdleAdvance();
 });
 
 maybeBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(maybeBtn, ["👍"], 1);
   saveIntentDecision("maybe");
   setTimeout(scrollModalToBottom, 150);
+  cancelIdleAdvance();
+  startIdleAdvance();
 });
 
 passBtn?.addEventListener("click", () => {
@@ -1768,6 +1797,39 @@ bookShowingBtn?.addEventListener("click", () => {
 
 let chipAdvanceTimer = null;
 
+function startChipProgressBar() {
+  let wrap = document.getElementById("chip-advance-bar-wrap");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "chip-advance-bar-wrap";
+    wrap.style.cssText = "position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(860px,100vw);height:3px;background:#e8e3dc;overflow:hidden;z-index:1000;";
+    const bar = document.createElement("div");
+    bar.id = "chip-advance-bar";
+    bar.style.cssText = "height:100%;width:0%;background:var(--accent);transition:none;";
+    wrap.appendChild(bar);
+    sheet.appendChild(wrap);
+  }
+  const bar = document.getElementById("chip-advance-bar");
+  bar.style.transition = "none";
+  bar.style.width = "0%";
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = "width 1.8s linear";
+      bar.style.width = "100%";
+    });
+  });
+}
+
+function resetChipProgressBar() {
+  const bar = document.getElementById("chip-advance-bar");
+  if (bar) {
+    bar.style.transition = "none";
+    bar.style.width = "0%";
+  }
+  const wrap = document.getElementById("chip-advance-bar-wrap");
+  if (wrap) wrap.remove();
+}
+
 likeTagsEl?.addEventListener("click", (event) => {
   const tagBtn = event.target.closest(".intent-like-tag");
 
@@ -1781,14 +1843,20 @@ likeTagsEl?.addEventListener("click", (event) => {
 
   const nextBtn = document.getElementById("sheet-next-btn");
 
+ cancelIdleAdvance();
+cancelIdleAdvance();
   if (chipAdvanceTimer) clearTimeout(chipAdvanceTimer);
 
-  if (nextBtn) nextBtn.classList.add("is-pulsing");
+  resetChipProgressBar();
+  startChipProgressBar();
 
   chipAdvanceTimer = setTimeout(() => {
-    if (nextBtn) nextBtn.classList.remove("is-pulsing");
-    chipAdvanceTimer = null;
-    goNext();
+    if (nextBtn) nextBtn.classList.add("is-pulsing");
+    setTimeout(() => {
+      if (nextBtn) nextBtn.classList.remove("is-pulsing");
+      chipAdvanceTimer = null;
+      goNext();
+    }, 600);
   }, 1800);
 });
 
