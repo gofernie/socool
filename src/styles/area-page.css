@@ -741,9 +741,18 @@ p {
 
   body .shell .area-stats { grid-template-columns: 1fr 1fr !important; }
 
-  body .shell .filter-bar {
+ body .shell .filter-bar {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  body .shell .filter-bar .area-view-toggle {
+    grid-column: 1 / -1;
+  }
+
+  body .shell .filter-bar .filter-count {
+    grid-column: 1 / -1;
+    justify-content: center;
   }
 }
 #show-all-areas { display: none; }
