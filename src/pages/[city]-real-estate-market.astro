@@ -364,7 +364,7 @@ const navIntentPages = await getNavIntentPages(supabase, city);
   agentPage,
   accentColor
 })}
-<Layout title={`${cityLabel} Real Estate Market Report`} accentColor={accentColor}>
+<Layout title={`${cityLabel} Real Estate Market Report`} accentColor={accentColor} city={city}>
  
   
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
