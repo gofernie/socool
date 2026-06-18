@@ -2919,10 +2919,10 @@ body.edit-mode .agent-edit-grid {
 .panel__image-overlay .panel__address,
 #preview-sheet .panel__image-overlay .panel__address,
 #preview-sheet #sheet-address {
-  font-size: 0.95rem !important;
+  font-size: 1.1rem !important;
   color: #fff !important;
   margin: 0 0 8px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   text-shadow: 0 1px 8px rgba(0,0,0,0.7), 0 1px 3px rgba(0,0,0,0.9) !important;
 }
 
@@ -3454,6 +3454,13 @@ body.edit-mode .agent-edit-grid {
   font-weight: 600;
   margin: 4px 0 0;
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+#sheet-address {
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.7), 0 1px 3px rgba(0,0,0,0.9) !important;
 }
 
 .panel__next-btn.is-pulsing {

@@ -1721,7 +1721,7 @@ let idleAdvanceTimer = null;
 
 function startIdleAdvance() {
   if (idleAdvanceTimer) clearTimeout(idleAdvanceTimer);
-  idleAdvanceTimer = setTimeout(() => {
+idleAdvanceTimer = setTimeout(() => {
     startChipProgressBar();
     chipAdvanceTimer = setTimeout(() => {
       const nextBtn = document.getElementById("sheet-next-btn");
@@ -1730,8 +1730,8 @@ function startIdleAdvance() {
         if (nextBtn) nextBtn.classList.remove("is-pulsing");
         chipAdvanceTimer = null;
         goNext();
-      }, 600);
-    }, 1800);
+      }, 1000);
+    }, 2500);
   }, 3000);
 }
 
@@ -1764,11 +1764,13 @@ passBtn?.addEventListener("click", () => {
 
   const nextBtn = document.getElementById("sheet-next-btn");
   if (nextBtn) {
-    nextBtn.classList.add("is-pulsing");
     setTimeout(() => {
-      nextBtn.classList.remove("is-pulsing");
-      goNext();
-    }, 900);
+      nextBtn.classList.add("is-pulsing");
+      setTimeout(() => {
+        nextBtn.classList.remove("is-pulsing");
+        goNext();
+      }, 1800);
+    }, 1200);
   }
 });
 
@@ -1814,7 +1816,7 @@ function startChipProgressBar() {
   bar.style.width = "0%";
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      bar.style.transition = "width 1.8s linear";
+  bar.style.transition = "width 2.5s linear";
       bar.style.width = "100%";
     });
   });
@@ -1843,21 +1845,20 @@ likeTagsEl?.addEventListener("click", (event) => {
 
   const nextBtn = document.getElementById("sheet-next-btn");
 
- cancelIdleAdvance();
 cancelIdleAdvance();
   if (chipAdvanceTimer) clearTimeout(chipAdvanceTimer);
 
   resetChipProgressBar();
   startChipProgressBar();
 
-  chipAdvanceTimer = setTimeout(() => {
+chipAdvanceTimer = setTimeout(() => {
     if (nextBtn) nextBtn.classList.add("is-pulsing");
     setTimeout(() => {
       if (nextBtn) nextBtn.classList.remove("is-pulsing");
       chipAdvanceTimer = null;
       goNext();
-    }, 600);
-  }, 1800);
+    }, 1000);
+  }, 2500);
 });
 
         photoPrevBtn?.addEventListener("click", (event) => {

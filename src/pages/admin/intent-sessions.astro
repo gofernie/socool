@@ -380,6 +380,16 @@ const { data: sessionNotes } = selectedSession
       .eq("session_id", selectedSession)
       .maybeSingle()
   : { data: null };
+
+const { data: agents } = await supabase.from("agents").select("*").order("name");
+
+const assignedAgent = selectedSession
+  ? (await supabase
+      .from("intent_sessions")
+      .select("assigned_agent_id")
+      .eq("session_id", selectedSession)
+      .maybeSingle()).data?.assigned_agent_id
+  : null;
 ---
 
 <html lang="en">
@@ -1411,10 +1421,37 @@ const { data: sessionNotes } = selectedSession
                       {!loves.length && <div style="font-size:0.82rem;color:var(--muted);">No loved homes yet.</div>}
                     </div>
 
-                    {/* Next move */}
+                  {/* Next move */}
                     <div class="next-move-card">
                       <strong>Suggested Next Move</strong>
                       {getNextMove(session.reactions)}
+                    </div>
+
+                    {/* Assign agent */}
+                    <div class="sidebar-card">
+                      <div class="sidebar-card-label">Assigned Agent</div>
+                      <select
+                        id="agent-select"
+                        data-session-id={session.session_id}
+                        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font:inherit;font-size:0.84rem;background:var(--bg);color:var(--ink);margin-bottom:8px;"
+                      >
+                        <option value="">— Unassigned —</option>
+                        {(agents || []).map(a => (
+                          <option value={a.id} selected={assignedAgent === a.id}>{a.name}{a.brokerage ? ` · ${a.brokerage}` : a.email ? ` · ${a.email}` : ""}</option>
+                        ))}
+                      </select>
+                      <button type="button" id="assign-agent-btn" class="btn btn-primary" style="width:100%;justify-content:center;font-size:0.82rem;">Assign</button>
+                      <div id="assign-agent-status" style="font-size:0.76rem;color:var(--muted);text-align:center;margin-top:6px;min-height:16px;"></div>
+                      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+                        <div id="add-agent-toggle" style="font-size:0.78rem;color:var(--muted);cursor:pointer;text-align:center;">+ Add new agent</div>
+                        <div id="add-agent-form" style="display:none;flex-direction:column;gap:6px;margin-top:10px;">
+                          <input id="new-agent-name" placeholder="Name" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:0.82rem;background:var(--bg);color:var(--ink);" />
+                          <input id="new-agent-email" placeholder="Email" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:0.82rem;background:var(--bg);color:var(--ink);" />
+                          <input id="new-agent-phone" placeholder="Phone" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:0.82rem;background:var(--bg);color:var(--ink);" />
+                          <button type="button" id="save-agent-btn" class="btn" style="width:100%;justify-content:center;font-size:0.82rem;">Save agent</button>
+                          <div id="agent-save-status" style="font-size:0.76rem;color:var(--muted);text-align:center;min-height:16px;"></div>
+                        </div>
+                      </div>
                     </div>
 
                   {/* Notes */}

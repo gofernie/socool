@@ -1,0 +1,176 @@
+---
+import { createClient } from "@supabase/supabase-js";
+import AdminSidebar from "../../components/AdminSidebar.astro";
+
+export const prerender = false;
+
+const supabase = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const { data: agents } = await supabase.from("agents").select("*").order("name");
+
+const { data: sessions } = await supabase
+  .from("intent_sessions")
+  .select("session_id, assigned_agent_id")
+  .not("assigned_agent_id", "is", null);
+
+const leadCountByAgent = {};
+(sessions || []).forEach(s => {
+  if (!s.assigned_agent_id) return;
+  leadCountByAgent[s.assigned_agent_id] = (leadCountByAgent[s.assigned_agent_id] || 0) + 1;
+});
+---
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Agents</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f4f1; --surface: #fff; --border: rgba(0,0,0,0.08);
+      --border-md: rgba(0,0,0,0.13); --ink: #111110; --muted: #6b6864;
+      --green: #16a34a; --green-bg: #dcfce7; --radius: 16px; --sidebar: 220px;
+      --sans: "DM Sans", system-ui, sans-serif; --serif: "Instrument Serif", Georgia, serif;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-size: 14px; }
+    .layout { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100vh; }
+    .main { padding: 40px 48px; }
+    .page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .page-head h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
+    .btn {
+      display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 999px;
+      font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+      border: 1px solid var(--border-md); background: var(--surface); color: var(--ink);
+      text-decoration: none; transition: background 0.12s;
+    }
+    .btn:hover { background: var(--bg); }
+    .btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .btn-primary:hover { background: #333; }
+    .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .agent-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px;
+    }
+    .agent-name { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .agent-brokerage { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; }
+    .agent-contact { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .agent-contact span { font-size: 0.82rem; color: var(--muted); }
+    .agent-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border); }
+    .lead-count { font-size: 0.82rem; font-weight: 700; color: var(--green); background: var(--green-bg); padding: 3px 10px; border-radius: 999px; }
+    .agent-actions { display: flex; gap: 6px; }
+    .empty { color: var(--muted); font-size: 0.88rem; padding: 48px 0; text-align: center; }
+
+    /* Add agent modal */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 100; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .field input { padding: 9px 12px; border: 1px solid var(--border-md); border-radius: 10px; font: inherit; font-size: 0.84rem; background: var(--bg); color: var(--ink); outline: none; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .status { font-size: 0.76rem; color: var(--muted); min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <AdminSidebar active="agents" />
+    <div class="main">
+      <div class="page-head">
+        <h1>Agents</h1>
+        <button class="btn btn-primary" id="open-modal">+ Add agent</button>
+      </div>
+
+      {agents && agents.length > 0 ? (
+        <div class="agents-grid">
+          {agents.map(a => (
+            <div class="agent-card" data-agent-id={a.id}>
+              <div class="agent-name">{a.name}</div>
+              <div class="agent-brokerage">{a.brokerage || "—"}</div>
+              <div class="agent-contact">
+                {a.email && <span>✉ {a.email}</span>}
+                {a.phone && <span>📞 {a.phone}</span>}
+              </div>
+              <div class="agent-footer">
+                <span class="lead-count">{leadCountByAgent[a.id] || 0} leads</span>
+                <div class="agent-actions">
+                  <a class="btn" href={`/admin/intent-sessions?agent=${a.id}`} style="font-size:0.76rem;padding:5px 12px;">View leads</a>
+                  <button class="btn delete-agent-btn" data-id={a.id} style="font-size:0.76rem;padding:5px 12px;color:#ef4444;border-color:#fecaca;">Remove</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="empty">No agents yet. Add your first referral agent above.</div>
+      )}
+    </div>
+  </div>
+
+  <!-- Add agent modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <h2>Add agent</h2>
+      <div class="field"><label>Name</label><input id="m-name" placeholder="Jane Smith" /></div>
+      <div class="field"><label>Email</label><input id="m-email" placeholder="jane@brokerage.com" /></div>
+      <div class="field"><label>Phone</label><input id="m-phone" placeholder="+1 250 555 0100" /></div>
+      <div class="field"><label>Brokerage</label><input id="m-brokerage" placeholder="Re/Max Fernie" /></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="save-agent-btn" style="flex:1;justify-content:center;">Save agent</button>
+        <button class="btn" id="close-modal">Cancel</button>
+      </div>
+      <div class="status" id="modal-status"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("open-modal")?.addEventListener("click", () => {
+      document.getElementById("modal").classList.add("open");
+    });
+    document.getElementById("close-modal")?.addEventListener("click", () => {
+      document.getElementById("modal").classList.remove("open");
+    });
+
+    document.getElementById("save-agent-btn")?.addEventListener("click", async () => {
+      const status = document.getElementById("modal-status");
+      status.textContent = "Saving...";
+      const res = await fetch("/api/create-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: document.getElementById("m-name").value,
+          email: document.getElementById("m-email").value,
+          phone: document.getElementById("m-phone").value,
+          brokerage: document.getElementById("m-brokerage").value,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        status.textContent = "Saved — reloading...";
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        status.textContent = "Error: " + json.error;
+      }
+    });
+
+    document.querySelectorAll(".delete-agent-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Remove this agent?")) return;
+        const res = await fetch("/api/create-agent", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: btn.dataset.id }),
+        });
+        const json = await res.json();
+        if (json.ok) {
+          btn.closest(".agent-card").remove();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
