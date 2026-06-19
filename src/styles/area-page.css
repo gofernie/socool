@@ -10,7 +10,7 @@
   --f-display: "Lora", Georgia, serif;
   --f-body: "Nunito Sans", system-ui, sans-serif;
   --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --radius-lg: 20px;
+  --radius-lg: 12px;
   --accent-light: color-mix(in srgb, var(--accent) 12%, white);
   --accent-border: color-mix(in srgb, var(--accent) 28%, #ccc);
 }
@@ -125,10 +125,10 @@ p {
 }
 
 .stat-card {
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(255,255,255,0.42);
-  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
 }
 
 .stat-card-link {
@@ -145,31 +145,35 @@ p {
   right: 14px;
   bottom: 14px;
   font-size: 11px;
-  font-weight: 800;
-  color: var(--accent);
-  opacity: 0.8;
+  font-weight: 700;
+  color: #999;
+  opacity: 1;
 }
 
 .stat-card-link:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, white);
-  box-shadow: 0 12px 28px rgba(28,25,23,.08);
+  border-color: rgba(0,0,0,0.2);
+  background: #fafafa;
+  box-shadow: none;
 }
 
 .stat-card strong {
   display: block;
-  font-family: var(--f-display);
-  font-size: 1.55rem;
-  line-height: 1;
+  font-family: var(--f-body);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #1a1a1a;
+  margin-top: 4px;
 }
 
 .stat-card span {
   display: block;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 800;
+  margin-bottom: 2px;
+  color: #999;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 /* ── Market row ── */
@@ -186,20 +190,21 @@ p {
 .chart-card {
   margin: 0;
   padding: 24px;
-  border-radius: 22px;
-  background: var(--card-bg);
-  border: 1px solid var(--line-warm);
+  border-radius: 12px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
   width: 100%;
   height: 100%;
 }
 
 .market-snapshot h2 {
-  margin: 8px 0 18px;
+  margin: 6px 0 16px;
   font-family: var(--f-display);
-  font-size: 1.65rem;
-  line-height: 1;
-  letter-spacing: -0.04em;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   font-weight: 500;
+  color: #1a1a1a;
 }
 
 .market-takeaway {
@@ -357,10 +362,10 @@ p {
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
   gap: 34px;
   align-items: stretch;
-  padding: 38px;
-  border-radius: 24px;
-  background: var(--section-bg);
-  border: 1px solid var(--line-warm);
+  padding: 32px;
+  border-radius: 12px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
 }
 
 .living-card h2,
@@ -379,7 +384,7 @@ p {
   min-height: 470px;
   max-height: 520px;
   object-fit: cover;
-  border-radius: 18px;
+  border-radius: 8px;
   align-self: stretch;
 }
 
@@ -393,18 +398,18 @@ p {
 
 .living-icons div {
   display: grid;
-  gap: 8px;
-  padding: 18px;
-  border-radius: 16px;
-  background: var(--card-soft);
-  border: 1px solid var(--line);
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #f5f4f2;
+  border: 0.5px solid rgba(0,0,0,0.08);
 }
 
-.living-icons strong { font-size: 0.95rem; }
+.living-icons strong { font-size: 0.88rem; color: #1a1a1a; }
 
 .living-icons span {
-  color: var(--muted);
-  font-size: 0.92rem;
+  color: #666;
+  font-size: 0.85rem;
   line-height: 1.5;
 }
 
@@ -419,23 +424,25 @@ p {
 }
 
 .buyer-notes-grid div {
-  padding: 16px;
-  border-radius: 14px;
-  background: var(--card-soft);
-  border: 1px solid var(--line);
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #f5f4f2;
+  border: 0.5px solid rgba(0,0,0,0.08);
 }
 
 .buyer-notes-grid strong {
   display: block;
-  margin-bottom: 8px;
-  font-size: 0.78rem;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
 }
 
 .buyer-notes-grid span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
+  color: #444;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 /* ── Info grid ── */
@@ -449,18 +456,29 @@ p {
 
 .info-card,
 .map-card {
-  padding: 24px;
-  border-radius: 18px;
-  background: var(--card-bg);
-  border: 1px solid var(--line-warm);
+  padding: 22px 24px;
+  border-radius: 12px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
 }
 
 .info-card h3 {
   margin: 0 0 18px;
   font-size: 0.9rem;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1a1a1a;
 }
 
+.info-icon { font-size: 15px; line-height: 1; }
+
+.info-item-name { display: flex; align-items: center; gap: 8px; color: #333 !important; text-decoration: none !important; }
+.info-item-dot { color: #1D9E75; font-weight: 900; font-size: 1.1rem; line-height: 1; }
+
+.info-card li span,
+.info-card li small { color: #333 !important; text-decoration: none !important; }
 .info-card ul {
   display: grid;
   gap: 16px;
@@ -480,11 +498,16 @@ p {
 .info-card li small { color: var(--muted); }
 
 .info-card a,
-.map-card a,
-.nearby-card span {
+.map-card a {
   color: var(--accent);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
+}
+
+.nearby-card span {
+  color: #888;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 /* ── Map ── */
@@ -529,8 +552,12 @@ p {
 
 .leaflet-container { font-family: var(--f-body); }
 
-/* ── Nearby areas ── */
-.nearby-areas { margin-top: 34px; }
+button.gm-ui-hover-effect { display: none !important; }
+.gm-style-iw-ch { display: none !important; }
+.gm-style-iw-chr { display: none !important; }
+.gm-style-iw-d { overflow: hidden !important; padding: 0 !important; }
+.gm-style-iw-c { padding: 0 !important; border-radius: 12px !important; }
+.gm-style-iw-t::after { display: none !important; }.nearby-areas { margin-top: 34px; }
 
 .nearby-grid {
   display: grid;
@@ -539,19 +566,29 @@ p {
 }
 
 .nearby-card {
-  padding: 0 0 16px;
+  padding: 0 0 14px;
   overflow: hidden;
-  border-radius: 16px;
-  background: var(--card-bg);
-  border: 1px solid var(--line-warm);
+  border-radius: 10px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.1);
   color: inherit;
   text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.nearby-card:hover {
+  border-color: rgba(0,0,0,0.2);
 }
 
 .nearby-card img {
   width: 100%;
-  height: 120px;
+  height: 110px;
   object-fit: cover;
+}
+
+.nearby-card strong {
+  font-size: 0.9rem;
+  color: #1a1a1a;
 }
 
 .nearby-card strong,
@@ -784,11 +821,11 @@ p {
 .area-listing-map {
   height: 62vh;
   min-height: 460px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
   overflow: hidden;
   margin: 24px 0;
-  background: var(--card-soft);
+  background: #f5f4f2;
 }
 
 .area-view-toggle {

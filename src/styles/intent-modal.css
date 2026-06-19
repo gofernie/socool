@@ -2138,7 +2138,7 @@ body.edit-mode .agent-edit-grid {
 #preview-sheet .panel__next-btn {
   min-width: 150px !important;
   border: 0 !important;
-  background: #181614 !important;
+  background: var(--accent) !important;
   color: #fff !important;
   border-radius: 999px !important;
 }
@@ -2160,7 +2160,7 @@ body.edit-mode .agent-edit-grid {
 /* MODAL BASE - OWNS ITS OWN FONT */
 #preview-sheet {
   --modal-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --modal-pill-bg: #24211e;
+  --modal-pill-bg: var(--accent);
   --modal-pill-text: #fff;
   --modal-pill-weight: 650;
   --modal-pill-size: 0.8rem;

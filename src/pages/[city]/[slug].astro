@@ -2316,6 +2316,7 @@ if (searchAreaPolygon) {
 
 const bounds = new google.maps.LatLngBounds();
 const infoWindow = new google.maps.InfoWindow();
+let intentActiveMarker = null;
 
 if (searchAreaGeojson?.coordinates?.[0]) {
   const polygonPath = searchAreaGeojson.coordinates[0].map(([lng, lat]) => ({
@@ -2345,11 +2346,55 @@ if (searchAreaGeojson?.coordinates?.[0]) {
             title: card.dataset.address || "Listing",
           });
 
-          marker.addListener("click", () => {
-            infoWindow.setContent(
-              `<strong>${card.dataset.price || "Listing"}</strong><br>${card.dataset.address || ""}`
-            );
+     const cardId = card.dataset.listingId || card.dataset.mls || card.dataset.cardId || card.dataset.itemId || "";
+          const infoContent = `
+            <div style="width:220px;font-family:inherit;cursor:pointer;opacity:0;transform:translateY(6px) scale(0.97);transition:opacity 0.2s ease,transform 0.2s ease;" id="intent-map-info-${cardId}">
+              ${card.dataset.image ? `<img src="${card.dataset.image}" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px;" />` : ""}
+              <strong style="font-size:1rem;">${card.dataset.price || "Listing"}</strong><br>
+              <span style="font-size:0.82rem;color:#6b6560;">${card.dataset.address || ""}</span><br>
+              <span style="font-size:0.78rem;color:#9c9590;">${card.dataset.beds || "-"} bd · ${card.dataset.baths || "-"} ba${card.dataset.sqft ? ` · ${Number(card.dataset.sqft).toLocaleString()} sq ft` : ""}</span>
+              <div style="margin-top:8px;font-size:0.78rem;font-weight:700;color:#2f6f73;">View listing →</div>
+            </div>`;
+
+          let intentCloseTimer = null;
+
+          function scheduleIntentClose() {
+            intentCloseTimer = setTimeout(() => {
+              if (intentActiveMarker === marker) {
+                infoWindow.close();
+                intentActiveMarker = null;
+              }
+            }, 200);
+          }
+
+          function cancelIntentClose() {
+            if (intentCloseTimer) {
+              clearTimeout(intentCloseTimer);
+              intentCloseTimer = null;
+            }
+          }
+
+          marker.addListener("mouseover", () => {
+            cancelIntentClose();
+            intentActiveMarker = marker;
+            infoWindow.setContent(infoContent);
             infoWindow.open(googleMap, marker);
+            google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+              const el = document.getElementById(`intent-map-info-${cardId}`);
+              if (!el) return;
+              requestAnimationFrame(() => {
+                el.style.opacity = "1";
+                el.style.transform = "translateY(0) scale(1)";
+              });
+              el.addEventListener("click", () => card.click());
+              el.addEventListener("mouseenter", cancelIntentClose);
+              el.addEventListener("mouseleave", scheduleIntentClose);
+            });
+          });
+
+          marker.addListener("mouseout", scheduleIntentClose);
+
+          marker.addListener("click", () => {
             card.click();
           });
 

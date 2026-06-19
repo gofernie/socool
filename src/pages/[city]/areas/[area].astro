@@ -551,12 +551,36 @@ const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 
 const houseCount = listings.filter((l) => l.normalized_type === "house").length;
 const condoCount = listings.filter((l) => l.normalized_type === "condo").length;
 const townhomeCount = listings.filter((l) => l.normalized_type === "townhouse").length;
+const landCount = listings.filter((l) => l.normalized_type === "land").length;
+
+const houseMedian = (() => { const p = listings.filter(l => l.normalized_type === "house").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)] : null; })();
+const condoMedian = (() => { const p = listings.filter(l => l.normalized_type === "condo").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)] : null; })();
+const townhouseMedian = (() => { const p = listings.filter(l => l.normalized_type === "townhouse").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)] : null; })();
+const landMedian = (() => { const p = listings.filter(l => l.normalized_type === "land").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)] : null; })();
+
+const typeSlices = [
+  { label: "Houses",    count: houseCount,    color: "#1D9E75" },
+  { label: "Condos",    count: condoCount,    color: "#5DCAA5" },
+  { label: "Townhomes", count: townhomeCount, color: "#9FE1CB" },
+  { label: "Land",      count: landCount,     color: "#378ADD" },
+].filter(t => t.count > 0);
+
+const typeCards = [
+  { label: "Houses",    count: houseCount,    median: houseMedian,     color: "#1D9E75" },
+  { label: "Condos",    count: condoCount,    median: condoMedian,     color: "#5DCAA5" },
+  { label: "Townhomes", count: townhomeCount, median: townhouseMedian, color: "#9FE1CB" },
+  { label: "Land",      count: landCount,     median: landMedian,      color: "#378ADD" },
+];
+const typeMaxMedian = Math.max(...typeCards.map(t => t.median || 0)) || 1;
 
 const listingCount = listings.length || 0;
 const housePercent = listingCount ? Math.round((houseCount / listingCount) * 100) : 0;
 const condoPercent = listingCount ? Math.round((condoCount / listingCount) * 100) : 0;
 const townhomePercent = listingCount ? Math.round((townhomeCount / listingCount) * 100) : 0;
 
+const dominantType = housePercent >= 50 ? "houses" : condoPercent >= 35 ? "condos" : "mixed";
+const highEndCount = listings.filter(l => Number(l.price || 0) >= 1500000).length;
+const underHalfMilCount = listings.filter(l => Number(l.price || 0) < 500000).length;
 const priceBuckets = [
   { label: "Under $500k", min: 0, max: 500000 },
   { label: "$500k-$750k", min: 500000, max: 750000 },
@@ -576,6 +600,13 @@ const mapListings = listings
     listed: listing.listed_at || "",
     lat: Number(listing.lat || 0),
     lng: Number(listing.lng || 0),
+    image: getListingImage(listing),
+    images: (() => {
+      const raw = listing.images || listing.raw?.images || [];
+      const urls = Array.isArray(raw) ? raw.map(i => normalizeListingImageUrl(typeof i === "string" ? i : i?.url || i?.highRes || "")).filter(Boolean) : [];
+      const first = getListingImage(listing);
+      return urls.length > 0 ? urls : (first ? [first] : []);
+    })(),
   }))
   .filter((listing) => listing.lat && listing.lng);
 
@@ -600,22 +631,21 @@ const chartData = {
 <Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
   <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
-  <link
+<link
     href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional"
     rel="stylesheet"
     slot="head"
   />
+  <link
+    href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+    rel="stylesheet"
+    slot="head"
+  />
 
-  <script is:inline slot="head">
-    const savedAreaScrollY = sessionStorage.getItem("area_page_scroll_y");
-    if (savedAreaScrollY) {
+<script is:inline slot="head">
+    if (sessionStorage.getItem("area_page_scroll_y")) {
       history.scrollRestoration = "manual";
       document.documentElement.style.visibility = "hidden";
-      window.addEventListener("DOMContentLoaded", () => {
-        window.scrollTo(0, Number(savedAreaScrollY));
-        sessionStorage.removeItem("area_page_scroll_y");
-        document.documentElement.style.visibility = "";
-      });
     }
   </script>
 
@@ -686,29 +716,29 @@ const chartData = {
     </section>
 
     <section class="area-stats">
-      <a class="stat-card stat-card-link" href="#" data-filter-type="all">
-        <strong>{listings.length}</strong>
+     <a class="stat-card stat-card-link" href="#" data-filter-type="all">
         <span>Active Listings</span>
+        <strong>{listings.length}</strong>
       </a>
       <div class="stat-card">
-        <strong>${avgPrice.toLocaleString()}</strong>
         <span>Average Price</span>
+        <strong>${avgPrice.toLocaleString()}</strong>
       </div>
       <div class="stat-card">
-        <strong>${medianPrice.toLocaleString()}</strong>
         <span>Median Price</span>
+        <strong>${medianPrice.toLocaleString()}</strong>
       </div>
       <a class="stat-card stat-card-link" href="#" data-filter-type="house">
-        <strong>{houseCount}</strong>
         <span>Houses</span>
+        <strong>{houseCount}</strong>
       </a>
       <a class="stat-card stat-card-link" href="#" data-filter-type="condo">
-        <strong>{condoCount}</strong>
         <span>Condos</span>
+        <strong>{condoCount}</strong>
       </a>
       <a class="stat-card stat-card-link" href="#" data-filter-type="townhouse">
-        <strong>{townhomeCount}</strong>
         <span>Townhomes</span>
+        <strong>{townhomeCount}</strong>
       </a>
     </section>
 
@@ -781,39 +811,106 @@ const chartData = {
 
     
 
-    <section class="market-row" id="area-insights">
-      <article class="market-snapshot">
-        <span class="eyebrow">MARKET TAKEAWAY</span>
-        <h2>{labelize(area)} at a glance</h2>
-        <p class="market-takeaway">
-          {housePercent >= 65
-            ? `${labelize(area)} is strongly detached-home oriented, with houses making up about ${housePercent}% of active inventory.`
-            : condoPercent >= 35
-              ? `${labelize(area)} offers a more mixed market, with condos making up about ${condoPercent}% of current inventory.`
-              : `${labelize(area)} has a balanced mix of homes, condos, and townhomes for buyers to compare.`}
-        </p>
-<ul class="market-points">
-          <li>{listings.length} active listings give buyers a current read on available inventory.</li>
-          <li>{housePercent}% of listings are houses, {condoPercent}% are condos, and {townhomePercent}% are townhomes.</li>
-          <li>The median price is ${medianPrice.toLocaleString()}, which is often the cleanest quick read on typical pricing.</li>
-          <li>Median house: ${(() => { const p = listings.filter(l => l.normalized_type === "house").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}  · Condo: ${(() => { const p = listings.filter(l => l.normalized_type === "condo").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}  · Townhome: ${(() => { const p = listings.filter(l => l.normalized_type === "townhouse").map(l => Number(l.price || 0)).filter(p => p > 0).sort((a,b) => a-b); return p.length ? p[Math.floor(p.length/2)].toLocaleString() : "n/a"; })()}</li>
-          <li>
-            {condoCount === 0
-              ? "Condo inventory is very limited here, so low-maintenance buyers may need to compare nearby areas."
-              : "Buyers should compare property type, condition, location, layout, and long-term resale before judging value."}
-          </li>
-        </ul><main class="shell">
-      </article>
+   <section class="market-row" id="area-insights">
 
-      <section class="chart-card">
-        <div>
-          <span class="eyebrow">PRICE DISTRIBUTION</span>
-          <h2>Where {labelize(area)} Inventory Sits by Price</h2>
+      <div class="mi-stats-row">
+        <div class="mi-stat">
+          <p class="mi-stat-label">Active listings</p>
+          <p class="mi-stat-val">{listingCount}</p>
+          <p class="mi-stat-sub">{labelize(area)}</p>
         </div>
-        <div class="chart-wrap">
-          <canvas id="priceChart"></canvas>
+        <div class="mi-stat">
+          <p class="mi-stat-label">Median price</p>
+          <p class="mi-stat-val">${medianPrice >= 1000000 ? (medianPrice / 1000000).toFixed(1) + "M" : Math.round(medianPrice / 1000) + "k"}</p>
+          <p class="mi-stat-sub">All types</p>
         </div>
-      </section>
+        <div class="mi-stat">
+          <p class="mi-stat-label">Avg. price</p>
+          <p class="mi-stat-val">${avgPrice >= 1000000 ? (avgPrice / 1000000).toFixed(1) + "M" : Math.round(avgPrice / 1000) + "k"}</p>
+          <p class="mi-stat-sub">All types</p>
+        </div>
+      </div>
+
+      <div class="mi-top">
+        <article class="mi-card">
+          <span class="eyebrow">LISTING MIX</span>
+          <h2>What's for sale</h2>
+          <div class="mi-donut-wrap">
+            <canvas id="donutChart" width="110" height="110" role="img" aria-label={`Property type breakdown in ${labelize(area)}`}>
+              {typeSlices.map(t => `${t.label}: ${t.count} (${Math.round((t.count / listingCount) * 100)}%)`).join(", ")}
+            </canvas>
+            <div class="mi-legend">
+              {typeSlices.map(t => (
+                <div class="mi-legend-item">
+                  <div class="mi-legend-dot" style={`background:${t.color}`}></div>
+                  <span class="mi-legend-label">{t.label}</span>
+                  <span class="mi-legend-val">{t.count}<span class="mi-legend-pct"> · {Math.round((t.count / listingCount) * 100)}%</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <article class="mi-card">
+          <span class="eyebrow">MARKET TAKEAWAY</span>
+          <h2>{labelize(area)} at a glance</h2>
+          <ul class="mi-points">
+            <li class="mi-point">
+              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              {dominantType === "houses"
+                ? `Houses dominate at ${housePercent}% — condo and townhome buyers may need to look nearby.`
+                : dominantType === "condos"
+                  ? `Condos make up ${condoPercent}% of inventory — more options than most areas.`
+                  : `Inventory is balanced across types — useful for buyers comparing property styles.`}
+            </li>
+            <li class="mi-point">
+              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              {"Median of $" + medianPrice.toLocaleString() + " puts most inventory in the " + (medianPrice < 500000 ? "under-$500k" : medianPrice < 750000 ? "$500k–$750k" : medianPrice < 1000000 ? "$750k–$1M" : medianPrice < 1500000 ? "$1M–$1.5M" : "$1.5M+") + " range."}
+            </li>
+            {highEndCount > 0 && (
+              <li class="mi-point">
+                <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+                {highEndCount} listing{highEndCount > 1 ? "s" : ""} over $1.5M — likely acreages, premium lots, or larger detached homes.
+              </li>
+            )}
+            {underHalfMilCount > 0 && (
+              <li class="mi-point">
+                <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+                {underHalfMilCount} listing{underHalfMilCount > 1 ? "s" : ""} under $500k — check condition, size, and suite potential carefully.
+              </li>
+            )}
+            <li class="mi-point">
+              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              Compare condition, layout, lot size, suite potential, and strata costs before judging value.
+            </li>
+          </ul>
+        </article>
+      </div>
+
+  <div class="mi-bottom-row">
+<div class="mi-card">
+        <span class="eyebrow">PRICE DISTRIBUTION</span>
+        <h2>Where inventory sits by price</h2>
+        <div class="mi-price-row" id="miPriceRows"></div>
+      </div>
+
+<div class="mi-card">
+        <span class="eyebrow">BY PROPERTY TYPE</span>
+        <h2>Median price per type</h2>
+        <div class="mi-type-grid">
+     {typeCards.map(t => (
+<a class="mi-type-card" href="#" data-filter-type={t.label === "Houses" ? "house" : t.label === "Condos" ? "condo" : t.label === "Townhomes" ? "townhouse" : "land"} style="text-decoration:none;display:block;cursor:pointer;">              <p class="mi-type-name">{t.label}</p>
+              <p class="mi-type-count">{t.median ? `$${t.median >= 1000000 ? (t.median / 1000000).toFixed(1) + "M" : Math.round(t.median / 1000) + "k"}` : "n/a"}</p>
+              <p class="mi-type-median">{t.median && t.count > 0 ? `median · ${t.count} listing${t.count > 1 ? "s" : ""}` : t.count > 0 ? "too few to show" : "none active"}</p>
+              <div class="mi-type-bar">
+                <div class="mi-type-bar-fill" style={`width:${t.median ? Math.round((t.median / typeMaxMedian) * 100) : 0}%;background:${t.color}`}></div>
+              </div>
+            </a>
+          ))}
+       </div>
+      </div>
+      </div>
+
     </section>
 
 
@@ -861,29 +958,27 @@ const chartData = {
       </article>
 
       <div class="info-grid">
-        <article class="info-card">
-          <h3>Schools Nearby</h3>
+    <article class="info-card">
+          <h3><span class="info-icon">🎓</span> Schools Nearby</h3>
           <ul>
             {content.schools.map((school) => (
               <li>
-                <span>{school[0]}</span>
+                <span class="info-item-name"><span class="info-item-dot">·</span>{school[0]}</span>
                 <small>{school[1]}</small>
               </li>
             ))}
           </ul>
-         
         </article>
         <article class="info-card">
-          <h3>Shopping & Amenities</h3>
+          <h3><span class="info-icon">📍</span> Shopping & Amenities</h3>
           <ul>
             {content.amenities.map((item) => (
               <li>
-                <span>{item[0]}</span>
+                <span class="info-item-name"><span class="info-item-dot">·</span>{item[0]}</span>
                 <small>{item[1]}</small>
               </li>
             ))}
           </ul>
-          
         </article>
       </div>
 
@@ -952,8 +1047,7 @@ const chartData = {
   <ShortlistReviewModal />
   <IntentModalController />
 
-  <script is:inline define:vars={{ chartData, mapListings, mapCenter, googleMapsApiKey }}>
-    window.addEventListener("load", () => {
+<script is:inline define:vars={{ chartData, mapListings, mapCenter, googleMapsApiKey, typeSlices }}>    window.addEventListener("load", () => {
       const areaFilter = document.getElementById("area-filter");
       const sortFilter = document.getElementById("sort-filter");
       const typeFilter = document.getElementById("type-filter");
@@ -1054,7 +1148,14 @@ if (areaGoogleMap && areaListingMap && !areaListingMap.hidden) {
       });
 areaFilter?.addEventListener("change", () => {
   if (areaFilter.value) {
-    window.location.href = areaFilter.value;
+    const params = new URLSearchParams();
+    if (typeFilter?.value && typeFilter.value !== "all") params.set("type", typeFilter.value);
+    if (priceFilter?.value && priceFilter.value !== "all") params.set("price", priceFilter.value);
+    if (bedsFilter?.value && bedsFilter.value !== "all") params.set("beds", bedsFilter.value);
+    if (sortFilter?.value && sortFilter.value !== "newest") params.set("sort", sortFilter.value);
+    const qs = params.toString();
+    sessionStorage.setItem("area_page_scroll_y", String(window.scrollY));
+    window.location.href = areaFilter.value + (qs ? "?" + qs : "");
   }
 });
       sortFilter?.addEventListener("change", applyFilters);
@@ -1069,21 +1170,24 @@ areaFilter?.addEventListener("change", () => {
         document.querySelector("#area-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
 
-      document.querySelectorAll("[data-filter-type]").forEach((card) => {
+document.querySelectorAll("[data-filter-type]").forEach((card) => {
         card.addEventListener("click", (e) => {
           e.preventDefault();
+          e.stopPropagation();
           const type = card.dataset.filterType || "all";
           if (typeFilter) {
             typeFilter.value = type;
             if (priceFilter) priceFilter.value = "all";
             if (bedsFilter) bedsFilter.value = "all";
             applyFilters();
-            const filterBar = document.querySelector(".filter-bar");
-
-if (filterBar) {
-  const y = filterBar.getBoundingClientRect().top + window.scrollY - 90;
-  window.scrollTo({ top: y, behavior: "smooth" });
-}
+            const isTypeCard = card.classList.contains("mi-type-card");
+            if (isTypeCard) {
+              const grid = document.querySelector("#area-listings");
+              if (grid) {
+                const y = grid.getBoundingClientRect().top + window.scrollY - 150;
+                window.scrollTo({ top: y, behavior: "smooth" });
+              }
+            }
           }
         });
       });
@@ -1144,9 +1248,10 @@ function updateAreaMapMarkers() {
   areaGoogleMarkers.forEach((marker) => marker.setMap(null));
   areaGoogleMarkers = [];
 
-  const filteredListings = getFilteredMapListings();
+const filteredListings = getFilteredMapListings();
   const bounds = new google.maps.LatLngBounds();
   const infoWindow = new google.maps.InfoWindow();
+  let activeMarker = null;
 
   filteredListings.forEach((listing) => {
     const position = { lat: listing.lat, lng: listing.lng };
@@ -1158,13 +1263,111 @@ function updateAreaMapMarkers() {
       title: listing.address || "Listing",
     });
 
-    marker.addListener("click", () => {
-      infoWindow.setContent(`
-        <strong>${price}</strong><br />
-        ${listing.address}<br />
-        ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
-      `);
+const imgs = listing.images || (listing.image ? [listing.image] : []);
+const infoContent = `
+      <div style="width:220px;font-family:inherit;opacity:0;transform:translateY(6px) scale(0.97);transition:opacity 0.2s ease,transform 0.2s ease;" id="map-info-${listing.id}">
+        ${imgs.length > 0 ? `
+        <div style="position:relative;width:220px;height:140px;overflow:hidden;border-radius:12px 12px 0 0;">
+          <div id="map-carousel-${listing.id}" style="display:flex;width:${imgs.length * 220}px;height:140px;transition:transform 0.25s ease;">
+            ${imgs.map(src => `<img src="${src}" alt="" style="width:220px;height:140px;object-fit:cover;flex-shrink:0;" />`).join("")}
+          </div>
+          ${imgs.length > 1 ? `
+          <button onclick="event.stopPropagation();const t=document.getElementById('map-carousel-${listing.id}');const cur=parseInt(t.dataset.idx||0);const next=Math.max(0,cur-1);t.style.transform='translateX(-'+(next*220)+'px)';t.dataset.idx=next;" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;">‹</button>
+          <button onclick="event.stopPropagation();const t=document.getElementById('map-carousel-${listing.id}');const cur=parseInt(t.dataset.idx||0);const next=Math.min(${imgs.length - 1},cur+1);t.style.transform='translateX(-'+(next*220)+'px)';t.dataset.idx=next;" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;">›</button>
+          <div style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,0.45);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px;" id="map-counter-${listing.id}">1 / ${imgs.length}</div>
+          ` : ""}
+        </div>` : ""}
+        <div style="padding:10px 12px 12px;cursor:pointer;" id="map-info-text-${listing.id}">
+          <strong style="font-size:0.95rem;display:block;margin-bottom:2px;">${price}</strong>
+          <span style="font-size:0.8rem;color:#6b6560;display:block;margin-bottom:2px;">${listing.address}</span>
+          <span style="font-size:0.76rem;color:#9c9590;display:block;margin-bottom:8px;">${listing.beds || "-"} bd · ${listing.baths || "-"} ba</span>
+          <div style="font-size:0.76rem;font-weight:700;color:#2f6f73;">View listing →</div>
+        </div>
+      </div>`;
+
+  function openListingModal() {
+      const listingGrid = document.getElementById("area-listings");
+      const wasOnMap = areaListingMap && !areaListingMap.hidden;
+
+      if (wasOnMap) {
+        listingGrid.hidden = false;
+        areaListingMap.hidden = true;
+      }
+
+      const card = document.querySelector(
+        `[data-listing-id="${listing.id}"], [data-mls="${listing.id}"], [data-card-id="${listing.id}"]`
+      );
+
+      if (card) {
+        card.click();
+
+        if (wasOnMap) {
+          const observer = new MutationObserver(() => {
+            const modal = document.querySelector("[data-modal-open], .modal[open], .listing-modal.is-open, .modal-overlay.is-visible");
+            if (!modal) {
+              listingGrid.hidden = true;
+              areaListingMap.hidden = false;
+              areaListViewBtn?.classList.remove("active");
+              areaMapViewBtn?.classList.add("active");
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["class", "open", "hidden"] });
+        }
+      }
+    }
+
+let closeTimer = null;
+
+    function scheduleClose() {
+      closeTimer = setTimeout(() => {
+        if (activeMarker === marker) {
+          infoWindow.close();
+          activeMarker = null;
+        }
+      }, 200);
+    }
+
+    function cancelClose() {
+      if (closeTimer) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+    }
+
+    marker.addListener("mouseover", () => {
+      cancelClose();
+      activeMarker = marker;
+      infoWindow.setContent(infoContent);
       infoWindow.open(areaGoogleMap, marker);
+    google.maps.event.addListenerOnce(infoWindow, "domready", () => {
+        const el = document.getElementById(`map-info-${listing.id}`);
+        if (!el) return;
+        requestAnimationFrame(() => {
+          el.style.opacity = "1";
+          el.style.transform = "translateY(0) scale(1)";
+        });
+        const textEl = document.getElementById(`map-info-text-${listing.id}`);
+        if (textEl) textEl.addEventListener("click", openListingModal);
+        el.addEventListener("mouseenter", cancelClose);
+        el.addEventListener("mouseleave", scheduleClose);
+
+        const carousel = document.getElementById(`map-carousel-${listing.id}`);
+        const counter = document.getElementById(`map-counter-${listing.id}`);
+        if (carousel && counter) {
+          const updateCounter = () => {
+            const idx = parseInt(carousel.dataset.idx || 0);
+            counter.textContent = `${idx + 1} / ${imgs.length}`;
+          };
+          new MutationObserver(updateCounter).observe(carousel, { attributes: true, attributeFilter: ["data-idx"] });
+        }
+      });
+    });
+
+    marker.addListener("mouseout", scheduleClose);
+
+    marker.addListener("click", () => {
+      openListingModal();
     });
 
     areaGoogleMarkers.push(marker);
@@ -1276,7 +1479,7 @@ if (window.google?.maps && document.getElementById("area-map")) {
 }
 
 
-         async function initPriceChart() {
+        async function initCharts() {
         if (!window.Chart) {
           await new Promise((resolve, reject) => {
             const script = document.createElement("script");
@@ -1286,30 +1489,96 @@ if (window.google?.maps && document.getElementById("area-map")) {
             document.head.appendChild(script);
           });
         }
+        if (!window.Chart) return;
 
-        const canvas = document.getElementById("priceChart");
-        if (!canvas || !window.Chart) return;
-
-        new Chart(canvas, {
-          type: "bar",
-          data: {
-            labels: chartData.priceLabels,
-            datasets: [{ label: "Listings", data: chartData.priceCounts }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { grid: { display: false } },
-              y: { beginAtZero: true, ticks: { precision: 0 } },
+        const donutCanvas = document.getElementById("donutChart");
+        if (donutCanvas && typeSlices.length > 0) {
+          new Chart(donutCanvas, {
+            type: "doughnut",
+            data: {
+              labels: typeSlices.map(t => t.label),
+              datasets: [{
+                data: typeSlices.map(t => t.count),
+                backgroundColor: typeSlices.map(t => t.color),
+                borderWidth: 0,
+                hoverOffset: 4,
+              }]
             },
-          },
+            options: {
+              responsive: false,
+              cutout: "68%",
+              plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            }
+          });
+        }
+
+        const priceContainer = document.getElementById("miPriceRows");
+        if (priceContainer && chartData) {
+          const maxCount = Math.max(...chartData.priceCounts, 1);
+          chartData.priceLabels.forEach((label, i) => {
+            const count = chartData.priceCounts[i];
+            const pct = Math.round((count / maxCount) * 100);
+            const row = document.createElement("div");
+            row.style.cssText = "display:flex;align-items:center;gap:12px;";
+          row.innerHTML = `
+              <span style="font-size:12px;color:#666;width:110px;flex-shrink:0;white-space:nowrap;">${label}</span>
+              <div style="flex:1;background:rgba(0,0,0,0.07);border-radius:4px;height:28px;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;border-radius:4px;background:#1D9E75;display:flex;align-items:center;padding-left:10px;min-width:6px;box-sizing:border-box;">
+                  ${count >= 2 ? `<span style="font-size:12px;font-weight:600;color:#fff;white-space:nowrap;">${count} listings</span>` : ""}
+                </div>
+              </div>
+              <span style="font-size:12px;color:#999;width:28px;text-align:right;flex-shrink:0;">${count < 2 ? count : ""}</span>
+            `;
+            priceContainer.appendChild(row);
+          });
+        }
+      }
+
+     const urlParams = new URLSearchParams(window.location.search);
+      const hasUrlFilters = urlParams.has("type") || urlParams.has("price") || urlParams.has("beds") || urlParams.has("sort");
+
+      if (hasUrlFilters) {
+        if (grid) grid.style.visibility = "hidden";
+      }
+
+      if (urlParams.get("type") && typeFilter) typeFilter.value = urlParams.get("type");
+      if (urlParams.get("price") && priceFilter) priceFilter.value = urlParams.get("price");
+      if (urlParams.get("beds") && bedsFilter) bedsFilter.value = urlParams.get("beds");
+      if (urlParams.get("sort") && sortFilter) sortFilter.value = urlParams.get("sort");
+
+      applyFilters();
+      initCharts();
+
+      if (hasUrlFilters) {
+        requestAnimationFrame(() => {
+          if (grid) grid.style.visibility = "visible";
         });
       }
 
-           applyFilters();
-      initPriceChart();
+   const restoreY = sessionStorage.getItem("area_page_scroll_y");
+      if (restoreY) {
+        sessionStorage.removeItem("area_page_scroll_y");
+        window.scrollTo({ top: Number(restoreY), behavior: "instant" });
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const restoreY = sessionStorage.getItem("area_page_scroll_y");
+      if (restoreY) {
+        sessionStorage.removeItem("area_page_scroll_y");
+        window.scrollTo({ top: Number(restoreY), behavior: "instant" });
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: Number(restoreY), behavior: "instant" });
+          requestAnimationFrame(() => {
+            document.documentElement.style.transition = "opacity 0.2s ease";
+            document.documentElement.style.opacity = "1";
+            document.documentElement.style.visibility = "visible";
+          });
+        });
+      } else {
+        document.documentElement.style.visibility = "visible";
+        document.documentElement.style.opacity = "1";
+      }
     });
   </script>
  <style>
@@ -1321,9 +1590,61 @@ if (window.google?.maps && document.getElementById("area-map")) {
     font-weight: 700;
   }
 
-  .page-hero__eyebrow { color: rgba(255,255,255,0.75) !important; }
+.page-hero__eyebrow { color: rgba(255,255,255,0.75) !important; }
   .page-hero h1 { color: #fff !important; text-shadow: 0 2px 24px rgba(0,0,0,0.5) !important; }
   .page-hero__copy { color: rgba(255,255,255,0.85) !important; }
   .page-hero__actions a { color: #fff !important; border-color: rgba(255,255,255,0.4) !important; }
+
+ .gm-style .gm-style-iw-c {
+    animation: mapInfoFadeIn 0.18s ease forwards;
+  }
+
+  .gm-style .gm-style-iw-d { overflow: hidden !important; }
+  button.gm-ui-hover-effect { display: none !important; }
+
+  @keyframes mapInfoFadeIn {
+    from { opacity: 0; transform: translateY(4px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+.market-row { display: flex; flex-direction: column; gap: 12px; }
+  .mi-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mi-stat { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px 16px; }
+  .mi-stat-label { font-size: 11px; color: #888; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .mi-stat-val { font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
+  .mi-stat-sub { font-size: 11px; color: #aaa; margin: 0; }
+  .mi-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mi-bottom-row { display: flex; flex-direction: column; gap: 12px; }
+  .mi-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 1.25rem; }
+  .mi-card h2 { font-size: 16px; font-weight: 600; margin: 0.2rem 0 1rem; color: #1a1a1a; }
+  .mi-donut-wrap { display: flex; align-items: center; gap: 1.5rem; }
+  .mi-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .mi-legend-item { display: flex; align-items: center; gap: 8px; }
+  .mi-legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .mi-legend-label { font-size: 13px; color: #555; flex: 1; }
+  .mi-legend-val { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .mi-legend-pct { font-size: 11px; color: #999; }
+  .mi-points { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .mi-point { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #555; line-height: 1.5; }
+  .mi-point-icon { color: #1D9E75; font-size: 15px; margin-top: 2px; flex-shrink: 0; }
+  .mi-price-row { display: flex; flex-direction: column; gap: 10px; margin-top: 0.5rem; }
+  .mi-price-item { display: flex; align-items: center; gap: 12px; }
+  .mi-price-label { font-size: 12px; color: #666; width: 110px; flex-shrink: 0; white-space: nowrap; }
+  .mi-price-bar-wrap { flex: 1; background: rgba(0,0,0,0.07); border-radius: 4px; height: 28px; overflow: hidden; }
+  .mi-price-bar { height: 100%; border-radius: 4px; background: #1D9E75; display: flex; align-items: center; padding-left: 10px; min-width: 6px; box-sizing: border-box; }
+  .mi-price-count { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .mi-price-count-out { font-size: 12px; color: #999; width: 28px; text-align: right; flex-shrink: 0; }
+  .mi-type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 0.75rem; }
+.mi-type-card { background: #f5f4f2; border-radius: 8px; padding: 12px 14px; transition: background 0.15s ease, border-color 0.15s ease; border: 0.5px solid transparent; }
+  .mi-type-card:hover { background: #fff; border-color: rgba(0,0,0,0.12); }  .mi-type-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; margin: 0 0 4px; }
+  .mi-type-count { font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
+  .mi-type-median { font-size: 11px; color: #888; margin: 0; }
+  .mi-type-bar { height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .mi-type-bar-fill { height: 100%; border-radius: 2px; }
+
+  @media (max-width: 640px) {
+    .mi-top { grid-template-columns: 1fr; }
+    .mi-type-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </Layout>

@@ -1761,6 +1761,7 @@ maybeBtn?.addEventListener("click", () => {
 passBtn?.addEventListener("click", () => {
   popDecisionEmojisFromButton(passBtn, ["✕"], 1);
   saveIntentDecision("pass");
+  setTimeout(scrollModalToBottom, 150);
 
   const nextBtn = document.getElementById("sheet-next-btn");
   if (nextBtn) {
