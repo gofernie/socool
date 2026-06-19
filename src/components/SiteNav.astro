@@ -73,7 +73,7 @@ const typeLinks: NavItem[] = sortedTypes.slice(0, 5).map((type: string) => {
     label: String(type)
       .replace(/-/g, " ")
       .replace(/\b\w/g, (char) => char.toUpperCase()),
-    href: `/${slugify(city)}-${typePageSlug}`,
+    href: `/${slugify(city)}-real-estate-market?type=${key}`,
   };
 });
 

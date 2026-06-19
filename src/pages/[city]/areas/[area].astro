@@ -392,11 +392,29 @@ const areaToSlug = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const { data: areaRows = [] } = await supabase
-  .from("listing_rows")
-  .select("normalized_area, normalized_type")
-  .eq("normalized_city", city)
-  .not("normalized_area", "is", null);
+const [
+  { data: areaRows = [] },
+  { data: cityListings = [] },
+  { data: boundary, error: boundaryError },
+] = await Promise.all([
+  supabase
+    .from("listing_rows")
+    .select("normalized_area, normalized_type")
+    .eq("normalized_city", city)
+    .not("normalized_area", "is", null),
+  supabase
+    .from("listing_rows")
+    .select("*")
+    .eq("normalized_city", city)
+    .eq("status", "A")
+    .order("listed_at", { ascending: false }),
+  supabase
+    .from("area_boundaries")
+    .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy")
+    .eq("city", city)
+    .eq("area_slug", String(areaSlug || "").toLowerCase())
+    .maybeSingle(),
+]);
 
 const allowedAreaLabels =
   city === "parksville"
@@ -449,12 +467,7 @@ const propertyTypes = [...new Set(
     .map((row) => String(row.normalized_type || "").trim())
     .filter((item) => item && item !== "unknown")
 )].sort((a, b) => a.localeCompare(b));
-const { data: cityListings = [] } = await supabase
-  .from("listing_rows")
-  .select("*")
-  .eq("normalized_city", city)
-  .eq("status", "A")
-  .order("listed_at", { ascending: false });
+
 
 function pointInPolygon(point, polygon) {
   const [lng, lat] = point;
@@ -474,12 +487,7 @@ function pointInPolygon(point, polygon) {
   return inside;
 }
 
-const { data: boundary, error: boundaryError } = await supabase
-  .from("area_boundaries")
-  .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy")
-  .eq("city", city)
-  .eq("area_slug", String(areaSlug || "").toLowerCase())
-  .maybeSingle();
+
 
   const heroImage =
   boundary?.hero_image_url ||
@@ -1266,8 +1274,8 @@ const filteredListings = getFilteredMapListings();
 const imgs = listing.images || (listing.image ? [listing.image] : []);
 const infoContent = `
       <div style="width:220px;font-family:inherit;opacity:0;transform:translateY(6px) scale(0.97);transition:opacity 0.2s ease,transform 0.2s ease;" id="map-info-${listing.id}">
-        ${imgs.length > 0 ? `
-        <div style="position:relative;width:220px;height:140px;overflow:hidden;border-radius:12px 12px 0 0;">
+${imgs.length > 0 ? `
+        <div style="position:relative;width:220px;height:140px;overflow:hidden;border-radius:12px 12px 0 0;cursor:pointer;" id="map-info-img-${listing.id}">
           <div id="map-carousel-${listing.id}" style="display:flex;width:${imgs.length * 220}px;height:140px;transition:transform 0.25s ease;">
             ${imgs.map(src => `<img src="${src}" alt="" style="width:220px;height:140px;object-fit:cover;flex-shrink:0;" />`).join("")}
           </div>
@@ -1277,8 +1285,7 @@ const infoContent = `
           <div style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,0.45);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px;" id="map-counter-${listing.id}">1 / ${imgs.length}</div>
           ` : ""}
         </div>` : ""}
-        <div style="padding:10px 12px 12px;cursor:pointer;" id="map-info-text-${listing.id}">
-          <strong style="font-size:0.95rem;display:block;margin-bottom:2px;">${price}</strong>
+<div style="padding:10px 12px 12px;cursor:pointer;" id="map-info-text-${listing.id}">          <strong style="font-size:0.95rem;display:block;margin-bottom:2px;">${price}</strong>
           <span style="font-size:0.8rem;color:#6b6560;display:block;margin-bottom:2px;">${listing.address}</span>
           <span style="font-size:0.76rem;color:#9c9590;display:block;margin-bottom:8px;">${listing.beds || "-"} bd · ${listing.baths || "-"} ba</span>
           <div style="font-size:0.76rem;font-weight:700;color:#2f6f73;">View listing →</div>
@@ -1347,8 +1354,13 @@ let closeTimer = null;
           el.style.opacity = "1";
           el.style.transform = "translateY(0) scale(1)";
         });
-        const textEl = document.getElementById(`map-info-text-${listing.id}`);
+     const textEl = document.getElementById(`map-info-text-${listing.id}`);
         if (textEl) textEl.addEventListener("click", openListingModal);
+        const imgEl = document.getElementById(`map-info-img-${listing.id}`);
+        if (imgEl) imgEl.addEventListener("click", (e) => {
+          if (e.target.tagName === "BUTTON") return;
+          openListingModal();
+        });
         el.addEventListener("mouseenter", cancelClose);
         el.addEventListener("mouseleave", scheduleClose);
 
