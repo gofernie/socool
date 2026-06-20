@@ -184,13 +184,7 @@ const navAreas = Object.entries(areaCounts)
   .sort((a, b) => b.count - a.count)
   .map(({ area }) => area);
 
-const navTypes = [
-  ...new Set(
-    allListings
-      .map((listing) => String(listing.normalized_type || "").trim())
-      .filter((type) => type && type !== "unknown")
-  ),
-].sort((a, b) => a.localeCompare(b));
+const navTypes = ["house", "condo", "townhouse", "land"];
 
 const cleanAreaName = (value) =>
   String(value || "")

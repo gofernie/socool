@@ -457,7 +457,10 @@ function preloadNearbyListingPhotos(currentCard) {
             activePhotoUrls = [card.dataset.image || "https://placehold.co/800x600?text=Listing"];
           }
 
-          activePhotoIndex = 0;
+      activePhotoIndex = card.dataset.openAtPhotoIndex
+            ? parseInt(card.dataset.openAtPhotoIndex)
+            : 0;
+          console.log("openAtPhotoIndex", card.dataset.openAtPhotoIndex, "→", activePhotoIndex);
 
           function renderActivePhoto() {
             if (!sheetImage || !activePhotoUrls.length) return;

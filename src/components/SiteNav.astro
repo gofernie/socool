@@ -7,7 +7,6 @@ type NavItem = {
 const {
   city = "nanaimo",
   areas = [],
-  types = [],
   intentPages = [],
   showAreaNav = false,
 } = Astro.props;
@@ -46,6 +45,13 @@ const TYPE_PAGE_MAP: Record<string, string> = {
   land: "land",
 };
 
+const typeLinks: NavItem[] = [
+  { label: "House", href: `/${slugify(city)}-real-estate-market?type=house` },
+  { label: "Condo", href: `/${slugify(city)}-real-estate-market?type=condo` },
+  { label: "Townhouse", href: `/${slugify(city)}-real-estate-market?type=townhouse` },
+  { label: "Land", href: `/${slugify(city)}-real-estate-market?type=land` },
+];
+
 const cleanAreaLabel = (value: string) =>
   String(value || "")
     .replace(/^pq\s+/i, "")
@@ -58,24 +64,7 @@ const areaLinks: NavItem[] = areas.slice(0, 8).map((area: string) => ({
   href: `/${slugify(city)}/areas/${slugify(area)}`,
 }));
 
-const TYPE_ORDER = ["house", "condo", "townhouse", "mobile", "land"];
-const sortedTypes = [...types].sort(
-  (a, b) =>
-    (TYPE_ORDER.indexOf(a.toLowerCase()) + 1 || 99) -
-    (TYPE_ORDER.indexOf(b.toLowerCase()) + 1 || 99)
-);
 
-const typeLinks: NavItem[] = sortedTypes.slice(0, 5).map((type: string) => {
-  const key = String(type).toLowerCase();
-  const typePageSlug = TYPE_PAGE_MAP[key] || `${slugify(type)}s`;
-
-  return {
-    label: String(type)
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase()),
-    href: `/${slugify(city)}-real-estate-market?type=${key}`,
-  };
-});
 
 const intentLinks: NavItem[] = intentPages.slice(0, 6).map((page: any) => ({
   label:
