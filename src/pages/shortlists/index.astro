@@ -77,10 +77,12 @@ function buildPageHref(page: number) {
   <head>
     <meta charset="utf-8" />
     <title>Shortlists</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
-    
-<link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style is:global>
+      @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+      @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
   :root {
         --bg: #f7f4ef;
@@ -196,11 +198,10 @@ function buildPageHref(page: number) {
     </style>
   </head>
 
-  <body>
+<body>
+    <AdminSidebar active="shortlists" />
     <div class="page">
-<AdminSidebar active="shortlists" />
-
-   <main class="main">
+      <main class="main">
 
       <div class="page-header">
         <div>

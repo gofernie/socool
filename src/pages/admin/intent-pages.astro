@@ -86,11 +86,16 @@ function publicHref(page: any) {
 }
 ---
 
-<html>
+<html lang="en">
   <head>
-<title>Intent & Category Pages</title>
-
-<link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta charset="utf-8" />
+    <title>Intent & Category Pages</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style is:global>
+      @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+      @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
    *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
@@ -341,8 +346,8 @@ function publicHref(page: any) {
 
       form { margin: 0; }
 
-      @media (max-width: 860px) {
-        .page { grid-template-columns: 1fr; }
+@media (max-width: 860px) {
+        .page { display: block; }
         .main { padding: 24px 20px 60px; }
         .topbar { flex-direction: column; align-items: flex-start; }
         .grid { grid-template-columns: 1fr; }
@@ -395,10 +400,9 @@ function publicHref(page: any) {
     </style>
   </head>
 
- <body>
+<body>
+  <AdminSidebar active="pages" />
   <div class="page">
-    <AdminSidebar active="pages" />
-
     <main class="main">
 
 

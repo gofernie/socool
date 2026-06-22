@@ -18,16 +18,31 @@ const domain = host
   .replace(/^www\./, "")
   .split(":")[0];
 
-const { data: sites = [] } = await supabase
+const isLocal = domain === "localhost" || domain === "127.0.0.1";
+
+const sitesQuery = supabase
   .from("sites")
   .select("id, domain, city, site_name, accent_color")
-  .eq("domain", domain)
   .order("domain");
+
+if (!isLocal) sitesQuery.eq("domain", domain);
+
+const { data: sites = [] } = await sitesQuery;
 ---
 
 
-<link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Your Sites</title>
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style is:global>
+    .mobile-topbar, .drawer-overlay { display: none; }
+    @media (max-width: 768px) { .mobile-topbar { display: flex !important; } }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
 <div class="page">
   <AdminSidebar active="sites" />
 
@@ -142,3 +157,5 @@ const { data: sites = [] } = await supabase
     }
   }
 </style>
+</body>
+</html>

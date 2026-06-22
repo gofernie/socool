@@ -255,9 +255,15 @@ return Astro.redirect("/admin/intent-pages");
 }
 ---
 
-<html>
+<html lang="en">
   <head>
+   <meta charset="utf-8" />
    <title>Create Intent Page</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
+   <style is:global>
+     @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+     @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+   </style>
    <script
   is:inline
   src={`https://maps.googleapis.com/maps/api/js?key=${import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=drawing`}
@@ -543,8 +549,8 @@ textarea:focus {
   margin-top: 12px;
   flex-wrap: wrap;
 }
-      @media (max-width: 860px) {
-        .page { grid-template-columns: 1fr; }
+@media (max-width: 860px) {
+        .page { display: block; }
         .main { padding: 24px 20px 60px; }
         .grid-2, .page-type-grid { grid-template-columns: 1fr; }
       }
@@ -552,8 +558,8 @@ textarea:focus {
   </head>
 
 <body>
+  <AdminSidebar active="new-page" />
   <div class="page">
-<AdminSidebar active="new-page" />
     <main class="main">
 
    <div class="page-header">

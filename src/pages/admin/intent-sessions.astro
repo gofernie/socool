@@ -936,23 +936,104 @@ const assignedAgent = selectedSession
         .listing-cols { grid-template-columns: 1fr; }
       }
 
-      @media (max-width: 720px) {
+   @media (max-width: 720px) {
         .layout { grid-template-columns: 1fr; }
         .sessions-panel { height: auto; position: static; border-right: 0; border-bottom: 1px solid var(--border); }
-        .detail-panel { height: auto; }
+        .detail-panel { height: auto; overflow-x: hidden; }
+        .detail-topbar { padding: 10px 16px; }
+        .detail-topbar-actions { gap: 6px; }
+        .detail-topbar-actions .btn { padding: 6px 10px; font-size: 0.76rem; }
+        .lead-header { padding: 20px 16px 16px; }
+        .detail-main { padding: 16px; }
+        .detail-sidebar { padding: 0 16px 28px; }
         .areas-grid { grid-template-columns: 1fr; gap: 12px; }
         .stats-bar { grid-template-columns: repeat(2, 1fr); }
+        .stat-cell { padding: 14px 16px; }
+        .stat-num { font-size: 1.5rem; }
+        .lead-name { font-size: 1.4rem; }
+     .detail-body { grid-template-columns: 1fr; }
+        .inner-grid { display: block !important; max-width: 100vw; overflow-x: hidden; }
+        body { overflow-x: hidden; }
       }
+
+      /* ── Mobile tabs ── */
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+
+  .mobile-tabs {
+    display: flex;
+    position: sticky;
+    top: 56px; /* height of AdminSidebar mobile topbar */
+    z-index: 50;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: var(--sans);
+  }
+
+  .mobile-tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+
+.sessions-col { display: none; }
+  .sessions-col.tab-active { display: block; }
+  .detail-panel-col { display: none; }
+  .detail-panel-col.tab-active { display: block; }
+  .tabs-pending .sessions-col,
+  .tabs-pending .detail-panel-col { visibility: hidden; }
+
+  /* Undo the inner grid */
+  .inner-grid { display: block !important; }
+
+  .sessions-panel {
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-panel { height: auto; }
+}
+
+/* Hide tabs on desktop */
+@media (min-width: 721px) {
+  .mobile-tabs { display: none; }
+  .sessions-col, .detail-panel-col { display: contents; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
 
   <body>
-    <div class="layout">
-      <AdminSidebar active="sessions" />
+ <div class="layout">
+  <AdminSidebar active="sessions" />
 
-      <!-- Sessions list -->
-      <div style="display:grid;grid-template-columns:280px 1fr;min-height:100vh;">
-        <div class="sessions-panel">
+  <!-- Mobile tabs -->
+  <div class="mobile-tabs" id="mobile-tabs" class="tabs-pending">
+    <button class="mobile-tab active" data-tab="sessions">Sessions</button>
+    <button class="mobile-tab" data-tab="detail">Detail</button>
+  </div>
+
+  <!-- Sessions list -->
+<div class="inner-grid tabs-pending" style="display:grid;grid-template-columns:280px 1fr;min-height:100vh;max-width:100%;overflow-x:hidden;">
+    <div class="sessions-col tab-active">
+    <div class="sessions-panel">
           <div class="sessions-panel-head">
             <h2>Intent Sessions</h2>
             <p>{sessions.length} sessions tracked</p>
@@ -986,6 +1067,8 @@ const assignedAgent = selectedSession
           })}
         </div>
 
+      </div><!-- /sessions-col -->
+    <div class="detail-panel-col">
         <!-- Detail panel -->
         <div class="detail-panel">
           {(() => {
@@ -1595,10 +1678,85 @@ document.getElementById("save-note-btn")?.addEventListener("click", async () => 
         }
       });
 
-      const wantedSession = new URLSearchParams(window.location.search).get("session");      if (wantedSession) {
+   const wantedSession = new URLSearchParams(window.location.search).get("session");      if (wantedSession) {
         const target = document.querySelector(`.session-row[href*="${CSS.escape(wantedSession)}"]`);
         target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     </script>
+
+    <script>
+      const tabs = document.querySelectorAll('.mobile-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const target = tab.dataset.tab;
+          document.querySelector('.sessions-col')?.classList.toggle('tab-active', target === 'sessions');
+          document.querySelector('.detail-panel-col')?.classList.toggle('tab-active', target === 'detail');
+        });
+      });
+
+   // Remove pending class immediately so restore happens before paint
+      document.querySelector('.inner-grid')?.classList.remove('tabs-pending');
+
+      // Restore tab after page reload
+      const savedTab = sessionStorage.getItem('admin-tab');
+      if (savedTab && window.innerWidth <= 720) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelector(`[data-tab="${savedTab}"]`)?.classList.add('active');
+        document.querySelector('.sessions-col')?.classList.toggle('tab-active', savedTab === 'sessions');
+        document.querySelector('.detail-panel-col')?.classList.toggle('tab-active', savedTab === 'detail');
+      }
+
+      // Save tab on manual switch
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          sessionStorage.setItem('admin-tab', tab.dataset.tab);
+        });
+      });
+
+  document.querySelectorAll('.session-row').forEach(row => {
+        row.addEventListener('click', () => {
+          if (window.innerWidth <= 720) {
+            sessionStorage.setItem('admin-tab', 'detail');
+            // Blank out the detail panel immediately so stale content doesn't flash
+            const detail = document.querySelector('.detail-panel');
+            if (detail) {
+              detail.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);font-size:0.88rem;gap:10px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 0.8s linear infinite;">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                  Loading...
+                </div>`;
+            }
+          }
+        });
+      });
+    </script>
+    <script>
+  const tabs = document.querySelectorAll('.mobile-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.tab;
+      document.querySelector('.sessions-col')?.classList.toggle('tab-active', target === 'sessions');
+      document.querySelector('.detail-panel-col')?.classList.toggle('tab-active', target === 'detail');
+    });
+  });
+
+  // Auto-switch to detail tab when a session row is clicked on mobile
+  document.querySelectorAll('.session-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if (window.innerWidth <= 720) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-tab="detail"]')?.classList.add('active');
+        document.querySelector('.sessions-col')?.classList.remove('tab-active');
+        document.querySelector('.detail-panel-col')?.classList.add('tab-active');
+      }
+    });
+  });
+</script>
   </body>
 </html>

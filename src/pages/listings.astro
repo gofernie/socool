@@ -93,11 +93,13 @@ if (hasListingFilters) {
   <head>
     <meta charset="utf-8" />
     <title>Listings</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style is:global>
+      @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+      @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+    </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    
-<link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
      :root {
         --bg: #f7f4ef;
@@ -693,8 +695,9 @@ if (hasListingFilters) {
       .edit-back-btn:hover { background: #333; }
 
       /* ── RESPONSIVE ── */
-      @media (max-width: 900px) {
-        .page { padding: 20px 16px 92px; }
+     @media (max-width: 900px) {
+        .page { display: block; padding: 0 0 92px; }
+        .main { padding: 16px 16px 92px; }
 
         .filters {
           border-radius: 14px;
@@ -774,9 +777,8 @@ if (hasListingFilters) {
   </head>
 
 <body data-shortlist-slug={shortlistSlug}>
+  <AdminSidebar active="listings" />
   <div class="page">
-   <AdminSidebar active="listings" />
-
     <main class="main">
      
 

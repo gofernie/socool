@@ -4,11 +4,17 @@ import AdminSidebar from "../../../../components/AdminSidebar.astro";
 // Slug is resolved in the client script from ?slug=
 ---
 
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8" />
     <title>Agent Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     
     <link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style is:global>
+      @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+      @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+    </style>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
@@ -517,7 +523,8 @@ import AdminSidebar from "../../../../components/AdminSidebar.astro";
     grid-template-columns: none !important;
   }
 
-  .page > *:not(.main) {
+.page > aside,
+  .page > .drawer-overlay {
     display: none !important;
   }
 
@@ -555,9 +562,7 @@ import AdminSidebar from "../../../../components/AdminSidebar.astro";
   </head>
 
   <body>
-    <div class="page">
-
-<AdminSidebar active="sites">
+ <AdminSidebar active="sites">
   <nav class="sidebar__section-links">
     <a href="#s-agent">Agent</a>
     <a href="#s-colour">Colour</a>
@@ -571,6 +576,7 @@ import AdminSidebar from "../../../../components/AdminSidebar.astro";
     <a href="#s-bio">Bio</a>
   </nav>
 </AdminSidebar>
+    <div class="page">
       <!-- Main -->
       <main class="main">
         <div class="page-header">
@@ -922,8 +928,8 @@ import AdminSidebar from "../../../../components/AdminSidebar.astro";
           </div>
 
         </form>
-      </main>
-    </div>
+    </main>
+    </div><!-- /page -->
 
     <script is:inline>
       const params = new URLSearchParams(window.location.search);

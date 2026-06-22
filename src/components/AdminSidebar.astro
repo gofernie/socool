@@ -14,7 +14,22 @@ const navItems = [
 ];
 ---
 
-<aside class="sidebar">
+<!-- Mobile top bar -->
+<div class="mobile-topbar">
+  <div class="mobile-topbar__logo">
+    Agent Editor
+    <small>Chris Crump</small>
+  </div>
+  <button class="hamburger" id="admin-hamburger" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+
+<!-- Overlay -->
+<div class="drawer-overlay" id="admin-overlay"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="admin-sidebar">
   <div class="sidebar__logo">
     Agent Editor
     <small>Chris Crump</small>
@@ -29,7 +44,31 @@ const navItems = [
   <slot />
 </aside>
 
+<script>
+  const hamburger = document.getElementById('admin-hamburger');
+  const sidebar   = document.getElementById('admin-sidebar');
+  const overlay   = document.getElementById('admin-overlay');
+
+  function open()  {
+    sidebar?.classList.add('open');
+    overlay?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function close() {
+    sidebar?.classList.remove('open');
+    overlay?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  hamburger?.addEventListener('click', open);
+  overlay?.addEventListener('click', close);
+  sidebar?.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+</script>
+
 <style>
+/* ── Desktop ── */
+  /* visibility controlled by is:global in each page */
+
   .sidebar {
     position: sticky;
     top: 0;
@@ -44,6 +83,7 @@ const navItems = [
     padding: 28px 20px;
     gap: 6px;
     overflow-y: auto;
+    z-index: 200;
   }
 
   .sidebar__logo {
@@ -83,15 +123,8 @@ const navItems = [
     font-weight: 500;
   }
 
-  .sidebar a:hover {
-    background: rgba(255,255,255,0.08);
-    color: #fff;
-  }
-
-  .sidebar a.active {
-    background: rgba(255,255,255,0.14);
-    color: #fff;
-  }
+  .sidebar a:hover  { background: rgba(255,255,255,0.08); color: #fff; }
+  .sidebar a.active { background: rgba(255,255,255,0.14); color: #fff; }
 
   :global(.sidebar__section-links) {
     margin-top: 24px;
@@ -108,14 +141,99 @@ const navItems = [
     color: rgba(255,255,255,0.4);
   }
 
-  :global(.sidebar__section-links a:hover) {
-    color: rgba(255,255,255,0.8);
-  }
+  :global(.sidebar__section-links a:hover)  { color: rgba(255,255,255,0.8); }
 
   :global(.sidebar__section-links a.active) {
     background: rgba(255,255,255,0.12);
     color: #fff;
     border-left: 2px solid rgba(255,255,255,0.5);
     padding-left: 10px;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    /* Sticky top bar */
+    .mobile-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+      background: #181614;
+      padding: 14px 18px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .mobile-topbar__logo {
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    .mobile-topbar__logo small {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+      margin-top: 2px;
+    }
+
+    /* Hamburger button */
+    .hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: rgba(255,255,255,0.75);
+      border-radius: 2px;
+    }
+
+    /* Dim overlay */
+    .drawer-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 390;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* Sidebar becomes slide-in drawer */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100dvh;
+      width: 260px;
+      min-width: unset;
+      transform: translateX(-100%);
+      transition: transform 0.24s ease;
+      z-index: 400;
+      padding-top: 28px;
+    }
+
+    .sidebar.open { transform: translateX(0); }
   }
 </style>
