@@ -213,7 +213,7 @@ export const normalizeListingImageUrl = (value: any): string => {
   if (!raw) return "";
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
-  if (cleaned.startsWith("/vreb/")) return `https://cdn.repliers.io${cleaned}`;
+  if (cleaned.startsWith("/vreb/")) return `https://cdn.repliers.io${cleaned}?class=medium`;
   return cleaned;
 };
 

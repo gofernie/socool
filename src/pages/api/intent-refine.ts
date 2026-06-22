@@ -30,11 +30,11 @@ function textIncludesAny(text: string, terms: string[]) {
 }
 
 const tagTerms: Record<string, string[]> = {
-  layout: ["layout", "open concept", "floor plan", "flow"],
-  yard: ["yard", "fenced", "garden", "outdoor", "patio", "deck"],
-  garage: ["garage", "shop", "parking", "carport"],
-  modern: ["updated", "renovated", "modern", "newer"],
-  value: ["value", "potential", "affordable"],
+  layout: ["open concept", "floor plan"],
+  yard: ["yard", "fenced yard", "garden", "patio", "deck"],
+  garage: ["garage", "double garage", "triple garage", "attached garage", "detached garage"],
+  modern: ["renovated", "updated kitchen", "updated bath", "newer kitchen"],
+  value: ["value", "affordable"],
   suite: [
   "second kitchen",
   "2 kitchens",
@@ -312,19 +312,11 @@ if (
 // Buyers may like "close to ocean" without needing MLS waterfront/ocean_view flags.
 // These should be scored later, not required here.
 
-   const lowerCeiling =
-  visibleMaxPrice > 0
-    ? Math.round(visibleMaxPrice * 0.35)
-    : 700000;
-
-const midFloor =
-  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.55) : 700000;
-
-const midCeiling =
-  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.78) : 950000;
-
-const premiumFloor =
-  visibleMaxPrice > 0 ? Math.round(visibleMaxPrice * 0.78) : 950000;
+  // Use absolute BC market bands — not relative to visibleMaxPrice
+const lowerCeiling = 550000;
+const midFloor = 500000;
+const midCeiling = 900000;
+const premiumFloor = 850000;
 
 if (wantsLowerPrice) {
   query = query.lte("price", lowerCeiling);
@@ -508,7 +500,73 @@ if (lockedPageType) {
   console.log("PROPERTY TYPE HARD FILTER", lockedPageType, filteredData.length);
 }
 
+if (preferredFeatureLabels.garage) {
+  filteredData = filteredData.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.public_remarks,
+      listing.remarks,
+      listing.features,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
 
+    return textIncludesAny(text, [
+      "double garage",
+      "triple garage",
+      "attached garage",
+      "detached garage",
+      "garage",
+    ]);
+  });
+}
+
+if (preferredFeatureLabels.yard) {
+  filteredData = filteredData.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.public_remarks,
+      listing.remarks,
+      listing.features,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return textIncludesAny(text, [
+      "fenced yard",
+      "private yard",
+      "backyard",
+      "back yard",
+      "large yard",
+      "yard",
+    ]);
+  });
+}
+
+if (preferredFeatureLabels.modern) {
+  filteredData = filteredData.filter((listing) => {
+    const text = [
+      listing.description,
+      listing.public_remarks,
+      listing.remarks,
+      listing.features,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return textIncludesAny(text, [
+      "renovated",
+      "updated kitchen",
+      "updated bath",
+      "newer kitchen",
+      "modern kitchen",
+      "fully updated",
+    ]);
+  });
+}
 
 if (preferredFeatureLabels.income) {
   filteredData = filteredData.filter((listing) => {

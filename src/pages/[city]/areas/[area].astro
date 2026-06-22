@@ -396,6 +396,7 @@ const [
   { data: areaRows = [] },
   { data: cityListings = [] },
   { data: boundary, error: boundaryError },
+{ data: intentPagesRaw },
 ] = await Promise.all([
   supabase
     .from("listing_rows")
@@ -408,12 +409,18 @@ const [
     .eq("normalized_city", city)
     .eq("status", "A")
     .order("listed_at", { ascending: false }),
-  supabase
+supabase
     .from("area_boundaries")
     .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy")
     .eq("city", city)
     .eq("area_slug", String(areaSlug || "").toLowerCase())
     .maybeSingle(),
+  supabase
+    .from("intent_pages")
+    .select("slug, nav_label, card_title, show_in_nav")
+    .eq("city", city)
+    .eq("show_in_nav", true)
+    .order("nav_order", { ascending: true }),
 ]);
 
 const allowedAreaLabels =
@@ -454,6 +461,8 @@ const areas =
     ? allowedAreaLabels
     : nanaimoAreas;
 
+const intentPages = intentPagesRaw ?? [];
+
 console.log("AREA ROWS DEBUG", {
   city,
   count: areaRows.length,
@@ -462,11 +471,7 @@ console.log("AREA ROWS DEBUG", {
     .sort(),
 });
 
-const propertyTypes = [...new Set(
-  areaRows
-    .map((row) => String(row.normalized_type || "").trim())
-    .filter((item) => item && item !== "unknown")
-)].sort((a, b) => a.localeCompare(b));
+// propertyTypes removed — nav driven by intentPages from DB
 
 
 function pointInPolygon(point, polygon) {
@@ -534,7 +539,7 @@ const normalizeListingImageUrl = (value) => {
   if (!raw) return "";
   if (raw.startsWith("http")) return raw;
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
-  return cleaned.startsWith("/vreb/") ? `https://cdn.repliers.io${cleaned}` : cleaned;
+ return cleaned.startsWith("/vreb/") ? `https://cdn.repliers.io${cleaned}?class=medium` : cleaned;
 };
 
 const getListingImage = (listing) =>
@@ -598,7 +603,7 @@ const priceBuckets = [
 ];
 
 const mapListings = listings
-  .map((listing) => ({
+  .map((listing, index) => ({
     id: listing.id,
     address: listing.address || "",
     type: listing.normalized_type || "",
@@ -637,13 +642,10 @@ const chartData = {
 ---
 
 <Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
-<link
-    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional"
-    rel="stylesheet"
-    slot="head"
-  />
+
+  
+  <link rel="preload" as="style" href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional" onload="this.onload=null;this.rel='stylesheet'" slot="head" />
+  <noscript slot="head"><link rel="stylesheet" href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional" /></noscript>
   <link
     href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
     rel="stylesheet"
@@ -666,8 +668,7 @@ const chartData = {
 ></script>
 
 
-<SiteNav city={city} areas={areas} types={propertyTypes} showAreaNav={false} />
-<header class="page-hero" style={`--hero-image: url('${heroImage}')`}>
+<SiteNav city={city} areas={areas} intentPages={intentPages} showAreaNav={false} /><header class="page-hero" style={`--hero-image: url('${heroImage}')`}>
   <div class="page-hero__inner">
     <p class="page-hero__eyebrow">{cityLabel} Area Guide</p>
 
@@ -806,7 +807,11 @@ const chartData = {
           data-lat={listing.lat || ""}
           data-lng={listing.lng || ""}
         >
-          <ListingCard listing={listing} image={getListingImage(listing)} />
+          <ListingCard
+  listing={listing}
+  image={getListingImage(listing)}
+  priority={index < 3}
+/>
         </div>
       ))}
     </div>
@@ -1188,11 +1193,17 @@ document.querySelectorAll("[data-filter-type]").forEach((card) => {
             if (priceFilter) priceFilter.value = "all";
             if (bedsFilter) bedsFilter.value = "all";
             applyFilters();
-            const isTypeCard = card.classList.contains("mi-type-card");
-            if (isTypeCard) {
-              const grid = document.querySelector("#area-listings");
-              if (grid) {
-                const y = grid.getBoundingClientRect().top + window.scrollY - 150;
+  const isStatCard = card.classList.contains("stat-card-link");
+            if (window.innerWidth < 1024 && !isStatCard) {
+              const target = document.querySelector(".filter-bar") || document.querySelector("#area-listings");
+              if (target) {
+                const y = target.getBoundingClientRect().top + window.scrollY - 16;
+                window.scrollTo({ top: y, behavior: "smooth" });
+              }
+            } else if (window.innerWidth < 1024 && isStatCard) {
+              const target = document.querySelector(".filter-bar") || document.querySelector("#area-listings");
+              if (target) {
+                const y = target.getBoundingClientRect().top + window.scrollY - 16;
                 window.scrollTo({ top: y, behavior: "smooth" });
               }
             }
@@ -1594,11 +1605,11 @@ if (window.google?.maps && document.getElementById("area-map")) {
     });
   </script>
  <style>
-  .area-browse-nav a.active {
+.area-browse-nav a.active {
     background: var(--accent-soft);
     color: var(--accent);
     border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-    border-radius: 999px;
+    border-radius: 6px;
     font-weight: 700;
   }
 
@@ -1621,14 +1632,12 @@ if (window.google?.maps && document.getElementById("area-map")) {
 
 .market-row { display: flex; flex-direction: column; gap: 12px; }
   .mi-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .mi-stat { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px 16px; }
-  .mi-stat-label { font-size: 11px; color: #888; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+.mi-stat { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 12px 16px; }  .mi-stat-label { font-size: 11px; color: #888; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
   .mi-stat-val { font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
   .mi-stat-sub { font-size: 11px; color: #aaa; margin: 0; }
   .mi-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .mi-bottom-row { display: flex; flex-direction: column; gap: 12px; }
-  .mi-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 1.25rem; }
-  .mi-card h2 { font-size: 16px; font-weight: 600; margin: 0.2rem 0 1rem; color: #1a1a1a; }
+.mi-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 1.25rem; }  .mi-card h2 { font-size: 16px; font-weight: 600; margin: 0.2rem 0 1rem; color: #1a1a1a; }
   .mi-donut-wrap { display: flex; align-items: center; gap: 1.5rem; }
   .mi-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
   .mi-legend-item { display: flex; align-items: center; gap: 8px; }
@@ -1647,8 +1656,7 @@ if (window.google?.maps && document.getElementById("area-map")) {
   .mi-price-count { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; }
   .mi-price-count-out { font-size: 12px; color: #999; width: 28px; text-align: right; flex-shrink: 0; }
   .mi-type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 0.75rem; }
-.mi-type-card { background: #f5f4f2; border-radius: 8px; padding: 12px 14px; transition: background 0.15s ease, border-color 0.15s ease; border: 0.5px solid transparent; }
-  .mi-type-card:hover { background: #fff; border-color: rgba(0,0,0,0.12); }  .mi-type-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; margin: 0 0 4px; }
+.mi-type-card { background: #f5f4f2; border-radius: 6px; padding: 12px 14px; transition: background 0.15s ease, border-color 0.15s ease; border: 0.5px solid transparent; }  .mi-type-card:hover { background: #fff; border-color: rgba(0,0,0,0.12); }  .mi-type-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #999; margin: 0 0 4px; }
   .mi-type-count { font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
   .mi-type-median { font-size: 11px; color: #888; margin: 0; }
   .mi-type-bar { height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; margin-top: 10px; overflow: hidden; }

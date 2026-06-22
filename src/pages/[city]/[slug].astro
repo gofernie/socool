@@ -6,6 +6,7 @@ import IntentModalController from "../../components/IntentModalController.astro"
 import SiteNav from "../../components/SiteNav.astro";
 import { getSite } from "../../lib/getSite";
 import "../../styles/intent-modal.css";
+import "../../styles/area-page.css";
 import "../../styles/page-hero.css";
 import RelatedIntentCards from "../../components/RelatedIntentCards.astro";
 import { getNavIntentPages } from "../../lib/getNavIntentPages";
@@ -387,22 +388,20 @@ else if (
 const priceDirectionLabels = page.price_max
   ? [
       "Show lower-priced options",
-      `Show up to ${formatPrice(Number(page.price_max) + 50000)}`,
       `Show up to ${formatPrice(Number(page.price_max) + 100000)}`,
       "Stay close to this budget",
     ]
   : [
       "Show lower-priced options",
       "Show mid-range options",
-      "Show premium options",
       "Show best value",
     ];
 
 const defaultFeatureDirectionsByType: Record<string, string[]> = {
-  condo: ["Better layout", "More modern", "Walkability", "Views"],
-  house: ["Better layout", "Larger yard", "Garage space", "Suite ready"],
-  townhouse: ["Better layout", "Garage space", "Outdoor space", "Better value"],
-  mobile: ["Better value", "Updated", "Parking", "Outdoor space"],
+  condo: ["More modern", "Walkability", "Better value"],
+  house: ["Larger yard", "Suite ready", "Better value"],
+  townhouse: ["Outdoor space", "Better value", "More modern"],
+  mobile: ["Better value", "Updated"],
 };
 
 const savedFeatureLabels = features.map((feature) =>
@@ -566,9 +565,9 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   )
 }
 
-<link rel="preconnect" href="https://fonts.googleapis.com" slot="head" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin slot="head" />
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" slot="head" />
+
+
+<link href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700&display=swap" rel="stylesheet" slot="head" />
 
   <style>
    :root {
@@ -693,12 +692,12 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
         margin-top: 40px;
       }
 
-      .stat-card {
-        background: rgba(253, 252, 250, 0.78);
-        border: 1px solid var(--line-warm);
-        border-radius: 20px;
-        padding: 22px 24px;
-        box-shadow: 0 10px 32px rgba(28, 25, 23, 0.06);
+    .stat-card {
+        background: #fff;
+        border: 0.5px solid rgba(0,0,0,0.1);
+        border-radius: 6px;
+        padding: 16px 18px;
+        box-shadow: none;
       }
 
       .stat-value {
@@ -750,10 +749,8 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   top: 58px;
   z-index: 40;
   width: 100%;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(28, 25, 23, 0.08);
+  background: #fff !important;
+  border-bottom: 1px solid rgba(28, 25, 23, 0.08) !important;
   box-shadow: 0 2px 12px rgba(28, 25, 23, 0.04);
 }
 
@@ -805,9 +802,9 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   height: 32px;
   min-height: 32px;
   flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
-  background: var(--surface);
+  border-radius: 6px;
+  border: 0.5px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, white);
   box-shadow: none;
 }
 
@@ -822,7 +819,7 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   height: 26px;
   min-height: 26px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 750;
   white-space: nowrap;
@@ -845,14 +842,6 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
   font-weight: 750;
   cursor: pointer;
   white-space: nowrap;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--ink) 50%),
-    linear-gradient(135deg, var(--ink) 50%, transparent 50%);
-  background-position:
-    calc(100% - 14px) 13px,
-    calc(100% - 9px) 13px;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
 }
 
 
@@ -950,14 +939,20 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
         color: #fff;
       }
 
-      .intent-map {
+   .intent-map {
         height: 62vh;
         min-height: 460px;
-        border: 1px solid var(--line);
-        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 6px;
         overflow: hidden;
         margin-bottom: 22px;
-                background: var(--accent-soft);
+        background: var(--accent-soft);
+        width: 100%;
+      }
+
+      .intent-map.refined-intent-map {
+        margin-top: 16px;
+        margin-bottom: 22px;
       }
 
     .grid {
@@ -993,8 +988,8 @@ body.is-map-mode .bottom-refine-cta {
   margin-top: 56px;
   padding: 48px;
   background: var(--surface);
-  border: 1px solid var(--line-warm);
-  border-radius: 24px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
 }
 
 .intent-guide-label {
@@ -1031,8 +1026,8 @@ body.is-map-mode .bottom-refine-cta {
   margin-top: 28px;
   padding: 36px;
   background: var(--surface);
-  border: 1px solid var(--line-warm);
-  border-radius: 20px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
 }
 
 .intent-faq h2 {
@@ -1070,16 +1065,16 @@ body.is-map-mode .bottom-refine-cta {
 
 
 
-  .card {
-         background: var(--surface);
-        border-radius: var(--radius-lg);
+.card {
+        background: var(--surface);
+        border-radius: 6px;
         overflow: hidden;
-        border: 1px solid var(--line-warm);
+        border: 1px solid rgba(0,0,0,0.1);
         color: inherit;
         display: block;
         cursor: pointer;
         transition: all 0.28s var(--ease);
-        box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+        box-shadow: none;
       }
 
       .card:hover {
@@ -1218,14 +1213,17 @@ body.is-map-mode .bottom-refine-cta {
   white-space: nowrap;
 }
 
-     .interrupt-card {
+.interrupt-card {
   grid-column: 1 / -1;
   margin: 12px 0 18px;
   background: var(--surface);
-  border: 1px solid var(--line-warm);
-  border-radius: 20px;
+  border-top: 0.5px solid rgba(0,0,0,0.1);
+  border-right: 0.5px solid rgba(0,0,0,0.1);
+  border-bottom: 0.5px solid rgba(0,0,0,0.1);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
   padding: 26px;
-  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.06);
+  box-shadow: none;
 }
 
 .interrupt-card::before {
@@ -1273,8 +1271,8 @@ body.is-map-mode .bottom-refine-cta {
 
 .interrupt-group-card {
   background: var(--surface-soft);
-  border: 1px solid var(--line-warm);
-  border-radius: 16px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
   padding: 14px;
   box-shadow: none;
 }
@@ -1562,7 +1560,7 @@ body.is-map-mode .bottom-refine-cta {
   gap: 18px;
   margin: 0 0 18px;
   padding: 18px 20px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: var(--accent);
   color: #fff;
 }
@@ -1595,8 +1593,8 @@ body.is-map-mode .bottom-refine-cta {
   grid-column: 1 / -1;
   margin: 0 0 24px;
   padding: clamp(24px, 4vw, 38px);
-  border-radius: 24px;
-    background: var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
   color: #fff;
 }
 
@@ -1700,8 +1698,8 @@ color: var(--accent) !important;
 .related-intent-card {
   display: block;
   padding: 20px;
-  border: 1px solid var(--line-warm);
-  border-radius: 18px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
   background: transparent;
   text-decoration: none;
 }
@@ -2339,21 +2337,39 @@ if (searchAreaGeojson?.coordinates?.[0]) {
   polygonPath.forEach((point) => bounds.extend(point));
 }
 
-        points.forEach(({ card, point }) => {
+     points.forEach(({ card, point }) => {
           const marker = new google.maps.Marker({
             position: point,
             map: googleMap,
             title: card.dataset.address || "Listing",
           });
 
-     const cardId = card.dataset.listingId || card.dataset.mls || card.dataset.cardId || card.dataset.itemId || "";
+          const cardId = card.dataset.listingId || card.dataset.mls || card.dataset.cardId || card.dataset.itemId || "";
+
+          let imgs = [];
+          try { imgs = JSON.parse(card.dataset.images || "[]").filter(Boolean); } catch {}
+          if (!imgs.length && card.dataset.image) imgs = [card.dataset.image];
+
+          const imgCount = imgs.length;
           const infoContent = `
-            <div style="width:220px;font-family:inherit;cursor:pointer;opacity:0;transform:translateY(6px) scale(0.97);transition:opacity 0.2s ease,transform 0.2s ease;" id="intent-map-info-${cardId}">
-              ${card.dataset.image ? `<img src="${card.dataset.image}" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px;" />` : ""}
-              <strong style="font-size:1rem;">${card.dataset.price || "Listing"}</strong><br>
-              <span style="font-size:0.82rem;color:#6b6560;">${card.dataset.address || ""}</span><br>
-              <span style="font-size:0.78rem;color:#9c9590;">${card.dataset.beds || "-"} bd · ${card.dataset.baths || "-"} ba${card.dataset.sqft ? ` · ${Number(card.dataset.sqft).toLocaleString()} sq ft` : ""}</span>
-              <div style="margin-top:8px;font-size:0.78rem;font-weight:700;color:#2f6f73;">View listing →</div>
+            <div style="width:220px;font-family:inherit;opacity:0;transform:translateY(6px) scale(0.97);transition:opacity 0.2s ease,transform 0.2s ease;" id="intent-map-info-${cardId}">
+              ${imgCount > 0 ? `
+              <div style="position:relative;width:220px;height:140px;overflow:hidden;border-radius:8px 8px 0 0;cursor:pointer;" id="intent-map-info-img-${cardId}">
+                <div id="intent-map-carousel-${cardId}" style="display:flex;width:${imgCount * 220}px;height:140px;transition:transform 0.25s ease;">
+                  ${imgs.map(src => `<img src="${src}" alt="" style="width:220px;height:140px;object-fit:cover;flex-shrink:0;" />`).join("")}
+                </div>
+                ${imgCount > 1 ? `
+                <button onclick="event.stopPropagation();var t=document.getElementById('intent-map-carousel-${cardId}');var cur=parseInt(t.dataset.idx||0);var next=Math.max(0,cur-1);t.style.transform='translateX(-'+(next*220)+'px)';t.dataset.idx=next;document.getElementById('intent-map-counter-${cardId}').textContent=(next+1)+' / ${imgCount}';" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;">&#8249;</button>
+                <button onclick="event.stopPropagation();var t=document.getElementById('intent-map-carousel-${cardId}');var cur=parseInt(t.dataset.idx||0);var next=Math.min(${imgCount-1},cur+1);t.style.transform='translateX(-'+(next*220)+'px)';t.dataset.idx=next;document.getElementById('intent-map-counter-${cardId}').textContent=(next+1)+' / ${imgCount}';" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.9);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;">&#8250;</button>
+                <div id="intent-map-counter-${cardId}" style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,0.45);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px;">1 / ${imgCount}</div>
+                ` : ""}
+              </div>` : ""}
+              <div style="padding:10px 12px 12px;cursor:pointer;" id="intent-map-info-text-${cardId}">
+                <strong style="font-size:0.95rem;display:block;margin-bottom:2px;">${card.dataset.price || "Listing"}</strong>
+                <span style="font-size:0.8rem;color:#6b6560;display:block;margin-bottom:2px;">${card.dataset.address || ""}</span>
+                <span style="font-size:0.76rem;color:#9c9590;display:block;margin-bottom:8px;">${card.dataset.beds || "-"} bd · ${card.dataset.baths || "-"} ba</span>
+                <div style="font-size:0.76rem;font-weight:700;color:#2f6f73;">View listing &#8594;</div>
+              </div>
             </div>`;
 
           let intentCloseTimer = null;
@@ -2386,17 +2402,20 @@ if (searchAreaGeojson?.coordinates?.[0]) {
                 el.style.opacity = "1";
                 el.style.transform = "translateY(0) scale(1)";
               });
-              el.addEventListener("click", () => card.click());
+              const textEl = document.getElementById(`intent-map-info-text-${cardId}`);
+              if (textEl) textEl.addEventListener("click", () => card.click());
+              const imgEl = document.getElementById(`intent-map-info-img-${cardId}`);
+              if (imgEl) imgEl.addEventListener("click", (e) => {
+                if (e.target.tagName === "BUTTON") return;
+                card.click();
+              });
               el.addEventListener("mouseenter", cancelIntentClose);
               el.addEventListener("mouseleave", scheduleIntentClose);
             });
           });
 
           marker.addListener("mouseout", scheduleIntentClose);
-
-          marker.addListener("click", () => {
-            card.click();
-          });
+          marker.addListener("click", () => { card.click(); });
 
           googleMarkers.push(marker);
           bounds.extend(point);
@@ -3651,6 +3670,15 @@ window.addEventListener("DOMContentLoaded", () => {
 }, 150);
 });
     </script>
-  
+  <script is:inline>
+  document.querySelectorAll(".intent-controls select").forEach(function(el) {
+    el.style.appearance = "none";
+    el.style.webkitAppearance = "none";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.backgroundPosition = "right 12px center";
+    el.style.backgroundSize = "10px 6px";
+    el.style.backgroundImage = "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSI2Ij48cGF0aCBkPSJNMCAwbDUgNiA1LTZ6IiBmaWxsPSIjOTk5Ii8+PC9zdmc+)";
+  });
+</script>
 </div>
 </Layout>

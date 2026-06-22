@@ -53,7 +53,8 @@ hero_image_url: clean(form.get("hero_image_url")) || null,
 nav_label: clean(form.get("nav_label")) || null,
 intro_copy: clean(form.get("intro_copy")),
       seo_heading: clean(form.get("seo_heading")) || null,
-      seo_title: clean(form.get("seo_title")),
+  seo_title: clean(form.get("seo_title")),
+      meta_description: clean(form.get("meta_description")) || null,
 default_sort: clean(form.get("default_sort")) || "newest",
 lifestyle_angle: clean(form.get("lifestyle_angle")) || "category",
       is_published: form.get("is_published") === "on",
@@ -104,8 +105,8 @@ const selectedFeatures = (page.intent_page_features || []).map(
 <html>
   <head>
     <title>Edit Intent Page</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
      *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
@@ -537,9 +538,22 @@ select {
           <input name="seo_heading" value={page.seo_heading || ""} placeholder="Same as hero heading if blank" />
         </div>
 
-        <div class="field">
+       <div class="field">
           <label>SEO title <span style="font-weight:400;color:var(--muted);">— browser tab</span></label>
           <input name="seo_title" value={page.seo_title || ""} />
+        </div>
+
+     <div class="field">
+          <label>Meta description <span style="font-weight:400;color:var(--muted);">— search snippet, 150–160 chars</span></label>
+          <textarea name="meta_description" id="meta_description" rows="3">{page.meta_description || ""}</textarea>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+            <span id="meta-char-count" style="font-size:0.82rem;color:var(--muted);">
+              {(page.meta_description || "").length} / 160
+            </span>
+            <button type="button" id="autofill-meta-btn" style="min-height:32px;padding:0 14px;font-size:0.82rem;">
+              Auto-fill
+            </button>
+          </div>
         </div>
 
         <div class="feature-section">
@@ -599,5 +613,43 @@ select {
       </form>
        </main>
   </div>
+  <script>
+  const metaField = document.getElementById("meta_description");
+  const charCount = document.getElementById("meta-char-count");
+  const autofillBtn = document.getElementById("autofill-meta-btn");
+
+  metaField?.addEventListener("input", () => {
+    const len = metaField.value.length;
+    charCount.textContent = `${len} / 160`;
+    charCount.style.color = len > 160 ? "#b42318" : len >= 140 ? "#b45309" : "var(--muted)";
+  });
+
+  autofillBtn?.addEventListener("click", () => {
+    const heading = document.querySelector("[name='hero_heading']")?.value || "";
+    const city = (document.querySelector("[name='city']")?.value || "Nanaimo")
+      .replace(/\b\w/g, c => c.toUpperCase());
+    const type = document.querySelector("[name='property_type']")?.value || "";
+    const priceMax = document.querySelector("[name='price_max']")?.value || "";
+    const priceMin = document.querySelector("[name='price_min']")?.value || "";
+
+    const typeLabel = type === "house" ? "homes" : type === "condo" ? "condos" :
+      type === "townhouse" ? "townhomes" : type === "land" ? "land" : "properties";
+
+    const priceLabel = priceMax
+      ? ` under $${Number(priceMax).toLocaleString()}`
+      : priceMin
+      ? ` over $${Number(priceMin).toLocaleString()}`
+      : "";
+
+    const text = `Browse active ${city} ${typeLabel}${priceLabel}. View MLS® listings with photos, maps, and pricing. React to listings and surface better matches.`;
+
+    if (metaField) {
+      metaField.value = text.slice(0, 160);
+      const len = metaField.value.length;
+      charCount.textContent = `${len} / 160`;
+      charCount.style.color = len > 160 ? "#b42318" : len >= 140 ? "#b45309" : "var(--muted)";
+    }
+  });
+</script>
 </body>
 </html>

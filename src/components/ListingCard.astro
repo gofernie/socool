@@ -2,9 +2,10 @@
 type Props = {
   listing: any;
   image: string;
+  priority?: boolean;
 };
 
-const { listing, image } = Astro.props;
+const { listing, image, priority = false } = Astro.props;
 const normalizeListingImageUrl = (value: any) => {
   if (!value) return "";
 
@@ -87,10 +88,13 @@ data-images={JSON.stringify(
   data-mls={listing.mls_number || ""}
 >
   <div class="card-image-wrap">
-    <img
-      src={image || "https://placehold.co/800x600?text=Listing"}
-      alt={address}
-    />
+       <img
+  src={image || "https://placehold.co/800x600?text=Listing"}
+  alt={address}
+  loading={priority ? "eager" : "lazy"}
+  fetchpriority={priority ? "high" : "auto"}
+  decoding="async"
+/>
   </div>
 
   <div class="card-body">
@@ -113,10 +117,10 @@ data-images={JSON.stringify(
 </article>
 
 <style>
-  .card {
+.card {
     position: relative;
     background: #fff;
-    border-radius: var(--radius-lg);
+    border-radius: 6px;
     overflow: hidden;
     border: 1px solid var(--line-warm);
     color: inherit;
@@ -212,19 +216,19 @@ data-images={JSON.stringify(
     display: none;
   }
 
-  .card-decision-badge.is-love {
-    background: rgba(255, 77, 0, 0.12);
-    color: #ff4d00;
+.card-decision-badge.is-love {
+    background: #ff3b30;
+    color: #fff;
   }
 
   .card-decision-badge.is-maybe {
-    background: rgba(24, 22, 20, 0.08);
-    color: rgba(24, 22, 20, 0.72);
+    background: #f59e0b;
+    color: #fff;
   }
 
   .card-decision-badge.is-pass {
     background: rgba(24, 22, 20, 0.08);
-    color: rgba(24, 22, 20, 0.42);
+    color: rgba(24, 22, 20, 0.56);
   }
 
   .price-row {

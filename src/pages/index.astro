@@ -395,6 +395,7 @@ try {
     };
   })
   .filter((card) => card.count > 0)
+  .sort((a, b) => b.count - a.count)
   .slice(0, 5);
 } catch {}
 
@@ -745,8 +746,8 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
     background: var(--bg);
   }
 
-  .intent-content-shell {
-    width: min(1400px, calc(100% - 80px));
+.intent-content-shell {
+    width: min(1400px, calc(100% - 32px));
     margin: 0 auto;
   }
 
@@ -790,20 +791,20 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .homepage-area-card {
   min-height: 130px;
   padding: 18px;
-  border-radius: 18px;
-  border: 1px solid var(--line-warm);
+  border-radius: 6px;
+  border: 0.5px solid rgba(0,0,0,0.1);
   background: #fff;
   color: inherit;
   text-decoration: none;
-  box-shadow: 0 2px 16px rgba(28,25,23,0.04);
+  box-shadow: none;
   transition: all 0.22s ease;
-    overflow-wrap: anywhere;
+  overflow-wrap: anywhere;
 }
 
 .homepage-area-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent-light);
-  box-shadow: 0 14px 34px rgba(28,25,23,0.08);
+  transform: translateY(-2px);
+  border-color: rgba(0,0,0,0.2);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.07);
 }
 
 .homepage-area-card strong {
@@ -830,21 +831,18 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .explore-toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-wrap: nowrap;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 26px;
 }
 
 .filter-form {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-wrap: nowrap;
+  gap: 10px;
+  flex-wrap: wrap;
   flex: 1;
-}
-
-.filter-select {
-  min-width: 140px;
+  min-width: 0;
 }
 
 .filter-clear {
@@ -866,9 +864,9 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .filter-clear {
   height: 34px;
   min-height: 34px;
-  padding: 0 15px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
+  padding: 0 32px 0 15px;
+  border-radius: 6px;
+  border: 0.5px solid rgba(0,0,0,0.12);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -902,6 +900,7 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .view-pill__btn:last-child {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+  border-left: none;
 }
 
 .view-pill__btn.active {
@@ -911,7 +910,11 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 }
 
 .filter-select {
-  min-width: 140px;
+  min-width: 0;
+  width: auto;
+  flex: 1 1 120px;
+  max-width: 180px;
+  padding-right: 34px;
 }
 
 .filter-clear {
@@ -927,8 +930,8 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   height: 44px;
   min-height: 44px;
   padding: 0 20px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
+  border-radius: 6px;
+  border: 0.5px solid rgba(0,0,0,0.12);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -961,11 +964,11 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .card {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
-  border: 1px solid var(--line-warm);
+  border-radius: 6px;
+  border: 0.5px solid rgba(0,0,0,0.1);
   background: #fff;
   cursor: pointer;
-  box-shadow: 0 2px 16px rgba(28, 25, 23, 0.04);
+  box-shadow: none;
 }
 
   .card-image-wrap {
@@ -1071,11 +1074,11 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   opacity: 0.65;
 }
 
-  .intent-map {
+.intent-map {
     height: 62vh;
     min-height: 460px;
-    border: 1px solid var(--line-warm);
-    border-radius: 20px;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
     overflow: hidden;
     margin-bottom: 22px;
     background: var(--accent-soft);
@@ -1085,8 +1088,8 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
     margin: 56px 0 70px;
     padding: 22px 26px;
     background: var(--surface);
-    border: 1px solid var(--line-warm);
-    border-radius: 18px;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 20px 24px;
@@ -1115,8 +1118,8 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
 .homepage-refine-chips button {
   min-height: 38px;
   padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line-warm);
+  border-radius: 6px;
+  border: 0.5px solid rgba(0,0,0,0.12);
   background: var(--surface);
   color: var(--ink);
   cursor: pointer;
@@ -1136,9 +1139,9 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
   width: fit-content;
   margin: 12px 0 14px;
   padding: 9px 14px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--accent-soft);
-  border: 1px solid var(--line-warm);
+  border: 0.5px solid rgba(0,0,0,0.1);
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 900;
@@ -1165,23 +1168,23 @@ let query = supabase.from("listing_rows").select("*").eq("status", "A").limit(16
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
     gap: 18px;
   }
-  .intent-card {
+ .intent-card {
   display: flex;
   flex-direction: column;
   min-height: 220px;
   padding: 22px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: #fff;
-  border: 1px solid var(--line-warm);
+  border: 0.5px solid rgba(0,0,0,0.1);
   color: inherit;
   text-decoration: none;
   transition: all 0.25s ease;
 }
 
 .intent-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent-light);
-  box-shadow: 0 14px 34px rgba(28,25,23,0.08);
+  transform: translateY(-2px);
+  border-color: rgba(0,0,0,0.2);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.07);
 }
 
 .intent-type {
@@ -1314,12 +1317,21 @@ const key = document.querySelector("[data-google-maps-api-key]")?.dataset.google
     return { lat, lng };
   }
 
-  async function initIntentGoogleMap() {
+async function initIntentGoogleMap() {
     if (!intentMapEl) return;
 
-     const mapListings = Array.isArray(window.currentHomeMapListings)
+    let mapListings = Array.isArray(window.currentHomeMapListings)
       ? window.currentHomeMapListings
       : [];
+
+    if (!mapListings.length) {
+      mapListings = Array.from(document.querySelectorAll(".grid .card")).map((card) => ({
+        lat: card.dataset.lat,
+        lng: card.dataset.lng,
+        price: card.dataset.price,
+        address: card.dataset.address,
+      })).filter((l) => l.lat && l.lng);
+    }
 
     const points = mapListings
       .map((listing) => ({
@@ -1797,6 +1809,16 @@ applySavedHomeDecisions();
 
 document.documentElement.style.visibility = "";
   })();
+</script>
+<script is:inline>
+  document.querySelectorAll(".filter-select").forEach(function(el) {
+    el.style.appearance = "none";
+    el.style.webkitAppearance = "none";
+    el.style.backgroundRepeat = "no-repeat";
+    el.style.backgroundPosition = "right 12px center";
+    el.style.backgroundSize = "10px 6px";
+    el.style.backgroundImage = "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSI2Ij48cGF0aCBkPSJNMCAwbDUgNiA1LTZ6IiBmaWxsPSIjOTk5Ii8+PC9zdmc+)";
+  });
 </script>
   </div>
 </Layout>

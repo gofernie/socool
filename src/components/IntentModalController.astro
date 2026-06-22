@@ -382,17 +382,19 @@ function getCardPhotoUrls(card) {
     rawImages = [];
   }
 
+const addSize = (url) => url && !url.includes("?") ? `${url}?class=medium` : url;
+
   const urls = rawImages
     .map((img) => {
-      if (typeof img === "string") return normalizePhotoUrl(img);
+      if (typeof img === "string") return normalizePhotoUrl(addSize(img));
 
-      return normalizePhotoUrl(
-        img.highRes ||
+      return normalizePhotoUrl(addSize(
         img.mediumRes ||
+        img.highRes ||
         img.lowRes ||
         img.url ||
         ""
-      );
+      ));
     })
     .filter(Boolean);
 
@@ -415,8 +417,10 @@ function preloadNearbyListingPhotos(currentCard) {
 
   preloadImages(urls);
 }
- function renderCard(card) {
+function renderCard(card) {
   sheet.classList.remove("is-engagement-mode");
+  if (chipAdvanceTimer) { clearTimeout(chipAdvanceTimer); chipAdvanceTimer = null; }
+  resetChipProgressBar();
           const cards = getCards();
           const index = cards.indexOf(card);
           const total = cards.length;
@@ -439,17 +443,19 @@ function preloadNearbyListingPhotos(currentCard) {
             rawImages = [];
           }
 
+        const addSize = (url) => url && !url.includes("?") ? `${url}?class=medium` : url;
+
           activePhotoUrls = rawImages
             .map((img) => {
-              if (typeof img === "string") return normalizePhotoUrl(img);
+              if (typeof img === "string") return normalizePhotoUrl(addSize(img));
 
-              return normalizePhotoUrl(
-                img.highRes ||
+              return normalizePhotoUrl(addSize(
                 img.mediumRes ||
+                img.highRes ||
                 img.lowRes ||
                 img.url ||
                 ""
-              );
+              ));
             })
             .filter(Boolean);
 
@@ -1850,7 +1856,7 @@ likeTagsEl?.addEventListener("click", (event) => {
   const nextBtn = document.getElementById("sheet-next-btn");
 
 cancelIdleAdvance();
-  if (chipAdvanceTimer) clearTimeout(chipAdvanceTimer);
+  if (chipAdvanceTimer) { clearTimeout(chipAdvanceTimer); chipAdvanceTimer = null; }
 
   resetChipProgressBar();
   startChipProgressBar();
@@ -1860,6 +1866,7 @@ chipAdvanceTimer = setTimeout(() => {
     setTimeout(() => {
       if (nextBtn) nextBtn.classList.remove("is-pulsing");
       chipAdvanceTimer = null;
+      resetChipProgressBar();
       goNext();
     }, 1000);
   }, 2500);

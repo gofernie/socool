@@ -425,30 +425,39 @@ const navIntentPages = await getNavIntentPages(supabase, city);
     <a
       class="area-pick-card"
 href={`/${city}/areas/${areaToSlug(area)}`}
-style={`--area-tint:${4 + (areaToSlug(area).length % 3)}%; --area-border:${16 + (areaToSlug(area).charCodeAt(0) % 4)}%;`}
+style={(() => {
+  const slug = areaToSlug(area);
+  let hash = 0;
+  for (let i = 0; i < slug.length; i++) hash = slug.charCodeAt(i) + ((hash << 5) - hash);
+  const tint = 6 + (Math.abs(hash) % 12);
+  const border = 14 + (Math.abs(hash >> 3) % 10);
+  return `--area-tint:${tint}%; --area-border:${border}%;`;
+})()}
     >
-      <strong>{labelize(area)}</strong>
+     <strong>{labelize(area)}</strong>
 
-      <div class="area-count">
-  {getAreaCardCount(area, count)} listings
-</div>
-
-{areaDescriptions[areaToSlug(area)] && (
-  <div class="area-highlights">
-    {areaDescriptions[areaToSlug(area)]
-      .split("•")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((tag) => (
-        <div class="area-highlight">
-          <span class="area-highlight-icon">{areaTagIcon(tag)}</span>
-          <span>{tag.trim()}</span>
+      <div class="area-pick-card-body">
+        <div class="area-count">
+          {getAreaCardCount(area, count)} listings
         </div>
-      ))}
-  </div>
-)}
 
-<span class="area-card-link">View area →</span>
+        {areaDescriptions[areaToSlug(area)] && (
+          <div class="area-highlights">
+            {areaDescriptions[areaToSlug(area)]
+              .split("•")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((tag) => (
+                <div class="area-highlight">
+                  <span class="area-highlight-icon">{areaTagIcon(tag)}</span>
+                  <span>{tag.trim()}</span>
+                </div>
+              ))}
+          </div>
+        )}
+
+        <span class="area-card-link">View area →</span>
+      </div>
     </a>
   ))}
 </div>
@@ -466,7 +475,7 @@ style={`--area-tint:${4 + (areaToSlug(area).length % 3)}%; --area-border:${16 + 
   </div>
 
   <div class="listing-grid">
-    {listings.map((listing) => (
+    {listings.map((listing, index) => (
       <div
         class="listing-card-wrap"
         data-type={listing.normalized_type || ""}
@@ -474,7 +483,11 @@ style={`--area-tint:${4 + (areaToSlug(area).length % 3)}%; --area-border:${16 + 
         data-beds={listing.beds || 0}
         data-listed={listing.listed_at || ""}
       >
-        <ListingCard listing={listing} image={getListingImage(listing)} />
+        <ListingCard
+  listing={listing}
+  image={getListingImage(listing)}
+  priority={index < 3}
+/>
       </div>
     ))}
   </div>
@@ -629,143 +642,334 @@ home searches.
 </Layout>
 
 <style>
+  /* ── Shell / layout ── */
+.shell {
+    width: min(1400px, calc(100% - 80px));
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  /* ── Area browse nav ── */
+  .area-browse-nav {
+    background: #fff;
+    border-bottom: 1px solid rgba(28,25,23,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .area-browse-nav__inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .area-browse-nav__inner::-webkit-scrollbar { display: none; }
+
+  .area-browse-nav__inner > span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+
+.area-browse-nav a {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 6px;
+    border: 0.5px solid rgba(28,25,23,0.12);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+
+  .area-browse-nav a:hover,
+  .area-browse-nav a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
 
   .area-browse-nav select {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid rgba(28, 25, 23, 0.22);
-  border-radius: 999px;
-  background: #fff;
-  color: #332f2b;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 7px 34px 7px 14px;
-  cursor: pointer;
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - 17px) 50%,
-    calc(100% - 12px) 50%;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-}
+    appearance: none;
+    border: 1px solid rgba(28,25,23,0.22);
+    border-radius: 6px;
+    background: #fff;
+    color: #332f2b;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 7px 34px 7px 14px;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
 
-.area-browse-nav select:hover {
-  border-color: var(--accent);
-}
+  /* ── Main shell spacing ── */
+  main.shell { padding-top: 40px; padding-bottom: 100px; }
 
-.area-browse-nav a.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  border-radius: 999px;
-}
+  /* ── Section heading ── */
+  .section-heading { margin-bottom: 28px; }
+  .section-heading .eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .section-heading h2 {
+    margin: 0 0 8px;
+    font-family: var(--f-display, Georgia, serif);
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    line-height: 1.0;
+    letter-spacing: -0.045em;
+    font-weight: 500;
+  }
+  .section-heading p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 560px;
+  }
+
+  /* ── Stats row ── */
+  .area-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+
+  .stat-card strong {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 4px;
+    letter-spacing: -0.03em;
+  }
+
+  .stat-card span {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Listings section ── */
+  .listings-section { margin-bottom: 54px; }
+
+  .listing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Market insights (mi-*) — matches area slug ── */
+  .market-row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 54px; }
+
+  .mi-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mi-stat { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px 16px; }
+  .mi-stat-label { font-size: 11px; color: #888; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .mi-stat-val { font-size: 24px; font-weight: 700; color: #1a1a1a; margin: 0 0 2px; }
+  .mi-stat-sub { font-size: 11px; color: #aaa; margin: 0; }
+
+  .mi-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mi-bottom-row { display: flex; flex-direction: column; gap: 12px; }
+
+  .mi-card {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+
+  .mi-card .eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .mi-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: #1a1a1a;
+  }
+
+  /* ── Area card grid (Browse by Area) ── */
+  .content-card { padding: 0 0 54px; }
+
+  .area-picker { padding-top: 0; }
+  .area-picker .section-heading { max-width: 720px; margin-bottom: 22px; }
+
+  .area-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+.area-pick-card {
+    display: grid;
+    gap: 0;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--accent) calc(14% + var(--area-border, 0%) / 5), transparent);
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+
+.area-pick-card strong {
+    display: block;
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--accent) 28%, white);
+    font-family: var(--f-display, Georgia, serif);
+    font-size: 1.15rem;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--accent) 80%, #1a1a1a);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .area-pick-card:hover strong {
+    background: color-mix(in srgb, var(--accent) 26%, white);
+  }
+
+  .area-pick-card-body {
+    padding: 14px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .area-pick-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+    box-shadow: 0 14px 30px rgba(28,25,23,0.08);
+  }
+
+  .area-pick-card strong {
+    font-family: var(--f-display, Georgia, serif);
+    font-size: 1.2rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .area-count {
+    color: var(--accent);
+    font-weight: 800;
+    font-size: .9rem;
+  }
+
+  .area-highlights {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+    min-height: 52px;
+  }
+
+  .area-highlight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: #5d6866;
+    font-weight: 600;
+  }
+
+  .area-highlight-icon { font-size: 1rem; width: 18px; text-align: center; }
+
+  .area-card-link {
+    margin-top: 8px;
+    color: var(--accent);
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  /* ── Charts ── */
+  .chart-card {
+    background: #fff;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .chart-card .eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .chart-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #1a1a1a;
+  }
 
   .chart-wrap {
-  position: relative;
-  height: 280px;
-  min-height: 280px;
-}
-
-.chart-wrap canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-  /* ── Page-specific styles only — shared tokens come from Layout + area-page.css ── */
-
-  /* Stats: 6-col on this page (area-page.css defaults to 6 already, matches) */
-
-  /* Charts side-by-side (market-row already handles this in area-page.css) */
-
-  /* Listings section spacing */
-  .listings-section {
-    margin-bottom: 54px;
+    position: relative;
+    height: 220px;
+    min-height: 220px;
   }
 
-  /* Content cards */
-  .content-card {
-    padding: 34px 0 46px;
-    border-top: 1px solid var(--line);
+  .chart-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
   }
 
-  .content-card h2 {
-    font-family: var(--f-display);
-    font-size: clamp(2.2rem, 4vw, 3.2rem);
-    line-height: 0.98;
-    letter-spacing: -0.06em;
-    font-weight: 500;
-    margin-bottom: 20px;
-  }
+  /* ── Intent interrupter ── */
+  .intent-interrupter { margin: 0 0 54px; }
 
-  .content-card ul {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-    list-style: none;
-    margin-top: 18px;
-  }
-
-  .content-card li a {
-    display: block;
-    padding: 18px;
-    border-radius: 16px;
-    background: var(--card-bg);
-    border: 1px solid var(--line-warm);
-    font-weight: 700;
-    transition: all 0.2s var(--ease);
-  }
-
-  .content-card li a:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent-light);
-    box-shadow: 0 12px 28px rgba(28, 25, 23, 0.08);
-  }
-
-  /* Area table */
-  .area-table {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 18px;
-  }
-
-  .area-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 15px 18px;
-    border-radius: 12px;
-    background: var(--card-bg);
-    border: 1px solid var(--line-warm);
-    color: inherit;
-    font-weight: 700;
-    text-decoration: none;
-    transition: all 0.2s var(--ease);
-  }
-
-  .area-row:hover {
-    transform: translateY(-2px);
-    border-color: var(--accent-light);
-    box-shadow: 0 12px 28px rgba(28, 25, 23, 0.08);
-  }
-
-  /* Intent interrupter */
-  .intent-interrupter {
-    margin: 20px 0 54px;
-  }
-
-  .intent-interrupter__inner {
+ .intent-interrupter__inner {
     padding: 48px;
-    border-radius: 28px;
+    border-radius: 10px;
     background: #181614;
-    color: #ffffff;
+    color: #fff;
   }
 
   .intent-interrupter h2 {
     margin: 0 0 12px;
-    font-family: var(--f-display);
+    font-family: var(--f-display, Georgia, serif);
     font-size: clamp(2.4rem, 4vw, 4rem);
     line-height: 0.95;
     letter-spacing: -0.06em;
@@ -776,7 +980,7 @@ home searches.
   .intent-interrupter p {
     max-width: 620px;
     margin-bottom: 30px;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(255,255,255,0.72);
   }
 
   .intent-grid {
@@ -785,147 +989,89 @@ home searches.
     gap: 16px;
   }
 
-  .intent-tile {
+.intent-tile {
     display: block;
     padding: 22px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
     text-decoration: none;
     transition: all 0.2s ease;
   }
 
   .intent-tile:hover {
     transform: translateY(-3px);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255,255,255,0.1);
   }
 
-  .intent-tile strong {
+  .intent-tile strong { display: block; margin-bottom: 8px; font-size: 1rem; color: #fff; }
+  .intent-tile span { display: block; color: rgba(255,255,255,0.68); font-size: 0.9rem; line-height: 1.5; }
+
+  /* ── Popular searches ── */
+  .content-card h2 {
+    font-family: var(--f-display, Georgia, serif);
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    line-height: 0.98;
+    letter-spacing: -0.05em;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  .content-card ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    list-style: none;
+    margin-top: 18px;
+    padding: 0;
+  }
+
+.content-card li a {
     display: block;
-    margin-bottom: 8px;
-    font-size: 1rem;
-    color: #fff;
+    padding: 18px;
+    border-radius: 6px;
+    background: #fff;
+    border: 1px solid rgba(28,25,23,0.1);
+    font-weight: 700;
+    color: var(--ink);
+    text-decoration: none;
+    transition: all 0.2s ease;
   }
 
-  .intent-tile span {
-    display: block;
-    color: rgba(255, 255, 255, 0.68);
-    font-size: 0.9rem;
-    line-height: 1.5;
+  .content-card li a:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-light);
+    box-shadow: 0 12px 28px rgba(28,25,23,0.08);
   }
 
-  @media (max-width: 640px) {
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .area-stats { grid-template-columns: repeat(3, 1fr); }
+    .listing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .area-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 760px) {
+    .area-stats { grid-template-columns: repeat(2, 1fr); }
+    .listing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .area-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mi-top { grid-template-columns: 1fr; }
     .intent-grid { grid-template-columns: 1fr; }
     .intent-interrupter__inner { padding: 28px; }
-    .area-table { grid-template-columns: 1fr; }
+    .mi-stats-row { grid-template-columns: 1fr; }
   }
 
-  .area-picker {
-  padding-top: 10px;
-}
-
-.area-picker .section-heading {
-  max-width: 720px;
-  margin-bottom: 22px;
-}
-
-.area-card-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.area-pick-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--accent) calc(14% + var(--area-border, 0%) / 5), transparent);
-background: color-mix(in srgb, var(--accent) calc(5% + var(--area-tint, 0%) / 2.5), white);
-  color: inherit;
-  text-decoration: none;
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
-
-.area-pick-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
-  box-shadow: 0 14px 30px rgba(28, 25, 23, 0.08);
-}
-
-.area-highlights {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-  min-height: 52px;
-}
-
-.area-highlight {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.88rem;
-  color: #5d6866;
-  font-weight: 600;
-}
-
-.area-highlight-icon {
-  font-size: 1rem;
-  width: 18px;
-  text-align: center;
-}
-
-.area-card-link {
-  margin-top: 8px;
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 850;
-}
-
-.area-pick-card strong {
-  font-family: var(--f-display);
-  font-size: 1.2rem;
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-
-.area-count {
-  color: var(--accent);
-  font-weight: 800;
-  font-size: .9rem;
-}
-
-.area-pick-card small {
-  color: var(--muted);
-  font-size: .78rem;
-  line-height: 1.3;
-}
-
-.area-pick-card:hover {
-  transform: translateY(-2px);
-  border-color: hsl(var(--area-hue) 45% 62%);
-  background: hsl(var(--area-hue) 65% 94%);
-  box-shadow: 0 12px 26px rgba(28, 25, 23, 0.08);
-}
-
-.area-pick-card::after {
-  display: none;
-}
-
-#browse-by-area {
-  scroll-margin-top: 120px;
-}
-
-@media (min-width: 760px) {
-  .area-card-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  @media (max-width: 500px) {
+    .area-stats { grid-template-columns: 1fr; }
+    .listing-grid { grid-template-columns: 1fr; }
+    .area-card-grid { grid-template-columns: 1fr; }
   }
-}
 
-@media (min-width: 1100px) {
-  .area-card-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  @media (min-width: 760px) {
+    .area-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
-}
+
+  @media (min-width: 1100px) {
+    .area-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
 </style>

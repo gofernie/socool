@@ -14,8 +14,8 @@ const { title, accentColor = "#2f6f73", city = "nanaimo" } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <meta name="generator" content={Astro.generator} />
-   <title>{title ?? "Astro Basics"}</title>
-
+<title>{title ?? "Astro Basics"}</title>
+    <slot name="head" />
   </head>
 
 <body data-google-maps-api-key={import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || ""}>

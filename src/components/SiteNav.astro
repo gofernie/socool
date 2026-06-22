@@ -46,10 +46,11 @@ const TYPE_PAGE_MAP: Record<string, string> = {
 };
 
 const typeLinks: NavItem[] = [
-  { label: "House", href: `/${slugify(city)}-real-estate-market?type=house` },
-  { label: "Condo", href: `/${slugify(city)}-real-estate-market?type=condo` },
-  { label: "Townhouse", href: `/${slugify(city)}-real-estate-market?type=townhouse` },
-  { label: "Land", href: `/${slugify(city)}-real-estate-market?type=land` },
+  { label: "Homes", href: `/${slugify(city)}/${slugify(city)}-homes` },
+  { label: "Condos", href: `/${slugify(city)}/${slugify(city)}-condos` },
+  { label: "Townhomes", href: `/${slugify(city)}/${slugify(city)}-townhomes` },
+  { label: "Mobile Homes", href: `/${slugify(city)}/${slugify(city)}-mobile-homes` },
+  { label: "Lot / Land", href: `/${slugify(city)}/${slugify(city)}-land` },
 ];
 
 const cleanAreaLabel = (value: string) =>
@@ -79,7 +80,22 @@ const intentLinks: NavItem[] = intentPages.slice(0, 6).map((page: any) => ({
   href: `/${slugify(city)}/${page.slug}`,
 }));
 
-const finalNavLinks: NavItem[] = intentLinks.length > 0 ? intentLinks : typeLinks;
+const navIntentLinks: NavItem[] = intentPages
+  .filter((p: any) => p.show_in_nav)
+  .slice(0, 6)
+  .map((page: any) => ({
+    label:
+      page.nav_label ||
+      page.card_title ||
+      page.hero_heading ||
+      page.seo_heading ||
+      page.slug
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (char: string) => char.toUpperCase()),
+    href: `/${slugify(city)}/${page.slug}`,
+  }));
+
+const finalNavLinks: NavItem[] = navIntentLinks.length ? navIntentLinks : typeLinks;
 ---
 
 <nav class="site-nav">
