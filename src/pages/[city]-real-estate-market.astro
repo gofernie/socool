@@ -361,7 +361,7 @@ const navIntentPages = await getNavIntentPages(supabase, city);
 <Layout title={`${cityLabel} Real Estate Market Report`} accentColor={accentColor} city={city}>
  
   
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 <SiteNav
   city={city}
@@ -373,7 +373,7 @@ const navIntentPages = await getNavIntentPages(supabase, city);
   <!-- ── Hero ── -->
  <header
   class="page-hero"
-  style={`--hero-image: url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1800&q=80')`}
+  style={`--hero-image: url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=70')`}
 >
   <div class="page-hero__inner">
     <p class="page-hero__eyebrow">{cityLabel} Market Report</p>
@@ -787,6 +787,7 @@ home searches.
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
+   
   }
 
   /* ── Market insights (mi-*) — matches area slug ── */
@@ -1043,7 +1044,9 @@ home searches.
     border-color: var(--accent-light);
     box-shadow: 0 12px 28px rgba(28,25,23,0.08);
   }
-
+.listing-grid {
+  margin-bottom: 32px;
+}
   /* ── Responsive ── */
   @media (max-width: 1100px) {
     .area-stats { grid-template-columns: repeat(3, 1fr); }

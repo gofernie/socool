@@ -1179,45 +1179,33 @@ function showIntentSummaryCard() {
 
   hasShownIntentSummary = true;
 
- const generatedChips = Array.from(
-  document.querySelectorAll(
-    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-  )
-)
-    .map((chip) => chip.textContent.trim())
-    .filter(Boolean)
-    .slice(0, 4);
-
-  const chipHtml = generatedChips.length
-    ? generatedChips
-        .map((label) => `<span class="modal-intent-chip">${label}</span>`)
-        .join("")
-    : `
-      <span class="modal-intent-chip">Better matches</span>
-      <span class="modal-intent-chip">More homes like these</span>
-    `;
-
-sheetContent.classList.remove("open");
+  sheetContent.classList.remove("open");
   sheetSummary.removeAttribute("hidden");
   sheetSummary.classList.add("open");
   sheet.querySelector(".panel__view")?.scrollTo({ top: 0, behavior: "instant" });
   sheet.scrollTo({ top: 0, behavior: "instant" });
 
-const positiveCards = Array.from(document.querySelectorAll(".original-card"))
-  .filter((c) => c.dataset.decision === "love" || c.dataset.decision === "maybe")
-  .sort((a, b) => {
-    const score = (card) => card.dataset.decision === "love" ? 2 : 1;
-    return score(b) - score(a);
-  })
-  .slice(0, 4);
+  const positiveCards = Array.from(document.querySelectorAll(".original-card"))
+    .filter((c) => c.dataset.decision === "love" || c.dataset.decision === "maybe")
+    .sort((a, b) => {
+      const score = (card) => card.dataset.decision === "love" ? 2 : 1;
+      return score(b) - score(a);
+    });
 
-  const likedTagLabels = Array.from(
-    document.querySelectorAll("#preview-sheet .intent-like-tag.active")
-  ).map((btn) => btn.textContent.trim()).filter(Boolean);
+  const displayCards = positiveCards.slice(0, 4);
 
-  const thumbsHtml = positiveCards.length ? `
-    <div style="display:grid;grid-template-columns:repeat(${positiveCards.length},1fr);gap:8px;margin:0 0 20px;">
-      ${positiveCards.map((c) => `
+  const prices = positiveCards
+    .map((c) => Number(String(c.dataset.price || "").replace(/[^\d]/g, "")))
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+
+  const medianPrice = prices.length
+    ? Math.round(prices[Math.floor(prices.length / 2)] / 1000) * 1000
+    : null;
+
+  const thumbsHtml = displayCards.length ? `
+    <div style="display:grid;grid-template-columns:repeat(${displayCards.length},1fr);gap:8px;margin:0 0 20px;">
+      ${displayCards.map((c) => `
         <div style="border-radius:12px;overflow:hidden;aspect-ratio:4/3;background:#eee;">
           <img src="${c.dataset.image || ""}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
         </div>
@@ -1225,131 +1213,82 @@ const positiveCards = Array.from(document.querySelectorAll(".original-card"))
     </div>
   ` : "";
 
-  const featureHtml = likedTagLabels.length ? `
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;">
-      ${likedTagLabels.map((t) => `<span style="padding:6px 12px;border-radius:999px;background:#f3eadc;color:#6f4f1f;font-size:0.78rem;font-weight:800;border:1px solid #d6b57a;">+ ${t}</span>`).join("")}
+  sheetSummary.innerHTML = `
+    <div class="modal-intent-summary modal-intent-summary--polished">
+      <div class="modal-intent-kicker">Help me narrow this down</div>
+
+      <h2>You’re starting to show a pattern.</h2>
+
+      ${thumbsHtml}
+
+      <p>
+        Based on what you've liked so far, I can show more homes
+        in similar areas and around ${
+          medianPrice
+            ? "$" + medianPrice.toLocaleString()
+            : "the same price range"
+        }.
+      </p>
+
+      <div class="modal-intent-actions">
+        <button type="button" class="modal-intent-primary" id="summary-refine-btn">
+          Show similar homes
+        </button>
+
+        <button type="button" class="modal-intent-secondary" id="summary-cheaper-btn">
+          Show cheaper options
+        </button>
+
+        <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
+          Keep browsing newest
+        </button>
+      </div>
     </div>
-  ` : "";
+  `;
 
- sheetSummary.innerHTML = `
-  <div class="modal-intent-summary modal-intent-summary--polished">
-    <div class="modal-intent-kicker">Your preferences are becoming clearer</div>
+  document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
+    event.currentTarget.classList.add("is-selected");
+    showRefiningState(["Similar area", "Similar price", "Same property type"]);
 
-    <h2>Want better matches like these?</h2>
+    setTimeout(async () => {
+      closeSheet({ force: true });
 
-    ${thumbsHtml}
+      if (typeof window.runIntentRefine === "function") {
+        const chip = document.createElement("button");
+chip.type = "button";
+chip.className = "refine-chip generated-refine-chip";
+chip.textContent = "Show similar homes";
 
-    <p>
-      You reacted positively to ${positiveCards.length || "a few"} home${positiveCards.length !== 1 ? "s" : ""}.
-      We can refine the next batch around what you seem drawn to.
-    </p>
-
-    ${featureHtml}
-
-    <p class="modal-intent-save-copy">
-      Your preferences can be saved privately so your next batch keeps improving.
-    </p>
-
-    <div class="modal-intent-actions">
-      <button type="button" class="modal-intent-primary" id="summary-refine-btn">
-        Show better matches
-      </button>
-      <button type="button" class="modal-intent-secondary" id="summary-nearby-btn">
-        Compare nearby areas
-      </button>
-      <button type="button" class="modal-intent-secondary" id="summary-keep-browsing-btn">
-        Keep browsing
-      </button>
-    </div>
-  </div>
-`;
-
-document.getElementById("summary-refine-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");  const generatedChips = Array.from(
-    document.querySelectorAll(
-      ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-    )
-  )
-    .map((chip) => chip.textContent.trim())
-    .filter(Boolean)
-    .slice(0, 4);
-
-  showRefiningState(generatedChips);
-
- const generatedAreaLabels = Array.from(
-  document.querySelectorAll(
-    ".interrupt-groups > div:nth-child(2) .generated-refine-chip"
-  )
-)
-  .map((chip) => chip.textContent.trim())
-  .filter((label) => /^stay in /i.test(label));
-
-const preferredAreas = generatedAreaLabels
-  .map((label) => label.replace(/^stay in /i, "").trim())
-  .filter(Boolean);
-
-const combinedAreaChip = document.createElement("button");
-combinedAreaChip.type = "button";
-combinedAreaChip.className = "refine-chip generated-refine-chip";
-combinedAreaChip.textContent = generatedAreaLabels[0] || "Show better matches";
-
-setTimeout(async () => {
-  closeSheet({ force: true });
-
-  let attempts = 0;
-
-  while (
-    typeof window.runIntentRefine !== "function" &&
-    attempts < 30
-  ) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    attempts++;
-  }
-
-  if (typeof window.runIntentRefine === "function") {
-    await window.runIntentRefine(combinedAreaChip, {
-      openFirstResult: true,
-    });
-  } else {
-    console.error(
-      "runIntentRefine never became available",
-      typeof window.runIntentRefine
-    );
-    return;
-  }
-
-  const refinedAnchor =
-    document.getElementById("refined-results") ||
-    document.getElementById("refined-results-anchor");
-
-  refinedAnchor?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
+await window.runIntentRefine(chip, { openFirstResult: true });
+      }
+    }, 900);
   });
-}, 2200);
-});
-document.getElementById("summary-nearby-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");  showRefiningState(["Compare nearby areas"]);
 
-  const nearbyChip = document.createElement("button");
-  nearbyChip.type = "button";
-  nearbyChip.className = "refine-chip generated-refine-chip";
-  nearbyChip.textContent = "Compare nearby areas";
+  document.getElementById("summary-cheaper-btn")?.addEventListener("click", (event) => {
+    event.currentTarget.classList.add("is-selected");
+    showRefiningState(["Cheaper options", "Similar area", "Same property type"]);
 
-  setTimeout(() => {
-    closeSheet();
+    setTimeout(async () => {
+      closeSheet({ force: true });
 
-    runIntentRefine(nearbyChip, { openFirstResult: true });
-  }, 1600);
-});
+      if (typeof window.runIntentRefine === "function") {
+        const chip = document.createElement("button");
+chip.type = "button";
+chip.className = "refine-chip generated-refine-chip";
+chip.textContent = "Show cheaper options";
 
-document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", (event) => {
-  event.currentTarget.classList.add("is-selected");    sheetSummary.classList.remove("open");
+await window.runIntentRefine(chip, { openFirstResult: true });
+      }
+    }, 900);
+  });
+
+  document.getElementById("summary-keep-browsing-btn")?.addEventListener("click", (event) => {
+    event.currentTarget.classList.add("is-selected");
+    sheetSummary.classList.remove("open");
     sheetContent.classList.add("open");
     goNext();
   });
 }
-
 function showEndOfListCTA() {
   if (!sheetContent || !sheetSummary) return;
 

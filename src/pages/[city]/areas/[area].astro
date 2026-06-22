@@ -54,17 +54,17 @@ const areaAliases =
     : [area];
 
 const areaHeroImages = {
-"university district": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1800&q=80",  "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80",
-  "departure bay": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80",
-  "hammond bay": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1800&q=80",
-  "old city": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1800&q=80",
-  "central nanaimo": "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1800&q=80",
-  "south nanaimo": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1800&q=80",
-  "cedar": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1800&q=80",
+"university district": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=70",  "north nanaimo": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=70",
+  "departure bay": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=70",
+  "hammond bay": "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=70",
+  "old city": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=70",
+  "central nanaimo": "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=70",
+  "south nanaimo": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=70",
+  "cedar": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=70",
 };
 
 const fallbackHeroImage =
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80";
+  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=70";
 const areaContent = {
   "brechin hill": {
     heroIntro: "Brechin Hill is a central Nanaimo neighbourhood known for harbour access, condo options, character homes, marina proximity, and quick connections to downtown and Departure Bay.",
@@ -531,6 +531,8 @@ const listings = polygon
       )
     );
 
+const initialListings = listings;
+
 const normalizeListingImageUrl = (value) => {
   if (!value) return "";
   const raw = typeof value === "string"
@@ -646,11 +648,7 @@ const chartData = {
   
   <link rel="preload" as="style" href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional" onload="this.onload=null;this.rel='stylesheet'" slot="head" />
   <noscript slot="head"><link rel="stylesheet" href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional" /></noscript>
-  <link
-    href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
-    rel="stylesheet"
-    slot="head"
-  />
+  
 
 <script is:inline slot="head">
     if (sessionStorage.getItem("area_page_scroll_y")) {
@@ -659,13 +657,9 @@ const chartData = {
     }
   </script>
 
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js" slot="head"></script>
 
- <script
-  is:inline
-  src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&loading=async`}
-  slot="head"
-></script>
+
+
 
 
 <SiteNav city={city} areas={areas} intentPages={intentPages} showAreaNav={false} /><header class="page-hero" style={`--hero-image: url('${heroImage}')`}>
@@ -682,6 +676,8 @@ const chartData = {
     </div>
   </div>
 </header>
+
+ <div style="height:60px;background:linear-gradient(to bottom, rgba(0,0,0,0.10), transparent);margin-bottom:-60px;pointer-events:none;"></div>
 
  <nav class="area-browse-nav">
     <div class="shell area-browse-nav__inner">
@@ -791,15 +787,14 @@ const chartData = {
         <option value="3">3+ beds</option>
         <option value="4">4+ beds</option>
       </select>
-      <div class="filter-count">
-        <span id="visible-count">{listings.length}</span> homes showing
-      </div>
+     
     </section>
-<div id="area-listing-map" class="area-listing-map" hidden></div>
-    <div class="listing-grid" id="area-listings">
-      {listings.map((listing, index) => (
-        <div
-          class:list={["listing-card-wrap", index >= 8 && "is-extra-listing"]}
+<h2 id="listing-count-heading" style="font-size:1rem;font-weight:700;color:#555;margin:0 0 14px;font-family:var(--f-body);">Showing {listings.length} homes</h2><div id="area-listing-map" class="area-listing-map" hidden></div>
+
+<div class="listing-grid" id="area-listings">
+      {initialListings.map((listing, index) => (
+     <div
+          class="listing-card-wrap"
           data-type={listing.normalized_type || ""}
           data-price={listing.price || 0}
           data-beds={listing.beds || 0}
@@ -816,11 +811,7 @@ const chartData = {
       ))}
     </div>
 
-    <div class="view-all-wrap">
-      <button class="view-all-btn" id="show-all-listings" type="button">
-        Show all {listings.length} listings
-      </button>
-    </div>
+   
 
     
 
@@ -869,7 +860,7 @@ const chartData = {
           <h2>{labelize(area)} at a glance</h2>
           <ul class="mi-points">
             <li class="mi-point">
-              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              <span class="mi-point-icon" aria-hidden="true">✓</span>
               {dominantType === "houses"
                 ? `Houses dominate at ${housePercent}% — condo and townhome buyers may need to look nearby.`
                 : dominantType === "condos"
@@ -877,23 +868,23 @@ const chartData = {
                   : `Inventory is balanced across types — useful for buyers comparing property styles.`}
             </li>
             <li class="mi-point">
-              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              <span class="mi-point-icon" aria-hidden="true">✓</span>
               {"Median of $" + medianPrice.toLocaleString() + " puts most inventory in the " + (medianPrice < 500000 ? "under-$500k" : medianPrice < 750000 ? "$500k–$750k" : medianPrice < 1000000 ? "$750k–$1M" : medianPrice < 1500000 ? "$1M–$1.5M" : "$1.5M+") + " range."}
             </li>
             {highEndCount > 0 && (
               <li class="mi-point">
-                <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+                <span class="mi-point-icon" aria-hidden="true">✓</span>
                 {highEndCount} listing{highEndCount > 1 ? "s" : ""} over $1.5M — likely acreages, premium lots, or larger detached homes.
               </li>
             )}
             {underHalfMilCount > 0 && (
               <li class="mi-point">
-                <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+                <span class="mi-point-icon" aria-hidden="true">✓</span>
                 {underHalfMilCount} listing{underHalfMilCount > 1 ? "s" : ""} under $500k — check condition, size, and suite potential carefully.
               </li>
             )}
             <li class="mi-point">
-              <i class="ti ti-circle-check mi-point-icon" aria-hidden="true"></i>
+              <span class="mi-point-icon" aria-hidden="true">✓</span>
               Compare condition, layout, lot size, suite potential, and strata costs before judging value.
             </li>
           </ul>
@@ -1068,8 +1059,7 @@ const chartData = {
       const bedsFilter = document.getElementById("beds-filter");
       const visibleCount = document.getElementById("visible-count");
       const grid = document.querySelector(".listing-grid");
-      const showAllButton = document.getElementById("show-all-listings");
-      let showingAllListings = false;
+    
 
       document.querySelectorAll(".listing-card-wrap").forEach((wrap) => {
         const card = wrap.querySelector("[data-card-id], [data-listing-id], .card");
@@ -1114,25 +1104,27 @@ const chartData = {
             (priceRange === "1000-plus" && price >= 1000000);
           const matchesBeds = bedsMin === "all" || beds >= Number(bedsMin);
           const matchesFilters = matchesType && matchesPrice && matchesBeds;
-          const isExtraListing = card.classList.contains("is-extra-listing");
-          const hasActiveFilters = type !== "all" || priceRange !== "all" || bedsMin !== "all";
-          const show = matchesFilters && (showingAllListings || hasActiveFilters || !isExtraListing);
+        const show = matchesFilters;
           card.hidden = !show;
           if (matchesFilters) count += 1;
         });
 
-if (visibleCount) visibleCount.textContent = String(count);
-
-if (showAllButton) {
-  const hasActiveFilters =
-    type !== "all" ||
-    priceRange !== "all" ||
-    bedsMin !== "all";
-
-  showAllButton.hidden =
-    hasActiveFilters ||
-    showingAllListings;
+const heading = document.getElementById("listing-count-heading");
+if (heading) {
+  const t = typeFilter?.value || "all";
+  const p = priceFilter?.value || "all";
+  const b = bedsFilter?.value || "all";
+  const typeLabel = t === "house" ? "houses" : t === "condo" ? "condos" : t === "townhouse" ? "townhomes" : "homes";
+  const priceLabel = p === "under-500" ? " under $500k" : p === "500-750" ? " $500k–$750k" : p === "750-1000" ? " $750k–$1M" : p === "1000-plus" ? " over $1M" : "";
+  const bedsLabel = b !== "all" ? `, ${b}+ beds` : "";
+  const areaEl = document.getElementById("area-filter");
+  const areaLabel = areaEl?.options[0]?.text?.replace("Current area: ", "") || "";
+  const pricePart = priceLabel ? ` ·${priceLabel}` : "";
+  const bedsPart = bedsLabel ? ` ·${bedsLabel}` : "";
+  heading.textContent = `${count} ${typeLabel} in ${areaLabel}${pricePart}${bedsPart}`;
 }
+
+
 
 if (areaGoogleMap && areaListingMap && !areaListingMap.hidden) {
   updateAreaMapMarkers();
@@ -1176,12 +1168,7 @@ areaFilter?.addEventListener("change", () => {
       priceFilter?.addEventListener("change", applyFilters);
       bedsFilter?.addEventListener("change", applyFilters);
 
-      showAllButton?.addEventListener("click", () => {
-        showingAllListings = true;
-        showAllButton.hidden = true;
-        applyFilters();
-        document.querySelector("#area-listings")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      
 
 document.querySelectorAll("[data-filter-type]").forEach((card) => {
         card.addEventListener("click", (e) => {
@@ -1192,20 +1179,11 @@ document.querySelectorAll("[data-filter-type]").forEach((card) => {
             typeFilter.value = type;
             if (priceFilter) priceFilter.value = "all";
             if (bedsFilter) bedsFilter.value = "all";
-            applyFilters();
-  const isStatCard = card.classList.contains("stat-card-link");
-            if (window.innerWidth < 1024 && !isStatCard) {
-              const target = document.querySelector(".filter-bar") || document.querySelector("#area-listings");
-              if (target) {
-                const y = target.getBoundingClientRect().top + window.scrollY - 16;
-                window.scrollTo({ top: y, behavior: "smooth" });
-              }
-            } else if (window.innerWidth < 1024 && isStatCard) {
-              const target = document.querySelector(".filter-bar") || document.querySelector("#area-listings");
-              if (target) {
-                const y = target.getBoundingClientRect().top + window.scrollY - 16;
-                window.scrollTo({ top: y, behavior: "smooth" });
-              }
+        applyFilters();
+           const target = document.getElementById("listing-count-heading") || document.getElementById("area-listings");
+            if (target) {
+              const y = target.getBoundingClientRect().top + window.scrollY - 150;
+              window.scrollTo({ top: y, behavior: "smooth" });
             }
           }
         });
