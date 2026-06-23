@@ -99,11 +99,25 @@ export const GET: APIRoute = async () => {
       import.meta.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+ // Get distinct latest snapshot per city
+    const { data: snapshotMeta, error: metaError } = await supabase
+      .from("listing_snapshots")
+      .select("id, city")
+      .order("created_at", { ascending: false })
+      .range(0, 49);
+
+    if (metaError) throw metaError;
+
+    // Dedupe to latest per city
+    const latestByCity = new Map<string, string>();
+    for (const row of snapshotMeta || []) {
+      if (!latestByCity.has(row.city)) latestByCity.set(row.city, row.id);
+    }
+
     const { data, error } = await supabase
       .from("listing_snapshots")
       .select("id, created_at, city, listings")
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .in("id", Array.from(latestByCity.values()));
 
     if (error) {
       throw error;
@@ -141,7 +155,8 @@ export const GET: APIRoute = async () => {
             listing.raw?.details?.subArea ||
             "";
 
-          return {
+         return {
+            _raw_listing: listing,
             id: String(
               mls ||
                 listing.id ||
@@ -204,15 +219,67 @@ export const GET: APIRoute = async () => {
       })
       .filter((row: any) => row.id);
 
-    const limitedRows = rows.slice(0, 25);
+    // Load all area boundaries with polygons
+    const { data: boundaries } = await supabase
+      .from("area_boundaries")
+      .select("city, area_slug, polygon_geojson");
 
-    console.log("listing_rows rebuild total found:", rows.length);
-    console.log("listing_rows rebuild limited:", limitedRows.length);
+    function pointInPolygon(lng: number, lat: number, polygon: number[][]): boolean {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+        const intersect = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
 
-    const BATCH_SIZE = 25;
+    function getNormalizedArea(city: string, lat: number, lng: number): string {
+      if (!lat || !lng || !boundaries) return "";
+      const cityBoundaries = boundaries.filter(b => b.city === city && b.polygon_geojson?.type === "Polygon");
+      for (const b of cityBoundaries) {
+        const polygon = b.polygon_geojson?.coordinates?.[0];
+        if (!polygon) continue;
+        if (pointInPolygon(lng, lat, polygon)) return b.area_slug;
+      }
+      return "";
+    }
 
-    for (let i = 0; i < limitedRows.length; i += BATCH_SIZE) {
-      const batch = limitedRows.slice(i, i + BATCH_SIZE);
+    // Add normalized_area and lat/lng to rows
+    const enrichedRows = rows.map((row: any) => {
+      const listing = row._raw_listing;
+      const lat = Number(listing?.map?.latitude || listing?.address?.latitude || listing?.coordinates?.latitude || 0);
+      const lng = Number(listing?.map?.longitude || listing?.address?.longitude || listing?.coordinates?.longitude || 0);
+      const normalizedArea = getNormalizedArea(row.normalized_city, lat, lng);
+      if (row.normalized_city === "nanaimo" && normalizedArea === "uplands") {
+        console.log("UPLANDS MATCH", { lat, lng, address: row.address });
+      }
+     if (row.normalized_city === "nanaimo" && lat === 0) {
+        console.log("NANAIMO NO LAT", JSON.stringify(listing).slice(0, 500));
+      }
+      if (String(row.id) === "1017579") {
+        console.log("KNOWN UPLANDS LAT CHECK", { lat, lng, keys: Object.keys(listing) });
+      }
+      return { ...row, lat: lat || null, lng: lng || null, normalized_area: normalizedArea || null };
+    });
+
+    enrichedRows.forEach((row: any) => delete row._raw_listing);
+
+    // Dedupe by id — keep first occurrence
+    const seenIds = new Set<string>();
+    const dedupedRows = enrichedRows.filter((row: any) => {
+      if (!row.id || seenIds.has(row.id)) return false;
+      seenIds.add(row.id);
+      return true;
+    });
+
+    console.log("listing_rows rebuild total found:", rows.length, "deduped:", dedupedRows.length);
+
+   const BATCH_SIZE = 100;
+
+    for (let i = 0; i < dedupedRows.length; i += BATCH_SIZE) {
+      const batch = dedupedRows.slice(i, i + BATCH_SIZE);
 
       const { error: batchError } = await supabase
         .from("listing_rows")
@@ -224,9 +291,9 @@ export const GET: APIRoute = async () => {
     }
 
     return new Response(
-      JSON.stringify({
+    JSON.stringify({
         ok: true,
-        count: limitedRows.length,
+        count: dedupedRows.length,
         totalFound: rows.length
       }),
       { status: 200 }

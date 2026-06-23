@@ -797,13 +797,7 @@ listing?.raw?.details?.area ||
 listing?.raw?.details?.subArea
   );
 
-if (normalizedCity === "parksville") {
-  console.log("PARKSVILLE RAW AREA DEBUG", {
-    address: getNormalizedAddress(listing),
-    rawArea,
-    city: normalizedCity,
-  });
-}
+
 
   const cleanedArea = rawArea
     .replace(/^na\s+/i, "")
@@ -1024,6 +1018,32 @@ const existingAddressImages = new Map(
     ])
 );
 
+ const { data: boundaries } = await supabase
+    .from("area_boundaries")
+    .select("city, area_slug, polygon_geojson");
+
+  function pointInPolygon(lng: number, lat: number, polygon: number[][]): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      const intersect = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+function getAreaFromPolygon(city: string, lat: number, lng: number): string | null {
+    if (!lat || !lng || !boundaries) return null;
+    const cityBoundaries = (boundaries as any[]).filter(b => b.city === city && b.polygon_geojson?.type === "Polygon");
+    for (const b of cityBoundaries) {
+      const polygon = b.polygon_geojson?.coordinates?.[0];
+      if (!polygon) continue;
+      if (pointInPolygon(lng, lat, polygon)) return b.area_slug;
+    }
+    return null;
+  }
+
   const rowMap = new Map<string, any>();
 
   for (const snapshot of snapshots || []) {
@@ -1074,59 +1094,21 @@ if (
   normalized_type === "business"
 ) continue;
 
-// TEMP DEBUG - remove after checking output
-if (normalized_city === "saanich") {
-  console.log("SAANICH DEBUG", {
-    id,
-    area: listing?.area,
-    subArea: listing?.subArea,
-    neighborhood: listing?.neighborhood,
-    detailsArea: listing?.details?.area,
-    rawArea: listing?.raw?.area,
-    rawSubArea: listing?.raw?.subArea,
-    rawKeys: Object.keys(listing?.raw || {}),
-    detailKeys: Object.keys(listing?.details || {}),
-    topKeys: Object.keys(listing || {}),
-    addressKeys: Object.keys(listing?.address || {}),
-    map: listing?.map,
-  });
-}
 
-if (normalized_city === "colwood") {
-  console.log("COLWOOD AREA DEBUG", {
-    id,
-    address: getNormalizedAddress(listing),
-    area: listing?.area,
-    subArea: listing?.subArea,
-    neighborhood: listing?.neighborhood,
-    rawArea: listing?.raw?.area,
-    rawSubArea: listing?.raw?.subArea,
-  });
-}
 
-// TEMP DEBUG - remove after checking output
-if (normalized_city === "campbell river") {
-  console.log("CAMPBELL AREA DEBUG", {
-    id,
-    address: getNormalizedAddress(listing),
-    area: listing?.area,
-    subArea: listing?.subArea,
-    neighborhood: listing?.neighborhood,
-    community: listing?.community,
-    district: listing?.district,
-    addressArea: listing?.address?.area,
-    addressNeighborhood: listing?.address?.neighborhood,
-    detailsArea: listing?.details?.area,
-    detailsSubArea: listing?.details?.subArea,
-    rawArea: listing?.raw?.area,
-    rawSubArea: listing?.raw?.subArea,
-    rawKeys: Object.keys(listing || {}),
-    detailsKeys: Object.keys(listing?.details || {}),
-    rawKeysNested: Object.keys(listing?.raw || {})
-  });
-}
+
+
+
 
 let normalized_area = normalizeArea(listing, normalized_city);
+
+// Polygon fallback for unknown areas
+if (normalized_area === "unknown" || !normalized_area) {
+  const freshLat = getLat(listing);
+  const freshLng = getLng(listing);
+  const polygonArea = freshLat && freshLng ? getAreaFromPolygon(normalized_city, freshLat, freshLng) : null;
+  if (polygonArea) normalized_area = polygonArea;
+}
 
 if (normalized_city === "duncan" && normalized_area === "unknown") {
   const sourceCityArea = AREA_ALIASES.duncan?.[clean(listing?.source_city)];
@@ -1285,20 +1267,7 @@ const finalImageUrl =
   finalImages[0] ||
   fallbackImages?.image_url ||
   null;
-if (
-  String(
-    listing?.details?.viewType ||
-    listing?.raw?.details?.viewType ||
-    ""
-  )
-    .toLowerCase()
-    .includes("ocean")
-) {
-  console.log(
-    "OCEAN LISTING",
-    JSON.stringify(listing?.details || listing?.raw?.details || {}, null, 2)
-  );
-}
+
      rowMap.set(id, {
   id,
   mls_number: id,

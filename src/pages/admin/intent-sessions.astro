@@ -694,6 +694,42 @@ const assignedAgent = selectedSession
       .doughnut-legend { flex: 1; }
       .doughnut-legend-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-top: 1px solid var(--border); font-size: 0.82rem; }
       .doughnut-legend-row:first-child { border-top: 0; }
+      .pass-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.reason-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reason-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.reason-top strong {
+  font-weight: 700;
+}
+
+.reason-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.reason-bar-fill {
+  height: 100%;
+  background: var(--ink);
+  border-radius: 999px;
+}
       .doughnut-legend-left { display: flex; align-items: center; gap: 8px; }
       .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
       .legend-pct { font-weight: 700; color: var(--muted); }
@@ -928,7 +964,11 @@ const assignedAgent = selectedSession
       .listing-item strong { display: block; font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .listing-item span { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
       .listing-open { display: inline-flex; margin-top: 6px; padding: 3px 9px; border-radius: 999px; background: var(--bg); color: var(--ink); border: 1px solid var(--border-md); font: inherit; font-size: 0.7rem; font-weight: 700; text-decoration: none; }
-
+.insight-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
       @media (max-width: 1100px) {
         .detail-body { grid-template-columns: 1fr; }
         .detail-sidebar { padding: 0 32px 28px; }
@@ -953,7 +993,21 @@ const assignedAgent = selectedSession
         .lead-name { font-size: 1.4rem; }
      .detail-body { grid-template-columns: 1fr; }
         .inner-grid { display: block !important; max-width: 100vw; overflow-x: hidden; }
-        body { overflow-x: hidden; }
+               body { overflow-x: hidden; }
+
+        .insight-two-col {
+          grid-template-columns: 1fr;
+        }
+
+        .doughnut-wrap {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .price-range-big {
+          font-size: 1.8rem;
+          line-height: 1.15;
+        }
       }
 
       /* ── Mobile tabs ── */
@@ -1008,7 +1062,37 @@ const assignedAgent = selectedSession
   }
 
   .detail-panel { height: auto; }
+
+  .inner-grid,
+  .sessions-col,
+  .detail-panel-col,
+  .detail-panel,
+  .card,
+  .sidebar-card,
+  .score-footer {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .lead-contact,
+  .lead-name-block,
+  .detail-topbar-actions {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .listing-item strong,
+  .loved-home-area,
+  textarea,
+  input,
+  select {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }
+
+
 
 /* Hide tabs on desktop */
 @media (min-width: 721px) {
@@ -1031,7 +1115,7 @@ const assignedAgent = selectedSession
   </div>
 
   <!-- Sessions list -->
-<div class="inner-grid tabs-pending" style="display:grid;grid-template-columns:280px 1fr;min-height:100vh;max-width:100%;overflow-x:hidden;">
+<div class="inner-grid tabs-pending" style="display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);min-height:100vh;max-width:100%;overflow:hidden;">
     <div class="sessions-col tab-active">
     <div class="sessions-panel">
           <div class="sessions-panel-head">
@@ -1087,6 +1171,16 @@ const assignedAgent = selectedSession
             const maybes = byDecision(session.reactions, "maybe");
             const passes = byDecision(session.reactions, "pass");
             const city = session.city || "nanaimo";
+          const cleanSlug = (value) => {
+  const slug = String(value || "").trim();
+  if (!slug || slug === "null" || slug === "undefined" || slug === "404") return "";
+  return slug;
+};
+
+const pageSlug =
+  cleanSlug(session.slug) ||
+  cleanSlug(session.reactions.find(r => cleanSlug(r.slug))?.slug) ||
+  "nanaimo-townhomes";
             const readiness = getReadiness(session.reactions);
             const { label: intentLabel, color: intentColor, bg: intentBg } = getReadinessLabel(readiness);
             const areas = getTopAreas(session.reactions);
@@ -1253,52 +1347,33 @@ const assignedAgent = selectedSession
                     </div>
 
                     {/* What's holding homes back + home type */}
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="insight-two-col">
                       <div class="card">
                         <h3>What's holding homes back</h3>
                         <p>Most common reasons from 'liked' homes</p>
-                        <div class="doughnut-wrap">
-                          <svg width="100" height="100" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="38" fill="none" stroke="#f3f4f6" stroke-width="14" />
-                            {typeBreakdown.slice(0, 4).map((item, i) => {
-                              const colors = ["#111110","#6b7280","#d1d5db","#f3f4f6"];
-                              const prev = typeBreakdown.slice(0, i).reduce((s, t) => s + t.pct, 0);
-                              const dash = (item.pct / 100) * (2 * Math.PI * 38);
-                              const gap = (2 * Math.PI * 38) - dash;
-                              const offset = (prev / 100) * (2 * Math.PI * 38);
-                              return (
-                                <circle
-                                  cx="50" cy="50" r="38"
-                                  fill="none"
-                                  stroke={colors[i]}
-                                  stroke-width="14"
-                                  stroke-dasharray={`${dash} ${gap}`}
-                                  stroke-dashoffset={-offset}
-                                  transform="rotate(-90 50 50)"
-                                />
-                              );
-                            })}
-                            <text x="50" y="46" text-anchor="middle" font-size="9" fill="#6b6864" font-family="DM Sans,sans-serif">Top</text>
-                            <text x="50" y="58" text-anchor="middle" font-size="11" fill="#111110" font-weight="700" font-family="DM Sans,sans-serif">Price</text>
-                          </svg>
-                         <div class="doughnut-legend">
-                            {(() => {
-                              const reasons = getPassReasons(session.reactions);
-                              const colors = ["#111110","#6b7280","#d1d5db","#e5e7eb","#f3f4f6"];
-                              return reasons.length
-                                ? reasons.map(({ name, pct }, i) => (
-                                    <div class="doughnut-legend-row">
-                                      <div class="doughnut-legend-left">
-                                        <div class="legend-dot" style={`background:${colors[i] || "#ccc"};`}></div>
-                                        <span>{name}</span>
-                                      </div>
-                                      <span class="legend-pct">{pct}%</span>
-                                    </div>
-                                  ))
-                                : <div style="font-size:0.8rem;color:var(--muted);">Not enough pass data yet.</div>;
-                            })()}
-                          </div>
-                        </div>
+                        <div class="pass-reasons">
+  {(() => {
+    const reasons = getPassReasons(session.reactions);
+
+    return reasons.length
+      ? reasons.map(({ name, pct }) => (
+          <div class="reason-row">
+            <div class="reason-top">
+              <span>{name}</span>
+              <strong>{pct}%</strong>
+            </div>
+
+            <div class="reason-bar">
+              <div
+                class="reason-bar-fill"
+                style={`width:${pct}%;`}
+              ></div>
+            </div>
+          </div>
+        ))
+      : <div style="font-size:0.8rem;color:var(--muted);">Not enough pass data yet.</div>;
+  })()}
+</div>
                       </div>
 
                       <div class="card">
@@ -1354,46 +1429,50 @@ const assignedAgent = selectedSession
                       </div>
                     </div>
 
-                    {/* Loved listings */}
-                    <div class="card" id="all-reactions">
-                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-                        <h3 style="margin:0;">All reactions</h3>
-                      </div>
-                      <div class="listing-cols">
-                        <div>
-                          <div class="listing-col-head">Loved ({loves.length})</div>
-                          {loves.length ? loves.slice(0, 8).map((r) => (
-                            <div class="listing-item">
-                              <strong>{r.address}</strong>
-                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
-                              <span style="text-transform:capitalize;">{r.area}</span>
-                              <a class="listing-open" href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.address || "")}`} target="_blank">Open →</a>
-                            </div>
-                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
-                        </div>
-                        <div>
-                          <div class="listing-col-head">Liked ({maybes.length})</div>
-                          {maybes.length ? maybes.slice(0, 8).map((r) => (
-                            <div class="listing-item">
-                              <strong>{r.address}</strong>
-                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
-                              <span style="text-transform:capitalize;">{r.area}</span>
-                              <a class="listing-open" href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.address || "")}`} target="_blank">Open →</a>
-                            </div>
-                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
-                        </div>
-                        <div>
-                          <div class="listing-col-head">Passed ({passes.length})</div>
-                          {passes.length ? passes.slice(0, 8).map((r) => (
-                            <div class="listing-item">
-                              <strong>{r.address}</strong>
-                              <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
-                              <span style="text-transform:capitalize;">{r.area}</span>
-                            </div>
-                          )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
-                        </div>
-                      </div>
-                    </div>
+                   {/* Loved listings */}
+<div class="card" id="all-reactions">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <h3 style="margin:0;">All reactions</h3>
+  </div>
+
+  <div class="listing-cols">
+    <div>
+      <div class="listing-col-head">Loved ({loves.length})</div>
+      {loves.length ? loves.slice(0, 8).map((r) => (
+        <div class="listing-item">
+          <strong>{r.address}</strong>
+          <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+          <span style="text-transform:capitalize;">{r.area}</span>
+          <a class="listing-open" href={`/${city}/${pageSlug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`} target="_blank">Open →</a>
+        </div>
+      )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+    </div>
+
+    <div>
+      <div class="listing-col-head">Liked ({maybes.length})</div>
+      {maybes.length ? maybes.slice(0, 8).map((r) => (
+        <div class="listing-item">
+          <strong>{r.address}</strong>
+          <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+          <span style="text-transform:capitalize;">{r.area}</span>
+          <a class="listing-open" href={`/${city}/${pageSlug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`} target="_blank">Open →</a>
+        </div>
+      )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+    </div>
+
+    <div>
+      <div class="listing-col-head">Passed ({passes.length})</div>
+      {passes.length ? passes.slice(0, 8).map((r) => (
+        <div class="listing-item">
+          <strong>{r.address}</strong>
+          <span>{r.price} · {r.beds}bd · {r.baths}ba</span>
+          <span style="text-transform:capitalize;">{r.area}</span>
+          <a class="listing-open" href={`/${city}/${pageSlug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`} target="_blank">Open →</a>
+        </div>
+      )) : <div style="font-size:0.8rem;color:var(--muted);padding:8px 0;">None yet</div>}
+    </div>
+  </div>
+</div>
 
                     {/* Lead quality score */}
                     <div class="score-footer">
@@ -1482,7 +1561,7 @@ const assignedAgent = selectedSession
                       </div>
                   {loves.slice(0, 3).map((r) => (
                         
-                        <a href={`/${city}/${session.slug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}
+                        <a href={`/${city}/${pageSlug}?listing_id=${encodeURIComponent(r.listing_id || r.mls_number || r.address || "")}`}
                           target="_blank"
                           style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border);text-decoration:none;color:inherit;"
                           class="loved-home"

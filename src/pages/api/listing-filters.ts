@@ -29,7 +29,7 @@ const ALLOWED_AREAS_BY_CITY: Record<string, Set<string>> = {
     "south jingle pot",
     "south nanaimo",
     "uplands",
-    "university district"
+        "university district"
   ]),
 
   "campbell river": new Set([
@@ -138,8 +138,9 @@ export const GET: APIRoute = async () => {
     .select("normalized_city, normalized_area, normalized_type")
     .eq("status", "A")
     .not("normalized_city", "is", null)
-    .limit(10000);
+    .range(0, 9999);
 
+ 
   if (error) {
     return new Response(JSON.stringify({ ok: false, error: error.message }), {
       status: 500,
@@ -156,7 +157,10 @@ const areasByCity = new Map<
 
   for (const row of data || []) {
     const city = clean(row.normalized_city);
-    const area = clean(row.normalized_area);
+    const area = clean(row.normalized_area)
+      .replace(/^na\s+/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
     const type = clean(row.normalized_type);
 
     if (!isUsableCity(city)) continue;
@@ -170,6 +174,7 @@ const areasByCity = new Map<
       areasByCity.set(city, new Map());
     }
 
+   
     if (isUsableArea(area, city)) {
       areasByCity.get(city)?.set(area, {
         value: area,

@@ -6,11 +6,16 @@ const site = await getSite(Astro.url.hostname);
 const currentSiteId = site?.id || "";
 ---
 
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8" />
     <title>Agent Editor</title>
-    
-    <link href="https://?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style is:global>
+      @media (min-width: 769px) { .mobile-topbar, .drawer-overlay { display: none !important; } }
+      @media (max-width: 768px) { .mobile-topbar { display: flex !important; width: 100% !important; } }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; }
 
@@ -519,7 +524,8 @@ const currentSiteId = site?.id || "";
     grid-template-columns: none !important;
   }
 
-  .page > *:not(.main) {
+.page > aside,
+  .page > .drawer-overlay {
     display: none !important;
   }
 
@@ -556,10 +562,8 @@ const currentSiteId = site?.id || "";
     </style>
   </head>
 
-  <body>
-    <div class="page">
-
-<AdminSidebar active="sites">
+<body>
+    <AdminSidebar active="sites">
   <nav class="sidebar__section-links">
     <a href="#s-agent">Agent</a>
     <a href="#s-colour">Colour</a>
@@ -573,6 +577,7 @@ const currentSiteId = site?.id || "";
     <a href="#s-bio">Bio</a>
   </nav>
 </AdminSidebar>
+    <div class="page">
       <!-- Main -->
       <main class="main" data-site-id={currentSiteId}>
         <div class="page-header">

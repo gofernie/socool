@@ -124,6 +124,7 @@ function buildPageHref(page: number) {
 }
 
 .main {
+  grid-column: 2;
   padding: 40px 48px 80px;
   max-width: 1180px;
   min-width: 0;
@@ -185,8 +186,12 @@ function buildPageHref(page: number) {
       .label { font-size: 0.7rem; color: var(--muted); margin-bottom: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
       .value { font-size: 0.9rem; }
 
-      @media (max-width: 800px) {
+     @media (max-width: 800px) {
   .page { grid-template-columns: 1fr; }
+
+  .main {
+    grid-column: 1;
+  }
         .table-wrap { display: none; }
         .mobile-list { display: block; }
         .toolbar { align-items: stretch; flex-direction: column; }
@@ -199,8 +204,8 @@ function buildPageHref(page: number) {
   </head>
 
 <body>
-    <AdminSidebar active="shortlists" />
     <div class="page">
+      <AdminSidebar active="shortlists" />
       <main class="main">
 
       <div class="page-header">
@@ -208,7 +213,7 @@ function buildPageHref(page: number) {
 <h1 class="page-heading">Client shortlists.</h1>          <p class="page-desc">All shortlists sent to buyers, with quick access to open, copy, or text.</p>
         </div>
         <div class="header-actions">
-          <a class="btn primary" href="/listings">New shortlist</a>
+          <a class="btn primary" href="/shortlists/new">New shortlist</a>
         </div>
       </div>
 
@@ -294,8 +299,8 @@ function buildPageHref(page: number) {
           </div>
         </>
       )}
-      </main>
-</div>
+           </main>
+    </div>
 
     <script is:inline>
       document.querySelectorAll("[data-copy-url]").forEach((button) => {
