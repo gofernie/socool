@@ -46,9 +46,18 @@ const parksvilleAreas = [
   "PQ Qualicum North",
 ];
 
+const tofinoAreas = [
+  "Tofino",
+  "Chesterman Beach",
+  "Mackenzie Beach",
+  "Cox Bay",
+  "Long Beach"
+];
+
 const areaOptions = {
   nanaimo: nanaimoAreas,
   parksville: parksvilleAreas,
+  tofino: tofinoAreas,
 };
 
 const areasByCityJson = JSON.stringify(areaOptions);
@@ -279,7 +288,8 @@ const sitesJson = JSON.stringify(sites);
               City
               <select id="citySelect">
                 <option value="nanaimo">Nanaimo</option>
-                <option value="parksville">Parksville</option>
+<option value="parksville">Parksville</option>
+<option value="tofino">Tofino</option>
               </select>
             </label>
 
@@ -359,10 +369,11 @@ const sitesJson = JSON.stringify(sites);
       let drawingMarkers = [];
       let isDrawing = false;
 
-      const cityCenters = {
-        nanaimo: { lat: 49.1967, lng: -123.9401, zoom: 12 },
-        parksville: { lat: 49.3193, lng: -124.3136, zoom: 11 },
-      };
+    const cityCenters = {
+  nanaimo: { lat: 49.1967, lng: -123.9401, zoom: 12 },
+  parksville: { lat: 49.3193, lng: -124.3136, zoom: 11 },
+  tofino: { lat: 49.1520, lng: -125.9067, zoom: 12 },
+};
 
       function slugify(value) {
         return String(value || "")
