@@ -67,11 +67,22 @@ function getListingAreaName(listing: any) {
   return rawArea;
 }
 
+function pointInPolygon(lng: number, lat: number, polygon: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    const intersect = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 if (hasListingFilters) {
   try {
-    let query = supabase.from("listing_rows").select("*").eq("status", "A");
-    if (city) { query = query.eq("normalized_city", city.toLowerCase()); } else { query = query.eq("normalized_city", "nanaimo"); }
-    if (area) { const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean); if (areas.length === 1) { query = query.eq("normalized_area", areas[0]); } else if (areas.length > 1) { query = query.in("normalized_area", areas); } }
+    const targetCity = city ? city.toLowerCase() : "nanaimo";
+    let query = supabase.from("listing_rows").select("*").eq("status", "A").eq("normalized_city", targetCity);
+
     if (type) { const typeMap: Record<string, string> = { detached: "house", condo: "condo", townhouse: "townhouse", land: "land", mobile: "mobile" }; query = query.eq("normalized_type", typeMap[type] || type); }
     if (beds) query = query.gte("beds", Number(beds));
     if (baths) query = query.gte("baths", Number(baths));
@@ -79,9 +90,41 @@ if (hasListingFilters) {
     if (maxPrice) query = query.lte("price", Number(maxPrice));
     if (mls) { const cleanMls = mls.replace(/[^0-9]/g, ""); query = query.or(`id.eq.${cleanMls},mls_number.eq.${cleanMls}`); }
     if (sort === "price-desc") { query = query.order("price", { ascending: false }); } else { query = query.order("price", { ascending: true }); }
-    const { data, error: dbError } = await query.limit(500);
+
+    const { data, error: dbError } = await query.range(0, 4999);
     if (dbError) throw new Error(dbError.message);
-    listings = data || [];
+
+    let rows = data || [];
+
+    if (area) {
+      const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
+
+      // Load polygons for requested areas
+      const { data: boundaries } = await supabase
+        .from("area_boundaries")
+        .select("area_slug, polygon_geojson")
+        .eq("city", targetCity)
+        .in("area_slug", areas);
+
+      const polygons = (boundaries || [])
+        .filter(b => b.polygon_geojson?.type === "Polygon")
+        .map(b => ({ slug: b.area_slug, coords: b.polygon_geojson.coordinates[0] }));
+
+      if (polygons.length > 0) {
+        // Filter by polygon
+        rows = rows.filter(listing => {
+          const lat = Number(listing.lat || 0);
+          const lng = Number(listing.lng || 0);
+          if (!lat || !lng) return false;
+          return polygons.some(p => pointInPolygon(lng, lat, p.coords));
+        });
+      } else {
+        // Fallback to normalized_area if no polygon
+        rows = rows.filter(listing => areas.includes(String(listing.normalized_area || "").toLowerCase()));
+      }
+    }
+
+    listings = rows;
   } catch (err) {
     console.error("Failed to load listings:", err);
     error = err instanceof Error ? err.message : "Failed to load listings";
