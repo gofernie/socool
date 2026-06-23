@@ -309,10 +309,10 @@ return Astro.redirect("/admin/intent-pages");
         margin-bottom: 36px;
       }
 
-      .page-header h1 {
-        font-family: var(--font-display);
-        font-size: 2.6rem;
-        font-weight: 400;
+     .page-header h1 {
+        font-family: var(--font-body);
+        font-size: 2.2rem;
+        font-weight: 700;
         line-height: 1;
         letter-spacing: -0.03em;
       }
@@ -364,9 +364,9 @@ textarea:focus {
         box-shadow: 0 0 0 3px rgba(24,22,20,0.08);
       }
 
-      #slugOverrideInput {
-  background: #f5f3ef;
-  color: var(--muted);
+  #slugOverrideInput {
+  background: var(--surface);
+  color: var(--ink);
 }
 
       .grid-2 {
@@ -558,8 +558,8 @@ textarea:focus {
   </head>
 
 <body>
-  <AdminSidebar active="new-page" />
   <div class="page">
+    <AdminSidebar active="new-page" />
     <main class="main">
 
    <div class="page-header">
@@ -739,10 +739,9 @@ textarea:focus {
 </p>
 
 <label>Page URL</label>
-  <input
+<input
   name="slug_override"
   id="slugOverrideInput"
-  readonly
 />
 
   <label>H1 Heading</label>
@@ -1138,11 +1137,20 @@ function addPolygonPoint(latLng) {
   redrawPolygon();
 }
 
+const cityCenters = {
+  nanaimo:    { lat: 49.1659, lng: -123.9401 },
+  parksville: { lat: 49.3193, lng: -124.3136 },
+  fernie:     { lat: 49.5037, lng: -115.0631 },
+};
+
 function initPolygonMap() {
   if (polygonMap || !window.google?.maps) return;
 
+  const selectedCity = (cityInput?.value || "nanaimo").toLowerCase();
+  const center = cityCenters[selectedCity] || cityCenters.nanaimo;
+
   polygonMap = new google.maps.Map(document.getElementById("polygonMap"), {
-    center: { lat: 49.1659, lng: -123.9401 },
+    center,
     zoom: 11,
     mapTypeId: "roadmap",
     draggableCursor: "crosshair",
@@ -1182,9 +1190,11 @@ function syncPolygonBlock() {
     setTimeout(() => {
       initPolygonMap();
 
-      if (polygonMap) {
+   if (polygonMap) {
+        const selectedCity = (cityInput?.value || "nanaimo").toLowerCase();
+        const center = cityCenters[selectedCity] || cityCenters.nanaimo;
         google.maps.event.trigger(polygonMap, "resize");
-        polygonMap.setCenter({ lat: 49.1659, lng: -123.9401 });
+        polygonMap.setCenter(center);
       }
     }, 100);
   }

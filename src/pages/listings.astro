@@ -44,12 +44,13 @@ const maxPrice = url.searchParams.get("maxPrice") || "";
 const area = url.searchParams.get("area") || "";
 const sort = url.searchParams.get("sort") || "";
 const mls = url.searchParams.get("mls") || "";
+const waterfeature = url.searchParams.get("waterfeature") || "";
 const shortlistSlug = url.searchParams.get("shortlist") || "";
 
 let listings: any[] = [];
 let error: string | null = null;
 
-const hasListingFilters = Boolean(city || area || beds || baths || type || minPrice || maxPrice || mls);
+const hasListingFilters = Boolean(city || area || beds || baths || type || minPrice || maxPrice || mls || waterfeature);
 
 function getListingAreaName(listing: any) {
   const raw = listing?.area || listing?.normalized_area || listing?.raw?.details?.subArea || listing?.details?.subArea || listing?.raw?.details?.area || listing?.details?.area || listing?.raw?.address?.neighborhood || listing?.address?.neighborhood || "";
@@ -89,6 +90,10 @@ if (hasListingFilters) {
     if (minPrice) query = query.gte("price", Number(minPrice));
     if (maxPrice) query = query.lte("price", Number(maxPrice));
     if (mls) { const cleanMls = mls.replace(/[^0-9]/g, ""); query = query.or(`id.eq.${cleanMls},mls_number.eq.${cleanMls}`); }
+    if (waterfeature === "waterfront") { query = query.eq("waterfront_type", "waterfront"); }
+    if (waterfeature === "oceanfront") { query = query.eq("waterfront_type", "oceanfront"); }
+    if (waterfeature === "lakefront") { query = query.eq("waterfront_type", "lakefront"); }
+    if (waterfeature === "riverfront") { query = query.eq("waterfront_type", "riverfront"); }
     if (sort === "price-desc") { query = query.order("price", { ascending: false }); } else { query = query.order("price", { ascending: true }); }
 
     const { data, error: dbError } = await query.range(0, 4999);
@@ -97,14 +102,15 @@ if (hasListingFilters) {
     let rows = data || [];
 
     if (area) {
-      const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
+    const areas = area.split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
+      const areaSlugs = areas.map(a => a.replace(/\s+/g, "-"));
 
       // Load polygons for requested areas
       const { data: boundaries } = await supabase
         .from("area_boundaries")
         .select("area_slug, polygon_geojson")
         .eq("city", targetCity)
-        .in("area_slug", areas);
+        .in("area_slug", areaSlugs);
 
       const polygons = (boundaries || [])
         .filter(b => b.polygon_geojson?.type === "Polygon")
@@ -205,20 +211,19 @@ if (hasListingFilters) {
 
       .subtle { color: var(--muted-dark); font-size: 0.88rem; }/* sidebar styles live in AdminSidebar.astro */
       /* ── FILTERS ── */
-      .filters {
+ .filters {
         background: #fff;
         border: 1px solid var(--line-dark);
         border-radius: 14px;
-        padding: 10px;
+        padding: 12px;
         margin-bottom: 20px;
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 8px 12px;
+        align-items: end;
       }
 
-      .filter-group { display: contents; }
-      .filter-group-title { display: none; }
+.filter-group { display: contents; }      .filter-group-title { display: none; }
 
       .filters label,
       .filter-group label {
@@ -236,11 +241,7 @@ if (hasListingFilters) {
         padding-left: 2px;
       }
 
-      .filters label:has(input[name="minPrice"]),
-      .filters label:has(input[name="maxPrice"]) { flex: 0 0 95px; }
-      .filters label:has(select[name="beds"]),
-      .filters label:has(select[name="baths"]) { flex: 0 0 70px; }
-      .filters label:has(select[name="sort"]) { flex: 0 0 165px; }
+
 
       .filters input,
       .filters select {
@@ -279,19 +280,20 @@ if (hasListingFilters) {
 
       .filters input::placeholder { color: var(--muted-dark); }
 
-      .filter-actions {
-        flex: 0 0 auto;
+    .filter-actions {
         display: flex;
         gap: 6px;
         padding: 0;
         border: 0;
+        grid-column: 1 / 3;
+        align-self: end;
       }
 
-      .filter-actions .primary-btn,
+   .filter-actions .primary-btn,
       .filter-actions .filter-clear {
         min-height: 40px;
         padding: 8px 18px;
-        border-radius: 999px;
+        border-radius: 6px;
         white-space: nowrap;
         font-size: 0.82rem;
         font-weight: 600;
@@ -392,10 +394,10 @@ if (hasListingFilters) {
       .selection-count { font-size: 0.88rem; color: var(--muted-dark); }
       #visible-saved-count { color: var(--muted-dark); }
 
-      .filter-select-all {
+     .filter-select-all {
         min-height: 36px;
         padding: 7px 16px;
-        border-radius: 999px;
+        border-radius: 6px;
         background: #fff;
         border: 1px solid var(--line-dark);
         color: var(--ink);
@@ -409,18 +411,18 @@ if (hasListingFilters) {
       .filter-select-all:hover { background: #fafafa; }
 
       /* ── VIEW TOGGLE ── */
-      .view-toggle {
+   .view-toggle {
         display: inline-flex;
         margin-bottom: 16px;
         border: 1px solid var(--line-dark);
-        border-radius: 999px;
+        border-radius: 6px;
         overflow: hidden;
         background: #fff;
       }
 
-      .view-toggle button {
+     .view-toggle button {
         border: 0;
-        border-radius: 0;
+        border-radius: 6px;
         min-height: 36px;
         padding: 7px 18px;
         background: transparent;
@@ -455,10 +457,10 @@ if (hasListingFilters) {
       .grid.map-hidden { display: none; }
 
       /* ── CARD ── */
-      .card {
+     .card {
         background: var(--card);
         border: 1px solid var(--line-dark);
-        border-radius: var(--radius);
+        border-radius: 6px;
         overflow: hidden;
         padding: 0;
         transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
@@ -507,13 +509,13 @@ if (hasListingFilters) {
         gap: 8px;
       }
 
-      .save-btn, .preview-btn {
+   .save-btn, .preview-btn {
         appearance: none;
         border: 1px solid rgba(24,22,20,0.12);
         background: white;
         color: var(--ink);
         padding: 8px 14px;
-        border-radius: 999px;
+        border-radius: 6px;
         cursor: pointer;
         font: inherit;
         font-size: 0.8rem;
@@ -729,7 +731,7 @@ if (hasListingFilters) {
         justify-content: center;
         text-decoration: none;
         padding: 10px 20px;
-        border-radius: 999px;
+      border-radius: 6px;
         background: var(--ink);
         color: white;
         font-weight: 600;
@@ -831,6 +833,7 @@ if (hasListingFilters) {
     <main class="main">
      
 
+<h1 style="font-family:var(--f-body);font-size:2.2rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:24px;">Create New Shortlist</h1>
       <form class="filters" method="get" action="/listings">
         {shortlistSlug && <input type="hidden" name="shortlist" value={shortlistSlug} />}
 
@@ -853,7 +856,7 @@ if (hasListingFilters) {
         </div>
 
         <div class="filter-group">
-          <label>
+       <label>
             Type
             <select name="type">
               <option value="" selected={type === ""}>Any</option>
@@ -862,6 +865,17 @@ if (hasListingFilters) {
               <option value="townhouse" selected={type === "townhouse"}>Townhouse</option>
               <option value="land" selected={type === "land"}>Land</option>
               <option value="mobile" selected={type === "mobile"}>Mobile</option>
+            </select>
+          </label>
+
+          <label>
+            Water feature
+            <select name="waterfeature">
+             <option value="">Any</option>
+              <option value="waterfront" selected={waterfeature === "waterfront"}>Waterfront</option>
+              <option value="oceanfront" selected={waterfeature === "oceanfront"}>Oceanfront</option>
+              <option value="lakefront" selected={waterfeature === "lakefront"}>Lakefront</option>
+              <option value="riverfront" selected={waterfeature === "riverfront"}>Riverfront</option>
             </select>
           </label>
 
@@ -935,10 +949,26 @@ if (hasListingFilters) {
         </div>
       )}
 
-      {!hasListingFilters ? (
+   {!hasListingFilters ? (
         <p class="subtle" style="margin:-4px 0 16px;">Apply filters above to see listings.</p>
       ) : (
-        <p class="subtle" style="margin:-4px 0 16px;">Showing {listings.length} result{listings.length === 1 ? "" : "s"}</p>
+        <>
+          {(() => {
+            const parts: string[] = [];
+            if (area) parts.push(area.split(",").map(a => a.trim().replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())).join(", "));
+            else if (city) parts.push(city.replace(/\b\w/g, c => c.toUpperCase()));
+            if (type) parts.push(type === "detached" ? "Homes" : type === "condo" ? "Condos" : type === "townhouse" ? "Townhomes" : type === "mobile" ? "Mobile Homes" : type === "land" ? "Land" : type);
+            if (beds) parts.push(`${beds}+ bed`);
+            if (baths) parts.push(`${baths}+ bath`);
+            if (waterfeature) parts.push(waterfeature.charAt(0).toUpperCase() + waterfeature.slice(1));
+            if (minPrice && maxPrice) parts.push(`$${Number(minPrice).toLocaleString()}–$${Number(maxPrice).toLocaleString()}`);
+            else if (minPrice) parts.push(`$${Number(minPrice).toLocaleString()}+`);
+            else if (maxPrice) parts.push(`Under $${Number(maxPrice).toLocaleString()}`);
+            return parts.length > 0 ? (
+<h2 style="font-family:var(--f-body);font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;margin:-4px 0 4px;">{parts.join(" · ")}</h2>          ) : null;
+          })()}
+          <p class="subtle" style="margin:0 0 16px;">Showing {listings.length} result{listings.length === 1 ? "" : "s"}</p>
+        </>
       )}
 
       {listings && listings.length > 0 ? (

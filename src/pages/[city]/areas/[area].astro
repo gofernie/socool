@@ -802,8 +802,23 @@ const chartData = {
           data-lat={listing.lat || ""}
           data-lng={listing.lng || ""}
         >
-          <ListingCard
-  listing={listing}
+       <ListingCard
+  listing={{
+    ...listing,
+    address:
+      typeof listing.address === "string" && listing.address.trim().startsWith("{")
+        ? (() => {
+            try {
+              const a = JSON.parse(listing.address);
+              return [a.streetNumber, a.streetName, a.streetSuffix]
+                .filter(Boolean)
+                .join(" ");
+            } catch {
+              return "Address available";
+            }
+          })()
+        : listing.address || "Address available",
+  }}
   image={getListingImage(listing)}
   priority={index < 3}
 />

@@ -49,7 +49,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-
     }
     .main { padding: 40px 48px; }
     .page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-    .page-head h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
+.page-head h1 { font-family: var(--sans); font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; }
     .btn {
       display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 999px;
       font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
@@ -85,8 +85,8 @@ body { font-family: var(--sans); background: var(--bg); color: var(--ink); font-
   </style>
 </head>
 <body>
-  <AdminSidebar active="agents" />
   <div class="layout">
+    <AdminSidebar active="agents" />
     <div class="main">
       <div class="page-head">
         <h1>Agents</h1>

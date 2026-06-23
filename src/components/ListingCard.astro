@@ -34,7 +34,41 @@ const normalizeListingImageUrl = (value: any) => {
   return cleaned;
 };
 const price = `$${Number(listing.price || 0).toLocaleString()}`;
-const address = listing.address || "Address available";
+const formatAddress = (value: any) => {
+  if (!value) return "";
+
+  let addressObj = value;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{")) return trimmed;
+    try {
+      addressObj = JSON.parse(trimmed);
+    } catch {
+      return "";
+    }
+  }
+
+  if (typeof addressObj !== "object" || Array.isArray(addressObj)) return "";
+
+  const result = [
+    addressObj.streetNumber,
+    addressObj.streetName || addressObj.streetAddress || "",
+    addressObj.streetSuffix,
+    addressObj.unitNumber ? `#${addressObj.unitNumber}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return result;
+};
+
+const address =
+  formatAddress(listing.address_text) ||
+  formatAddress(listing.full_address) ||
+  formatAddress(listing.address) ||
+  "Address available";
 const beds = listing.beds || 0;
 const baths = listing.baths || 0;
 const sqft = listing.sqft || "";

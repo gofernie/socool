@@ -12,6 +12,19 @@ export const POST: APIRoute = async ({ request }) => {
   const body = await request.json();
   const items = Array.isArray(body.items) ? body.items : [];
 
+ const removeFromNav = body.removeFromNav;
+
+  if (removeFromNav) {
+    await supabase
+      .from("intent_pages")
+      .update({ show_in_nav: false })
+      .eq("id", removeFromNav);
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   if (!items.length) {
     return new Response(JSON.stringify({ ok: false, error: "No items provided" }), {
       status: 400,

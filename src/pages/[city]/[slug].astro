@@ -200,7 +200,6 @@ if (defaultSort === "price-asc") {
 const { data: rawListings, error: listingsError } = await query.limit(listingLimit);
 
 let listings = rawListings || [];
-const initialListings = listings;
 function getPolygonGeometry(geojson: any) {
   if (!geojson) return null;
 
@@ -326,6 +325,18 @@ const relatedIntentPages = relatedIntentPagesRaw
 
 function formatPrice(price: number) {
   return `$${Number(price || 0).toLocaleString()}`;
+}
+function formatAddress(value: any): string {
+  if (!value) return "";
+  let obj = value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{")) return trimmed;
+    try { obj = JSON.parse(trimmed); } catch { return ""; }
+  }
+  if (typeof obj !== "object" || Array.isArray(obj)) return "";
+  return [obj.streetNumber, obj.streetName || obj.streetAddress, obj.streetSuffix, obj.unitNumber ? `#${obj.unitNumber}` : ""]
+    .filter(Boolean).join(" ").trim();
 }
 
 function normalizeImageUrl(url: any) {
@@ -581,8 +592,8 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
 
         --radius-lg: 20px;
         --radius-md: 12px;
-        --serif: "Lora", Georgia, serif;
-        --sans: "Nunito Sans", system-ui, sans-serif;
+        --serif: "DM Sans", system-ui, sans-serif;
+        --sans: "DM Sans", system-ui, sans-serif;
         --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
 
@@ -725,9 +736,9 @@ const cleanHeroHeading = String(page.hero_heading || "").endsWith(".")
         margin-top: 18px;
       }
 
-      .pill {
+.pill {
         padding: 8px 13px;
-        border-radius: 999px;
+        border-radius: 6px;
         background: var(--accent-soft);
         border: 1px solid var(--line-warm);
         color: var(--accent);
@@ -1073,8 +1084,9 @@ body.is-map-mode .bottom-refine-cta {
         color: inherit;
         display: block;
         cursor: pointer;
-        transition: all 0.28s var(--ease);
+        transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease), border-color 0.28s var(--ease);
         box-shadow: none;
+        text-decoration: none;
       }
 
       .card:hover {
@@ -1177,7 +1189,7 @@ body.is-map-mode .bottom-refine-cta {
 
 .address {
   margin-bottom: 2px;
-  color: var(--ink);
+  color: var(--ink) !important;
   line-height: 1.35;
   font-size: 0.9rem;
   font-weight: 600;
@@ -1185,7 +1197,7 @@ body.is-map-mode .bottom-refine-cta {
 
 .card-city {
   margin-bottom: 14px;
-  color: var(--muted);
+  color: var(--muted) !important;
   font-size: 0.86rem;
   font-weight: 500;
 }
@@ -1195,7 +1207,7 @@ body.is-map-mode .bottom-refine-cta {
   align-items: center;
   gap: 18px;
   font-size: 0.86rem;
-  color: var(--ink-soft);
+  color: var(--ink-soft) !important;
   font-weight: 500;
 }
 
@@ -1332,11 +1344,11 @@ body.is-map-mode .bottom-refine-cta {
         font-size: 1.02rem;
       }
 
-      .cta-button {
+  .cta-button {
         display: inline-flex;
         margin-top: 16px;
         padding: 14px 22px;
-        border-radius: 999px;
+        border-radius: 6px;
         background: var(--accent);
         color: white;
         border: 0;
@@ -1353,13 +1365,13 @@ body.is-map-mode .bottom-refine-cta {
         margin-bottom: 12px;
       }
 
- .refine-chip {
+.refine-chip {
         appearance: none;
         border: 1px solid var(--line-warm);
         background: var(--surface);
         color: var(--ink);
         padding: 10px 16px;
-        border-radius: 999px;
+        border-radius: 6px;
         cursor: pointer;
         font: inherit;
         font-size: 0.9rem;
@@ -1378,14 +1390,14 @@ body.is-map-mode .bottom-refine-cta {
         pointer-events: none;
       }
 
-    .generated-refine-chip {
+   .generated-refine-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: auto;
   min-height: 38px;
   padding: 10px 15px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--surface);
   border: 1px solid var(--line-warm);
   color: var(--ink);
@@ -1700,7 +1712,7 @@ color: var(--accent) !important;
   padding: 20px;
   border: 0.5px solid rgba(0,0,0,0.1);
   border-radius: 6px;
-  background: transparent;
+  background: var(--surface);
   text-decoration: none;
 }
 
@@ -1769,7 +1781,13 @@ color: var(--accent) !important;
 <div style="height:60px;background:linear-gradient(to bottom, rgba(0,0,0,0.10), transparent);margin-bottom:-60px;pointer-events:none;"></div>
 <div class="intent-content-shell">
 
-      <div class="section-head" style="margin:24px 0 14px;">
+  {(page.seo_intro || seo.intro) && (
+    <p style="margin:28px 0 20px;color:var(--muted);font-size:1rem;line-height:1.65;max-width:780px;">
+      {page.seo_intro || seo.intro}
+    </p>
+  )}
+
+      <div class="section-head" style="margin:0 0 14px;">
   <h2 style="margin:0;font-family:var(--serif);font-size:clamp(1.2rem,2vw,1.6rem);font-weight:500;letter-spacing:-0.02em;">{(page.seo_heading || page.hero_heading || "").replace(/\|/g, " ")}</h2>
 </div>
 
@@ -1817,7 +1835,7 @@ color: var(--accent) !important;
       <div id="intent-map" class="intent-map" hidden></div>
 
       <section class="grid">
-        {initialListings.map((listing, index) => {
+        {listings.map((listing, index) => {
           const firstImage =
             listing?.image_url ||
             listing?.images?.[0]?.url ||
@@ -1859,7 +1877,7 @@ data-images={JSON.stringify(
                 data-sort-index={index}
 data-raw-price={String(listing?.price || 0)}
 data-listed-at={String(listing?.listed_at || listing?.created_at || "")}
-                data-address={listing.address}
+                data-address={formatAddress(listing.address)}
                 data-meta={`${listing.beds || "-"} bed · ${listing.baths || "-"} bath`}
                 data-beds={String(listing?.beds || "-")}
                 data-baths={String(listing?.baths || "-")}
@@ -1878,7 +1896,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
       <div class="card-image-wrap">
   <img
   src={image}
-  alt={listing.address || "Listing"}
+  alt={formatAddress(listing.address) || "Listing"}
   loading={index < 3 ? "eager" : "lazy"}
   fetchpriority={index < 3 ? "high" : "auto"}
   decoding="async"
@@ -1887,7 +1905,7 @@ data-type={String(listing?.normalized_type || listing?.property_type || page.pro
 
 <div class="card-body">
   <div class="price">{formatPrice(listing.price)}</div>
-  <div class="address">{listing.address}</div>
+  <div class="address">{formatAddress(listing.address)}</div>
 <div class="card-city">{city.charAt(0).toUpperCase() + city.slice(1)}, BC</div>
 <div class="meta">
     {listing.beds || "-"} bd · {listing.baths || "-"} ba{listing.sqft ? ` · ${Number(listing.sqft).toLocaleString()} sq ft` : ""}
@@ -2923,7 +2941,19 @@ document.addEventListener("click", (event) => {
         return Math.max(...prices, 0);
       }
 
-function createRefinedListingCard(listing, index = 0) {        const normalizePhotoUrl = (url) => {
+function createRefinedListingCard(listing, index = 0) {
+function fmtAddr(v) {
+  if (!v) return "";
+  let o = v;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t.startsWith("{")) return t;
+    try { o = JSON.parse(t); } catch { return ""; }
+  }
+  if (typeof o !== "object" || Array.isArray(o)) return "";
+  return [o.streetNumber, o.streetName || o.streetAddress, o.streetSuffix, o.unitNumber ? `#${o.unitNumber}` : ""].filter(Boolean).join(" ").trim();
+}
+const normalizePhotoUrl = (url) => {
           const value = String(url || "").trim();
 
           if (!value) return "";
@@ -3001,7 +3031,7 @@ const refinedCity = String(refinedCityRaw)
             data-raw-price="${String(listing.price || listing.raw_price || listing.price_text || "").replace(/[^0-9]/g, "")}"
 data-sort-index="${index}"
 data-listed-at="${listing.listed_at || listing.created_at || listing.updated_at || ""}"
-data-address="${listing.address || ""}"            data-meta="${listing.beds || "-"} bed · ${listing.baths || "-"} bath"
+data-address="${fmtAddr(listing.address)}"            data-meta="${listing.beds || "-"} bed · ${listing.baths || "-"} bath"
             data-beds="${listing.beds || "-"}"
             data-baths="${listing.baths || "-"}"
             data-sqft="${listing.sqft || ""}"
@@ -3028,7 +3058,7 @@ data-city="${listing.normalized_city || listing.city || document.querySelector('
 style="position:absolute;top:16px;right:14px;display:inline-flex;align-items:center;width:fit-content;margin:0;padding:5px 9px;border-radius:999px;font-size:0.66rem;font-weight:900;line-height:1;letter-spacing:0.05em;text-transform:uppercase;"
 >${decisionLabel}</div>
 
-  <div class="address">${listing.address || ""}</div>
+  <div class="address">${fmtAddr(listing.address)}</div>
               <div class="card-city">${refinedCity}, BC</div>
 
          <div class="meta">

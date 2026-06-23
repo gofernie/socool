@@ -9,10 +9,19 @@ const supabase = createClient(
   import.meta.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const sortParam = Astro.url.searchParams.get("sort") || "newest";
+const sortMap: Record<string, { column: string; ascending: boolean }> = {
+  newest: { column: "created_at", ascending: false },
+  oldest: { column: "created_at", ascending: true },
+  name:   { column: "name",       ascending: true  },
+  source: { column: "source",     ascending: true  },
+};
+const { column, ascending } = sortMap[sortParam] ?? sortMap.newest;
+
 const { data: leads = [], error } = await supabase
   .from("intent_leads")
   .select("*")
-  .order("created_at", { ascending: false });
+  .order(column, { ascending });
 
 function fmtDate(value) {
   if (!value) return "";
@@ -60,11 +69,11 @@ function fmtDate(value) {
         max-width: 1100px;
       }
 
-      h1 {
+    h1 {
         margin: 0 0 8px;
-        font-family: var(--font-display);
-        font-size: 2.6rem;
-        font-weight: 400;
+        font-family: var(--font-body);
+        font-size: 2.2rem;
+        font-weight: 700;
         line-height: 1;
         letter-spacing: -0.03em;
       }
@@ -101,32 +110,23 @@ function fmtDate(value) {
         margin-top: 4px;
       }
 
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 16px;
+     .lead-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 20px;
+        margin-top: 6px;
+        font-size: 0.88rem;
+        color: #444;
       }
 
-      .cell {
-        background: #f7f4ef;
-        border: 1px solid rgba(24, 22, 20, 0.1);
-        border-radius: 12px;
-        padding: 12px;
+      .lead-row span::before {
+        content: "·";
+        margin-right: 6px;
+        color: #bbb;
       }
 
-      .label {
-        font-size: 0.68rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #777;
-        font-weight: 800;
-        margin-bottom: 4px;
-      }
-
-      .value {
-        font-weight: 650;
-        overflow-wrap: anywhere;
+      .lead-row span:first-child::before {
+        content: none;
       }
 
       .actions {
@@ -136,10 +136,10 @@ function fmtDate(value) {
         flex-wrap: wrap;
       }
 
-      .btn {
+     .btn {
         display: inline-flex;
         padding: 8px 12px;
-        border-radius: 999px;
+        border-radius: 6px;
         border: 1px solid rgba(24, 22, 20, 0.2);
         color: #181614;
         text-decoration: none;
@@ -149,6 +149,41 @@ function fmtDate(value) {
 
       .btn:hover {
         background: #f7f4ef;
+      }
+
+      .sort-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      .sort-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-right: 2px;
+      }
+
+      .sort-btn {
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid rgba(24, 22, 20, 0.2);
+        color: #555;
+        text-decoration: none;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .sort-btn:hover { background: #f0ece5; }
+
+      .sort-btn.active {
+        background: #181614;
+        color: #fff;
+        border-color: #181614;
       }
 
       @media (max-width: 860px) {
@@ -173,9 +208,17 @@ function fmtDate(value) {
 
       <main class="main">
         <h1>Leads</h1>
-        <p class="sub">
+      <p class="sub">
           All captured buyer leads from intent pages, ask-a-question, and showing requests.
         </p>
+
+       <div class="sort-bar">
+          <span class="sort-label">Sort:</span>
+          <a href="?sort=newest" class={"sort-btn" + (sortParam === "newest" ? " active" : "")}>Newest</a>
+          <a href="?sort=oldest" class={"sort-btn" + (sortParam === "oldest" ? " active" : "")}>Oldest</a>
+          <a href="?sort=name"   class={"sort-btn" + (sortParam === "name"   ? " active" : "")}>Name</a>
+          <a href="?sort=source" class={"sort-btn" + (sortParam === "source" ? " active" : "")}>Source</a>
+        </div>
 
         {error && <p>Error loading leads: {error.message}</p>}
 
@@ -192,55 +235,17 @@ function fmtDate(value) {
               <div class="meta">{lead.source || "Unknown source"}</div>
             </div>
 
-            <div class="grid">
-              <div class="cell">
-                <div class="label">Email</div>
-                <div class="value">{lead.email || "Not provided"}</div>
-              </div>
-
-              <div class="cell">
-                <div class="label">Phone</div>
-                <div class="value">{lead.phone || "Not provided"}</div>
-              </div>
-
-              <div class="cell">
-                <div class="label">City / Page</div>
-                <div class="value">
-                  {lead.city || "—"} / {lead.slug || "—"}
-                </div>
-              </div>
-
-              <div class="cell">
-                <div class="label">Session</div>
-                <div class="value">{lead.session_id || "—"}</div>
-              </div>
-
-              <div class="cell">
-                <div class="label">Intent Page ID</div>
-                <div class="value">{lead.intent_page_id || "—"}</div>
-              </div>
+           <div class="lead-row">
+              {lead.email && <span>{lead.email}</span>}
+              {lead.phone && <span>{lead.phone}</span>}
+              {(lead.city || lead.slug) && <span>{lead.city || "—"} / {lead.slug || "—"}</span>}
             </div>
 
             <div class="actions">
-              {lead.email && (
-                <a class="btn" href={`mailto:${lead.email}`}>
-                  Email
-                </a>
-              )}
-
-              {lead.phone && (
-                <a class="btn" href={`tel:${lead.phone}`}>
-                  Call
-                </a>
-              )}
-
+              {lead.email && <a class="btn" href={`mailto:${lead.email}`}>Email</a>}
+              {lead.phone && <a class="btn" href={`tel:${lead.phone}`}>Call</a>}
               {lead.session_id && (
-                <a
-                  class="btn"
-                  href={`/admin/intent-sessions?session=${encodeURIComponent(
-                    lead.session_id
-                  )}`}
-                >
+                <a class="btn" href={`/admin/intent-sessions?session=${encodeURIComponent(lead.session_id)}`}>
                   View session
                 </a>
               )}

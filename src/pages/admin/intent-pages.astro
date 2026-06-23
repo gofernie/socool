@@ -57,6 +57,10 @@ if (activeStatus === "draft") {
   pagesQuery = pagesQuery.eq("is_published", false);
 }
 
+if (activeStatus === "nav") {
+  pagesQuery = pagesQuery.eq("show_in_nav", true);
+}
+
 const { data: pages, error } = await pagesQuery.order("created_at", {
   ascending: false,
 });
@@ -119,7 +123,7 @@ function publicHref(page: any) {
         line-height: 1.5;
       }
 
-      .page {
+  .page {
         display: grid;
         grid-template-columns: 220px 1fr;
         min-height: 100vh;
@@ -142,9 +146,9 @@ function publicHref(page: any) {
       }
 
       .topbar h1 {
-        font-family: var(--font-display);
-        font-size: 2.6rem;
-        font-weight: 400;
+        font-family: var(--font-body);
+        font-size: 2.2rem;
+        font-weight: 700;
         line-height: 1;
         letter-spacing: -0.03em;
       }
@@ -169,7 +173,7 @@ function publicHref(page: any) {
         align-items: center;
         gap: 7px;
         padding: 11px 20px;
-        border-radius: 999px;
+        border-radius: 6px;
         border: 1px solid transparent;
         font: inherit;
         font-size: 0.86rem;
@@ -211,12 +215,12 @@ function publicHref(page: any) {
         margin-bottom: 20px;
       }
 
-     .filter-pill {
+    .filter-pill {
         display: inline-flex;
         align-items: center;
         min-height: 32px;
         padding: 0 12px;
-        border-radius: 999px;
+        border-radius: 6px;
         border: 1px solid var(--border);
         background: var(--surface);
         color: var(--muted);
@@ -235,20 +239,20 @@ function publicHref(page: any) {
         border-color: var(--ink);
       }
 
-      /* ── Grid ── */
+   /* ── Grid ── */
       .grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
         gap: 10px;
       }
 
       /* ── Page card ── */
-      .page-card {
+     .page-card {
         display: flex;
         flex-direction: column;
         gap: 14px;
         padding: 20px;
-        border-radius: var(--radius);
+        border-radius: 6px;
         background: var(--surface);
         border: 1px solid var(--border);
       }
@@ -282,12 +286,12 @@ function publicHref(page: any) {
         margin-top: 10px;
       }
 
-      .tag {
+    .tag {
         display: inline-flex;
         align-items: center;
         min-height: 22px;
         padding: 0 8px;
-        border-radius: 999px;
+        border-radius: 6px;
         background: rgba(24,22,20,0.07);
         color: var(--muted);
         font-size: 0.72rem;
@@ -353,21 +357,34 @@ function publicHref(page: any) {
         .grid { grid-template-columns: 1fr; }
       }
 
-      .nav-sort-card {
+     .nav-sort-card {
   margin-bottom: 24px;
-  padding: 24px;
   background: white;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.nav-sort-card h2 {
-  margin-bottom: 6px;
+.nav-sort-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
 }
 
-.nav-sort-card p {
-  color: var(--muted);
-  margin-bottom: 16px;
+.nav-sort-toggle:hover { background: var(--bg); }
+
+#nav-sort-body {
+  padding: 0 20px 20px;
 }
 
 .nav-sort-item {
@@ -378,7 +395,7 @@ function publicHref(page: any) {
   margin-bottom: 8px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   cursor: move;
 }
 
@@ -394,15 +411,32 @@ function publicHref(page: any) {
 .drag-handle span {
   width: 4px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: 2px;
   background: rgba(24, 22, 20, 0.42);
+}
+
+.nav-remove-btn {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.nav-remove-btn:hover {
+  background: #fff0f0;
+  color: #b33;
 }
     </style>
   </head>
 
 <body>
-  <AdminSidebar active="pages" />
   <div class="page">
+    <AdminSidebar active="pages" />
     <main class="main">
 
 
@@ -434,14 +468,20 @@ function publicHref(page: any) {
         <a class={`filter-pill ${activeType === "house" ? "active" : ""}`} href="/admin/intent-pages?type=house">House</a>
         <a class={`filter-pill ${activeType === "condo" ? "active" : ""}`} href="/admin/intent-pages?type=condo">Condo</a>
         <a class={`filter-pill ${activeType === "townhouse" ? "active" : ""}`} href="/admin/intent-pages?type=townhouse">Townhouse</a>
-        <a class={`filter-pill ${activeType === "mobile" ? "active" : ""}`} href="/admin/intent-pages?type=mobile">Mobile</a>
+<a class={`filter-pill ${activeType === "mobile" ? "active" : ""}`} href="/admin/intent-pages?type=mobile">Mobile</a>
+        <a class={`filter-pill ${activeStatus === "nav" ? "active" : ""}`} href="/admin/intent-pages?status=nav">In Nav</a>
       </div>
 
       {error && <p class="error">{error.message}</p>}
 
 <section class="nav-sort-card">
-  <h2>Navigation Order</h2>
-  <p>
+  <button type="button" class="nav-sort-toggle" id="nav-sort-toggle" aria-expanded="false">
+    <span>Navigation Order</span>
+    <svg id="nav-sort-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" style="transition:transform 0.2s;"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <div id="nav-sort-body" hidden>
+  <p style="color:var(--muted);font-size:0.88rem;margin:12px 0 16px;">
     Drag pages to control the order shown in the site navigation.
   </p>
 
@@ -450,32 +490,38 @@ function publicHref(page: any) {
       .filter((page) => page.show_in_nav)
       .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
       .map((page) => (
-        <div
+       <div
           class="nav-sort-item"
           draggable="true"
           data-id={page.id}
         >
           <span class="drag-handle" aria-hidden="true">
-  <span></span><span></span>
-  <span></span><span></span>
-  <span></span><span></span>
-</span>
-          <span>
-            {page.nav_label ||
-              page.hero_heading ||
-              titleCase(page.slug)}
+            <span></span><span></span>
+            <span></span><span></span>
+            <span></span><span></span>
           </span>
+          <span style="flex:1;">
+            {page.nav_label || page.hero_heading || titleCase(page.slug)}
+          </span>
+          <button
+            type="button"
+            class="nav-remove-btn"
+            data-remove-id={page.id}
+            title="Remove from nav"
+          >✕</button>
         </div>
       ))}
   </div>
 
-  <button
+<button
     type="button"
     class="btn btn--primary"
     id="save-nav-order"
+    style="margin-top:12px;"
   >
     Save Nav Order
   </button>
+  </div>
 </section>
 
       {!pages?.length && (
@@ -542,8 +588,36 @@ function publicHref(page: any) {
      </main>
   </div>
   <script>
-  const list = document.getElementById("nav-sort-list");
+ const list = document.getElementById("nav-sort-list");
   const saveBtn = document.getElementById("save-nav-order");
+  const toggle = document.getElementById("nav-sort-toggle");
+  const body = document.getElementById("nav-sort-body");
+  const chevron = document.getElementById("nav-sort-chevron");
+
+  document.querySelectorAll(".nav-remove-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-remove-id");
+      if (!id) return;
+      btn.textContent = "…";
+      const res = await fetch("/api/admin/save-nav-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [], removeFromNav: id }),
+      });
+      if (res.ok) {
+        btn.closest(".nav-sort-item")?.remove();
+      } else {
+        btn.textContent = "✕";
+      }
+    });
+  });
+
+  toggle?.addEventListener("click", () => {
+    const isOpen = !body.hidden;
+    body.hidden = isOpen;
+    toggle.setAttribute("aria-expanded", String(!isOpen));
+    chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+  });
 
   let draggedItem = null;
 

@@ -62,9 +62,21 @@ const getListingPrice = (listing: any) => {
   return listing.price_text || listing.priceText || "Price on request";
 };
 
+const formatAddressValue = (value: any): string => {
+  if (!value) return "";
+  let obj = value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("{")) return trimmed;
+    try { obj = JSON.parse(trimmed); } catch { return ""; }
+  }
+  if (typeof obj !== "object" || Array.isArray(obj)) return "";
+  return [obj.streetNumber, obj.streetName || obj.streetAddress, obj.streetSuffix, obj.unitNumber ? `#${obj.unitNumber}` : ""]
+    .filter(Boolean).join(" ").trim();
+};
 const getListingAddress = (listing: any) =>
-  listing.address ||
-  listing.full_address ||
+  formatAddressValue(listing.address) ||
+  formatAddressValue(listing.full_address) ||
   listing.addressText ||
   listing.addressObj?.streetAddress ||
   [listing.addressObj?.streetNumber, listing.addressObj?.streetName, listing.addressObj?.streetSuffix]
