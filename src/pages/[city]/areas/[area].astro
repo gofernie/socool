@@ -238,7 +238,7 @@ const normalizeListingImageUrl = (value) => {
   if (!raw) return "";
   if (raw.startsWith("http")) return raw;
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
- return cleaned.startsWith("/vreb/") ? `https://cdn.repliers.io${cleaned}?class=medium` : cleaned;
+ return cleaned.startsWith("/vreb/") || cleaned.startsWith("/crea2/") ? `https://cdn.repliers.io${cleaned}?class=medium` : cleaned;
 };
 
 const getListingImage = (listing) =>
@@ -1358,3 +1358,4 @@ if (window.google?.maps && document.getElementById("area-map")) {
   }
 </style>
 </Layout>
+
