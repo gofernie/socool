@@ -13,6 +13,7 @@ import {
   getListingYear
 } from "../../lib/repliers";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
+import IntentModalController from "../../components/IntentModalController.astro";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL!,
@@ -2313,7 +2314,7 @@ const num = String(i + 1).padStart(2, "0");
 
             return (
             <article
-  class="card"
+  class="card original-card"
   data-item-id={String(itemId)}
   data-card-id={String(listingId)}
   data-listing-id={String(listing?.repliers_listing_id || listing?.listing_id || listing?.id || listingId || "")}
@@ -2459,6 +2460,7 @@ data-featured={i === 0 ? "true" : "false"}>
     </main>
 
    <ShortlistReviewModal />
+<IntentModalController />
 
 
 <script is:inline>
@@ -3806,7 +3808,7 @@ if (insightEl) {
 
           const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
           const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-          if (firstNew) setTimeout(() => openSheetFromCard(firstNew), 250);
+          if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
 
         } catch (err) {
           btn.disabled = false;
@@ -3859,7 +3861,7 @@ sessionStorage.setItem(_refineKey, "1");
 
           const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
           const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-          if (firstNew) setTimeout(() => openSheetFromCard(firstNew), 250);
+          if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
 
         } catch (err) {
           btn.disabled = false;
@@ -3928,7 +3930,7 @@ btn.addEventListener("mouseleave", () => {
 
       if (card) {
         cameFromSummary = true;
-        openSheetFromCard(card);
+        window.openSheet(card);
       }
     });
   });
@@ -4476,7 +4478,7 @@ if (ok) {
 
   const nextCard = getNextCard();
           if (nextCard) {
-            openSheetFromCard(nextCard);
+            window.openSheet(nextCard);
             resetPanelScroll();
           } else {
             resetDecisionUI();
@@ -4501,7 +4503,7 @@ await flushListingMetrics({
 const prevCard = getPrevCard();
 
   if (prevCard) {
-    openSheetFromCard(prevCard);
+    window.openSheet(prevCard);
     resetPanelScroll();
   }
 }
@@ -4726,13 +4728,13 @@ if (needsRefresh) {
           card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openSheetFromCard(card);
+            window.openSheet(card);
           });
 
           card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openSheetFromCard(card);
+            window.openSheet(card);
           });
 
           card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
@@ -5085,7 +5087,7 @@ if (autoOpenParams.has("openNew")) {
   const firstNewCard = cards[batchStartIndex] || cards[0];
 
   if (firstNewCard) {
-    openSheetFromCard(firstNewCard);
+    window.openSheet(firstNewCard);
   }
 });
 }
@@ -5164,7 +5166,7 @@ sheetPrevTopBtn?.addEventListener("click", (e) => {
   if (isShowingSummary) {
     const cards = Array.from(document.querySelectorAll(".card"));
     const lastCard = cards[cards.length - 1];
-    if (lastCard) openSheetFromCard(lastCard);
+    if (lastCard) window.openSheet(lastCard);
     return;
   }
   if (cameFromSummary) {
@@ -5312,7 +5314,7 @@ async function renderPageMap() {
 });
 
     marker.addListener("click", () => {
-      openSheetFromCard(card);
+      window.openSheet(card);
     });
 
     bounds.extend({ lat, lng });
@@ -5349,7 +5351,7 @@ mapBtn?.addEventListener("click", () => {
           if (isShowingSummary) {
             e.preventDefault();
             const firstCard = getCards()[0];
-            if (firstCard) openSheetFromCard(firstCard);
+            if (firstCard) window.openSheet(firstCard);
             return;
           }
 
@@ -5358,7 +5360,7 @@ mapBtn?.addEventListener("click", () => {
 
                summaryRestartBtn?.addEventListener("click", () => {
           const firstCard = getCards()[0];
-          if (firstCard) openSheetFromCard(firstCard);
+          if (firstCard) window.openSheet(firstCard);
         });
 
         document.querySelectorAll("[data-summary-comment]").forEach((btn) => {
@@ -5796,3 +5798,7 @@ updateCounts();
    
   </body>
 </html>
+
+
+
+

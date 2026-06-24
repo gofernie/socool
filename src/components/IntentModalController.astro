@@ -322,6 +322,7 @@ sheetSummary?.setAttribute("hidden", "");
           sheet.setAttribute("aria-hidden", "false");
           document.body.style.overflow = "hidden";
         }
+      window.openSheet = openSheet;
 
       function closeSheet(options = {}) {
   sheet.classList.remove("is-engagement-mode");
@@ -1922,3 +1923,4 @@ chipAdvanceTimer = setTimeout(() => {
   initIntentReviewModal();
 }
 </script>
+
