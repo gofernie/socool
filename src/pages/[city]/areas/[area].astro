@@ -442,6 +442,12 @@ const chartData = {
         <span>Townhomes</span>
         <strong>{townhomeCount}</strong>
       </a>
+      {landCount > 0 && (
+        <a class="stat-card stat-card-link" href="#" data-filter-type="land">
+          <span>Lot / Land</span>
+          <strong>{landCount}</strong>
+        </a>
+      )}
     </section>
 
     <section class="filter-bar">
@@ -1358,4 +1364,5 @@ if (window.google?.maps && document.getElementById("area-map")) {
   }
 </style>
 </Layout>
+
 
