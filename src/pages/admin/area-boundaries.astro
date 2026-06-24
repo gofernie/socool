@@ -264,7 +264,11 @@ const sitesJson = JSON.stringify(sites);
 
             <label>
               Area
-              <select id="areaSelect"></select>
+              <select id="areaSelect"><option value="">-- select or type new --</option></select>
+            </label>
+            <label>
+              New Area Name
+              <input id="areaNameNew" type="text" placeholder="e.g. Sparwood East" />
             </label>
 
             <label>
@@ -664,14 +668,17 @@ setActiveAction("draw");
           return;
         }
 
+        const areaNameNewInput = document.getElementById("areaNameNew");
+        const newAreaTyped = areaNameNewInput?.value?.trim() || "";
         const selectedOption = areaSelect.options[areaSelect.selectedIndex];
-        const areaName = selectedOption?.textContent || areaSelect.value;
+        const areaName = newAreaTyped || selectedOption?.textContent || areaSelect.value;
+        const areaSlug = newAreaTyped ? newAreaTyped.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") : areaSelect.value;
         const center = getPolygonCenter(activePolygon);
 
        const payload = {
           site_id: siteSelect.value,
           city: citySelect.value,
-          area_slug: areaSelect.value,
+          area_slug: areaSlug,
           area_name: areaName,
           short_description: shortDescriptionInput.value.trim(),
           hero_image_url: heroImageUrlInput.value.trim(),
@@ -804,6 +811,8 @@ setActiveAction("draw");
     </script>
   </body>
 </html>
+
+
 
 
 
