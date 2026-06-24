@@ -101,10 +101,7 @@ const normalizeListingImageUrl = (value: any) => {
   if (!raw) return "";
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
-  if (cleaned.startsWith("/vreb/")) {
-    return `https://cdn.repliers.io${cleaned}`;
-  }
-  return cleaned;
+ return `https://cdn.repliers.io${cleaned}`;
 };
 
 const getListingImage = (listing: any) =>

@@ -27,11 +27,7 @@ const normalizeListingImageUrl = (value: any) => {
 
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
 
-  if (cleaned.startsWith("/vreb/")) {
-    return `https://cdn.repliers.io${cleaned}`;
-  }
-
-  return cleaned;
+return `https://cdn.repliers.io${cleaned}`;
 };
 const price = `$${Number(listing.price || 0).toLocaleString()}`;
 const formatAddress = (value: any) => {
