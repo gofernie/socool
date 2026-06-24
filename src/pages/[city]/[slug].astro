@@ -45,17 +45,21 @@ const { data: featureRows } = await supabase
   .eq("intent_page_id", page.id);
 
 const features = (featureRows || []).map((f) => f.feature_key);
+const { data: areaBoundaryRows = [] } = await supabase
+  .from("area_boundaries")
+  .select("area_slug, area_name")
+  .eq("city", city);
+
+const areas = areaBoundaryRows
+  .map((r) => r.area_name || String(r.area_slug || "").replace(/-/g, " "))
+  .filter(Boolean)
+  .sort((a, b) => a.localeCompare(b));
+
 const { data: navRows = [] } = await supabase
   .from("listing_rows")
-  .select("normalized_area, normalized_type")
+  .select("normalized_type")
   .eq("normalized_city", city)
-  .not("normalized_area", "is", null);
-
-const areas = [...new Set(
-  navRows
-    .map((row) => String(row.normalized_area || "").trim())
-    .filter((item) => item && item !== "unknown")
-)].sort((a, b) => a.localeCompare(b));
+  .not("normalized_type", "is", null);
 
 const propertyTypes = [...new Set(
   navRows

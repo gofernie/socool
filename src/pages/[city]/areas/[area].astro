@@ -124,10 +124,20 @@ supabase
 
 
 
+const areaCountMap = areaRows.reduce((acc, row) => {
+  const a = String(row.normalized_area || "").trim().toLowerCase();
+  if (a) acc[a] = (acc[a] || 0) + 1;
+  return acc;
+}, {});
+
 const areas = (areaMetaRows || [])
   .map((r) => r.area_name || String(r.area_slug || "").replace(/-/g, " "))
   .filter(Boolean)
-  .sort((a, b) => a.localeCompare(b));
+  .sort((a, b) => {
+    const countB = areaCountMap[a.toLowerCase()] || 0;
+    const countA = areaCountMap[b.toLowerCase()] || 0;
+    return countA - countB;
+  });
 
 const intentPages = intentPagesRaw ?? [];
 
@@ -369,7 +379,7 @@ const chartData = {
  <nav class="area-browse-nav">
     <div class="shell area-browse-nav__inner">
      <span>Explore more {cityLabel} areas</span>
-      {areas.slice(0, 3).map((item) => (
+      {areas.slice(0, 4).map((item) => (
         
        <a
   class:list={{ active: areaToSlug(item) === areaSlug }}

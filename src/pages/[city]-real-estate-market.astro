@@ -168,26 +168,19 @@ const areaToSlug = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-const navAreas = Object.entries(areaCounts)
-  .map(([area, count]) => ({
-    area: String(area || "").trim(),
-    count: Number(count || 0),
-  }))
-  .filter(({ area, count }) => {
-    const clean = area.toLowerCase();
+const { data: areaMetaRows = [] } = await supabase
+  .from("area_boundaries")
+  .select("area_slug, area_name, short_description, polygon_geojson")
+  .ilike("city", city);
 
-    if (!clean || clean === "unknown" || clean === "other") {
-      return false;
-    }
+const navAreaCountMap = Object.fromEntries(
+  Object.entries(areaCounts).map(([label, count]) => [label.toLowerCase(), count])
+);
 
-    if (city === "parksville") {
-      return clean.startsWith("pq ");
-    }
-
-    return count >= 5;
-  })
-  .sort((a, b) => b.count - a.count)
-  .map(({ area }) => area);
+const navAreas = areaMetaRows
+  .map((r) => r.area_name || String(r.area_slug || "").replace(/-/g, " "))
+  .filter(Boolean)
+  .sort((a, b) => (navAreaCountMap[b.toLowerCase()] || 0) - (navAreaCountMap[a.toLowerCase()] || 0));
 
 const navTypes = ["house", "condo", "townhouse", "land"];
 
@@ -231,10 +224,7 @@ const priceBucketCounts = priceBuckets.map((bucket) =>
 
 
 
-const { data: areaMetaRows = [] } = await supabase
-  .from("area_boundaries")
-  .select("area_slug, area_name, short_description, polygon_geojson")
-  .ilike("city", city);
+
 
   const areaBoundariesBySlug = Object.fromEntries(
   areaMetaRows
@@ -664,11 +654,11 @@ home searches.
     z-index: 40;
   }
 
-  .area-browse-nav__inner {
+.area-browse-nav__inner {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 0;
+    padding: 18px 0 20px;
     overflow-x: auto;
     white-space: nowrap;
     scrollbar-width: none;
@@ -676,26 +666,28 @@ home searches.
 
   .area-browse-nav__inner::-webkit-scrollbar { display: none; }
 
-  .area-browse-nav__inner > span {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--muted);
+.area-browse-nav__inner > span {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--accent);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     flex-shrink: 0;
-    margin-right: 4px;
+    margin-right: 8px;
   }
 
 .area-browse-nav a {
     display: inline-flex;
     align-items: center;
-    height: 30px;
-    padding: 0 13px;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 15px;
     border-radius: 6px;
-    border: 0.5px solid rgba(28,25,23,0.12);
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--ink);
+    background: color-mix(in srgb, var(--accent) 7%, white);
+    border: 0.5px solid rgba(0,0,0,0.12);
+    font-size: 0.84rem;
+    font-weight: 750;
+    color: var(--muted);
     text-decoration: none;
     transition: all 0.15s ease;
     flex-shrink: 0;
