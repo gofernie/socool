@@ -65,24 +65,7 @@ const areaHeroImages = {
 
 const fallbackHeroImage =
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=70";
-const content = {
-  heroIntro: boundary?.intro_copy || `${labelize(area)} offers a mix of ${cityLabel} real estate options for buyers comparing price, location, layout, and long-term value.`,
-  livingHeadline: `Convenient, connected ${cityLabel} living`,
-  livingCopy: `${labelize(area)} offers access to everyday amenities, parks, schools, shopping, and major routes across ${cityLabel}.`,
-  schools: [
-    ["Local elementary schools", "Nearby"],
-    ["Local secondary schools", "Nearby"],
-    ["Community programs", "Nearby"],
-  ],
-  amenities: [
-    ["Shopping and services", "Nearby"],
-    ["Parks and trails", "Nearby"],
-    ["Transit connections", "Nearby"],
-    ["Restaurants and cafés", "Short drive"],
-    ["Recreation options", "Short drive"],
-  ],
-  nearby: [],
-};
+ 
 
 const cleanAreaName = (value) =>
   String(value || "")
@@ -107,7 +90,8 @@ const [
   { data: areaRows = [] },
   { data: cityListings = [] },
   { data: boundary, error: boundaryError },
-{ data: intentPagesRaw },
+  { data: intentPagesRaw },
+  { data: areaMetaRows = [] },
 ] = await Promise.all([
   supabase
     .from("listing_rows")
@@ -126,39 +110,45 @@ supabase
     .eq("city", city)
     .eq("area_slug", String(areaSlug || "").toLowerCase())
     .maybeSingle(),
-  supabase
+supabase
     .from("intent_pages")
     .select("slug, nav_label, card_title, show_in_nav")
     .eq("city", city)
     .eq("show_in_nav", true)
     .order("nav_order", { ascending: true }),
+  supabase
+    .from("area_boundaries")
+    .select("area_slug, area_name")
+    .eq("city", city),
 ]);
 
-const allowedAreaLabels =
-  city === "parksville"
-    ? [
-        "pq bowser/deep bay",
-        "pq errington/coombs/hilliers",
-        "pq fairwinds",
-        "pq french creek",
-        "pq little qualicum river village",
-        "pq nanoose",
-        "pq parksville",
-        "pq qualicum beach",
-        "pq qualicum north",
-      ]
-    : [];
 
-const areas =
-  city === "parksville"
-    ? allowedAreaLabels
-    : [...new Set(
-        areaRows
-          .map((r) => String(r.normalized_area || "").trim())
-          .filter((a) => a && a !== "unknown")
-      )].sort((a, b) => a.localeCompare(b));
+
+const areas = (areaMetaRows || [])
+  .map((r) => r.area_name || String(r.area_slug || "").replace(/-/g, " "))
+  .filter(Boolean)
+  .sort((a, b) => a.localeCompare(b));
 
 const intentPages = intentPagesRaw ?? [];
+
+const content = {
+  heroIntro: boundary?.intro_copy || `${labelize(area)} offers a mix of ${cityLabel} real estate options for buyers comparing price, location, layout, and long-term value.`,
+  livingHeadline: `Convenient, connected ${cityLabel} living`,
+  livingCopy: `${labelize(area)} offers access to everyday amenities, parks, schools, shopping, and major routes across ${cityLabel}.`,
+  schools: [
+    ["Local elementary schools", "Nearby"],
+    ["Local secondary schools", "Nearby"],
+    ["Community programs", "Nearby"],
+  ],
+  amenities: [
+    ["Shopping and services", "Nearby"],
+    ["Parks and trails", "Nearby"],
+    ["Transit connections", "Nearby"],
+    ["Restaurants and cafés", "Short drive"],
+    ["Recreation options", "Short drive"],
+  ],
+  nearby: [],
+};
 
 console.log("AREA ROWS DEBUG", {
   city,
