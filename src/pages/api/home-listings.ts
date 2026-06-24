@@ -33,6 +33,7 @@ const normalizeImageUrl = (value: any) => {
 
   const cleaned = raw.startsWith("/") ? raw : `/${raw}`;
   if (cleaned.startsWith("/vreb/")) return `https://cdn.repliers.io${cleaned}`;
+  if (cleaned.startsWith("/crea2/")) return `https://cdn.repliers.io${cleaned}`;
 
   return cleaned;
 };
