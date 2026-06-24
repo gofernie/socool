@@ -106,7 +106,11 @@ export const GET: APIRoute = async ({ url }) => {
         params.set("include", "details,address,images");
         params.set("status", "A");
 
-        const data = await fetchRepliers(params);
+        const boardId = url.searchParams.get("boardId");
+        if (boardId) params.set("boardId", boardId);
+
+     const data = await fetchRepliers(params);
+        console.log("RAW REPLIERS RESPONSE:", JSON.stringify(data).slice(0, 500));
         const listings = data?.listings || data?.results || data || [];
 
         if (!Array.isArray(listings) || listings.length === 0) break;
