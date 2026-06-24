@@ -84,13 +84,14 @@ const { data: sites = [] } = await sitesQuery;
 
 .page {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 220px 1fr;
 }
 
-  .main {
-    padding: 48px 32px 64px;
-  }
+.main {
+  margin-left: 220px;
+  width: calc(100% - 220px);
+  box-sizing: border-box;
+  padding: 48px 48px 64px;
+}
 
 h1 {
   max-width: 1000px;
@@ -147,15 +148,13 @@ h1 {
     color: #8a949e;
   }
 
-  @media (max-width: 860px) {
-    .page {
-      display: block;
-    }
-
-    .main {
-      padding: 28px 18px 48px;
-    }
+ @media (max-width: 860px) {
+  .main {
+    margin-left: 0;
+    width: 100%;
+    padding: 28px 18px 48px;
   }
+}
 </style>
 </body>
 </html>

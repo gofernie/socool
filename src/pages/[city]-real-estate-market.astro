@@ -19,7 +19,12 @@ const supabase = createClient(
 const site = await getSite(Astro.url.hostname);
 
 const city =
-  String(Astro.params.city || site?.city || "nanaimo")
+  String(
+    Astro.url.searchParams.get("city") ||
+    Astro.params.city ||
+    site?.city ||
+    "nanaimo"
+  )
     .toLowerCase()
     .trim();
 
@@ -228,8 +233,8 @@ const priceBucketCounts = priceBuckets.map((bucket) =>
 
 const { data: areaMetaRows = [] } = await supabase
   .from("area_boundaries")
-  .select("area_slug, short_description, polygon_geojson")
-  .eq("city", city);
+  .select("area_slug, area_name, short_description, polygon_geojson")
+  .ilike("city", city);
 
   const areaBoundariesBySlug = Object.fromEntries(
   areaMetaRows
@@ -277,7 +282,6 @@ areaCounts = Object.fromEntries(
 );
 
 topAreas = Object.entries(areaCounts)
-  .filter(([, count]) => Number(count) > 0)
   .sort((a, b) => Number(b[1]) - Number(a[1]));
 
 function getAreaCardCount(area, fallbackCount) {
@@ -438,7 +442,9 @@ style={(() => {
 
       <div class="area-pick-card-body">
         <div class="area-count">
-          {getAreaCardCount(area, count)} listings
+          {getAreaCardCount(area, count) === 1
+  ? "1 listing"
+  : `${getAreaCardCount(area, count)} listings`}
         </div>
 
         {areaDescriptions[areaToSlug(area)] && (
