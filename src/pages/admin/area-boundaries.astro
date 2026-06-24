@@ -256,9 +256,9 @@ const sitesJson = JSON.stringify(sites);
             <label>
               City
               <select id="citySelect">
-                <option value="nanaimo">Nanaimo</option>
-<option value="parksville">Parksville</option>
-<option value="tofino">Tofino</option>
+                {[...new Set(sites.map((s) => s.city).filter(Boolean))].map((c) => (
+                  <option value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                ))}
               </select>
             </label>
 
@@ -804,6 +804,7 @@ setActiveAction("draw");
     </script>
   </body>
 </html>
+
 
 
 
