@@ -16,50 +16,19 @@ const { data: sites = [] } = await supabase
   .select("id, site_name, domain, city")
   .order("site_name", { ascending: true });
 
-const nanaimoAreas = [
-  "North Nanaimo",
-  "Hammond Bay",
-  "Departure Bay",
-  "Uplands",
-  "Pleasant Valley",
-  "Diver Lake",
-  "Central Nanaimo",
-  "Old City",
-  "University District",
-  "South Nanaimo",
-  "Chase River",
-  "Cedar",
-  "Jingle Pot",
-  "Extension",
-  "Brechin Hill",
-];
+const { data: areaBoundaryRows = [] } = await supabase
+  .from("area_boundaries")
+  .select("city, area_name, area_slug")
+  .order("area_name", { ascending: true });
 
-const parksvilleAreas = [
-  "PQ Bowser/Deep Bay",
-  "PQ Errington/Coombs/Hilliers",
-  "PQ Fairwinds",
-  "PQ French Creek",
-  "PQ Little Qualicum River Village",
-  "PQ Nanoose",
-  "PQ Parksville",
-  "PQ Qualicum Beach",
-  "PQ Qualicum North",
-];
-
-const tofinoAreas = [
-  "Tofino",
-  "Chesterman Beach",
-  "Mackenzie Beach",
-  "Cox Bay",
-  "Long Beach"
-];
-
-const areaOptions = {
-  nanaimo: nanaimoAreas,
-  parksville: parksvilleAreas,
-  tofino: tofinoAreas,
-};
-
+const areaOptions: Record<string, string[]> = {};
+for (const row of areaBoundaryRows) {
+  const city = String(row.city || "").toLowerCase().trim();
+  const name = String(row.area_name || row.area_slug || "").trim();
+  if (!city || !name) continue;
+  if (!areaOptions[city]) areaOptions[city] = [];
+  if (!areaOptions[city].includes(name)) areaOptions[city].push(name);
+}
 const areasByCityJson = JSON.stringify(areaOptions);
 const sitesJson = JSON.stringify(sites);
 ---
@@ -373,6 +342,10 @@ const sitesJson = JSON.stringify(sites);
   nanaimo: { lat: 49.1967, lng: -123.9401, zoom: 12 },
   parksville: { lat: 49.3193, lng: -124.3136, zoom: 11 },
   tofino: { lat: 49.1520, lng: -125.9067, zoom: 12 },
+  sparwood: { lat: 49.7300, lng: -114.8850, zoom: 13 },
+  fernie: { lat: 49.5037, lng: -115.0631, zoom: 13 },
+  duncan: { lat: 48.7787, lng: -123.7079, zoom: 13 },
+  colwood: { lat: 48.4254, lng: -123.4956, zoom: 13 },
 };
 
       function slugify(value) {
@@ -831,3 +804,9 @@ setActiveAction("draw");
     </script>
   </body>
 </html>
+
+
+
+
+
+
