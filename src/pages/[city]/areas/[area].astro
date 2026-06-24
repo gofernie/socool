@@ -65,302 +65,13 @@ const areaHeroImages = {
 
 const fallbackHeroImage =
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=70";
-const areaContent = {
-  "brechin hill": {
-    heroIntro: "Brechin Hill is a central Nanaimo neighbourhood known for harbour access, condo options, character homes, marina proximity, and quick connections to downtown and Departure Bay.",
-    livingHeadline: "Harbour access, central convenience, and classic Nanaimo character",
-    livingCopy: "Brechin Hill is popular with buyers who want a central location, nearby waterfront access, condo options, and quick access to downtown, ferries, shopping, and services.",
-    schools: [
-      ["Cilaire Elementary", "Grades K-7  -  nearby"],
-      ["Brechin Elementary area schools", "Grades K-7  -  nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12  -  short drive"],
-      ["Wellington Secondary", "Grades 8-12  -  short drive"],
-    ],
-    amenities: [
-      ["Nanaimo Yacht Club", "nearby"],
-      ["Brooks Landing", "nearby"],
-      ["Departure Bay ferry", "short drive"],
-      ["Downtown Nanaimo", "short drive"],
-      ["Waterfront walkway", "short drive"],
-    ],
-    nearby: ["departure bay", "central nanaimo", "old city", "hammond bay", "north nanaimo"],
-  },
-  "diver lake": {
-    heroIntro: "Diver Lake offers a practical central Nanaimo location with parks, recreation, schools, shopping, and a mix of detached homes and townhomes.",
-    livingHeadline: "Parks, recreation, and everyday central Nanaimo convenience",
-    livingCopy: "Diver Lake works well for buyers who want central access, family-friendly streets, recreation facilities, shopping, and a practical location for commuting around Nanaimo.",
-    schools: [
-      ["Forest Park Elementary", "Grades K-7 · nearby"],
-      ["Rock City Elementary", "Grades K-7 · nearby"],
-      ["Wellington Secondary", "Grades 8-12 · nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Beban Park", "nearby"],
-      ["Diver Lake Park", "nearby"],
-      ["Country Club Centre", "short drive"],
-      ["Northfield Road services", "nearby"],
-      ["Oliver Woods Community Centre", "short drive"],
-    ],
-    nearby: ["uplands", "central nanaimo", "pleasant valley", "north nanaimo", "departure bay"],
-  },
-  "extension": {
-    heroIntro: "Extension offers a quieter south Nanaimo setting with rural edges, larger lots, forested surroundings, and convenient access to Chase River and Cedar.",
-    livingHeadline: "Quiet rural edges with access to south Nanaimo amenities",
-    livingCopy: "Extension appeals to buyers looking for more space, a quieter setting, treed lots, and a location that still connects back to south Nanaimo, Cedar, and highway routes.",
-    schools: [
-      ["Chase River Elementary", "Grades K-7 · short drive"],
-      ["Cedar Elementary", "Grades K-7 · short drive"],
-      ["John Barsby Secondary", "Grades 8-12 · short drive"],
-      ["Cedar Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Chase River shops", "short drive"],
-      ["Cedar Village", "short drive"],
-      ["Southgate Shopping Centre", "short drive"],
-      ["Trail access", "nearby"],
-      ["Highway access", "short drive"],
-    ],
-    nearby: ["chase river", "cedar", "south nanaimo", "university district", "old city"],
-  },
-  "jingle pot": {
-    heroIntro: "Jingle Pot is known for larger lots, rural-feeling pockets, family homes, acreages, and a quieter setting close to central Nanaimo amenities.",
-    livingHeadline: "Larger lots, rural pockets, and central access",
-    livingCopy: "Jingle Pot attracts buyers who want more space, privacy, workshops, gardens, and a semi-rural feel while still staying close to schools, shopping, and central Nanaimo routes.",
-    schools: [
-      ["Mountain View Elementary", "Grades K-7 · nearby"],
-      ["Rock City Elementary", "Grades K-7 · short drive"],
-      ["Wellington Secondary", "Grades 8-12 · short drive"],
-      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Jingle Pot Road services", "nearby"],
-      ["Beban Park", "short drive"],
-      ["Country Club Centre", "short drive"],
-      ["Westwood Lake", "short drive"],
-      ["Trail networks", "nearby"],
-    ],
-    nearby: ["north jingle pot", "diver lake", "uplands", "central nanaimo", "pleasant valley"],
-  },
-  "old city": {
-    heroIntro: "Old City is Nanaimo's historic downtown neighbourhood, known for character homes, walkability, harbour access, restaurants, shops, and urban convenience.",
-    livingHeadline: "Historic homes, downtown energy, and harbour access",
-    livingCopy: "Old City is ideal for buyers who value character, walkability, local restaurants, downtown services, harbourfront access, and a more urban Nanaimo lifestyle.",
-    schools: [
-      ["Pauline Haarer Elementary", "Grades K-7 · nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
-      ["Fairview Elementary", "Grades K-7 · short drive"],
-      ["John Barsby Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Downtown Nanaimo", "nearby"],
-      ["Harbourfront walkway", "nearby"],
-      ["Port Theatre", "nearby"],
-      ["Old City Quarter", "nearby"],
-      ["Seaplane terminal", "nearby"],
-    ],
-    nearby: ["central nanaimo", "brechin hill", "south nanaimo", "university district", "departure bay"],
-  },
-  "pleasant valley": {
-    heroIntro: "Pleasant Valley offers north-end convenience with residential streets, shopping access, parks, schools, and quick connections to North Nanaimo and Uplands.",
-    livingHeadline: "North-end convenience with parks, schools, and shopping nearby",
-    livingCopy: "Pleasant Valley is a practical choice for buyers who want access to north Nanaimo shopping, schools, parks, and commuter routes while staying in an established residential area.",
-    schools: [
-      ["Pleasant Valley Elementary", "Grades K-7 · nearby"],
-      ["Dover Bay Secondary", "Grades 8-12 · short drive"],
-      ["McGirr Elementary", "Grades K-7 · short drive"],
-      ["Randerson Ridge Elementary", "Grades K-7 · short drive"],
-    ],
-    amenities: [
-      ["Woodgrove Centre", "short drive"],
-      ["Superstore area shops", "short drive"],
-      ["Oliver Woods Community Centre", "short drive"],
-      ["North Nanaimo services", "nearby"],
-      ["Park and trail access", "nearby"],
-    ],
-    nearby: ["north nanaimo", "uplands", "diver lake", "hammond bay", "central nanaimo"],
-  },
-  "south nanaimo": {
-    heroIntro: "South Nanaimo offers value, family homes, investment options, schools, parks, and quick access to downtown, VIU, Chase River, and major routes.",
-    livingHeadline: "Value, convenience, and access to south Nanaimo amenities",
-    livingCopy: "South Nanaimo is popular with buyers looking for detached homes, investment potential, suites, schools, parks, and access to downtown, VIU, and highway routes.",
-    schools: [
-      ["John Barsby Secondary", "Grades 8-12 · nearby"],
-      ["Park Avenue Elementary", "Grades K-7 · nearby"],
-      ["Bayview Elementary", "Grades K-7 · nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["University Village", "nearby"],
-      ["Vancouver Island University", "nearby"],
-      ["Southgate Shopping Centre", "short drive"],
-      ["Downtown Nanaimo", "short drive"],
-      ["Highway access", "nearby"],
-    ],
-    nearby: ["chase river", "old city", "university district", "cedar", "central nanaimo"],
-  },
-  "university district": {
-    heroIntro: "University District is centred around Vancouver Island University and offers access to schools, recreation, parks, investment properties, and central Nanaimo amenities.",
-    livingHeadline: "VIU access, central convenience, and investment potential",
-    livingCopy: "University District appeals to buyers looking for proximity to VIU, rental potential, central access, parks, recreation, and a mix of older homes, suites, and infill housing.",
-    schools: [
-      ["Vancouver Island University", "Nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · nearby"],
-      ["Fairview Elementary", "Grades K-7 · nearby"],
-      ["John Barsby Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Vancouver Island University", "nearby"],
-      ["Nanaimo Aquatic Centre", "nearby"],
-      ["Nanaimo Ice Centre", "nearby"],
-      ["University Village", "short drive"],
-      ["Westwood Lake", "short drive"],
-    ],
-    nearby: ["old city", "south nanaimo", "central nanaimo", "chase river", "jingle pot"],
-  },
-  "uplands": {
-    heroIntro: "Uplands offers central-to-north Nanaimo convenience with established neighbourhoods, schools, shopping, parks, and quick access to both downtown and north-end amenities.",
-    livingHeadline: "Established neighbourhoods with central north-end convenience",
-    livingCopy: "Uplands is a strong fit for buyers who want a convenient Nanaimo location, access to shopping and services, nearby parks, and a practical connection to both central and north Nanaimo.",
-    schools: [
-      ["Uplands Park Elementary", "Grades K-7 · nearby"],
-      ["Wellington Secondary", "Grades 8-12 · nearby"],
-      ["Randerson Ridge Elementary", "Grades K-7 · short drive"],
-      ["Rock City Elementary", "Grades K-7 · short drive"],
-    ],
-    amenities: [
-      ["Country Club Centre", "nearby"],
-      ["Longwood Station", "nearby"],
-      ["Oliver Woods Community Centre", "short drive"],
-      ["Diver Lake Park", "short drive"],
-      ["North Nanaimo shopping", "short drive"],
-    ],
-    nearby: ["diver lake", "north nanaimo", "central nanaimo", "pleasant valley", "departure bay"],
-  },
-  "north nanaimo": {
-    heroIntro: "North Nanaimo is one of the city's most popular residential areas, known for ocean-view homes, newer subdivisions, shopping, schools, parks, and convenient access to north-end amenities.",
-    livingHeadline: "Ocean views, shopping, schools, and north-end convenience",
-    livingCopy: "North Nanaimo appeals to buyers who want established neighbourhoods, family-friendly streets, larger homes, views, and quick access to shopping, beaches, parks, and schools.",
-    schools: [
-      ["Dover Bay Secondary", "Grades 8-12 · nearby"],
-      ["McGirr Elementary", "Grades K-7 · nearby"],
-      ["Randerson Ridge Elementary", "Grades K-7 · nearby"],
-      ["Frank J. Ney Elementary", "Grades K-7 · short drive"],
-    ],
-    amenities: [
-      ["Woodgrove Centre", "nearby"],
-      ["Costco Nanaimo", "nearby"],
-      ["Oliver Woods Community Centre", "nearby"],
-      ["Pipers Lagoon Park", "short drive"],
-      ["Neck Point Park", "short drive"],
-    ],
-    nearby: ["hammond bay", "departure bay", "uplands", "pleasant valley", "central nanaimo"],
-  },
-  "hammond bay": {
-    heroIntro: "Hammond Bay is known for ocean-view homes, established neighbourhoods, waterfront parks, and some of Nanaimo's most desirable residential streets.",
-    livingHeadline: "Ocean views, parks, and established Nanaimo living",
-    livingCopy: "Hammond Bay appeals to buyers looking for larger homes, view properties, quiet residential streets, and quick access to some of Nanaimo's best coastal parks.",
-    schools: [
-      ["Frank J. Ney Elementary", "Grades K-7 · nearby"],
-      ["Hammond Bay Elementary", "Grades K-7 · nearby"],
-      ["Dover Bay Secondary", "Grades 8-12 · nearby"],
-      ["McGirr Elementary", "Grades K-7 · nearby"],
-    ],
-    amenities: [
-      ["Neck Point Park", "nearby"],
-      ["Pipers Lagoon Park", "nearby"],
-      ["Hammond Bay Road shops", "short drive"],
-      ["Woodgrove Centre", "short drive"],
-      ["Departure Bay Beach", "short drive"],
-    ],
-    nearby: ["departure bay", "north nanaimo", "brechin hill", "uplands", "central nanaimo"],
-  },
-  "departure bay": {
-    heroIntro: "Departure Bay offers beach access, ferry convenience, established homes, and a relaxed coastal setting close to central Nanaimo.",
-    livingHeadline: "Beachside convenience with classic Nanaimo character",
-    livingCopy: "Departure Bay is popular with buyers who want waterfront access, mature neighbourhoods, ferry access, and a central location without giving up a coastal feel.",
-    schools: [
-      ["Departure Bay Elementary", "Grades K-7 · nearby"],
-      ["Cilaire Elementary", "Grades K-7 · nearby"],
-      ["Wellington Secondary", "Grades 8-12 · nearby"],
-      ["Rock City Elementary", "Grades K-7 · nearby"],
-    ],
-    amenities: [
-      ["Departure Bay Beach", "nearby"],
-      ["BC Ferries terminal", "nearby"],
-      ["Brooks Landing", "short drive"],
-      ["Country Club Centre", "short drive"],
-      ["Beachfront parks", "nearby"],
-    ],
-    nearby: ["hammond bay", "brechin hill", "central nanaimo", "north nanaimo", "uplands"],
-  },
-  "chase river": {
-    heroIntro: "Chase River offers a quieter south Nanaimo setting with family homes, larger lots, trail access, and convenient connections to major routes.",
-    livingHeadline: "A quieter south Nanaimo setting with room to grow",
-    livingCopy: "Chase River is a practical option for buyers looking for detached homes, space, value, and easy access to schools, parks, shopping, and the highway.",
-    schools: [
-      ["Chase River Elementary", "Grades K-7 · nearby"],
-      ["John Barsby Secondary", "Grades 8-12 · nearby"],
-      ["Park Avenue Elementary", "Grades K-7 · nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · short drive"],
-    ],
-    amenities: [
-      ["Southgate Shopping Centre", "nearby"],
-      ["Chase River trails", "nearby"],
-      ["University Village", "short drive"],
-      ["Vancouver Island University", "short drive"],
-      ["Highway access", "nearby"],
-    ],
-    nearby: ["south nanaimo", "cedar", "university district", "old city", "central nanaimo"],
-  },
-  "cedar": {
-    heroIntro: "Cedar offers a rural-feeling Nanaimo lifestyle with larger lots, acreages, forested settings, and a quieter pace just south of the city.",
-    livingHeadline: "Acreages, privacy, and rural Nanaimo living",
-    livingCopy: "Cedar is popular with buyers who want more space, privacy, workshops, gardens, rural roads, and a quieter setting while still staying connected to Nanaimo.",
-    schools: [
-      ["Cedar Elementary", "Grades K-7 · nearby"],
-      ["Cedar Secondary", "Grades 8-12 · nearby"],
-      ["North Cedar Intermediate", "Grades 4-7 · nearby"],
-      ["Chase River Elementary", "Grades K-7 · short drive"],
-    ],
-    amenities: [
-      ["Cedar Village", "nearby"],
-      ["Cedar Farmers Market", "nearby"],
-      ["Cable Bay Trail", "short drive"],
-      ["Boat Harbour", "short drive"],
-      ["South Nanaimo shopping", "short drive"],
-    ],
-    nearby: ["chase river", "south nanaimo", "university district", "old city", "central nanaimo"],
-  },
-  "central nanaimo": {
-    heroIntro: "Central Nanaimo offers convenience, shopping, schools, recreation, and quick access to the waterfront, downtown, and major routes.",
-    livingHeadline: "Convenient, connected Nanaimo living",
-    livingCopy: "Central Nanaimo is one of the city's most practical areas for buyers who want access to services, schools, parks, transit, shopping, and the waterfront.",
-    schools: [
-      ["John Barsby Community School", "Grades K-12 · nearby"],
-      ["Nanaimo District Secondary", "Grades 8-12 · nearby"],
-      ["École Pauline Haarer Elementary", "Grades K-7 · nearby"],
-      ["Randerson Ridge Elementary", "Grades K-7 · nearby"],
-    ],
-    amenities: [
-      ["Country Club Centre", "short drive"],
-      ["Brooks Landing", "short drive"],
-      ["Nanaimo waterfront", "short drive"],
-      ["Hospital area services", "nearby"],
-      ["Vancouver Island University", "short drive"],
-    ],
-    nearby: ["brechin hill", "departure bay", "old city", "uplands", "north nanaimo"],
-  },
-};
-
-const content = areaContent[area] || {
-  heroIntro: `${areaSlug ? areaSlug.replace(/-/g, " ") : "This area"} offers a mix of Nanaimo real estate options for buyers comparing price, location, layout, and long-term value.`,
-  livingHeadline: "Convenient, connected Nanaimo living",
-  livingCopy: `${areaSlug ? areaSlug.replace(/-/g, " ") : "This area"} offers access to everyday amenities, parks, schools, shopping, and major routes across Nanaimo.`,
+const content = {
+  heroIntro: boundary?.intro_copy || `${labelize(area)} offers a mix of ${cityLabel} real estate options for buyers comparing price, location, layout, and long-term value.`,
+  livingHeadline: `Convenient, connected ${cityLabel} living`,
+  livingCopy: `${labelize(area)} offers access to everyday amenities, parks, schools, shopping, and major routes across ${cityLabel}.`,
   schools: [
     ["Local elementary schools", "Nearby"],
     ["Local secondary schools", "Nearby"],
-    ["Nanaimo school options", "Short drive"],
     ["Community programs", "Nearby"],
   ],
   amenities: [
@@ -370,7 +81,7 @@ const content = areaContent[area] || {
     ["Restaurants and cafés", "Short drive"],
     ["Recreation options", "Short drive"],
   ],
-  nearby: ["central nanaimo", "north nanaimo", "departure bay", "hammond bay", "old city"],
+  nearby: [],
 };
 
 const cleanAreaName = (value) =>
@@ -438,28 +149,14 @@ const allowedAreaLabels =
       ]
     : [];
 
-const nanaimoAreas = [
-  "North Nanaimo",
-  "Hammond Bay",
-  "Departure Bay",
-  "Uplands",
-  "Pleasant Valley",
-  "Diver Lake",
-  "Central Nanaimo",
-  "Old City",
-  "University District",
-  "South Nanaimo",
-  "Chase River",
-  "Cedar",
-  "Jingle Pot",
-  "Extension",
-  "Brechin Hill",
-];
-
 const areas =
   city === "parksville"
     ? allowedAreaLabels
-    : nanaimoAreas;
+    : [...new Set(
+        areaRows
+          .map((r) => String(r.normalized_area || "").trim())
+          .filter((a) => a && a !== "unknown")
+      )].sort((a, b) => a.localeCompare(b));
 
 const intentPages = intentPagesRaw ?? [];
 
@@ -946,7 +643,7 @@ const chartData = {
             <div><strong>Buyer Fit</strong><span>A strong option for buyers comparing value, convenience, lifestyle, and long-term resale.</span></div>
           </div>
         </div>
-        <img src={heroImage} alt={`${labelize(area)} Nanaimo lifestyle`} />
+        <img src={heroImage} alt={`${labelize(area)} ${cityLabel} lifestyle`} />
       </div>
 
       <article class="market-snapshot buyer-notes-card">
@@ -971,7 +668,7 @@ const chartData = {
           </div>
           <div>
             <strong>Nearby alternatives</strong>
-            <span>Also compare {content.nearby.slice(0, 3).map((item) => labelize(item)).join(", ")}.</span>
+           <span>Also compare {areas.filter((a) => a !== area).slice(0, 3).map((item) => labelize(item)).join(", ")}.</span>
           </div>
         </div>
       </article>
@@ -1036,14 +733,14 @@ const chartData = {
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <div>
-        <h2>CHRIS<br />CRUMP</h2>
+     <div>
+        <h2>{site?.site_name || cityLabel}</h2>
         <p>REAL ESTATE</p>
       </div>
       <div>
         <strong>Quick Links</strong>
-        <a href="/nanaimo">Nanaimo Real Estate</a>
-        <a href="/nanaimo/areas">All Areas</a>
+        <a href={`/${city}`}>{cityLabel} Real Estate</a>
+        <a href={`/${city}/areas`}>All Areas</a>
         <a href="/buying">Buying</a>
         <a href="/selling">Selling</a>
       </div>
@@ -1056,9 +753,9 @@ const chartData = {
       </div>
       <div>
         <strong>Contact</strong>
-        <span>Chris Crump PREC*</span>
-        <span>250-744-3301</span>
-        <span>chris@chriscrump.com</span>
+        <span>{site?.agent_name || ""}</span>
+        <span>{site?.agent_phone || ""}</span>
+        <span>{site?.agent_email || ""}</span>
       </div>
     </div>
   </footer>
