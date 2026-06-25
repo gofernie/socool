@@ -1243,7 +1243,10 @@ if (rowAddress.includes("4474 wellington rd")) {
   normalized_area = "north nanaimo";
 }
 }
-      const images = normalizeImages(listing);
+      const images = normalizeImages(listing).map((url) => {
+  const cleaned = url.startsWith("/") ? url : `/${url.replace(/^https?:\/\/[^/]+/, "")}`;
+  return `https://cdn.repliers.io${cleaned}`;
+});
 
       const freshLat = getLat(listing);
       const freshLng = getLng(listing);
