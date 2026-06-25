@@ -301,6 +301,11 @@ const sitesJson = JSON.stringify(sites);
               <input id="introCopy" type="text" placeholder="North Nanaimo is known for..." />
             </label>
 
+            <label>
+              Meta description
+              <input id="metaDescription" type="text" placeholder="Browse North Nanaimo homes for sale..." />
+            </label>
+
             <div class="control-actions">
               <button type="button" id="drawBtn">Draw Boundary</button>
               <button type="button" id="loadLinesBtn">Load Boundary Lines</button>
@@ -495,7 +500,8 @@ if (map) {
         document.getElementById("heroHeading").value = result?.boundary?.hero_heading || result?.hero_heading || "";
         document.getElementById("seoHeading").value = result?.boundary?.seo_heading || result?.seo_heading || "";
         document.getElementById("seoTitle").value = result?.boundary?.seo_title || result?.seo_title || "";
-        document.getElementById("introCopy").value = result?.boundary?.intro_copy || result?.intro_copy || "";
+document.getElementById("introCopy").value = result?.boundary?.intro_copy || result?.intro_copy || "";
+        document.getElementById("metaDescription").value = result?.boundary?.meta_description || result?.meta_description || "";
 
         const polygon =
           result?.boundary?.polygon_geojson ||
@@ -686,6 +692,7 @@ setActiveAction("draw");
           seo_heading: document.getElementById("seoHeading").value.trim(),
           seo_title: document.getElementById("seoTitle").value.trim(),
           intro_copy: document.getElementById("introCopy").value.trim(),
+          meta_description: document.getElementById("metaDescription").value.trim(),
           polygon_geojson: polygonToGeoJson(activePolygon),
           center_lat: center.lat,
           center_lng: center.lng,

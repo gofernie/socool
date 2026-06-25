@@ -107,7 +107,7 @@ const [
     .order("listed_at", { ascending: false }),
 supabase
     .from("area_boundaries")
-    .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy")
+    .select("polygon_geojson, hero_image_url, hero_heading, seo_heading, seo_title, intro_copy, meta_description")
     .eq("city", city)
     .eq("area_slug", String(areaSlug || "").toLowerCase())
     .maybeSingle(),
@@ -374,7 +374,8 @@ const chartData = {
 };
 ---
 
-<Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>  <link rel="preload" as="image" href={heroImage} slot="head" />
+<Layout title={boundary?.seo_title || `${labelize(area)} Real Estate | ${cityLabel}`} accentColor={accentColor}>
+  <meta name="description" content={boundary?.meta_description || `${labelize(area)} real estate — browse active MLS listings, prices, and market insights for ${cityLabel}.`} slot="head" /> <link rel="preload" as="image" href={heroImage} slot="head" />
 
   
   <link rel="preload" as="style" href="https://?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,500;6..12,600;6..12,700;6..12,800&display=optional" onload="this.onload=null;this.rel='stylesheet'" slot="head" />
