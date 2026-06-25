@@ -5,6 +5,7 @@ import "../styles/intent-modal.css";
 .panel__osm-amenities { padding: 16px 16px 0; border-top: 0.5px solid rgba(0,0,0,0.08); margin-top: 16px; }
 .panel__osm-label { font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
 .panel__osm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 500px) { .panel__osm-grid { grid-template-columns: 1fr; } }
 .panel__osm-card { background: #f5f4f2; border-radius: 8px; padding: 10px 12px; }
 .panel__osm-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .panel__osm-icon { font-size: 14px; }

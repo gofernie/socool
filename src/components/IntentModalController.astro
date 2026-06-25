@@ -728,7 +728,7 @@ const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length)
                     content: `<div style="font-size:12px;padding:2px 4px;"><strong>${label}</strong></div>`
                   });
                   marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
-                  if (items.length <= 10) iw.open(sheetMiniMapInstance, marker);
+                  if (items.length <= 10 && window.innerWidth > 640) iw.open(sheetMiniMapInstance, marker);
                   window._osmPoiMarkers.push(marker);
                   bounds.extend({ lat: item.lat, lng: item.lng });
                 });
