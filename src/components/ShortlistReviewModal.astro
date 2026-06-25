@@ -1,6 +1,24 @@
 ---
 import "../styles/intent-modal.css";
 ---
+<style is:global>
+.panel__osm-amenities { padding: 16px 16px 0; border-top: 0.5px solid rgba(0,0,0,0.08); margin-top: 16px; }
+.panel__osm-label { font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
+.panel__osm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.panel__osm-card { background: #f5f4f2; border-radius: 8px; padding: 10px 12px; }
+.panel__osm-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.panel__osm-icon { font-size: 14px; }
+.panel__osm-cat { font-size: 11px; font-weight: 700; color: #333; flex: 1; }
+.panel__osm-closest { font-size: 11px; font-weight: 700; color: var(--accent); }
+.panel__osm-rows { display: flex; flex-direction: column; gap: 3px; }
+.panel__osm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.panel__osm-name { font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.panel__osm-dist { font-size: 11px; color: #aaa; flex-shrink: 0; }
+.panel__osm-loading { font-size: 12px; color: #aaa; padding: 8px 0; }
+.panel__osm-card { transition: border-color 0.15s, box-shadow 0.15s; border: 1px solid transparent; }
+.panel__osm-card:hover { border-color: var(--accent); }
+.panel__osm-card.osm-card-active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+</style>
 <div class="overlay" id="sheet-overlay"></div>
 
 <aside class="panel test-modal-style" id="preview-sheet" aria-hidden="true">      <div class="panel__grab" id="sheet-grab-handle" aria-hidden="true"></div>
@@ -131,6 +149,7 @@ import "../styles/intent-modal.css";
     Read more
   </button>
 </div>
+<div id="sheet-osm-amenities" class="panel__osm-amenities" hidden></div>
 
 <div class="decision-actions">
   <button class="decision-btn decision-btn--love" type="button" id="decision-love-btn">

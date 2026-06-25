@@ -92,6 +92,7 @@ const [
   { data: boundary, error: boundaryError },
   { data: intentPagesRaw },
   { data: areaMetaRows = [] },
+  { data: osmAmenities = [] },
 ] = await Promise.all([
   supabase
     .from("listing_rows")
@@ -116,9 +117,13 @@ supabase
     .eq("city", city)
     .eq("show_in_nav", true)
     .order("nav_order", { ascending: true }),
-  supabase
+ supabase
     .from("area_boundaries")
     .select("area_slug, area_name")
+    .eq("city", city),
+  supabase
+    .from("osm_amenities")
+    .select("name, category, osm_type, lat, lng")
     .eq("city", city),
 ]);
 
@@ -284,7 +289,6 @@ const typeCards = [
   { label: "Land",      count: landCount,     median: landMedian,      color: "#378ADD" },
 ];
 const typeMaxMedian = Math.max(...typeCards.map(t => t.median || 0)) || 1;
-
 const listingCount = listings.length || 0;
 const housePercent = listingCount ? Math.round((houseCount / listingCount) * 100) : 0;
 const condoPercent = listingCount ? Math.round((condoCount / listingCount) * 100) : 0;
@@ -328,6 +332,36 @@ const mapCenter = mapListings.length > 0
       lng: mapListings.reduce((sum, item) => sum + item.lng, 0) / mapListings.length,
     }
   : { lat: 49.1659, lng: -123.9401 };
+
+// OSM: filter amenities near this area's centroid
+const osmByCategory: Record<string, { name: string | null; osm_type: string; lat: number; lng: number }[]> = {};
+if (osmAmenities && osmAmenities.length > 0 && mapCenter.lat && mapCenter.lng) {
+  function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  const RADIUS_KM = 3;
+const nearby = (osmAmenities as any[])
+    .map(a => ({ ...a, distKm: haversineKm(mapCenter.lat, mapCenter.lng, a.lat, a.lng) }))
+    .filter(a => a.distKm <= RADIUS_KM)
+    .sort((a, b) => a.name && !b.name ? -1 : !a.name && b.name ? 1 : 0);
+  for (const a of nearby) {
+    if (!osmByCategory[a.category]) osmByCategory[a.category] = [];
+    osmByCategory[a.category].push(a);
+  }
+}
+
+const osmCategoryMeta: Record<string, { icon: string; label: string }> = {
+  school:     { icon: "🎓", label: "Schools" },
+  grocery:    { icon: "🛒", label: "Grocery & Shops" },
+  transit:    { icon: "🚌", label: "Transit" },
+  park:       { icon: "🌿", label: "Parks" },
+  restaurant: { icon: "🍽️", label: "Restaurants & Cafés" },
+  medical:    { icon: "🏥", label: "Medical" },
+};
 
 const chartData = {
   priceLabels: priceBuckets.map((bucket) => bucket.label),
@@ -449,6 +483,23 @@ const chartData = {
         </a>
       )}
     </section>
+
+    {Object.keys(osmByCategory).length > 0 && (
+      <div class="osm-summary-bar" id="osm-summary-bar">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#999;align-self:center;">Nearby</span>
+        {Object.entries(osmCategoryMeta).map(([cat, meta]) => {
+          const items = osmByCategory[cat] || [];
+          if (items.length === 0) return null;
+          return (
+            <div class="osm-summary-chip" data-osm-cat={cat}>
+              <span class="osm-summary-icon">{meta.icon}</span>
+              <span class="osm-summary-label">{meta.label}</span>
+              <span class="osm-summary-dist">{items.length}</span>
+            </div>
+          );
+        })}
+      </div>
+    )}
 
     <section class="filter-bar">
   <div class="view-toggle area-view-toggle">
@@ -680,30 +731,30 @@ const chartData = {
         </div>
       </article>
 
-      <div class="info-grid">
-    <article class="info-card">
-          <h3><span class="info-icon">🎓</span> Schools Nearby</h3>
-          <ul>
-            {content.schools.map((school) => (
+  {Object.keys(osmByCategory).length > 0 && (
+  <div class="osm-section">
+    <p class="section-kicker">Nearby Amenities</p>
+    <div class="info-grid osm-amenity-grid">
+      {Object.entries(osmCategoryMeta).map(([cat, meta]) => {
+        const items = osmByCategory[cat] || [];
+        if (items.length === 0) return null;
+        return (
+<article class="info-card" data-osm-cat={cat}>
+            <h3><span class="info-icon">{meta.icon}</span> {meta.label} <span class="osm-count">({items.length})</span></h3>
+            <ul>
+              {items.slice(0, 6).map((item) => (
               <li>
-                <span class="info-item-name"><span class="info-item-dot">·</span>{school[0]}</span>
-                <small>{school[1]}</small>
-              </li>
-            ))}
-          </ul>
-        </article>
-        <article class="info-card">
-          <h3><span class="info-icon">📍</span> Shopping & Amenities</h3>
-          <ul>
-            {content.amenities.map((item) => (
-              <li>
-                <span class="info-item-name"><span class="info-item-dot">·</span>{item[0]}</span>
-                <small>{item[1]}</small>
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
+                  <span class="info-item-name"><span class="info-item-dot">·</span>{item.name || item.osm_type}</span>
+                </li>
+              ))}
+              {items.length > 6 && <li><small style="color:#999">+{items.length - 6} more</small></li>}
+            </ul>
+          </article>
+        );
+      })}
+    </div>
+  </div>
+)}
 
      
 
@@ -770,7 +821,7 @@ const chartData = {
   <ShortlistReviewModal />
   <IntentModalController />
 
-<script is:inline define:vars={{ chartData, mapListings, mapCenter, googleMapsApiKey, typeSlices }}>    window.addEventListener("load", () => {
+<script is:inline define:vars={{ chartData, mapListings, mapCenter, googleMapsApiKey, typeSlices, osmByCategory, osmCategoryMeta }}>   window.addEventListener("load", () => {
       const areaFilter = document.getElementById("area-filter");
       const sortFilter = document.getElementById("sort-filter");
       const typeFilter = document.getElementById("type-filter");
@@ -1266,8 +1317,97 @@ if (window.google?.maps && document.getElementById("area-map")) {
       if (urlParams.get("beds") && bedsFilter) bedsFilter.value = urlParams.get("beds");
       if (urlParams.get("sort") && sortFilter) sortFilter.value = urlParams.get("sort");
 
-      applyFilters();
+     applyFilters();
       initCharts();
+
+      // OSM POI map toggle
+      let osmMarkers = [];
+      let activeOsmCat = null;
+
+      function clearOsmMarkers() {
+        osmMarkers.forEach(m => m.setMap(null));
+        osmMarkers = [];
+      }
+
+      async function showOsmCategory(cat) {
+        if (activeOsmCat === cat) {
+          // toggle off
+          clearOsmMarkers();
+          activeOsmCat = null;
+document.querySelectorAll(".info-card[data-osm-cat], .osm-summary-chip[data-osm-cat]").forEach(c => c.classList.remove("osm-active"));
+          return;
+        }
+
+        activeOsmCat = cat;
+       document.querySelectorAll(".info-card[data-osm-cat], .osm-summary-chip[data-osm-cat]").forEach(c => {
+          c.classList.toggle("osm-active", c.dataset.osmCat === cat);
+        });
+
+        // switch to list view so map is accessible
+        const listBtn = document.getElementById("area-list-view-btn");
+        const mapBtn = document.getElementById("area-map-view-btn");
+        const listingMap = document.getElementById("area-listing-map");
+        const grid = document.querySelector(".listing-grid");
+
+        if (listingMap && listingMap.hidden) {
+          if (grid) grid.hidden = true;
+          listingMap.hidden = false;
+          mapBtn?.classList.add("active");
+          listBtn?.classList.remove("active");
+          await initAreaListingGoogleMap();
+        }
+
+        // scroll to map
+        if (listingMap) {
+          const y = listingMap.getBoundingClientRect().top + window.scrollY - 80;
+          window.scrollTo({ top: y, behavior: "smooth" });
+        }
+
+        clearOsmMarkers();
+        if (!areaGoogleMap || !window.google?.maps) return;
+
+        const items = osmByCategory[cat] || [];
+        const meta = osmCategoryMeta[cat] || {};
+        const bounds = new google.maps.LatLngBounds();
+
+        items.forEach(item => {
+          if (!item.lat || !item.lng) return;
+         const label = item.name || item.osm_type || "";
+          const marker = new google.maps.Marker({
+            position: { lat: item.lat, lng: item.lng },
+            map: areaGoogleMap,
+            title: label,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#2f6f73",
+              fillOpacity: 0.95,
+              strokeColor: "#fff",
+              strokeWeight: 2,
+            },
+          
+          });
+
+          const iw = new google.maps.InfoWindow({
+            content: `<div style="font-size:13px;padding:2px 4px;"><strong>${label}</strong></div>`
+          });
+  marker.addListener("click", () => {
+            osmMarkers.forEach(m => m._iw?.close());
+            iw.open(areaGoogleMap, marker);
+          });
+          marker._iw = iw;
+          if (items.length <= 15) iw.open(areaGoogleMap, marker);
+          osmMarkers.push(marker);
+          bounds.extend({ lat: item.lat, lng: item.lng });
+        });
+
+        if (items.length > 1) areaGoogleMap.fitBounds(bounds);
+      }
+
+     document.querySelectorAll(".info-card[data-osm-cat], .osm-summary-chip[data-osm-cat]").forEach(card => {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", () => showOsmCategory(card.dataset.osmCat));
+      });
 
       if (hasUrlFilters) {
         requestAnimationFrame(() => {
@@ -1359,10 +1499,23 @@ if (window.google?.maps && document.getElementById("area-map")) {
   .mi-type-bar { height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; margin-top: 10px; overflow: hidden; }
   .mi-type-bar-fill { height: 100%; border-radius: 2px; }
 
-  @media (max-width: 640px) {
+ @media (max-width: 640px) {
     .mi-top { grid-template-columns: 1fr; }
     .mi-type-grid { grid-template-columns: repeat(2, 1fr); }
   }
+  .osm-amenity-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .osm-count { font-size: 12px; font-weight: 400; color: #999; }
+  .osm-section { display: flex; flex-direction: column; gap: 16px; }
+  .osm-summary-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  #osm-summary-bar .osm-summary-chip { cursor: pointer; }
+  #osm-summary-bar .osm-summary-chip.osm-active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .osm-summary-chip { display: flex; align-items: center; gap: 6px; background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  .osm-summary-icon { font-size: 16px; }
+  .osm-summary-label { color: #555; font-weight: 500; }
+.osm-summary-dist { color: var(--accent); font-weight: 700; font-size: 12px; margin-left: 2px; }
+  .info-card[data-osm-cat] { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+  .info-card[data-osm-cat]:hover { border-color: var(--accent); }
+  .info-card.osm-active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
 </style>
 </Layout>
 

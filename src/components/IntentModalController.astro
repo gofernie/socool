@@ -595,6 +595,160 @@ if (sheetMapBtn) {
 
 sheetContent.scrollTop = 0;
 setTimeout(updateSheetScrollHint, 80);
+
+// OSM amenities
+const osmEl = document.getElementById("sheet-osm-amenities");
+if (osmEl) {
+  const lat = parseFloat(card.dataset.lat || "");
+  const lng = parseFloat(card.dataset.lng || "");
+  const cardCity = card.dataset.city || document.querySelector("[data-city]")?.dataset.city || "nanaimo";
+  if (isFinite(lat) && isFinite(lng)) {
+    osmEl.hidden = false;
+    osmEl.innerHTML = `<div class="panel__osm-loading">Loading nearby amenities…</div>`;
+fetch(`/api/osm-amenities?city=${encodeURIComponent(cardCity)}&lat=${lat}&lng=${lng}&radius=3`)
+      .then(r => r.json())
+      .then(data => {
+        const cats = data.categories || {};
+        const catMeta = {
+          school:     { icon: "🎓", label: "Schools" },
+          grocery:    { icon: "🛒", label: "Grocery" },
+          transit:    { icon: "🚌", label: "Transit" },
+          park:       { icon: "🌿", label: "Parks" },
+          restaurant: { icon: "🍽️", label: "Restaurants" },
+          medical:    { icon: "🏥", label: "Medical" },
+        };
+     const cards = Object.entries(catMeta).map(([cat, meta]) => {
+          const items = cats[cat] || [];
+          if (!items.length) return "";
+          const rows = items.slice(0, 3).map(item => {
+            const dist = item.distKm < 1
+              ? Math.round(item.distKm * 1000) + "m"
+              : item.distKm.toFixed(1) + "km";
+            const name = item.name || item.osm_type || "";
+            return `<div class="panel__osm-row"><span class="panel__osm-name">${name}</span><span class="panel__osm-dist">${dist}</span></div>`;
+          }).join("");
+          const closestDist = items[0].distKm < 1
+            ? Math.round(items[0].distKm * 1000) + "m"
+            : items[0].distKm.toFixed(1) + "km";
+          return `<div class="panel__osm-card">
+            <div class="panel__osm-card-head">
+              <span class="panel__osm-icon">${meta.icon}</span>
+              <span class="panel__osm-cat">${meta.label}</span>
+              <span class="panel__osm-closest">${closestDist}</span>
+            </div>
+            <div class="panel__osm-rows">${rows}</div>
+          </div>`;
+        }).filter(Boolean).join("");
+        if (cards) {
+          osmEl.innerHTML = `<div class="panel__osm-label">Nearby Amenities</div><div class="panel__osm-grid" id="osm-card-grid">${cards}</div>`;
+          // attach click handlers after render
+          osmEl.querySelectorAll(".panel__osm-card").forEach((cardEl, i) => {
+            cardEl.style.cursor = "pointer";
+const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length).map(([k]) => k);
+            const cat = activeCats[i];
+            if (!cat) return;
+            cardEl.addEventListener("click", () => {
+              // activate map
+              const mapBtn = document.getElementById("sheet-map-btn");
+              const miniMap = document.getElementById("sheet-mini-map");
+              const imageStage = document.querySelector(".panel__image-stage");
+              if (!miniMap) return;
+
+             // show map
+              const imgStageHeight = imageStage ? imageStage.offsetHeight : 320;
+              if (imageStage) imageStage.classList.add("is-hidden");
+              miniMap.hidden = false;
+              miniMap.style.display = "block";
+              miniMap.style.height = imgStageHeight + "px";
+              miniMap.style.minHeight = imgStageHeight + "px";
+              miniMap.style.width = "100%";
+              if (mapBtn) mapBtn.textContent = "Pictures";
+
+              // highlight active card
+         osmEl.querySelectorAll(".panel__osm-card").forEach(c => c.classList.remove("osm-card-active"));
+              cardEl.classList.add("osm-card-active");
+              document.getElementById("sheet-content")?.scrollTo({ top: 0, behavior: "smooth" });
+
+              loadGoogleMaps().then(() => {
+                if (!sheetMiniMapInstance) {
+                  const point = getCardLatLng(activeCard);
+                  sheetMiniMapInstance = new google.maps.Map(miniMap, {
+                    center: point || { lat: 49.1659, lng: -123.9401 },
+                    zoom: 15,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                  });
+                }
+
+                // clear previous OSM markers
+                if (!window._osmPoiMarkers) window._osmPoiMarkers = [];
+                window._osmPoiMarkers.forEach(m => m.setMap(null));
+                window._osmPoiMarkers = [];
+
+                // add listing marker
+                const listingPoint = getCardLatLng(activeCard);
+                if (listingPoint) {
+                  new google.maps.Marker({
+                    position: listingPoint,
+                    map: sheetMiniMapInstance,
+                    title: activeCard?.dataset?.address || "Listing",
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 9,
+                      fillColor: "#ff3b30",
+                      fillOpacity: 1,
+                      strokeColor: "#fff",
+                      strokeWeight: 2,
+                    }
+                  });
+                }
+
+                const items = cats[cat] || [];
+                const bounds = new google.maps.LatLngBounds();
+                if (listingPoint) bounds.extend(listingPoint);
+
+                items.forEach(item => {
+                  if (!item.lat || !item.lng) return;
+                  const label = item.name || item.osm_type || "";
+                  const marker = new google.maps.Marker({
+                    position: { lat: item.lat, lng: item.lng },
+                    map: sheetMiniMapInstance,
+                    title: label,
+                    icon: {
+                      path: google.maps.SymbolPath.CIRCLE,
+                      scale: 7,
+                      fillColor: "#2f6f73",
+                      fillOpacity: 0.95,
+                      strokeColor: "#fff",
+                      strokeWeight: 2,
+                    }
+                  });
+                  const iw = new google.maps.InfoWindow({
+                    content: `<div style="font-size:12px;padding:2px 4px;"><strong>${label}</strong></div>`
+                  });
+                  marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
+                  if (items.length <= 10) iw.open(sheetMiniMapInstance, marker);
+                  window._osmPoiMarkers.push(marker);
+                  bounds.extend({ lat: item.lat, lng: item.lng });
+                });
+
+                setTimeout(() => {
+                  google.maps.event.trigger(sheetMiniMapInstance, "resize");
+                  sheetMiniMapInstance.fitBounds(bounds);
+                }, 100);
+              }).catch(console.error);
+            });
+          });
+        } else {
+          osmEl.hidden = true;
+        }
+      })
+      .catch(() => { osmEl.hidden = true; });
+  } else {
+    osmEl.hidden = true;
+  }
+}
         }
 function updateCardDecisionBadge(card) {
   if (!card) return;
