@@ -1090,7 +1090,7 @@ const normalized_city =
       const normalized_type = normalizeType(listing);
       // Fernie/Sparwood: unit-prefixed addresses (e.g. "613D 4559" or "2221 5350") are condos
       const rowAddressForType = clean(getNormalizedAddress(listing));
-      const finalType = (normalized_city === "fernie" || normalized_city === "sparwood") && /^[a-z0-9]+ \d{3,}/i.test(rowAddressForType)
+   const finalType = (normalized_city === "fernie" || normalized_city === "sparwood") && /^[a-z0-9]+ \d{3,}/i.test(rowAddressForType) && normalized_type !== "mobile"
         ? "condo"
         : normalized_type;
      // Skip commercial completely
