@@ -266,7 +266,7 @@ const sitesJson = JSON.stringify(sites);
               Area
               <select id="areaSelect"><option value="">-- select or type new --</option></select>
             </label>
-            <label>
+          <label style="display:none;">
               New Area Name
               <input id="areaNameNew" type="text" placeholder="e.g. Sparwood East" />
             </label>
@@ -675,7 +675,7 @@ setActiveAction("draw");
         }
 
         const areaNameNewInput = document.getElementById("areaNameNew");
-        const newAreaTyped = areaNameNewInput?.value?.trim() || "";
+       const newAreaTyped = "";
         const selectedOption = areaSelect.options[areaSelect.selectedIndex];
         const areaName = newAreaTyped || selectedOption?.textContent || areaSelect.value;
         const areaSlug = newAreaTyped ? newAreaTyped.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") : areaSelect.value;
