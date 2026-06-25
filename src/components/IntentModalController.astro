@@ -1772,10 +1772,11 @@ requestAnimationFrame(() => {
     sheetImageStage.classList.add("is-hidden");
   }
 
+const mapBtnHeight = cachedImageStageHeight > 50 ? cachedImageStageHeight : 320;
 sheetMiniMap.hidden = false;
 sheetMiniMap.style.display = "block";
-sheetMiniMap.style.height = "430px";
-sheetMiniMap.style.minHeight = "430px";
+sheetMiniMap.style.height = mapBtnHeight + "px";
+sheetMiniMap.style.minHeight = mapBtnHeight + "px";
 sheetMiniMap.style.width = "100%";
 
 if (sheetMapBtn) {
@@ -2064,15 +2065,17 @@ chipAdvanceTimer = setTimeout(() => {
         let sheetSwipeStartX = 0;
         let sheetSwipeStartY = 0;
 
-        sheet?.addEventListener("touchstart", (event) => {
+       sheet?.addEventListener("touchstart", (event) => {
           if (event.target.closest(".panel__image-stage")) return;
+          if (event.target.closest(".panel__mini-map")) return;
 
           sheetSwipeStartX = event.changedTouches[0].screenX;
           sheetSwipeStartY = event.changedTouches[0].screenY;
         }, { passive: true });
 
-        sheet?.addEventListener("touchend", (event) => {
+       sheet?.addEventListener("touchend", (event) => {
           if (event.target.closest(".panel__image-stage")) return;
+          if (event.target.closest(".panel__mini-map")) return;
 
           const dx = event.changedTouches[0].screenX - sheetSwipeStartX;
           const dy = event.changedTouches[0].screenY - sheetSwipeStartY;
