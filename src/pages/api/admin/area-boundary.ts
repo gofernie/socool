@@ -92,7 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
       updated_at: new Date().toISOString(),
     },
     {
-      onConflict: "site_id,city,area_slug",
+      onConflict: "city,area_slug",
     }
   );
 
