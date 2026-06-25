@@ -3474,3 +3474,29 @@ body.edit-mode .agent-edit-grid {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
 }
+
+.panel__osm-amenities { padding: 20px 16px 0; border-top: 0.5px solid rgba(0,0,0,0.08); margin-top: 20px; }
+.panel__osm-label { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: #999; margin-bottom: 14px; }
+.panel__osm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .panel__osm-grid { grid-template-columns: 1fr; } }
+.panel__osm-card { background: #f5f4f2; border-radius: 10px; padding: 14px 16px; border: 1px solid transparent; transition: border-color 0.15s, box-shadow 0.15s; }
+.panel__osm-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.panel__osm-icon { font-size: 18px; }
+.panel__osm-cat { font-size: 0.94rem; font-weight: 700; color: #333; flex: 1; }
+.panel__osm-closest { font-size: 0.94rem; font-weight: 700; color: var(--accent); }
+.panel__osm-rows { display: flex; flex-direction: column; gap: 7px; }
+.panel__osm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel__osm-name { font-size: 0.875rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.panel__osm-dist { font-size: 0.81rem; color: #aaa; flex-shrink: 0; }
+.panel__osm-loading { font-size: 0.875rem; color: #aaa; padding: 10px 0; }
+.panel__osm-card:hover { border-color: var(--accent); }
+.panel__osm-card.osm-card-active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+
+.panel__osm-cat { font-size: 0.94rem !important; }
+.panel__osm-closest { font-size: 0.94rem !important; }
+.panel__osm-name { font-size: 0.875rem !important; }
+.panel__osm-dist { font-size: 0.81rem !important; }
+.panel__osm-rows { gap: 7px !important; }
+.panel__osm-icon { font-size: 18px !important; }
+.panel__osm-card { padding: 14px 16px !important; border-radius: 10px !important; }
+.panel__osm-card-head { gap: 8px !important; margin-bottom: 10px !important; }

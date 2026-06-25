@@ -415,42 +415,14 @@ const navIntentPages = await getNavIntentPages(supabase, city);
   {topAreas.map(([area, count], index) => (
     <a
       class="area-pick-card"
-href={`/${city}/areas/${areaToSlug(area)}`}
-style={(() => {
-  const slug = areaToSlug(area);
-  let hash = 0;
-  for (let i = 0; i < slug.length; i++) hash = slug.charCodeAt(i) + ((hash << 5) - hash);
-  const tint = 6 + (Math.abs(hash) % 12);
-  const border = 14 + (Math.abs(hash >> 3) % 10);
-  return `--area-tint:${tint}%; --area-border:${border}%;`;
-})()}
+      href={`/${city}/areas/${areaToSlug(area)}`}
+      style={`--card-tint: ${3 + (index % 6)}%`}
     >
-     <strong>{labelize(area)}</strong>
-
-      <div class="area-pick-card-body">
-        <div class="area-count">
-          {getAreaCardCount(area, count) === 1
-  ? "1 listing"
-  : `${getAreaCardCount(area, count)} listings`}
-        </div>
-
-        {areaDescriptions[areaToSlug(area)] && (
-          <div class="area-highlights">
-            {areaDescriptions[areaToSlug(area)]
-              .split("•")
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((tag) => (
-                <div class="area-highlight">
-                  <span class="area-highlight-icon">{areaTagIcon(tag)}</span>
-                  <span>{tag.trim()}</span>
-                </div>
-              ))}
-          </div>
-        )}
-
-        <span class="area-card-link">View area →</span>
+    <strong>{labelize(area)}</strong>
+      <div class="area-pick-count">
+        {getAreaCardCount(area, count) === 1 ? "1 listing" : `${getAreaCardCount(area, count)} listings`}
       </div>
+     <span class="area-card-link">View area →</span>
     </a>
   ))}
 </div>
@@ -834,84 +806,48 @@ home searches.
   }
 
 .area-pick-card {
-    display: grid;
-    gap: 0;
-    padding: 0;
-    border-radius: 6px;
-    border: 1px solid color-mix(in srgb, var(--accent) calc(14% + var(--area-border, 0%) / 5), transparent);
-    background: #fff;
-    color: inherit;
-    text-decoration: none;
-    overflow: hidden;
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-  }
-
-.area-pick-card strong {
-    display: block;
-    padding: 12px 16px;
-    background: color-mix(in srgb, var(--accent) 28%, white);
-    font-family: var(--f-display, Georgia, serif);
-    font-size: 1.15rem;
-    line-height: 1.1;
-    letter-spacing: -0.04em;
-    font-weight: 600;
-    color: color-mix(in srgb, var(--accent) 80%, #1a1a1a);
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  }
-
-  .area-pick-card:hover strong {
-    background: color-mix(in srgb, var(--accent) 26%, white);
-  }
-
-  .area-pick-card-body {
-    padding: 14px;
-    display: grid;
-    gap: 8px;
-  }
-
-  .area-pick-card:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in srgb, var(--accent) 36%, transparent);
-    box-shadow: 0 14px 30px rgba(28,25,23,0.08);
-  }
-
-  .area-pick-card strong {
-    font-family: var(--f-display, Georgia, serif);
-    font-size: 1.2rem;
-    line-height: 1;
-    letter-spacing: -0.04em;
-  }
-
-  .area-count {
-    color: var(--accent);
-    font-weight: 800;
-    font-size: .9rem;
-  }
-
-  .area-highlights {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-top: 6px;
-    min-height: 52px;
+    padding: 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: color-mix(in srgb, var(--accent) calc(var(--card-tint, 6%)), white);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   }
 
-  .area-highlight {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .area-pick-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0,0,0,0.18);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.07);
+  }
+
+  .area-pick-card strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+    font-family: inherit;
+    letter-spacing: normal;
+    padding: 0;
+    background: none;
+    border: none;
+  }
+
+.area-pick-count {
     font-size: 0.88rem;
-    color: #5d6866;
-    font-weight: 600;
+    font-weight: 500;
+    color: var(--muted);
   }
-
-  .area-highlight-icon { font-size: 1rem; width: 18px; text-align: center; }
 
   .area-card-link {
-    margin-top: 8px;
+    margin-top: 4px;
     color: var(--accent);
-    font-size: 0.82rem;
-    font-weight: 850;
+    font-size: 0.84rem;
+    font-weight: 700;
   }
 
   /* ── Charts ── */
