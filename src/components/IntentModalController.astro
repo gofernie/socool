@@ -596,6 +596,12 @@ if (sheetImageStage) {
   sheetImageStage.classList.remove("is-hidden");
   const h = sheetImageStage.offsetHeight || sheetImageStage.getBoundingClientRect().height;
   if (h > 50) cachedImageStageHeight = h;
+} else {
+  const anyStage = document.querySelector(".panel__image-stage");
+  if (anyStage) {
+    const h = anyStage.offsetHeight || anyStage.getBoundingClientRect().height;
+    if (h > 50) cachedImageStageHeight = h;
+  }
 }
 
 if (sheetMapBtn) {
@@ -665,7 +671,7 @@ const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length)
 
              // show map
 const imgStageHeight = imageStage ? (imageStage.offsetHeight || imageStage.getBoundingClientRect().height) : 0;
-const mapH = cachedImageStageHeight > 50 ? cachedImageStageHeight : (imgStageHeight > 50 ? imgStageHeight : 320);
+const mapH = cachedImageStageHeight > 50 ? cachedImageStageHeight : (imgStageHeight > 50 ? imgStageHeight : 480);
               console.log("mapH", mapH, "cached", cachedImageStageHeight, "live", imgStageHeight);
               if (imageStage) imageStage.classList.add("is-hidden");
               miniMap.hidden = false;
@@ -722,7 +728,13 @@ loadGoogleMaps().then(() => {
                   const bounds = new google.maps.LatLngBounds();
                   if (listingPoint) bounds.extend(listingPoint);
 
-                  items.forEach(item => {
+               if (!document.getElementById("osm-pulse-style")) {
+                    const ps = document.createElement("style");
+                    ps.id = "osm-pulse-style";
+                    ps.textContent = "@keyframes osmPulse{0%{transform:scale(1);opacity:0.9}50%{transform:scale(1.5);opacity:0}100%{transform:scale(1.5);opacity:0}}";
+                    document.head.appendChild(ps);
+                  }
+                  items.forEach((item, itemIdx) => {
                     if (!item.lat || !item.lng) return;
                     const label = item.name || item.osm_type || "";
                     const marker = new google.maps.Marker({
@@ -739,12 +751,20 @@ loadGoogleMaps().then(() => {
                       }
                     });
                     const iw = new google.maps.InfoWindow({
-                      content: `<div style="font-size:12px;padding:2px 4px;"><strong>${label}</strong></div>`
+                     content: `<div style="font-size:13px;padding:6px 10px;font-weight:600;"><strong>${label}</strong></div>`
                     });
                     marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
                     if (items.length <= 10 && window.innerWidth > 640) iw.open(sheetMiniMapInstance, marker);
                     window._osmPoiMarkers.push(marker);
                     bounds.extend({ lat: item.lat, lng: item.lng });
+                    setTimeout(() => {
+                      const markerEl = document.querySelector(`[title="${label.replace(/"/g, '')}"]`);
+                      if (!markerEl) return;
+                      const pulse = document.createElement("div");
+                      pulse.style.cssText = `position:absolute;top:50%;left:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#2f6f73;opacity:0.6;animation:osmPulse 1.6s ease-out ${itemIdx * 0.25}s infinite;pointer-events:none;`;
+                      markerEl.style.position = "relative";
+                      markerEl.appendChild(pulse);
+                    }, 400);
                   });
 
                   setTimeout(() => {
@@ -1113,34 +1133,44 @@ sheetContent.classList.remove("open");
   sheet.scrollTo({ top: 0, behavior: "instant" });
 
   sheetSummary.innerHTML = `
-<div style="min-height:100%;padding:32px 28px;background:#fff;">
-      <div style="width:100%;max-width:560px;display:grid;gap:20px;">
+    <div style="min-height:100%;padding:48px 36px 40px;background:#fff;display:flex;flex-direction:column;justify-content:center;">
+      <div style="max-width:480px;margin:0 auto;width:100%;display:grid;gap:28px;">
+
         <div>
-          <div style="font-size:0.7rem;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#8b6f47;margin-bottom:10px;">
+          <div style="display:inline-block;margin-bottom:14px;padding:5px 12px;border-radius:999px;background:#f3eadc;border:1px solid #e2cba8;font-size:0.7rem;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#8b6f47;">
             ${options.kicker || "Get in touch"}
           </div>
-
-          <h2 style="margin:0 0 8px;font-size:1.65rem;line-height:1.1;letter-spacing:-0.035em;font-weight:700;color:#181614;">
+          <h2 style="margin:0 0 10px;font-size:1.9rem;line-height:1.05;letter-spacing:-0.04em;font-weight:700;color:#181614;">
             ${options.title || "Want new matches like these?"}
           </h2>
-
           <p style="margin:0;color:#6b6560;font-size:0.95rem;line-height:1.6;">
-            ${options.body || "Leave your details and we’ll follow up about this property."}
+            ${options.body || "Leave your details and we'll follow up about this property."}
           </p>
         </div>
 
-        <div style="display:grid;gap:10px;width:100%;max-width:500px;margin:0 auto;">
-          <input id="lead-name-input" placeholder="Name" style="width:100%;height:46px;padding:0 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.92rem;outline:none;background:#faf7f2;" />
-          <input id="lead-email-input" placeholder="Email" style="width:100%;height:46px;padding:0 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.92rem;outline:none;background:#faf7f2;" />
-          <input id="lead-phone-input" placeholder="Phone (optional)" style="width:100%;height:46px;padding:0 16px;border-radius:999px;border:1px solid #ddd8d0;font:inherit;font-size:0.92rem;outline:none;background:#faf7f2;" />
+        <div style="display:grid;gap:12px;">
+          <input id="lead-name-input" placeholder="Your name" style="width:100%;height:52px;padding:0 20px;border-radius:12px;border:1px solid #e3d8ca;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;box-sizing:border-box;" />
+          <input id="lead-email-input" placeholder="Email address" style="width:100%;height:52px;padding:0 20px;border-radius:12px;border:1px solid #e3d8ca;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;box-sizing:border-box;" />
+      <input id="lead-phone-input" placeholder="Phone (optional)" style="width:100%;height:52px;padding:0 20px;border-radius:12px;border:1px solid #e3d8ca;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;box-sizing:border-box;" />
         </div>
 
-        <div style="display:grid;gap:10px;width:100%;max-width:500px;margin:0 auto;">
-          <button type="button" id="lead-save-btn" style="appearance:none;border:0;border-radius:999px;background:#181614;color:#fff;min-height:46px;padding:0 24px;font:inherit;font-size:0.94rem;font-weight:800;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,0.12);">
+        ${options.kicker === "Ask a question" ? `
+        <div style="display:grid;gap:8px;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button type="button" class="lead-suggest-btn" data-q="Is this still available?" style="appearance:none;border:1px solid #e3d8ca;border-radius:999px;background:#faf7f2;color:#6b6560;padding:7px 14px;font:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;">Is this still available?</button>
+            <button type="button" class="lead-suggest-btn" data-q="Can I book a showing?" style="appearance:none;border:1px solid #e3d8ca;border-radius:999px;background:#faf7f2;color:#6b6560;padding:7px 14px;font:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;">Can I book a showing?</button>
+            <button type="button" class="lead-suggest-btn" data-q="What are the monthly costs?" style="appearance:none;border:1px solid #e3d8ca;border-radius:999px;background:#faf7f2;color:#6b6560;padding:7px 14px;font:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;">Monthly costs?</button>
+            <button type="button" class="lead-suggest-btn" data-q="Has there been any recent work done on the property?" style="appearance:none;border:1px solid #e3d8ca;border-radius:999px;background:#faf7f2;color:#6b6560;padding:7px 14px;font:inherit;font-size:0.8rem;font-weight:600;cursor:pointer;">Recent work done?</button>
+          </div>
+          <textarea id="lead-question-input" placeholder="Your question..." style="width:100%;min-height:90px;padding:14px 20px;border-radius:12px;border:1px solid #e3d8ca;font:inherit;font-size:0.95rem;outline:none;background:#faf7f2;box-sizing:border-box;resize:vertical;line-height:1.5;"></textarea>
+        </div>
+        ` : ""}
+
+        <div style="display:grid;gap:10px;">
+          <button type="button" id="lead-save-btn" style="appearance:none;border:0;border-radius:12px;background:#181614;color:#fff;height:52px;padding:0 24px;font:inherit;font-size:0.95rem;font-weight:800;cursor:pointer;letter-spacing:-0.01em;">
             ${options.button || "Send me better matches"}
           </button>
-
-          <button type="button" id="lead-cancel-btn" style="appearance:none;border:1px solid #ddd8d0;border-radius:999px;background:#fff;color:#6b6560;min-height:42px;padding:0 22px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;">
+          <button type="button" id="lead-cancel-btn" style="appearance:none;border:1px solid #e3d8ca;border-radius:12px;background:#fff;color:#6b6560;height:46px;padding:0 22px;font:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;">
             Keep browsing
           </button>
         </div>
@@ -1149,10 +1179,25 @@ sheetContent.classList.remove("open");
     </div>
   `;
 
+ document.querySelectorAll(".lead-suggest-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const q = document.getElementById("lead-question-input");
+      if (q) { q.value = btn.dataset.q; q.focus(); }
+    });
+  });
+
   document.getElementById("lead-save-btn")?.addEventListener("click", async () => {
-    const name = document.getElementById("lead-name-input")?.value || "";
+const name = document.getElementById("lead-name-input")?.value || "";
     const email = document.getElementById("lead-email-input")?.value || "";
     const phone = document.getElementById("lead-phone-input")?.value || "";
+    const question = document.getElementById("lead-question-input")?.value || "";
+
+    document.querySelectorAll(".lead-suggest-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const q = document.getElementById("lead-question-input");
+        if (q) q.value = btn.dataset.q;
+      });
+    });
 
     await fetch("/api/intent-lead", {
       method: "POST",
@@ -1163,9 +1208,10 @@ sheetContent.classList.remove("open");
   name,
   email,
   phone,
-  source: options.kicker || "Save refined search",
+source: options.kicker || "Save refined search",
   message: [
     options.note || "",
+    question ? `Question: ${question}` : "",
     activeCard?.dataset?.address ? `Property: ${activeCard.dataset.address}` : "",
     activeCard?.dataset?.price ? `Price: ${activeCard.dataset.price}` : "",
     activeCard?.dataset?.mls ? `MLS: ${activeCard.dataset.mls}` : "",
@@ -1174,26 +1220,45 @@ sheetContent.classList.remove("open");
 }),
     });
 
+    const wasQuestion = options.kicker === "Ask a question";
+    const wasShowing = options.kicker === "Book a showing";
+
     sheetSummary.innerHTML = `
-      <div class="modal-intent-summary">
-        <div class="modal-intent-kicker">Saved</div>
-        <h2>You’re all set.</h2>
-        <p>We’ll use this search direction to help send better matches.</p>
+      <div style="min-height:100%;padding:48px 36px 40px;background:#fff;display:flex;flex-direction:column;justify-content:center;">
+        <div style="max-width:480px;margin:0 auto;width:100%;display:grid;gap:24px;">
+          <div>
+            <div style="display:inline-block;margin-bottom:14px;padding:5px 12px;border-radius:999px;background:#e8f6dd;border:1px solid #b5d79a;font-size:0.7rem;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#3a6b22;">
+              ${wasQuestion ? "Question sent" : wasShowing ? "Request sent" : "Saved"}
+            </div>
+            <h2 style="margin:0 0 10px;font-size:1.9rem;line-height:1.05;letter-spacing:-0.04em;font-weight:700;color:#181614;">
+              ${wasQuestion ? "Thanks — we'll follow up shortly." : wasShowing ? "We'll be in touch to confirm a time." : "You're all set."}
+            </h2>
+            <p style="margin:0;color:#6b6560;font-size:0.95rem;line-height:1.6;">
+              ${wasQuestion ? "Your question has been sent. We'll be in touch as soon as possible — usually within a few hours." : wasShowing ? "We'll reach out to confirm a time that works for you. In the meantime, keep browsing." : "We'll use this search direction to help send better matches."}
+            </p>
+          </div>
+          <div style="display:grid;gap:10px;">
+            <button type="button" id="post-lead-keep-browsing" style="appearance:none;border:0;border-radius:12px;background:#181614;color:#fff;height:52px;padding:0 24px;font:inherit;font-size:0.95rem;font-weight:800;cursor:pointer;">
+              Keep browsing
+            </button>
+            <button type="button" id="post-lead-close" style="appearance:none;border:1px solid #e3d8ca;border-radius:12px;background:#fff;color:#6b6560;height:46px;padding:0 22px;font:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;">
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     `;
 
-    setTimeout(() => {
+    document.getElementById("post-lead-keep-browsing")?.addEventListener("click", () => {
+      sheet.classList.remove("is-engagement-mode");
+      sheetSummary.classList.remove("open");
+      sheetContent?.classList.add("open");
+      goNext();
+    });
+
+    document.getElementById("post-lead-close")?.addEventListener("click", () => {
       closeSheet({ force: true });
-
-      const refinedAnchor =
-        document.getElementById("refined-results") ||
-        document.getElementById("refined-results-anchor");
-
-      refinedAnchor?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 1200);
+    });
   });
 
   document.getElementById("lead-cancel-btn")?.addEventListener("click", () => {
@@ -1772,7 +1837,7 @@ requestAnimationFrame(() => {
     sheetImageStage.classList.add("is-hidden");
   }
 
-const mapBtnHeight = cachedImageStageHeight > 50 ? cachedImageStageHeight : 320;
+const mapBtnHeight = cachedImageStageHeight > 50 ? cachedImageStageHeight : (document.querySelector(".panel__image-stage")?.offsetHeight || 480);
 sheetMiniMap.hidden = false;
 sheetMiniMap.style.display = "block";
 sheetMiniMap.style.height = mapBtnHeight + "px";

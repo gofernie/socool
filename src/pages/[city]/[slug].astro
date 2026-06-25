@@ -3725,10 +3725,11 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+ // Unhide all cards temporarily so the target is accessible
+    document.querySelectorAll(".original-card").forEach(c => c.hidden = false);
     matchingCard.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    matchingCard.click();
-}, 150);
+    setTimeout(() => matchingCard.click(), 100);
+}, 600);
 });
     </script>
   <script is:inline>

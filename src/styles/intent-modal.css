@@ -3223,7 +3223,9 @@ body.edit-mode .agent-edit-grid {
   display: grid;
   justify-items: center;
   gap: 10px;
-  margin: 0 0 14px;
+  margin: 32px 0 14px;
+  padding-top: 20px;
+  border-top: 0.5px solid rgba(0,0,0,0.08);
 }
 
 .intent-like-tags-kicker {
