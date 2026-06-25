@@ -1088,6 +1088,11 @@ const normalized_city =
       ? "duncan"
       : clean(rawCity);
       const normalized_type = normalizeType(listing);
+      // Fernie/Sparwood: unit-prefixed addresses (e.g. "613D 4559" or "2221 5350") are condos
+      const rowAddressForType = clean(getNormalizedAddress(listing));
+      const finalType = (normalized_city === "fernie" || normalized_city === "sparwood") && /^[a-z0-9]+ \d{3,}/i.test(rowAddressForType)
+        ? "condo"
+        : normalized_type;
      // Skip commercial completely
 if (
   normalized_type === "commercial" ||
@@ -1293,7 +1298,7 @@ const finalImageUrl =
           listing?.type ||
           listing?.details?.propertyType ||
           null,
-        normalized_type,
+       normalized_type: finalType,
 
         price: numOrNull(listing?.price || listing?.listPrice),
         beds: intOrNull(
