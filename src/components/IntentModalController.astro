@@ -18,6 +18,7 @@ const sheetImageStage = document.querySelector(".panel__image-stage");
 
 let sheetMiniMapInstance = null;
 let sheetMiniMapMarker = null;
+let cachedImageStageHeight = 0;
 
 function getCardLatLng(card) {
   const lat = parseFloat(card?.dataset?.lat || "");
@@ -308,6 +309,12 @@ function getCardKey(card) {
       function openSheet(card) {
   activeCard = card;
   card.dataset.viewed = "true";
+  // cache image stage height while it's visible
+  const stageEl = document.querySelector(".panel__image-stage");
+  if (stageEl && !stageEl.classList.contains("is-hidden")) {
+    const h = stageEl.offsetHeight || stageEl.getBoundingClientRect().height;
+    if (h > 50) cachedImageStageHeight = h;
+  }
 window.saveViewedIntentAddress?.(card.dataset.address || "");
 window.saveViewedIntentListingKey?.(card);
 window.updateViewedBadges?.();
@@ -580,13 +587,15 @@ if (sheetEngage) {
 if (card.classList.contains("refined-card")) {
   refinedBrowseCount += 1;
 }
-          if (sheetMiniMap) {
+     if (sheetMiniMap) {
   sheetMiniMap.hidden = true;
   sheetMiniMap.style.display = "none";
 }
 
 if (sheetImageStage) {
   sheetImageStage.classList.remove("is-hidden");
+  const h = sheetImageStage.offsetHeight || sheetImageStage.getBoundingClientRect().height;
+  if (h > 50) cachedImageStageHeight = h;
 }
 
 if (sheetMapBtn) {
@@ -655,12 +664,14 @@ const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length)
               if (!miniMap) return;
 
              // show map
-              const imgStageHeight = imageStage ? imageStage.offsetHeight : 320;
+const imgStageHeight = imageStage ? (imageStage.offsetHeight || imageStage.getBoundingClientRect().height) : 0;
+const mapH = cachedImageStageHeight > 50 ? cachedImageStageHeight : (imgStageHeight > 50 ? imgStageHeight : 320);
+              console.log("mapH", mapH, "cached", cachedImageStageHeight, "live", imgStageHeight);
               if (imageStage) imageStage.classList.add("is-hidden");
               miniMap.hidden = false;
               miniMap.style.display = "block";
-              miniMap.style.height = imgStageHeight + "px";
-              miniMap.style.minHeight = imgStageHeight + "px";
+              miniMap.style.height = mapH + "px";
+              miniMap.style.minHeight = mapH + "px";
               miniMap.style.width = "100%";
               if (mapBtn) mapBtn.textContent = "Pictures";
 
@@ -669,9 +680,15 @@ const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length)
               cardEl.classList.add("osm-card-active");
               document.getElementById("sheet-content")?.scrollTo({ top: 0, behavior: "smooth" });
 
-              loadGoogleMaps().then(() => {
-                if (!sheetMiniMapInstance) {
-                  const point = getCardLatLng(activeCard);
+loadGoogleMaps().then(() => {
+                const point = getCardLatLng(activeCard);
+                miniMap.innerHTML = "";
+                miniMap.style.height = mapH + "px";
+                miniMap.style.minHeight = mapH + "px";
+                miniMap.style.display = "block";
+                miniMap.hidden = false;
+
+                requestAnimationFrame(() => {
                   sheetMiniMapInstance = new google.maps.Map(miniMap, {
                     center: point || { lat: 49.1659, lng: -123.9401 },
                     zoom: 15,
@@ -679,64 +696,62 @@ const activeCats = Object.entries(catMeta).filter(([k]) => (cats[k]||[]).length)
                     streetViewControl: false,
                     fullscreenControl: false,
                   });
-                }
 
-                // clear previous OSM markers
-                if (!window._osmPoiMarkers) window._osmPoiMarkers = [];
-                window._osmPoiMarkers.forEach(m => m.setMap(null));
-                window._osmPoiMarkers = [];
+                  if (!window._osmPoiMarkers) window._osmPoiMarkers = [];
+                  window._osmPoiMarkers.forEach(m => m.setMap(null));
+                  window._osmPoiMarkers = [];
 
-                // add listing marker
-                const listingPoint = getCardLatLng(activeCard);
-                if (listingPoint) {
-                  new google.maps.Marker({
-                    position: listingPoint,
-                    map: sheetMiniMapInstance,
-                    title: activeCard?.dataset?.address || "Listing",
-                    icon: {
-                      path: google.maps.SymbolPath.CIRCLE,
-                      scale: 9,
-                      fillColor: "#ff3b30",
-                      fillOpacity: 1,
-                      strokeColor: "#fff",
-                      strokeWeight: 2,
-                    }
+                  const listingPoint = getCardLatLng(activeCard);
+                  if (listingPoint) {
+                    new google.maps.Marker({
+                      position: listingPoint,
+                      map: sheetMiniMapInstance,
+                      title: activeCard?.dataset?.address || "Listing",
+                      icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 9,
+                        fillColor: "#ff3b30",
+                        fillOpacity: 1,
+                        strokeColor: "#fff",
+                        strokeWeight: 2,
+                      }
+                    });
+                  }
+
+                  const items = cats[cat] || [];
+                  const bounds = new google.maps.LatLngBounds();
+                  if (listingPoint) bounds.extend(listingPoint);
+
+                  items.forEach(item => {
+                    if (!item.lat || !item.lng) return;
+                    const label = item.name || item.osm_type || "";
+                    const marker = new google.maps.Marker({
+                      position: { lat: item.lat, lng: item.lng },
+                      map: sheetMiniMapInstance,
+                      title: label,
+                      icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 7,
+                        fillColor: "#2f6f73",
+                        fillOpacity: 0.95,
+                        strokeColor: "#fff",
+                        strokeWeight: 2,
+                      }
+                    });
+                    const iw = new google.maps.InfoWindow({
+                      content: `<div style="font-size:12px;padding:2px 4px;"><strong>${label}</strong></div>`
+                    });
+                    marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
+                    if (items.length <= 10 && window.innerWidth > 640) iw.open(sheetMiniMapInstance, marker);
+                    window._osmPoiMarkers.push(marker);
+                    bounds.extend({ lat: item.lat, lng: item.lng });
                   });
-                }
 
-                const items = cats[cat] || [];
-                const bounds = new google.maps.LatLngBounds();
-                if (listingPoint) bounds.extend(listingPoint);
-
-                items.forEach(item => {
-                  if (!item.lat || !item.lng) return;
-                  const label = item.name || item.osm_type || "";
-                  const marker = new google.maps.Marker({
-                    position: { lat: item.lat, lng: item.lng },
-                    map: sheetMiniMapInstance,
-                    title: label,
-                    icon: {
-                      path: google.maps.SymbolPath.CIRCLE,
-                      scale: 7,
-                      fillColor: "#2f6f73",
-                      fillOpacity: 0.95,
-                      strokeColor: "#fff",
-                      strokeWeight: 2,
-                    }
-                  });
-                  const iw = new google.maps.InfoWindow({
-                    content: `<div style="font-size:12px;padding:2px 4px;"><strong>${label}</strong></div>`
-                  });
-                  marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
-                  if (items.length <= 10 && window.innerWidth > 640) iw.open(sheetMiniMapInstance, marker);
-                  window._osmPoiMarkers.push(marker);
-                  bounds.extend({ lat: item.lat, lng: item.lng });
+                  setTimeout(() => {
+                    google.maps.event.trigger(sheetMiniMapInstance, "resize");
+                    sheetMiniMapInstance.fitBounds(bounds);
+                  }, 150);
                 });
-
-                setTimeout(() => {
-                  google.maps.event.trigger(sheetMiniMapInstance, "resize");
-                  sheetMiniMapInstance.fitBounds(bounds);
-                }, 100);
               }).catch(console.error);
             });
           });
