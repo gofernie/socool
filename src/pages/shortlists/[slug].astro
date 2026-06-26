@@ -14,6 +14,7 @@ import {
 } from "../../lib/repliers";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../components/IntentModalController.astro";
+import "../../styles/intent-modal.css";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL!,
@@ -2964,12 +2965,7 @@ let criteriaRefineCount = parseInt(sessionStorage.getItem(_refineKey) || "0", 10
     let reviewCards = null;
 
 function getCards() {
-  if (reviewCards) return reviewCards;
-
-  const allCards = Array.from(document.querySelectorAll(".card"));
-
-  reviewCards = allCards;
-  return reviewCards;
+  return Array.from(document.querySelectorAll(".original-card"));
 }
 
         function currentCardIndex() {
@@ -3495,7 +3491,16 @@ if (sheetMeta) {
 
   sheetMeta.innerHTML = facts.join("");
 }
-          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
+         if (sheetDescription) {
+  sheetDescription.textContent = card.dataset.description || "";
+  sheetDescription.classList.add("is-collapsed");
+}
+
+if (descToggle) {
+  descToggle.textContent = "Read more";
+  descToggle.style.display =
+    String(card.dataset.description || "").length > 180 ? "" : "none";
+}
          if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
           if (sheetDetailRow) {
 const titleCase = (value) =>
@@ -3565,7 +3570,7 @@ function appendExpandedListings(listings) {
     const image = listing.image_url || "https://placehold.co/800x600?text=Listing";
 const safeDescription = String(listing.description || "").replace(/\s+/g, " ").trim();
 
-    article.className = "card";
+    article.className = "card original-card";
     article.dataset.itemId = itemId;
     article.dataset.cardId = listingId;
     article.dataset.price = price;
@@ -3617,352 +3622,212 @@ reviewCards = null;
   updateCounts();
 }
 
-        function showSummary() {
+       function showSummary() {
           isShowingSummary = true;
           activeCard = null;
           activeItemId = "";
 
           const cards = getCards();
+          const loveCount = cards.filter((c) => c.dataset.isFavourite === "true").length;
+          const maybeCount = cards.filter((c) => c.dataset.decision === "maybe").length;
+          const passCount = cards.filter((c) => c.dataset.decision === "pass").length;
 
-const summaryTitle = document.getElementById("review-complete-title");
-if (summaryTitle && isExpandedReview) {
-  summaryTitle.textContent = "You’ve seen the new homes.";
-}
+          const lovedCards = cards.filter((c) => c.dataset.isFavourite === "true").slice(0, 4);
 
-const loveCount = cards.filter((card) => card.dataset.isFavourite === "true").length;
-          const maybeCount = cards.filter((card) => card.dataset.decision === "maybe").length;
-          const passCount = cards.filter((card) => card.dataset.decision === "pass").length;
-const faveStrip = document.getElementById("summary-fave-strip");
-const insightEl = document.getElementById("summary-insight");
+          const faveImgHtml = lovedCards.length ? `
+            <div style="display:grid;grid-template-columns:repeat(${lovedCards.length},1fr);gap:8px;margin:0 0 24px;">
+              ${lovedCards.map((c) => {
+                const img = c.dataset.image || "";
+                const addr = c.dataset.address || "";
+                if (!img) return "";
+                return `<button type="button" data-summary-fave-card-id="${c.dataset.cardId || ""}"
+                  style="border:0;background:transparent;padding:0;cursor:pointer;border-radius:6px;overflow:hidden;aspect-ratio:4/3;">
+                  <img src="${img}" alt="${addr}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:6px;">
+                </button>`;
+              }).join("")}
+            </div>
+          ` : "";
 
-function parseSummaryPrice(value) {
-  return parseInt(String(value || "").replace(/[^0-9]/g, ""), 10) || 0;
-}
+          const headline = loveCount > 0
+            ? `You loved ${loveCount} home${loveCount > 1 ? "s" : ""}.`
+            : maybeCount > 0
+              ? `You shortlisted ${maybeCount} home${maybeCount > 1 ? "s" : ""}.`
+              : `You've reviewed all ${cards.length} homes.`;
 
-const prices = cards
-  .map((card) => parseSummaryPrice(card.dataset.price))
-  .filter(Boolean);
+          if (sheetSummary) {
+            sheetSummary.innerHTML = `
+              <div style="padding:14px 18px 20px;max-width:680px;margin:0 auto;">
 
-const lovedCards = cards.filter((card) => card.dataset.isFavourite === "true");
+                <div style="font-size:0.68rem;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">✓ Shortlist reviewed</div>
 
-const lovedPrices = lovedCards
-  .map((card) => parseSummaryPrice(card.dataset.price))
-  .filter(Boolean);
+                <h2 style="font-size:clamp(1.8rem,3.5vw,2.6rem);line-height:1.05;letter-spacing:-0.03em;margin:0 0 8px;">${headline}</h2>
 
-const avgLovedPrice =
-  lovedPrices.reduce((sum, price) => sum + price, 0) /
-  Math.max(lovedPrices.length, 1);
+                <p style="color:var(--text-secondary);font-size:0.95rem;line-height:1.6;margin:0 0 22px;">
+                  ${loveCount > 0 ? "Your top picks are ready for a closer look." : "Nice work getting through them all — that really helps narrow things down."}
+                </p>
 
-const maxSearchPrice = Math.max(...prices, 0);
-const minSearchPrice = Math.min(...prices, maxSearchPrice || 0);
+                ${faveImgHtml}
 
-const topBudgetLine = maxSearchPrice * 0.88;
-const lowerBudgetLine = minSearchPrice + (maxSearchPrice - minSearchPrice) * 0.38;
+                <div style="display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:900;color:#d92d55;">${loveCount}</div>
+                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">❤️ Loved</div>
+                  </div>
+                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:900;color:#d99000;">${maybeCount}</div>
+                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">🤔 Maybe</div>
+                  </div>
+                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:900;color:#888;">${passCount}</div>
+                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">✕ Passed</div>
+                  </div>
+                </div>
 
-let insightType = "neutral";
+                <p style="font-size:0.8rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">What would you like to do next?</p>
 
-if (lovedCards.length >= 2 && avgLovedPrice && maxSearchPrice) {
-  if (avgLovedPrice >= topBudgetLine) {
-    insightType = "high";
-  } else if (avgLovedPrice <= lowerBudgetLine) {
-    insightType = "low";
-  }
-}
+                <div style="display:grid;gap:10px;">
+                  <button type="button" id="summary-book-showings" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
+                    <span style="font-size:1.3rem;">📅</span>
+                    <span>
+                      <span style="display:block;font-weight:800;">Set up showings</span>
+                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Send a note to your agent about the homes you loved</span>
+                    </span>
+                  </button>
 
-if (insightEl) {
-  insightEl.hidden = false;
+                  <button type="button" id="summary-see-more" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
+                    <span style="font-size:1.3rem;">👁</span>
+                    <span>
+                      <span style="display:block;font-weight:800;">See more homes</span>
+                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Expand the search or find similar options</span>
+                    </span>
+                  </button>
 
-  // Build liked tags HTML for use in all screens
-  const likedTags = Array.from(
-    new Set(
-      Array.from(document.querySelectorAll("[data-liked-tags]"))
-        .flatMap((el) => { try { return JSON.parse(el.dataset.likedTags || "[]"); } catch { return []; } })
-        .filter(Boolean)
-    )
-  ).slice(0, 4);
+                  <button type="button" id="summary-review-again" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
+                    <span style="font-size:1.3rem;">↩️</span>
+                    <span>
+                      <span style="display:block;font-weight:800;">Review again</span>
+                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Go back through the homes from the start</span>
+                    </span>
+                  </button>
+                </div>
 
-   const formatMoney = (value) =>
-    value ? `$${Math.round(value).toLocaleString()}` : "";
+                <div id="summary-note-area" hidden style="margin-top:20px;">
+                  <textarea id="summary-note-input" placeholder="Add a note for your agent..." style="width:100%;min-height:90px;border:1px solid var(--border);border-radius:6px;padding:12px 14px;font:inherit;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
+                  <div style="display:flex;gap:10px;margin-top:10px;">
+                    <button type="button" id="summary-note-send" style="appearance:none;border:0;border-radius:6px;background:var(--accent);color:#fff;min-height:44px;padding:0 20px;font:inherit;font-size:0.88rem;font-weight:800;cursor:pointer;">Send note →</button>
+                    <button type="button" id="summary-note-cancel" style="appearance:none;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-secondary);min-height:44px;padding:0 16px;font:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;">Cancel</button>
+                  </div>
+                  <div id="summary-note-status" style="font-size:0.82rem;color:var(--text-muted);margin-top:8px;min-height:18px;"></div>
+                </div>
 
-  const apparentPriceRange =
-    minSearchPrice && maxSearchPrice
-      ? `${formatMoney(minSearchPrice)} - ${formatMoney(maxSearchPrice)}`
-      : "";
+                <div id="summary-more-area" hidden style="margin-top:20px;padding:18px;border-radius:6px;background:#f5f9f1;border:1px solid #cfe4bd;">
+                  <p style="font-size:0.9rem;color:#5f675a;margin:0 0 14px;line-height:1.6;">What would help most?</p>
+                  <div style="display:grid;gap:8px;">
+                    <button type="button" id="summary-expand-price" style="appearance:none;border:1px solid #cfe4bd;border-radius:6px;background:#fff;padding:12px 16px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;text-align:left;">💰 Show homes in a higher price range</button>
+                    <button type="button" id="summary-refine-search" style="appearance:none;border:1px solid #cfe4bd;border-radius:6px;background:#fff;padding:12px 16px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;text-align:left;">🎯 Find more homes like the ones I liked</button>
+                  </div>
+                </div>
 
-  const tagHtml = likedTags.length
-    ? `<div class="refine-prompt-tags">${likedTags.map((tag) => `<span class="refine-prompt-pill">${tag}</span>`).join("")}</div>`
-    : "";
-
-  async function showConsultScreen() {
-    insightEl.innerHTML = `
-            <div class="consult-card" id="consult-card">
-        <div class="consult-check">✓</div>
-
-        <h3 class="consult-title">Your agent has a clear picture now.</h3>
-
-        <p class="consult-copy">
-          You've done a thorough review. Based on what you responded to, your agent can now hand-pick the right options for you.
-        </p>
-
-        ${apparentPriceRange ? `
-          <div class="consult-price">
-            <div class="consult-price__label">Apparent price range</div>
-            <div class="consult-price__value">${apparentPriceRange}</div>
-          </div>
-        ` : ""}
-
-        ${tagHtml}
-
-                <p class="consult-footer">Your agent will be in touch shortly with a curated selection.</p>
-      </div>
-    `;
-
-    requestAnimationFrame(() => {
-      const card = document.getElementById("consult-card");
-      const root = document.querySelector(".panel__view");
-
-      if (!card) return;
-
-      const play = () => card.classList.add("is-in-view");
-
-      if (!("IntersectionObserver" in window)) {
-        play();
-        return;
-      }
-
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.98) {
-            play();
-            observer.disconnect();
+              </div>
+            `;
           }
-        },
-        {
-          root,
-          threshold: [0.98]
-        }
-      );
 
-      observer.observe(card);
-    });
-
-    console.log("CONSULT PING firing...");
-    const pingOk = await sendReviewComplete("consult", "Buyer completed full review cycle. Ready for agent follow-up.");
-    console.log("CONSULT PING result:", pingOk);
-  }
-
-  function showNextScreen() {
-    // Phase 1: price expand (up to 2 times)
-    if (priceExpandCount < 1) {
-      const expandLabel = priceExpandCount === 0
-        ? "See homes in the next price range →"
-        : "One more step up — worth a look →";
-
-      insightEl.innerHTML = `
-                <div class="refine-prompt-card">
-          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">Want to see what a little more budget unlocks?</h3>
-          <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 16px;">Sometimes a small stretch in price opens up significantly better options. Worth a quick look.</p>
-          <button type="button" id="next-phase-btn" class="refine-prompt-btn">
-            ${expandLabel}
-          </button>
-        </div>
-      `;
-
-      document.getElementById("next-phase-btn")?.addEventListener("click", async () => {
-        const btn = document.getElementById("next-phase-btn");
-        if (!btn) return;
-        btn.disabled = true;
-        btn.textContent = "Finding homes...";
-
-        try {
-          // Cap price expansion at 20% above the highest price already seen
-          const _allPrices = Array.from(document.querySelectorAll(".card"))
-            .map(c => parseInt((c.dataset.price || "").replace(/[^0-9]/g, ""), 10))
-            .filter(Boolean);
-          const _currentMax = _allPrices.length ? Math.max(..._allPrices) : 0;
-          const _maxPrice = _currentMax ? Math.round(_currentMax * 1.2) : 0;
-
-          const res = await fetch("/api/shortlists/expand-search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-  slug: pageSlug,
-  maxPrice: _maxPrice,
-  mode: "price"
-})
+         // Wire up buttons
+          document.getElementById("summary-book-showings")?.addEventListener("click", () => {
+            const area = document.getElementById("summary-note-area");
+            const input = document.getElementById("summary-note-input");
+            if (!area) return;
+            area.hidden = false;
+            if (input) input.value = "I'd like to set up showings for the homes I loved.";
+            setTimeout(() => {
+              area.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              input?.focus();
+            }, 50);
           });
-          const data = await res.json();
 
-          if (!res.ok || !data?.ok || !Array.isArray(data.listings) || !data.listings.length) {
-            // Price expand failed — skip to criteria phase
-            priceExpandCount = 2;
-            sessionStorage.setItem(_expandKey, "2");
-            showNextScreen();
-            return;
-          }
+  
 
-          priceExpandCount += 1;
-          sessionStorage.setItem(_expandKey, String(priceExpandCount));
-          appendExpandedListings(data.listings);
-          closeSheet(true);
-
-          const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
-          const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-          if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
-
-        } catch (err) {
-          btn.disabled = false;
-          btn.textContent = "Try again";
-        }
-      });
-
-   // Phase 2: refined matches - one round only
-} else if (criteriaRefineCount < 1) {
-      const refineLabel = criteriaRefineCount === 0
-        ? "Find matches based on what I liked →"
-        : "Show more like these →";
-
-      insightEl.innerHTML = `
-        <div class="refine-prompt-card">          <h3 style="font-size:1.1rem;line-height:1.3;color:#1e2818;margin:0 0 10px;">You've seen all available homes in this search.</h3>
-          <p style="font-size:0.9rem;color:#5f675a;line-height:1.6;margin:0 0 12px;">Based on what you responded to, a few clear themes emerged.</p>
-          ${tagHtml}
-          <p style="font-size:0.88rem;color:#5f675a;line-height:1.6;margin:12px 0 16px;">We can broaden slightly — different area, bedroom count, or property type — to find more like what you liked.</p>
-          <button type="button" id="next-phase-btn" style="appearance:none;display:block;width:100%;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:linear-gradient(135deg,#2d5016,#163f08);color:#fff;font-size:0.9rem;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(45,80,22,0.22);">
-            ${refineLabel}
-          </button>
-        </div>
-      `;
-
-      document.getElementById("next-phase-btn")?.addEventListener("click", async () => {
-        const btn = document.getElementById("next-phase-btn");
-        if (!btn) return;
-        btn.disabled = true;
-        btn.textContent = "Finding recommended matches...";
-
-        try {
-          const res = await fetch("/api/shortlists/refine-search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ slug: pageSlug })
+          document.getElementById("summary-review-again")?.addEventListener("click", () => {
+            const firstCard = getCards()[0];
+            if (firstCard) window.openSheet(firstCard);
           });
-          const data = await res.json();
 
-          if (!res.ok || !data?.ok || !Array.isArray(data.listings) || !data.listings.length) {
-            criteriaRefineCount = 1;
-sessionStorage.setItem(_refineKey, "1");
-            showConsultScreen();
-            return;
-          }
+          document.getElementById("summary-note-cancel")?.addEventListener("click", () => {
+            const area = document.getElementById("summary-note-area");
+            if (area) area.hidden = true;
+          });
 
-          criteriaRefineCount += 1;
-          sessionStorage.setItem(_refineKey, String(criteriaRefineCount));
-          appendExpandedListings(data.listings);
-          closeSheet(true);
+          document.getElementById("summary-note-send")?.addEventListener("click", async () => {
+            const btn = document.getElementById("summary-note-send");
+            const input = document.getElementById("summary-note-input");
+            const status = document.getElementById("summary-note-status");
+            const comment = String(input?.value || "").trim();
+            if (!comment) { if (status) status.textContent = "Add a note first."; return; }
+            if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+            const ok = await sendReviewComplete("comment", comment);
+            if (status) status.textContent = ok ? "Sent ✓" : "Could not send.";
+            if (btn) { btn.textContent = ok ? "Sent ✓" : "Send note →"; btn.disabled = false; }
+          });
 
-          const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")).filter(Boolean));
-          const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-          if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
+          document.getElementById("summary-expand-price")?.addEventListener("click", async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = "Finding homes...";
+            try {
+              const _allPrices = Array.from(document.querySelectorAll(".card"))
+                .map(c => parseInt((c.dataset.price || "").replace(/[^0-9]/g, ""), 10)).filter(Boolean);
+              const _maxPrice = _allPrices.length ? Math.round(Math.max(..._allPrices) * 1.2) : 0;
+              const res = await fetch("/api/shortlists/expand-search", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug: pageSlug, maxPrice: _maxPrice, mode: "price" })
+              });
+              const data = await res.json();
+              if (!res.ok || !data?.ok || !data.listings?.length) { btn.textContent = "No new homes found"; return; }
+              appendExpandedListings(data.listings);
+              closeSheet(true);
+              const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")));
+              const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
+              if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
+            } catch { btn.disabled = false; btn.textContent = "Try again"; }
+          });
 
-        } catch (err) {
-          btn.disabled = false;
-          btn.textContent = "Try again";
-        }
-      });
+          document.getElementById("summary-refine-search")?.addEventListener("click", async (e) => {
+            const btn = e.currentTarget;
+            btn.disabled = true;
+            btn.textContent = "Finding matches...";
+            try {
+              const res = await fetch("/api/shortlists/refine-search", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug: pageSlug })
+              });
+              const data = await res.json();
+              if (!res.ok || !data?.ok || !data.listings?.length) { btn.textContent = "No matches found"; return; }
+              appendExpandedListings(data.listings);
+              closeSheet(true);
+              const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")));
+              const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
+              if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
+            } catch { btn.disabled = false; btn.textContent = "Try again"; }
+          });
 
-    // Phase 3: consult
-    } else {
-      showConsultScreen();
-    }
-  }
-
-  showNextScreen();
-}
-
-if (faveStrip) {
-  const faveCards = cards
-    .filter((card) => card.dataset.isFavourite === "true")
-    .slice(0, 4);
-
-faveStrip.style.display = faveCards.length ? "grid" : "none";
-  faveStrip.style.margin = faveCards.length ? "12px 0 18px" : "0";
-  faveStrip.style.gridTemplateColumns = `repeat(${Math.max(faveCards.length, 1)}, minmax(0, 1fr))`;
-  faveStrip.style.gap = "12px";
-  faveStrip.style.width = "100%";
-
-  faveStrip.innerHTML = faveCards
-    .map((card) => {
-      const img = card.dataset.image || "";
-      const address = card.dataset.address || "Favourite home";
-      if (!img) return "";
-
-      return `
-  <button
-    type="button"
-    data-summary-fave-card-id="${card.dataset.cardId || ""}"
-    style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;transition:transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;border-radius:14px;"
-  >
-    <img
-      src="${img}"
-      alt="${address}"
-      style="width:100%;height:150px;max-height:150px;object-fit:cover;border-radius:14px;display:block;"
-    >
-  </button>
-`;
-    })
-        .join("");
-
-faveStrip.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
-  btn.addEventListener("mouseenter", () => {
-  btn.style.transform = "translateY(-2px)";
-  btn.style.boxShadow = "0 8px 18px rgba(0,0,0,0.08)";
-  btn.style.opacity = "0.96";
-});
-
-btn.addEventListener("mouseleave", () => {
-  btn.style.transform = "";
-  btn.style.boxShadow = "";
-  btn.style.opacity = "";
-});
-
-  btn.addEventListener("click", () => {
-      const cardId = btn.getAttribute("data-summary-fave-card-id");
-      const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
-
-      if (card) {
-        cameFromSummary = true;
-        window.openSheet(card);
-      }
-    });
-  });
-}
-      if (summaryLoveCount) {
-  summaryLoveCount.textContent = String(loveCount);
-  summaryLoveCount.setAttribute("data-count", "favourites");
-}
-
-if (summaryMaybeCount) {
-  summaryMaybeCount.textContent = String(maybeCount);
-  summaryMaybeCount.setAttribute("data-count", "maybes");
-}
-
-if (summaryPassCount) {
-  summaryPassCount.textContent = String(passCount);
-  summaryPassCount.setAttribute("data-count", "not");
-}
+          // Wire up fave strip clicks
+          sheetSummary?.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const cardId = btn.getAttribute("data-summary-fave-card-id");
+              const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
+              if (card) { cameFromSummary = true; window.openSheet(card); }
+            });
+          });
 
           sheetContent?.classList.remove("open");
-sheetSummary?.classList.add("open");
-updateHeaderProgress();
-if (sheetMapBtn) sheetMapBtn.style.display = "none";
-
+          sheetSummary?.removeAttribute("hidden");
+          sheetSummary?.classList.add("open");
+          updateHeaderProgress();
+          if (sheetMapBtn) sheetMapBtn.style.display = "none";
           if (sheetNextBtn) sheetNextBtn.disabled = true;
+          if (sheetNextTopBtn) { sheetNextTopBtn.disabled = false; sheetNextTopBtn.textContent = "Review again →"; }
 
-       if (sheetNextTopBtn) {
-  sheetNextTopBtn.disabled = false;
-  sheetNextTopBtn.textContent = "Review again →";
-}
-
-autoSendReviewComplete();
+          autoSendReviewComplete();
         }
 let sheetMiniMap = null;
 let sheetMiniMarker = null;
@@ -4184,7 +4049,7 @@ wrap.querySelector(".card__new-badge")?.remove();
   }
 }
 function getPrevCard() {
-  const cards = Array.from(document.querySelectorAll(".card"));
+  const cards = getCards();
 
   if (!activeCard || !cards.length) return null;
 
@@ -4198,7 +4063,7 @@ function getPrevCard() {
   return cards[currentIndex - 1] || null;
 }
       function getNextCard() {
-  const cards = Array.from(document.querySelectorAll(".card"));
+const cards = getCards();
 
   if (!activeCard || !cards.length) return null;
 
@@ -4232,6 +4097,8 @@ function getPrevCard() {
           sheet.classList.remove("is-love-pulse", "is-pass-fade");
         }
 
+     window.openSheet = function(card) { openSheetFromCard(card); };
+
         function openSheetFromCard(card) {
           if (!card) return;
           if (editMode && isAgentView) return;
@@ -4257,7 +4124,8 @@ function getPrevCard() {
 
           showContent();
 
-         activeCard = card;
+        activeCard = card;
+
 markListingViewed(card);
 startListingMetrics(card);
 
@@ -4480,11 +4348,10 @@ if (ok) {
           if (nextCard) {
             window.openSheet(nextCard);
             resetPanelScroll();
-          } else {
-            resetDecisionUI();
-            showSummary();
-            resetPanelScroll();
-          }
+         } else {
+  resetDecisionUI();
+  showSummary();
+}
         }
 
         async function goToPrevCard(e) {
@@ -4725,16 +4592,16 @@ if (needsRefresh) {
         }
 
         function bindCardEvents(card) {
-          card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
+         card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            window.openSheet(card);
+            window.openSheet(e.currentTarget.closest(".original-card"));
           });
 
           card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            window.openSheet(card);
+            window.openSheet(e.currentTarget.closest(".original-card"));
           });
 
           card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
@@ -5156,8 +5023,7 @@ descToggle?.addEventListener("click", () => {
 
   const isCollapsed = sheetDescription.classList.contains("is-collapsed");
 
-  sheetDescription.classList.toggle("is-collapsed");
-
+  sheetDescription.classList.toggle("is-collapsed", !isCollapsed);
   descToggle.textContent = isCollapsed ? "Show less" : "Read more";
 });
 
@@ -5638,7 +5504,27 @@ saveSmsMessageBtn?.addEventListener("click", async (e) => {
             await sendShortlistText(btn);
           });
         });
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("#summary-see-more");
+  if (!btn) return;
 
+  e.preventDefault();
+  e.stopPropagation();
+
+  const area = document.getElementById("summary-more-area");
+  if (!area) return;
+
+  area.hidden = false;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      area.scrollIntoView({
+        behavior: "smooth",
+        block: "end"
+      });
+    });
+  });
+});
         sheetCloseBtn?.addEventListener("click", (e) => {
           e.preventDefault();
           closeSheet();

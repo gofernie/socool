@@ -3207,7 +3207,9 @@ body.edit-mode .agent-edit-grid {
 
 #preview-sheet .panel__summary.open {
   background: #fff !important;
-  padding: 0 !important;
+  padding: 34px 32px 38px !important;
+  overflow-y: auto !important;
+  min-height: 100% !important;
 }
 
 #preview-sheet {

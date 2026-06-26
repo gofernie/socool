@@ -329,7 +329,9 @@ sheetSummary?.setAttribute("hidden", "");
           sheet.setAttribute("aria-hidden", "false");
           document.body.style.overflow = "hidden";
         }
-      window.openSheet = openSheet;
+    if (!document.body.dataset.shortlistSendId) {
+        window.openSheet = openSheet;
+      }
 
       function closeSheet(options = {}) {
   sheet.classList.remove("is-engagement-mode");
@@ -1773,7 +1775,7 @@ window.setTimeout(() => {
 }, 600);
 }
 
-     document.addEventListener("click", (event) => {
+   document.addEventListener("click", (event) => {
 const card = event.target.closest(".original-card, .refined-card");
 
   if (!card) return;
@@ -1781,6 +1783,8 @@ const card = event.target.closest(".original-card, .refined-card");
   const interactive = event.target.closest("button, a, input, textarea, select");
 
   if (interactive && interactive !== card) return;
+
+  if (document.body.dataset.shortlistSendId) return;
 
   openSheet(card);
 });
