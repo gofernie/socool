@@ -14,7 +14,6 @@ import {
 } from "../../lib/repliers";
 import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../components/IntentModalController.astro";
-import "../../styles/intent-modal.css";
 
 const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_URL!,
@@ -3491,16 +3490,7 @@ if (sheetMeta) {
 
   sheetMeta.innerHTML = facts.join("");
 }
-         if (sheetDescription) {
-  sheetDescription.textContent = card.dataset.description || "";
-  sheetDescription.classList.add("is-collapsed");
-}
-
-if (descToggle) {
-  descToggle.textContent = "Read more";
-  descToggle.style.display =
-    String(card.dataset.description || "").length > 180 ? "" : "none";
-}
+          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
          if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
           if (sheetDetailRow) {
 const titleCase = (value) =>
@@ -3656,7 +3646,7 @@ reviewCards = null;
 
           if (sheetSummary) {
             sheetSummary.innerHTML = `
-              <div style="padding:14px 18px 20px;max-width:680px;margin:0 auto;">
+              <div style="padding:20px 24px 28px;max-width:680px;margin:0 auto;">
 
                 <div style="font-size:0.68rem;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">✓ Shortlist reviewed</div>
 
@@ -3732,20 +3722,20 @@ reviewCards = null;
             `;
           }
 
-         // Wire up buttons
+          // Wire up buttons
           document.getElementById("summary-book-showings")?.addEventListener("click", () => {
             const area = document.getElementById("summary-note-area");
             const input = document.getElementById("summary-note-input");
             if (!area) return;
             area.hidden = false;
             if (input) input.value = "I'd like to set up showings for the homes I loved.";
-            setTimeout(() => {
-              area.scrollIntoView({ behavior: "smooth", block: "nearest" });
-              input?.focus();
-            }, 50);
+            input?.focus();
           });
 
-  
+          document.getElementById("summary-see-more")?.addEventListener("click", () => {
+            const area = document.getElementById("summary-more-area");
+            if (area) area.hidden = false;
+          });
 
           document.getElementById("summary-review-again")?.addEventListener("click", () => {
             const firstCard = getCards()[0];
@@ -4348,10 +4338,11 @@ if (ok) {
           if (nextCard) {
             window.openSheet(nextCard);
             resetPanelScroll();
-         } else {
-  resetDecisionUI();
-  showSummary();
-}
+          } else {
+            resetDecisionUI();
+            showSummary();
+            resetPanelScroll();
+          }
         }
 
         async function goToPrevCard(e) {
@@ -5023,7 +5014,8 @@ descToggle?.addEventListener("click", () => {
 
   const isCollapsed = sheetDescription.classList.contains("is-collapsed");
 
-  sheetDescription.classList.toggle("is-collapsed", !isCollapsed);
+  sheetDescription.classList.toggle("is-collapsed");
+
   descToggle.textContent = isCollapsed ? "Show less" : "Read more";
 });
 
@@ -5504,27 +5496,7 @@ saveSmsMessageBtn?.addEventListener("click", async (e) => {
             await sendShortlistText(btn);
           });
         });
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("#summary-see-more");
-  if (!btn) return;
 
-  e.preventDefault();
-  e.stopPropagation();
-
-  const area = document.getElementById("summary-more-area");
-  if (!area) return;
-
-  area.hidden = false;
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      area.scrollIntoView({
-        behavior: "smooth",
-        block: "end"
-      });
-    });
-  });
-});
         sheetCloseBtn?.addEventListener("click", (e) => {
           e.preventDefault();
           closeSheet();
