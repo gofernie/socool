@@ -1089,8 +1089,12 @@ const normalized_city =
       : clean(rawCity);
       const normalized_type = normalizeType(listing);
       // Fernie/Sparwood: unit-prefixed addresses (e.g. "613D 4559" or "2221 5350") are condos
-      const rowAddressForType = clean(getNormalizedAddress(listing));
-   const finalType = (normalized_city === "fernie" || normalized_city === "sparwood") && /^[a-z0-9]+ \d{3,}/i.test(rowAddressForType) && normalized_type !== "mobile"
+  const rowAddressForType = clean(getNormalizedAddress(listing));
+      // Any address where a unit/suite prefix appears before the street number = condo
+      // e.g. "103 34 Rivermount", "613D 4559 Timberline", "2221 5350 Stewart"
+    // Unit prefix = two separate number groups at the start (e.g. "103 34 rivermount")
+      const hasUnitPrefix = /^\d+ \d+ /.test(rowAddressForType) || (/^[a-z0-9-]+ \d/.test(rowAddressForType) && !/^\d{1,6} [a-z]/.test(rowAddressForType));
+      const finalType = (normalized_city === "fernie" || normalized_city === "sparwood") && hasUnitPrefix && normalized_type !== "mobile"
         ? "condo"
         : normalized_type;
      // Skip commercial completely
