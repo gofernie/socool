@@ -19,6 +19,31 @@ const sheetImageStage = document.querySelector(".panel__image-stage");
 let sheetMiniMapInstance = null;
 let sheetMiniMapMarker = null;
 let cachedImageStageHeight = 0;
+function getMiniMapStyleOptions() {
+  return {
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    styles: [
+      { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] },
+      { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+    ],
+  };
+}
+
+function addSmallInfoWindow(marker, label) {
+  const iw = new google.maps.InfoWindow({
+    content: `<div style="font-size:10px;line-height:1;font-weight:700;white-space:nowrap;padding:0;">${label}</div>`,
+    disableAutoPan: true,
+  });
+
+  marker.addListener("click", () => {
+    window._activeOsmInfoWindow?.close();
+
+    iw.open(sheetMiniMapInstance, marker);
+    window._activeOsmInfoWindow = iw;
+  });
+}
 
 function getCardLatLng(card) {
   const lat = parseFloat(card?.dataset?.lat || "");
@@ -697,13 +722,11 @@ loadGoogleMaps().then(() => {
                 miniMap.hidden = false;
 
                 requestAnimationFrame(() => {
-                  sheetMiniMapInstance = new google.maps.Map(miniMap, {
-                    center: point || { lat: 49.1659, lng: -123.9401 },
-                    zoom: 15,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    fullscreenControl: false,
-                  });
+             sheetMiniMapInstance = new google.maps.Map(miniMap, {
+  center: point || { lat: 49.1659, lng: -123.9401 },
+  zoom: 15,
+  ...getMiniMapStyleOptions(),
+});
 
                   if (!window._osmPoiMarkers) window._osmPoiMarkers = [];
                   window._osmPoiMarkers.forEach(m => m.setMap(null));
@@ -715,14 +738,15 @@ loadGoogleMaps().then(() => {
                       position: listingPoint,
                       map: sheetMiniMapInstance,
                       title: activeCard?.dataset?.address || "Listing",
-                      icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 9,
-                        fillColor: "#ff3b30",
-                        fillOpacity: 1,
-                        strokeColor: "#fff",
-                        strokeWeight: 2,
-                      }
+                  
+icon: {
+  path: google.maps.SymbolPath.CIRCLE,
+  scale: 9,
+  fillColor: "#ff3b30",
+  fillOpacity: 1,
+  strokeColor: "#fff",
+  strokeWeight: 2,
+}
                     });
                   }
 
@@ -730,12 +754,7 @@ loadGoogleMaps().then(() => {
                   const bounds = new google.maps.LatLngBounds();
                   if (listingPoint) bounds.extend(listingPoint);
 
-               if (!document.getElementById("osm-pulse-style")) {
-                    const ps = document.createElement("style");
-                    ps.id = "osm-pulse-style";
-                    ps.textContent = "@keyframes osmPulse{0%{transform:scale(1);opacity:0.9}50%{transform:scale(1.5);opacity:0}100%{transform:scale(1.5);opacity:0}}";
-                    document.head.appendChild(ps);
-                  }
+             
                   items.forEach((item, itemIdx) => {
                     if (!item.lat || !item.lng) return;
                     const label = item.name || item.osm_type || "";
@@ -752,21 +771,10 @@ loadGoogleMaps().then(() => {
                         strokeWeight: 2,
                       }
                     });
-                    const iw = new google.maps.InfoWindow({
-                     content: `<div style="font-size:13px;padding:6px 10px;font-weight:600;"><strong>${label}</strong></div>`
-                    });
-                    marker.addListener("click", () => iw.open(sheetMiniMapInstance, marker));
-                    if (items.length <= 10 && window.innerWidth > 640) iw.open(sheetMiniMapInstance, marker);
+              addSmallInfoWindow(marker, label);
                     window._osmPoiMarkers.push(marker);
                     bounds.extend({ lat: item.lat, lng: item.lng });
-                    setTimeout(() => {
-                      const markerEl = document.querySelector(`[title="${label.replace(/"/g, '')}"]`);
-                      if (!markerEl) return;
-                      const pulse = document.createElement("div");
-                      pulse.style.cssText = `position:absolute;top:50%;left:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:#2f6f73;opacity:0.6;animation:osmPulse 1.6s ease-out ${itemIdx * 0.25}s infinite;pointer-events:none;`;
-                      markerEl.style.position = "relative";
-                      markerEl.appendChild(pulse);
-                    }, 400);
+                 
                   });
 
                   setTimeout(() => {
