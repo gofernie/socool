@@ -42,10 +42,30 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
+// Fall back to area_metadata for copy fields if no boundary row yet
+  const { data: meta } = await supabase
+    .from("area_metadata")
+    .select("*")
+    .eq("city", String(city).toLowerCase())
+    .eq("area_slug", String(area_slug).toLowerCase())
+    .maybeSingle();
+
+  const merged = {
+    ...(meta || {}),
+    ...(data || {}),
+    // area_metadata column names -> boundary field names
+    hero_heading: data?.hero_heading || meta?.h1 || "",
+    seo_heading: data?.seo_heading || meta?.h2 || "",
+    seo_title: data?.seo_title || meta?.seo_title || "",
+    intro_copy: data?.intro_copy || meta?.intro_copy || "",
+    meta_description: data?.meta_description || meta?.meta_description || "",
+    short_description: data?.short_description || meta?.short_description || "",
+  };
+
   return new Response(
     JSON.stringify({
       ok: true,
-      boundary: data,
+      boundary: merged,
     }),
     {
       headers: { "Content-Type": "application/json" },
@@ -56,13 +76,18 @@ export const GET: APIRoute = async ({ url }) => {
 export const POST: APIRoute = async ({ request }) => {
   const body = await request.json();
 
-  const {
+const {
     site_id,
     city,
     area_slug,
     area_name,
     short_description,
     hero_image_url,
+    hero_heading,
+    seo_heading,
+    seo_title,
+    intro_copy,
+    meta_description,
     polygon_geojson,
     center_lat,
     center_lng,
@@ -84,8 +109,13 @@ export const POST: APIRoute = async ({ request }) => {
       city: String(city).toLowerCase(),
       area_slug: String(area_slug).toLowerCase(),
       area_name,
-      short_description: short_description || null,
+    short_description: short_description || null,
       hero_image_url: hero_image_url || null,
+      hero_heading: hero_heading || null,
+      seo_heading: seo_heading || null,
+      seo_title: seo_title || null,
+      intro_copy: intro_copy || null,
+      meta_description: meta_description || null,
       polygon_geojson,
       center_lat,
       center_lng,
