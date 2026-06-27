@@ -114,7 +114,7 @@
     appearance: none;
     height: 36px;
     padding: 0 14px;
-    border-radius: 999px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     background: #fff;
     color: var(--text-primary);
@@ -2189,7 +2189,7 @@ body.edit-mode .agent-edit-grid {
   min-width: 84px !important;
   padding: 0 18px !important;
   border: 0 !important;
-  border-radius: 999px !important;
+  border-radius: 6px !important;
   background: var(--modal-pill-bg) !important;
   color: var(--modal-pill-text) !important;
   font-family: var(--modal-font) !important;
@@ -3504,3 +3504,89 @@ body.edit-mode .agent-edit-grid {
 .panel__osm-icon { font-size: 18px !important; }
 .panel__osm-card { padding: 14px 16px !important; border-radius: 10px !important; }
 .panel__osm-card-head { gap: 8px !important; margin-bottom: 10px !important; }
+
+.mini-map-label {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 550;
+  color: #181614;
+  white-space: nowrap;
+  padding: 7px 10px;
+}
+
+
+.panel__end-card {
+  max-width: 620px;
+  margin: 42px auto 56px;
+  padding: 38px;
+  border-radius: 18px;
+  background: #f7f5ef;
+  border: 1px solid rgba(24, 22, 20, 0.1);
+}
+
+.panel__end-kicker {
+  margin: 0 0 14px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.panel__end-title {
+  margin: 0 0 14px;
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+}
+
+.panel__end-copy {
+  margin: 0;
+  max-width: 520px;
+  color: #5f5a54;
+  line-height: 1.65;
+}
+
+.panel__end-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.panel__end-primary,
+.panel__end-secondary {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.panel__end-primary {
+  border: 0;
+  background: #181614;
+  color: #fff;
+}
+
+.panel__end-secondary {
+  border: 1px solid rgba(24, 22, 20, 0.14);
+  background: #fff;
+  color: #181614;
+}
+
+.modal-intent-next {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, white);
+  color: #28231f;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.modal-intent-next strong {
+  color: var(--accent);
+}

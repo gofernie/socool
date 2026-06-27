@@ -2456,3254 +2456,643 @@ data-featured={i === 0 ? "true" : "false"}>
           <a href="sms:" class="cta-btn">Text your agent</a>
         )}
       </div>
-      <div id="shortlist-modal-source-cards" hidden>
-  {listings.map((listing: any) => {
-    const listingId = listing.repliers_listing_id || listing.listing_id || listing.id || "";
-    const image = normalizeImageUrl(listing.image_url) || "https://placehold.co/800x600?text=Listing";
-
-    return (
-      <article
-        class="original-card modal-source-card"
-        data-card-id={String(listingId)}
-        data-listing-id={String(listingId)}
-        data-item-id={String(listing.shortlist_item_id || listing.id || "")}
-        data-mls={String(listing.mls_number || listing.mls || listingId || "")}
-        data-price={listing.price_text || ""}
-        data-address={listing.address || ""}
-        data-beds={String(listing.beds || "")}
-        data-baths={String(listing.baths || "")}
-        data-sqft={String(listing.sqft || "")}
-        data-image={image}
-        data-images={JSON.stringify(listing.images || [image])}
-        data-description={listing.description || ""}
-        data-type={listing.property_type || listing.normalized_type || ""}
-        data-property-type={listing.property_type || listing.normalized_type || ""}
-        data-area={listing.normalized_area || listing.area || ""}
-        data-city={listing.normalized_city || listing.city || "nanaimo"}
-        data-lat={String(listing.lat || "")}
-        data-lng={String(listing.lng || "")}
-        data-liked-tags={JSON.stringify(listing.liked_tags || [])}
-        data-decision={listing.decision || ""}
-      ></article>
-    );
-  })}
-</div>
+      
     </main>
 
 <IntentModalController listings={listings} />
 
+<script is:inline>
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".original-card");
+  console.log("CLICK", {
+    target: e.target.tagName,
+    targetClass: e.target.className,
+    card: !!card,
+    openSheet: typeof window.openSheet,
+    shortlistSendId: document.body.dataset.shortlistSendId,
+    agentView: document.body.dataset.agentView,
+  });
+});
+</script>
+
+
+
+
 
 <script is:inline>
 function initShortlistPage() {
-        function coordsLookWrong(lat, lng, card) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
-  if (lat === 0 || lng === 0) return true;
+  const body = document.body;
+  const isAgentView = body?.dataset.agentView === "true";
+  const pageSlug = body?.dataset.shortlistSlug || "";
 
-  const city = String(card?.dataset?.city || "").toLowerCase();
-
-  const cityBounds = {
-    nanaimo: { minLat: 49.0, maxLat: 49.35, minLng: -124.15, maxLng: -123.75 },
-    lantzville: { minLat: 49.2, maxLat: 49.35, minLng: -124.15, maxLng: -123.9 },
-    parksville: { minLat: 49.25, maxLat: 49.4, minLng: -124.45, maxLng: -124.2 }
-  };
-
-  const bounds = cityBounds[city];
-
-  if (!bounds) {
-    return lat < 48.2 || lat > 50.7 || lng < -128.5 || lng > -122.9;
+  // ── Track shortlist view ──────────────────────────────────────────
+  if (!isAgentView && pageSlug) {
+    fetch("/api/shortlists/track-view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: pageSlug })
+    }).catch(() => {});
   }
 
-  return (
-    lat < bounds.minLat ||
-    lat > bounds.maxLat ||
-    lng < bounds.minLng ||
-    lng > bounds.maxLng
-  );
-}
+  // ── Viewed listings (for NEW badges) ─────────────────────────────
+  const viewedKey = `shortlist_viewed_${pageSlug}`;
 
-function getGeocodeAddress(card) {
-  const address = card.dataset.address || "";
-  const city = card.dataset.city || "";
-
-  return city
-    ? `${address}, ${city}, BC, Canada`
-    : `${address}, British Columbia, Canada`;
-}
-        const body = document.body;
-        const isAgentView = body?.dataset.agentView === "true";
-const pageSlug = body?.dataset.shortlistSlug || "";
-const isExpandedReview = new URLSearchParams(window.location.search).has("expanded");
-if (!isAgentView && pageSlug) {
-  fetch("/api/shortlists/track-view", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slug: pageSlug })
-  }).catch(() => {});
-}
-const viewedKey = `shortlist_viewed_${pageSlug}`;
-
-function getViewedListings() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(viewedKey) || "[]"));
-  } catch {
-    return new Set();
+  function getViewedListings() {
+    try { return new Set(JSON.parse(localStorage.getItem(viewedKey) || "[]")); }
+    catch { return new Set(); }
   }
-}
 
-function markListingViewed(card) {
-  if (!card) return;
-
-  const id = card.dataset.itemId || card.dataset.cardId || "";
-  if (!id) return;
-
-  const viewed = getViewedListings();
-  viewed.add(id);
-  localStorage.setItem(viewedKey, JSON.stringify([...viewed]));
-
-  card.dataset.viewed = "true";
-  card.dataset.isNew = "false";
-  card.querySelector(".card__new-badge")?.remove();
-}
-
-function clearNewBadgesAfterModalClose() {
-  const viewed = getViewedListings();
-
-  document.querySelectorAll(".card").forEach((card) => {
+  function markListingViewed(card) {
+    if (!card) return;
     const id = card.dataset.itemId || card.dataset.cardId || "";
-
-    if (id && viewed.has(id)) {
-      card.dataset.viewed = "true";
-      card.dataset.isNew = "false";
-      card.querySelector(".card__new-badge")?.remove();
-    }
-  });
-}
-
-        const sheet = document.getElementById("preview-sheet");
-        const overlay = document.getElementById("sheet-overlay");
-        const sheetImage = document.getElementById("sheet-image");
-        const sheetPrice = document.getElementById("sheet-price");
-        const sheetAddress = document.getElementById("sheet-address");
-        const sheetMeta = document.getElementById("sheet-meta");
-        const sheetDescription = document.getElementById("sheet-description");
-const descToggle = document.getElementById("sheet-desc-toggle");
-const sheetCloseBtn = document.getElementById("sheet-close-btn");
-        const sheetNextBtn = document.getElementById("sheet-next-btn");
-const sheetPrevBtn = document.getElementById("sheet-prev-btn");
-const sheetNextTopBtn = document.getElementById("sheet-next-top-btn");
-const sheetPrevTopBtn = document.getElementById("sheet-prev-top-btn");
-const sheetDetailRow = document.getElementById("sheet-detail-row");
-const sheetHighlights = document.getElementById("sheet-highlights");
-        const sheetProgressBar = document.getElementById("sheet-progress-bar");
-        const sheetPosition = document.getElementById("sheet-position");
-        const sheetFeedback = document.getElementById("sheet-feedback");
-        const sheetIntelligence = document.getElementById("sheet-intelligence");
-       const sheetPhotoCount = document.getElementById("sheet-photo-count");
-const photoPrevBtn = document.getElementById("photo-prev-btn");
-const photoNextBtn = document.getElementById("photo-next-btn");
-const sheetMapBtn = document.getElementById("sheet-map-btn");
-const sheetImageStage = document.querySelector(".panel__image-stage");
-let activePhotoUrls = [];
-let activePhotoIndex = 0;
-let photoTouchStartX = 0;
-let photoTouchEndX = 0;
-
-const shortlistSendId = document.body?.dataset.shortlistSendId || "";
-
-let metricListingId = "";
-let metricMls = "";
-let metricStartTime = 0;
-let metricViewedImages = new Set();
-let metricImageViews = 0;
-let metricMaxImageIndex = 0;
-
-function trackActivePhotoMetric(index = activePhotoIndex) {
-  if (!metricListingId) return;
-
-  metricViewedImages.add(index);
-  metricImageViews += 1;
-  metricMaxImageIndex = Math.max(metricMaxImageIndex, index);
-}
-
-async function flushListingMetrics(extra = {}) {
-  if (!shortlistSendId || !metricListingId || !metricStartTime) return;
-
-  const timeSpentSeconds = Math.max(
-    1,
-    Math.round((Date.now() - metricStartTime) / 1000)
-  );
-
-  const payload = {
-    shortlistSendId,
-    listingId: metricListingId,
-    mls: metricMls,
-    timeSpentSeconds,
-    uniqueImagesViewed: metricViewedImages.size,
-    imageViews: metricImageViews,
-    maxImageIndex: metricMaxImageIndex,
-    ...extra
-  };
-
-  metricListingId = "";
-  metricMls = "";
-  metricStartTime = 0;
-  metricViewedImages = new Set();
-  metricImageViews = 0;
-  metricMaxImageIndex = 0;
-
-  try {
-    await fetch("/api/shortlists/track-listing-metrics", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {
-    console.warn("Could not track listing metrics", err);
-  }
-}
-
-function startListingMetrics(card) {
-  flushListingMetrics();
-
-  metricListingId =
-    card?.dataset?.listingId ||
-    card?.dataset?.cardId ||
-    card?.dataset?.itemId ||
-    "";
-
-  metricMls = card?.dataset?.mls || metricListingId;
-  metricStartTime = Date.now();
-  metricViewedImages = new Set();
-  metricImageViews = 0;
-  metricMaxImageIndex = 0;
-
-  // first photo is counted when renderActivePhoto() runs
-}
-
-const sheetContent = document.getElementById("sheet-content");
-const sheetSummary = document.getElementById("sheet-summary");
-        const summaryLoveCount = document.getElementById("summary-love-count");
-        const summaryMaybeCount = document.getElementById("summary-maybe-count");
-        const summaryPassCount = document.getElementById("summary-pass-count");
-        const summaryRestartBtn = document.getElementById("summary-restart-btn");
-        const editToggleBtn = document.getElementById("edit-shortlist-toggle");
-        const editBanner = document.getElementById("edit-banner");
-        const homesCountNum = document.getElementById("homes-count-num");
-        const sectionMetaCount = document.getElementById("section-meta-count");
-        const shortlistGrid = document.getElementById("shortlist-grid");
-        const emptyState = document.getElementById("empty-state");
-       const navSendTextBtn = document.getElementById("nav-send-text-btn");
-       const navCopyLinkBtn = document.getElementById("nav-copy-link-btn");
-const saveNoteBtn = document.getElementById("save-note-btn");
-const noteInput = document.getElementById("shortlist-note-input");
-const smsMessageInput = document.getElementById("sms-message-input");
-const saveSmsMessageBtn = document.getElementById("save-sms-message-btn");
-const mastheadMessage = document.getElementById("masthead-message");
-const sendTextButtons = Array.from(document.querySelectorAll("[data-send-text]"));
-const saveSmsImageBtn = document.getElementById("save-sms-image-btn");
-const smsImageInput = document.getElementById("sms-image-url-input");
-const presetImageButtons = Array.from(document.querySelectorAll("[data-preset-image-url]"));
-const showResourcesToggle = document.getElementById("show-resources-toggle");
-const saveResourceVisibilityBtn = document.getElementById("save-resource-visibility-btn");
-const addResourceBtn = document.getElementById("add-resource-btn");
-const resourceTypeInput = document.getElementById("resource-type-input");
-const resourceNameInput = document.getElementById("resource-name-input");
-const resourcePhoneInput = document.getElementById("resource-phone-input");
-const resourceEmailInput = document.getElementById("resource-email-input");
-const resourceWebsiteInput = document.getElementById("resource-website-input");
-const resourceDescriptionInput = document.getElementById("resource-description-input");
-const resourceVendorList = document.getElementById("resource-vendor-list");
-const saveResourceVendorsBtn = document.getElementById("save-resource-vendors-btn");       
-const showAddResourceBtn = document.getElementById("show-add-resource-btn");
-const resourceAddEditor = document.getElementById("resource-add-editor");      
-const decisionLoveBtn = document.getElementById("decision-love-btn");
-        const decisionMaybeBtn = document.getElementById("decision-maybe-btn");
-        const decisionPassBtn = document.getElementById("decision-pass-btn");
-        const feedbackSecondary = document.getElementById("feedback-secondary");
-const feedbackChipTitle = document.getElementById("feedback-chip-title");
-const feedbackChipGroup = document.getElementById("feedback-chips");
-const FEATURE_MAP = [
-  {
-    terms: ["walk-on waterfront", "walk on waterfront"],
-    label: "Walk-on waterfront",
-    emoji: "🏖️"
-  },
-  {
-    terms: ["oceanfront", "waterfront", "low bank", "beach access"],
-    label: "Waterfront setting",
-    emoji: "🌊"
-  },
-  {
-    terms: ["ocean view", "water view", "sea view", "harbour view", "harbor view", "mountain view", "lake view", "river view", "city view", "panoramic view"],
-    label: "Views",
-    emoji: "🌅"
-  },
-  {
-    terms: ["pool", "swimming pool"],
-    label: "Pool",
-    emoji: "🏊"
-  },
-  
-{
-  terms: ["hot tub", "jacuzzi"],
-  label: "Hot tub",
-  emoji: "♨️"
-},
-  {
-    terms: ["carriage house", "carriage home", "coach house", "carriage"],
-    label: "Carriage home",
-    emoji: "🏡"
-  },
-  {
-    terms: ["legal suite", "secondary suite", "mortgage helper", "income suite", "suite"],
-    label: "Income suite",
-    emoji: "💵"
-  },
-  {
-    terms: ["updated kitchen", "renovated kitchen", "modern kitchen", "chef's kitchen", "gourmet kitchen", "quartz counters", "stone counters"],
-    label: "Kitchen finish",
-    emoji: "🍽️"
-  },
-  {
-    terms: ["garage", "double garage", "triple garage", "rv parking", "boat parking", "shop", "workshop"],
-    label: "Parking / shop",
-    emoji: "🚗"
-  },
-  {
-    terms: ["private yard", "fully fenced", "backyard", "garden"],
-    label: "Private yard",
-    emoji: "🌳"
-  },
-  {
-    terms: ["private", "privacy", "secluded", "treed"],
-    label: "Privacy",
-    emoji: "🌲"
-  },
-  {
-    terms: ["walk to", "walking distance", "steps to"],
-    label: "Walkability",
-    emoji: "🚶"
-  },
-  {
-    terms: ["downtown", "shops", "restaurants", "cafes", "coffee shops"],
-    label: "Shops nearby",
-    emoji: "☕"
-  },
-  {
-    terms: ["school", "schools", "catchment"],
-    label: "Schools nearby",
-    emoji: "🎒"
-  },
-  {
-    terms: ["trail", "trails", "hiking", "bike path", "greenway"],
-    label: "Trails nearby",
-    emoji: "🥾"
-  },
-  {
-    terms: ["marina", "boat launch", "moorage"],
-    label: "Boating lifestyle",
-    emoji: "⛵"
-  },
-  {
-    terms: ["fireplace", "gas fireplace", "wood fireplace"],
-    label: "Fireplace",
-    emoji: "🔥"
-  },
-  {
-    terms: ["vaulted ceiling", "vaulted ceilings", "cathedral ceiling"],
-    label: "Vaulted ceilings",
-    emoji: "🏠"
-  },
-  {
-    terms: ["covered deck", "large deck", "sun deck", "patio", "balcony"],
-    label: "Outdoor living",
-    emoji: "🌤️"
-  },
-  {
-    terms: ["cul-de-sac", "quiet street", "no through road"],
-    label: "Quiet street",
-    emoji: "🤫"
-  },
-  {
-    terms: ["acreage", "acres", "large lot", "oversized lot", "big lot"],
-    label: "Large lot",
-    emoji: "🌾"
-  },
-  {
-    terms: ["south facing", "sunny exposure", "lots of natural light", "natural light", "bright"],
-    label: "Natural light",
-    emoji: "☀️"
-  },
-  {
-    terms: ["open concept", "open plan", "open floor plan"],
-    label: "Open layout",
-    emoji: "🛋️"
-  },
-  {
-    terms: ["main level entry", "main floor living", "rancher", "one level living"],
-    label: "Main-level living",
-    emoji: "🚪"
-  },
-  {
-    terms: ["primary on main", "master on main"],
-    label: "Primary on main",
-    emoji: "🛏️"
-  },
-  {
-    terms: ["family room", "rec room", "media room", "bonus room"],
-    label: "Extra living space",
-    emoji: "🎬"
-  },
-  {
-    terms: ["home office", "den", "flex room"],
-    label: "Work-from-home space",
-    emoji: "💻"
-  },
-  {
-    terms: ["new build", "new construction", "brand new"],
-    label: "Newer build",
-    emoji: "🏗️"
-  },
-  {
-    terms: ["new roof", "new windows", "heat pump", "new furnace"],
-    label: "Big-ticket updates",
-    emoji: "🛠️"
-  },
-  {
-    terms: ["air conditioning", "a/c", "heat pump"],
-    label: "Comfort upgrades",
-    emoji: "❄️"
-  },
-  {
-    terms: ["lane access", "rear lane", "alley access"],
-    label: "Lane access",
-    emoji: "↩️"
-  },
-  {
-    terms: ["low maintenance", "easy care", "lock and leave"],
-    label: "Low maintenance",
-    emoji: "🧳"
-  },
-  {
-    terms: ["renovated", "updated", "turnkey", "move-in ready", "modern"],
-    label: "Updated interior",
-    emoji: "🛋️"
-  }
-];
-
-function extractListingFeaturesFromCard(card) {
-  const text = `
-    ${card?.dataset?.address || ""}
-    ${card?.dataset?.description || ""}
-    ${card?.dataset?.type || ""}
-    ${card?.dataset?.area || ""}
-  `.toLowerCase();
-
-  return FEATURE_MAP.filter((feature) =>
-    feature.terms.some((term) => text.includes(term))
-  ).slice(0, 6);
-}
-const feedbackOptions = {
-  love: {
-    title: "What stood out?",
-    chips: [
-      ["layout", "🛋️ Layout"],
-      ["location", "📍 Location"],
-      ["finishes", "✨ Finishes"],
-      ["overall-feel", "❤️ Overall feel"]
-    ]
-  },
-
-  maybe: {
-  title: "What do you like, and what would make it stronger?",
-  groups: [
-    {
-      title: "I like...",
-      chips: [
-        ["like-layout", "🛋️ Layout"],
-        ["like-location", "📍 Location"],
-        ["like-outdoor-space", "🌿 Outdoor space"],
-        ["like-overall-feel", "✨ Overall feel"]
-      ]
-    },
-    {
-      title: "Would be stronger with...",
-      chips: [
-        ["better-price", "💰 Better price"],
-        ["more-space", "📐 More space"],
-        ["better-condition", "🔎 Better condition"],
-        ["better-location", "📍 Better location"]
-      ]
-    }
-  ]
-},
-
-  pass: {
-    title: "What put you off?",
-    chips: [
-      ["price", "💰 Price"],
-      ["location", "📍 Location"],
-      ["condition", "🔎 Condition"],
-      ["size", "📐 Too small"]
-    ]
-  }
-};
-
-let feedbackChips = [];
-
-        if (!sheet || !overlay) return;
-
-        let activeCard = null;
-        let activeItemId = "";
-        let activeTags = [];
-        let activeFavourite = false;
-        let activeDecision = "";
-        let isSaving = false;
-        let shouldRefreshOnClose = false;
-        let editMode = false;
-        let isShowingSummary = false;
-let hasAutoSentReviewSummary = false;
-let cameFromSummary = false;
-// Scope counters to this specific shortlist slug so different shortlists don't bleed into each other
-const _expandKey = `priceExpandCount_${pageSlug}`;
-const _refineKey = `criteriaRefineCount_${pageSlug}`;
-
-// Reset counters if this is a genuine fresh load (not a reload-after-new-cards)
-const _isReload = sessionStorage.getItem(`lastSlug`) === pageSlug;
-if (!_isReload) {
-  sessionStorage.removeItem(_expandKey);
-  sessionStorage.removeItem(_refineKey);
-}
-sessionStorage.setItem("lastSlug", pageSlug);
-
-let priceExpandCount = parseInt(sessionStorage.getItem(_expandKey) || "0", 10);
-let criteriaRefineCount = parseInt(sessionStorage.getItem(_refineKey) || "0", 10);
-
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchCurrentX = 0;
-        let touchCurrentY = 0;
-        let isDraggingSheet = false;
-        let dragMode = "";
-        let touchStartedOnInteractive = false;
-        let isAnimatingGesture = false;
-        let dragCloseY = 0;
-
-    let reviewCards = null;
-
-function getCards() {
-  return Array.from(document.querySelectorAll(".original-card"));
-}
-
-        function currentCardIndex() {
-          const cards = getCards();
-          if (!activeCard) return -1;
-          return cards.indexOf(activeCard);
-        }
-
-        function updateCounts() {
-          const count = getCards().length;
-
-          if (homesCountNum) {
-            homesCountNum.textContent = String(count).padStart(2, "0");
-          }
-
-          if (sectionMetaCount) {
-            sectionMetaCount.textContent = `${count} ${count === 1 ? "home" : "homes"} chosen for review`;
-          }
-
-          if (shortlistGrid && emptyState) {
-            if (count === 0) {
-              shortlistGrid.style.display = "none";
-              emptyState.style.display = "block";
-            } else {
-              shortlistGrid.style.display = "";
-              emptyState.style.display = "none";
-            }
-          }
-        }
-
-        function syncEditModeUI() {
-          body.classList.toggle("edit-mode", editMode);
-
-          if (editToggleBtn) {
-            editToggleBtn.textContent = editMode ? "Done editing" : "Edit shortlist";
-            editToggleBtn.setAttribute("data-editing", editMode ? "true" : "false");
-          }
-
-          if (editBanner) {
-            editBanner.classList.toggle("show", editMode);
-          }
-        }
-
-        function isMobileSheet() {
-          return window.innerWidth <= 640;
-        }
-
-        function parseTags(v) {
-          try {
-            const p = JSON.parse(v || "[]");
-            return Array.isArray(p) ? p : [];
-          } catch {
-            return [];
-          }
-        }
-
-        function setSheetTransform(value) {
-          if (!isMobileSheet()) return;
-          sheet.style.transform = value;
-        }
-
-        function resetSheetTransform() {
-          sheet.style.transform = "";
-          sheet.style.opacity = "";
-          overlay.style.opacity = "";
-        }
-
-        function setOverlayOpacityByProgress(progress) {
-          const minOpacity = 0.12;
-          const maxOpacity = 1;
-          const clamped = Math.max(0, Math.min(1, progress));
-          const opacity = minOpacity + (maxOpacity - minOpacity) * clamped;
-          overlay.style.opacity = String(opacity);
-        }
-function pickNote(seed, options) {
-  const text = String(seed || "");
-  const total = text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return options[total % options.length];
-}
-
-function buildHighlightChips(card) {
-  const desc = String(card.dataset.description || "").toLowerCase();
-  const type = String(card.dataset.type || "").toLowerCase();
-  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
-  const beds = Number(card.dataset.beds || 0);
-
-  const isCondo = type.includes("condo") || type.includes("apartment");
-  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
-  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
-
-  const hasView =
-    /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc) &&
-    !/viewing|preview|virtual tour|view today|viewing appointment/.test(desc);
-
-  const hasSuite = /suite|mortgage helper|income|secondary suite|legal suite/.test(desc);
-  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
-  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
-  const quiet = /cul-de-sac|quiet street|private|privacy/.test(desc);
-  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
-  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
-
-  const highlights = [];
-
-  if (isCondo) {
-    if (hasView) highlights.push("Open outlook");
-    if (amenities) highlights.push("Building amenities");
-    if (hasParking) highlights.push("Parking included");
-    if (outdoor) highlights.push("Outdoor space");
-    if (isUpdated) highlights.push("Updated interior");
-    if (sqft >= 900) highlights.push("Larger layout");
-    if (!highlights.length) highlights.push("Low-maintenance living");
-  } else if (isTownhouse) {
-    if (beds >= 3) highlights.push("Family-friendly layout");
-    if (hasParking) highlights.push("Good parking");
-    if (outdoor) highlights.push("Private outdoor space");
-    if (isUpdated) highlights.push("Updated features");
-    if (quiet) highlights.push("Quieter setting");
-    if (sqft >= 1600) highlights.push("Generous townhome space");
-    highlights.push("Lock-and-leave option");
-  } else if (isHouse) {
-    if (sqft >= 2500) highlights.push("Generous floor plan");
-    if (beds >= 4) highlights.push("Family-sized");
-    if (hasView) highlights.push("View potential");
-    if (hasSuite) highlights.push("Suite potential");
-    if (isUpdated) highlights.push("Updated features");
-    if (quiet) highlights.push("Quiet setting");
-    if (hasParking) highlights.push("Good parking");
-  } else {
-    if (hasView) highlights.push("View setting");
-    if (isUpdated) highlights.push("Updated features");
-    if (hasParking) highlights.push("Good parking");
-    if (outdoor) highlights.push("Outdoor space");
-  }
-
-  return Array.from(new Set(highlights)).slice(0, 3);
-}
-    function buildIntelligenceLabel(index, card) {
-  const desc = String(card.dataset.description || "").toLowerCase();
-  const type = String(card.dataset.type || "").toLowerCase();
-
-  const beds = Number(card.dataset.beds || 0);
-  const baths = Number(card.dataset.baths || 0);
-  const sqft = parseInt(String(card.dataset.sqft || "").replace(/[^0-9]/g, ""), 10) || 0;
-  const year = Number(card.dataset.year || 0);
-
-  const isCondo = type.includes("condo") || type.includes("apartment");
-  const isTownhouse = type.includes("townhouse") || type.includes("townhome") || type.includes("row");
-  const isHouse = type.includes("house") || type.includes("detached") || type.includes("single family");
-
-  const hasView = /ocean view|water view|harbour view|harbor view|sea view|lake view|mountain view|city view|panoramic view/.test(desc);
-  const hasSuite = isHouse && /suite|income|mortgage helper|secondary suite|legal suite/.test(desc);
-  const isUpdated = /renovated|updated|modernized|new kitchen|new roof|contemporary/.test(desc);
-  const hasParking = /garage|rv parking|double garage|underground parking|secure parking/.test(desc);
-  const amenities = /pool|gym|fitness|clubhouse|elevator|storage locker|amenities/.test(desc);
-  const outdoor = /patio|balcony|deck|yard|garden|outdoor space/.test(desc);
-
-  if (isCondo) {
-    if (sqft >= 900 && outdoor) return "Feels bigger than most condos";
-    if (isUpdated) {
-      return pickNote(card.dataset.cardId || card.dataset.address, [
-        "Move-in ready condo option",
-        "Clean, easy condo choice",
-        "A simpler option to step into",
-        "Low-effort condo living"
-      ]);
-    }
-    if (sqft >= 900) return "More room than the typical condo";
-    if (amenities) return "Easy living with building perks";
-    if (hasParking) return "Convenient everyday setup";
-    return "Simple, low-maintenance living";
-  }
-
-  if (isTownhouse) {
-    if (beds >= 3 && outdoor) return "Great layout for everyday living";
-    if (hasParking) return "Practical townhome setup";
-    if (isUpdated) return "Updated townhome option";
-    return "Balanced space with low upkeep";
-  }
-
-  if (isHouse) {
-    const isFamilySized = beds >= 4 && baths >= 3;
-    const isLarge = sqft >= 2500;
-    const isNewer = year >= 2015;
-
-    if (hasView && hasSuite) return "Strong upside with income potential";
-    if (isNewer && isFamilySized && isLarge) return "Checks the boxes for a growing family";
-    if (isUpdated && isLarge) return "Updated home with real space";
-    if (hasSuite) return "Flexible layout with income potential";
-    if (hasView) return "Nice outlook from main living areas";
-    return index === 0 ? "Best overall match in this group" : "Solid detached option to consider";
-  }
-
-  if (hasView) return "Open outlook worth noting";
-  if (isUpdated) return "Updated features stand out";
-
-  return index === 0 ? "Best overall match in this group" : "Worth a closer look";
-}
-
-function renderFeedbackChips(kind = "") {
-  if (!feedbackSecondary || !feedbackChipTitle || !feedbackChipGroup) return;
-
-const config = feedbackOptions[kind]
-  ? { ...feedbackOptions[kind] }
-  : null;
-  if (kind === "love" && activeCard) {
-  const features = extractListingFeaturesFromCard(activeCard);
-
-  if (features.length) {
-    config.chips = features.map((feature) => [
-      feature.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-      `${feature.emoji} ${feature.label}`
-    ]);
-  } else {
-    config.chips = [
-      ["layout", "🛋️ Layout"],
-      ["location", "📍 Location"],
-      ["finishes", "✨ Finishes"],
-      ["overall-feel", "❤️ Overall feel"]
-    ];
-  }
-}
-
-  if (!config) {
-    feedbackSecondary.hidden = true;
-    feedbackChipGroup.innerHTML = "";
-    feedbackChips = [];
-    return;
-  }
-
-  feedbackSecondary.hidden = false;
-  feedbackChipTitle.textContent = config.title;
-
-const chipHtml = config.groups
-  ? config.groups
-      .map((group) => `
-        <div style="width:100%; margin: 2px 0 6px;">
-          <div style="
-            font-size:0.66rem;
-            letter-spacing:0.14em;
-            text-transform:uppercase;
-            font-weight:800;
-            color:var(--text-muted);
-            margin:8px 0 8px;
-          ">
-            ${group.title}
-          </div>
-
-          <div style="display:flex; flex-wrap:wrap; gap:8px;">
-            ${group.chips
-              .map(([tag, label]) => `
-                <button class="chip feedback-pill" type="button" data-tag="${tag}" style="appearance:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:8px 13px;border-radius:999px;border:1px solid #e4e0d9;background:#fff;color:#18160f;font-size:0.76rem;font-weight:700;cursor:pointer;box-shadow:0 5px 16px rgba(17,14,9,0.045);">
-                  ${label}
-                </button>
-              `)
-              .join("")}
-          </div>
-        </div>
-      `)
-      .join("")
-  : config.chips
-      .map(([tag, label]) => `
-        <button class="chip feedback-pill" type="button" data-tag="${tag}" style="appearance:none;display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:8px 13px;border-radius:999px;border:1px solid #e4e0d9;background:#fff;color:#18160f;font-size:0.76rem;font-weight:700;cursor:pointer;box-shadow:0 5px 16px rgba(17,14,9,0.045);">
-          ${label}
-        </button>
-      `)
-      .join("");
-
-feedbackChipGroup.innerHTML = chipHtml;
-
-feedbackChipGroup.querySelectorAll(".feedback-pill").forEach((pill) => {
-  pill.addEventListener("mouseenter", () => {
-    pill.style.transform = "translateY(-1px)";
-  });
-
-  pill.addEventListener("mouseleave", () => {
-    pill.style.transform = "";
-  });
-});
-
-feedbackChips = Array.from(feedbackChipGroup.querySelectorAll(".chip[data-tag]"));
-
-  feedbackChips.forEach((chip) => {
-    chip.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.currentTarget?.blur?.();
-
-      const tag = chip.dataset.tag || "";
-      if (!tag || !activeCard) return;
-
-      activeTags = activeTags.includes(tag)
-        ? activeTags.filter((t) => t !== tag)
-        : [...activeTags, tag];
-
-      updateDecisionButtons();
-      refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
-      await saveFeedback();
-    });
-  });
-
-  updateDecisionButtons();
-}
-
-        function updateDecisionButtons() {
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            btn?.classList.remove("is-selected");
-          });
-
-          if (activeFavourite && decisionLoveBtn) {
-            decisionLoveBtn.classList.add("is-selected");
-          }
-
-          if (activeDecision === "maybe" && decisionMaybeBtn) {
-            decisionMaybeBtn.classList.add("is-selected");
-          }
-
-          if (activeDecision === "pass" && decisionPassBtn) {
-            decisionPassBtn.classList.add("is-selected");
-          }
-
-          feedbackChips.forEach((c) => {
-            const isActive = activeTags.includes(c.dataset.tag || "");
-c.classList.toggle("active", isActive);
-
-c.style.background = isActive ? "#f3eadc" : "#fff";
-c.style.borderColor = isActive ? "#d6b57a" : "#e4e0d9";
-c.style.color = isActive ? "#6f4f1f" : "#18160f";
-          });
-        }
-
-        function updateHeaderProgress() {
-          const cards = getCards();
-          const total = cards.length;
-          const index = currentCardIndex();
-          const mapEl = document.getElementById("sheet-mini-map");
-
-if (mapEl) {
-  mapEl.hidden = true;
-  mapEl.innerHTML = "";
-}
-
-if (sheetMiniMap) {
-  sheetMiniMap.remove();
-  sheetMiniMap = null;
-  sheetMiniMarker = null;
-}
-
-          if (!sheetPosition || !sheetProgressBar) return;
-
-          if (isShowingSummary) {
-            sheetPosition.textContent = `${total} of ${total}`;
-            sheetProgressBar.style.width = "100%";
-            return;
-          }
-
-          const displayIndex = index >= 0 ? index + 1 : 1;
-          sheetPosition.textContent = `${displayIndex} of ${Math.max(total, 1)}`;
-
-          const progress = total > 0 ? (displayIndex / total) * 100 : 0;
-          sheetProgressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-        }
-function preloadImage(src) {
-  if (!src) return;
-
-  const img = new Image();
-  img.src = src;
-}
-
-function renderActivePhoto() {
-  if (!sheetImage || !activePhotoUrls.length) return;
-
-  trackActivePhotoMetric(activePhotoIndex);
-
-  sheetImage.src = activePhotoUrls[activePhotoIndex];
-  sheetImage.alt = activeCard?.dataset.address || "";
-
-  preloadImage(activePhotoUrls[activePhotoIndex + 1]);
-  preloadImage(activePhotoUrls[activePhotoIndex - 1]);
-
-  if (sheetPhotoCount) {
-    sheetPhotoCount.textContent = `${activePhotoIndex + 1} / ${activePhotoUrls.length} photos`;
-  }
-
-  if (photoPrevBtn) {
-    photoPrevBtn.disabled = activePhotoIndex === 0;
-  }
-
-  if (photoNextBtn) {
-    photoNextBtn.disabled = activePhotoIndex === activePhotoUrls.length - 1;
-  }
-}
-
-function showPrevPhoto() {
-  if (activePhotoIndex <= 0) return;
-  activePhotoIndex -= 1;
-  renderActivePhoto();
-}
-
-function showNextPhoto() {
-  if (activePhotoIndex >= activePhotoUrls.length - 1) return;
-  activePhotoIndex += 1;
-  renderActivePhoto();
-}
-
-photoPrevBtn?.addEventListener("click", showPrevPhoto);
-photoNextBtn?.addEventListener("click", showNextPhoto);
-
-sheetImage?.addEventListener(
-  "touchstart",
-  (event) => {
-    event.stopPropagation();
-    photoTouchStartX = event.changedTouches[0].screenX;
-  },
-  { passive: true }
-);
-
-sheetImage?.addEventListener(
-  "touchmove",
-  (event) => {
-    event.stopPropagation();
-  },
-  { passive: true }
-);
-
-sheetImage?.addEventListener(
-  "touchend",
-  (event) => {
-    event.stopPropagation();
-
-    photoTouchEndX = event.changedTouches[0].screenX;
-
-    const swipeDistance = photoTouchEndX - photoTouchStartX;
-
-    if (Math.abs(swipeDistance) < 50) return;
-
-    if (swipeDistance < 0) {
-      showNextPhoto();
-    } else {
-      showPrevPhoto();
-    }
-  },
-  { passive: true }
-);
-
-
-        function renderCardStateToPanel(card) {
-          if (!card) return;
-
-          const beds = card.dataset.beds || "—";
-          const baths = card.dataset.baths || "—";
-          const sqft = card.dataset.sqft ? ` · ${card.dataset.sqft} sqft` : "";
-          const index = currentCardIndex();
-
-          if (sheetImage) {
-const rawImages = JSON.parse(card.dataset.images || "[]");
-
-const normalizePhotoUrl = (url) => {
-  const value = String(url || "").trim();
-
-  if (!value) return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  if (value.startsWith("/")) return `https://cdn.repliers.io${value}`;
-
-  return `https://cdn.repliers.io/${value}`;
-};
-
-const photoUrls = rawImages
-  .map((img) => {
-    if (typeof img === "string") return normalizePhotoUrl(img);
-
-    return normalizePhotoUrl(
-      img.highRes ||
-      img.mediumRes ||
-      img.lowRes ||
-      img.url ||
-      ""
-    );
-  })
-  .filter(Boolean);
-
-  if (!photoUrls.length) {
-    photoUrls.push(card.dataset.image || "https://placehold.co/800x600?text=Listing");
-  }
-
-  activePhotoUrls = photoUrls;
-activePhotoIndex = 0;
-renderActivePhoto();
-
- 
-}
- if (sheetPrice) sheetPrice.textContent = card.dataset.price || "—";
-
-const titleCase = (value) =>
-  String(value || "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-
-if (sheetAddress) {
-  const area = card.dataset.area ? titleCase(card.dataset.area) : "";
-  const rawAddress = card.dataset.address || "—";
-
-  let cleanAddress = rawAddress;
-
-  if (area && rawAddress.toLowerCase().endsWith(area.toLowerCase())) {
-    cleanAddress = rawAddress.slice(0, -area.length).trim();
-  }
-
-sheetAddress.innerHTML = area
-  ? `<span>${rawAddress}</span> <span class="panel__area-inline">• ${area}</span>`
-  : `<span>${rawAddress}</span>`;
-}
-
-if (sheetMeta) {
-  const facts = [
-    beds ? `<span class="panel__meta-item"><strong>${beds}</strong> <span class="panel__meta-label">Bed</span></span>` : "",
-    baths ? `<span class="panel__meta-item"><strong>${baths}</strong> <span class="panel__meta-label">Bath</span></span>` : "",
-    card.dataset.sqft
-      ? `<span class="panel__meta-item"><strong>${card.dataset.sqft}</strong> <span class="panel__meta-label">Sq Ft</span></span>`
-      : ""
-  ].filter(Boolean);
-
-  sheetMeta.innerHTML = facts.join("");
-}
-          if (sheetDescription) sheetDescription.textContent = card.dataset.description || "";
-         if (sheetIntelligence) sheetIntelligence.textContent = buildIntelligenceLabel(index, card);
-          if (sheetDetailRow) {
-const titleCase = (value) =>
-  String(value || "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-
-const details = [
-  card.dataset.dom ? `${card.dataset.dom} Days on Market` : "",
-  card.dataset.year ? `Built ${card.dataset.year}` : "",
-  card.dataset.lotSize ? `${card.dataset.lotSize} lot` : ""
-].filter(Boolean);
-
-  sheetDetailRow.innerHTML = details.map((item) => `<span>${item}</span>`).join("");
-}
-
-if (sheetHighlights) {
-  const highlights = buildHighlightChips(card);
-
-  sheetHighlights.innerHTML = highlights
-    .map((item) => `<span class="panel__highlight-chip">${item}</span>`)
-    .join("");
-}
-
-                  updateHeaderProgress();
-
-          renderFeedbackChips(
-            activeFavourite
-              ? "love"
-              : activeDecision === "maybe"
-                ? "maybe"
-                : activeDecision === "pass"
-                  ? "pass"
-                  : ""
-          );
-
-          updateDecisionButtons();
-
-          const cards = getCards();
-const currentIndex = cards.indexOf(card);
-const isFirst = currentIndex <= 0;
-const isLast = currentIndex >= cards.length - 1;
-
-if (sheetPrevBtn) sheetPrevBtn.disabled = isFirst && !cameFromSummary;
-if (sheetPrevTopBtn) sheetPrevTopBtn.disabled = isFirst && !cameFromSummary;
-
-if (sheetNextBtn) sheetNextBtn.textContent = isLast ? "Finish review →" : "Next listing →";
-if (sheetNextTopBtn) sheetNextTopBtn.textContent = isLast ? "Finish →" : "Next →";
-        }
-
-function appendExpandedListings(listings) {
-  if (!shortlistGrid || !Array.isArray(listings) || !listings.length) return [];
-
-  const appendedCards = [];
-
-  reviewCards = null;
-
-  listings.forEach((listing) => {
-    const article = document.createElement("article");
-
-    const itemId = String(listing.shortlist_item_id || listing.id || "");
-    const listingId = String(listing.repliers_listing_id || listing.listing_id || listing.id || "");
-    const price = listing.price_text || "Price unavailable";
-    const address = listing.address || "Address unavailable";
-    const image = listing.image_url || "https://placehold.co/800x600?text=Listing";
-const safeDescription = String(listing.description || "").replace(/\s+/g, " ").trim();
-
-    article.className = "card original-card";
-    article.dataset.itemId = itemId;
-    article.dataset.cardId = listingId;
-    article.dataset.price = price;
-    article.dataset.address = address;
-    article.dataset.beds = String(listing.beds || "-");
-    article.dataset.baths = String(listing.baths || "-");
-    article.dataset.sqft = String(listing.sqft || "");
-    article.dataset.type = listing.property_type || "Home";
-    article.dataset.year = String(listing.year_built || "");
-    article.dataset.image = image;
-    article.dataset.images = JSON.stringify(listing.images || []);
-    article.dataset.description = listing.description || "";
-    article.dataset.likedTags = "[]";
-    article.dataset.isFavourite = "false";
-    article.dataset.decision = "";
-    article.dataset.isNew = "true";
-    article.dataset.featured = "false";
-    article.dataset.originalOrder = String(-Date.now());
-
-    article.innerHTML = `
-      <div class="card__image-wrap">
-        <div class="card__new-badge">
-          <span>✨</span>
-          <span>New</span>
-        </div>
-
-        <img src="${image}" alt="${address}" loading="lazy" />
-        <span class="card__index">New</span>
-      </div>
-
-      <div class="card__body">
-        <p class="card__price">${price}</p>
-        <p class="card__address">${address}</p>
-        <p class="card__meta">
-          ${listing.beds || "-"} bed · ${listing.baths || "-"} bath
-          ${listing.sqft ? ` · ${listing.sqft} sqft` : ""}
-          ${listing.year_built ? ` · Built ${listing.year_built}` : ""}
-        </p>
-    <p class="card__desc">${safeDescription}</p>
-        <button type="button" class="card__action preview-btn">View property →</button>
-      </div>
-    `;
-
-   shortlistGrid.appendChild(article);
-appendedCards.push(article);
-    bindCardEvents(article);
-  });
-reviewCards = null;
-  updateCounts();
-}
-
-       function showSummary() {
-          isShowingSummary = true;
-          activeCard = null;
-          activeItemId = "";
-
-          const cards = getCards();
-          const loveCount = cards.filter((c) => c.dataset.isFavourite === "true").length;
-          const maybeCount = cards.filter((c) => c.dataset.decision === "maybe").length;
-          const passCount = cards.filter((c) => c.dataset.decision === "pass").length;
-
-          const lovedCards = cards.filter((c) => c.dataset.isFavourite === "true").slice(0, 4);
-
-          const faveImgHtml = lovedCards.length ? `
-            <div style="display:grid;grid-template-columns:repeat(${lovedCards.length},1fr);gap:8px;margin:0 0 24px;">
-              ${lovedCards.map((c) => {
-                const img = c.dataset.image || "";
-                const addr = c.dataset.address || "";
-                if (!img) return "";
-                return `<button type="button" data-summary-fave-card-id="${c.dataset.cardId || ""}"
-                  style="border:0;background:transparent;padding:0;cursor:pointer;border-radius:6px;overflow:hidden;aspect-ratio:4/3;">
-                  <img src="${img}" alt="${addr}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:6px;">
-                </button>`;
-              }).join("")}
-            </div>
-          ` : "";
-
-          const headline = loveCount > 0
-            ? `You loved ${loveCount} home${loveCount > 1 ? "s" : ""}.`
-            : maybeCount > 0
-              ? `You shortlisted ${maybeCount} home${maybeCount > 1 ? "s" : ""}.`
-              : `You've reviewed all ${cards.length} homes.`;
-
-          if (sheetSummary) {
-            sheetSummary.innerHTML = `
-              <div style="padding:20px 24px 28px;max-width:680px;margin:0 auto;">
-
-                <div style="font-size:0.68rem;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">✓ Shortlist reviewed</div>
-
-                <h2 style="font-size:clamp(1.8rem,3.5vw,2.6rem);line-height:1.05;letter-spacing:-0.03em;margin:0 0 8px;">${headline}</h2>
-
-                <p style="color:var(--text-secondary);font-size:0.95rem;line-height:1.6;margin:0 0 22px;">
-                  ${loveCount > 0 ? "Your top picks are ready for a closer look." : "Nice work getting through them all — that really helps narrow things down."}
-                </p>
-
-                ${faveImgHtml}
-
-                <div style="display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap;">
-                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:900;color:#d92d55;">${loveCount}</div>
-                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">❤️ Loved</div>
-                  </div>
-                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:900;color:#d99000;">${maybeCount}</div>
-                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">🤔 Maybe</div>
-                  </div>
-                  <div style="flex:1;min-width:80px;padding:14px 16px;border-radius:6px;border:1px solid var(--border);background:#fff;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:900;color:#888;">${passCount}</div>
-                    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px;">✕ Passed</div>
-                  </div>
-                </div>
-
-                <p style="font-size:0.8rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">What would you like to do next?</p>
-
-                <div style="display:grid;gap:10px;">
-                  <button type="button" id="summary-book-showings" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
-                    <span style="font-size:1.3rem;">📅</span>
-                    <span>
-                      <span style="display:block;font-weight:800;">Set up showings</span>
-                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Send a note to your agent about the homes you loved</span>
-                    </span>
-                  </button>
-
-                  <button type="button" id="summary-see-more" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
-                    <span style="font-size:1.3rem;">👁</span>
-                    <span>
-                      <span style="display:block;font-weight:800;">See more homes</span>
-                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Expand the search or find similar options</span>
-                    </span>
-                  </button>
-
-                  <button type="button" id="summary-review-again" style="appearance:none;display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border-radius:6px;border:1px solid var(--border);background:#fff;cursor:pointer;font:inherit;font-size:0.92rem;font-weight:700;text-align:left;transition:border-color 0.14s,box-shadow 0.14s;">
-                    <span style="font-size:1.3rem;">↩️</span>
-                    <span>
-                      <span style="display:block;font-weight:800;">Review again</span>
-                      <span style="display:block;font-size:0.8rem;font-weight:500;color:var(--text-muted);">Go back through the homes from the start</span>
-                    </span>
-                  </button>
-                </div>
-
-                <div id="summary-note-area" hidden style="margin-top:20px;">
-                  <textarea id="summary-note-input" placeholder="Add a note for your agent..." style="width:100%;min-height:90px;border:1px solid var(--border);border-radius:6px;padding:12px 14px;font:inherit;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
-                  <div style="display:flex;gap:10px;margin-top:10px;">
-                    <button type="button" id="summary-note-send" style="appearance:none;border:0;border-radius:6px;background:var(--accent);color:#fff;min-height:44px;padding:0 20px;font:inherit;font-size:0.88rem;font-weight:800;cursor:pointer;">Send note →</button>
-                    <button type="button" id="summary-note-cancel" style="appearance:none;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text-secondary);min-height:44px;padding:0 16px;font:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;">Cancel</button>
-                  </div>
-                  <div id="summary-note-status" style="font-size:0.82rem;color:var(--text-muted);margin-top:8px;min-height:18px;"></div>
-                </div>
-
-                <div id="summary-more-area" hidden style="margin-top:20px;padding:18px;border-radius:6px;background:#f5f9f1;border:1px solid #cfe4bd;">
-                  <p style="font-size:0.9rem;color:#5f675a;margin:0 0 14px;line-height:1.6;">What would help most?</p>
-                  <div style="display:grid;gap:8px;">
-                    <button type="button" id="summary-expand-price" style="appearance:none;border:1px solid #cfe4bd;border-radius:6px;background:#fff;padding:12px 16px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;text-align:left;">💰 Show homes in a higher price range</button>
-                    <button type="button" id="summary-refine-search" style="appearance:none;border:1px solid #cfe4bd;border-radius:6px;background:#fff;padding:12px 16px;font:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;text-align:left;">🎯 Find more homes like the ones I liked</button>
-                  </div>
-                </div>
-
-              </div>
-            `;
-          }
-
-          // Wire up buttons
-          document.getElementById("summary-book-showings")?.addEventListener("click", () => {
-            const area = document.getElementById("summary-note-area");
-            const input = document.getElementById("summary-note-input");
-            if (!area) return;
-            area.hidden = false;
-            if (input) input.value = "I'd like to set up showings for the homes I loved.";
-            input?.focus();
-          });
-
-          document.getElementById("summary-see-more")?.addEventListener("click", () => {
-            const area = document.getElementById("summary-more-area");
-            if (area) area.hidden = false;
-          });
-
-          document.getElementById("summary-review-again")?.addEventListener("click", () => {
-            const firstCard = getCards()[0];
-            if (firstCard) window.openSheet(firstCard);
-          });
-
-          document.getElementById("summary-note-cancel")?.addEventListener("click", () => {
-            const area = document.getElementById("summary-note-area");
-            if (area) area.hidden = true;
-          });
-
-          document.getElementById("summary-note-send")?.addEventListener("click", async () => {
-            const btn = document.getElementById("summary-note-send");
-            const input = document.getElementById("summary-note-input");
-            const status = document.getElementById("summary-note-status");
-            const comment = String(input?.value || "").trim();
-            if (!comment) { if (status) status.textContent = "Add a note first."; return; }
-            if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
-            const ok = await sendReviewComplete("comment", comment);
-            if (status) status.textContent = ok ? "Sent ✓" : "Could not send.";
-            if (btn) { btn.textContent = ok ? "Sent ✓" : "Send note →"; btn.disabled = false; }
-          });
-
-          document.getElementById("summary-expand-price")?.addEventListener("click", async (e) => {
-            const btn = e.currentTarget;
-            btn.disabled = true;
-            btn.textContent = "Finding homes...";
-            try {
-              const _allPrices = Array.from(document.querySelectorAll(".card"))
-                .map(c => parseInt((c.dataset.price || "").replace(/[^0-9]/g, ""), 10)).filter(Boolean);
-              const _maxPrice = _allPrices.length ? Math.round(Math.max(..._allPrices) * 1.2) : 0;
-              const res = await fetch("/api/shortlists/expand-search", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slug: pageSlug, maxPrice: _maxPrice, mode: "price" })
-              });
-              const data = await res.json();
-              if (!res.ok || !data?.ok || !data.listings?.length) { btn.textContent = "No new homes found"; return; }
-              appendExpandedListings(data.listings);
-              closeSheet(true);
-              const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")));
-              const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-              if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
-            } catch { btn.disabled = false; btn.textContent = "Try again"; }
-          });
-
-          document.getElementById("summary-refine-search")?.addEventListener("click", async (e) => {
-            const btn = e.currentTarget;
-            btn.disabled = true;
-            btn.textContent = "Finding matches...";
-            try {
-              const res = await fetch("/api/shortlists/refine-search", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slug: pageSlug })
-              });
-              const data = await res.json();
-              if (!res.ok || !data?.ok || !data.listings?.length) { btn.textContent = "No matches found"; return; }
-              appendExpandedListings(data.listings);
-              closeSheet(true);
-              const newIds = new Set(data.listings.map((l) => String(l.id || l.shortlist_item_id || "")));
-              const firstNew = Array.from(document.querySelectorAll(".card")).find((c) => newIds.has(c.dataset.itemId || ""));
-              if (firstNew) setTimeout(() => window.openSheet(firstNew), 250);
-            } catch { btn.disabled = false; btn.textContent = "Try again"; }
-          });
-
-          // Wire up fave strip clicks
-          sheetSummary?.querySelectorAll("[data-summary-fave-card-id]").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const cardId = btn.getAttribute("data-summary-fave-card-id");
-              const card = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
-              if (card) { cameFromSummary = true; window.openSheet(card); }
-            });
-          });
-
-          sheetContent?.classList.remove("open");
-          sheetSummary?.removeAttribute("hidden");
-          sheetSummary?.classList.add("open");
-          updateHeaderProgress();
-          if (sheetMapBtn) sheetMapBtn.style.display = "none";
-          if (sheetNextBtn) sheetNextBtn.disabled = true;
-          if (sheetNextTopBtn) { sheetNextTopBtn.disabled = false; sheetNextTopBtn.textContent = "Review again →"; }
-
-          autoSendReviewComplete();
-        }
-let sheetMiniMap = null;
-let sheetMiniMarker = null;
-
-sheetMapBtn?.addEventListener("click", async () => {
-  const mapEl = document.getElementById("sheet-mini-map");
-  if (!mapEl || !sheetImageStage) return;
-
-  const isOpening = mapEl.hidden;
-
-  mapEl.hidden = !isOpening;
-  sheetImageStage.classList.toggle("is-hidden", isOpening);
-  sheetMapBtn.textContent = isOpening ? "Photos" : "Map";
-
-  if (!isOpening || !activeCard) return;
-
-  // Already rendered a map for this card
-  if (mapEl.dataset.renderedFor === activeCard.dataset.cardId) return;
-
-  mapEl.dataset.renderedFor = activeCard.dataset.cardId || "";
-  mapEl.innerHTML = `<div style="padding:14px;font-size:0.82rem;color:#888;">Loading map...</div>`;
-
-  let lat = Number(activeCard.dataset.lat || "");
-  let lng = Number(activeCard.dataset.lng || "");
-  const address = activeCard.dataset.address || "";
-
-  try {
-    await loadGoogleMapsScript();
-
-    if (coordsLookWrong(lat, lng, activeCard)) {
-      try {
-        const geocoder = new google.maps.Geocoder();
-        const result = await geocoder.geocode({ address: getGeocodeAddress(activeCard) });
-        const location = result?.results?.[0]?.geometry?.location;
-        if (location) {
-          lat = location.lat();
-          lng = location.lng();
-        }
-      } catch (e) {
-        mapEl.innerHTML = `<div style="padding:14px;font-size:0.82rem;color:#888;">Could not locate address.</div>`;
-        return;
-      }
-    }
-
-    mapEl.innerHTML = "";
-
-   const map = new google.maps.Map(mapEl, {
-  center: { lat: lat, lng: lng },
-  zoom: 15,
-  mapTypeControl: false,
-  streetViewControl: false,
-  fullscreenControl: false,
-  zoomControl: true,
-  gestureHandling: "cooperative"
-});
-
-new google.maps.Marker({
-  position: { lat: lat, lng: lng },
-  map,
-  title: address
-});
-
-setTimeout(() => {
-  google.maps.event.trigger(map, "resize");
-  map.setCenter({ lat, lng });
-}, 250);
-
-  } catch (err) {
-    mapEl.innerHTML = `<div style="padding:14px;font-size:0.82rem;color:#888;">Map unavailable</div>`;
-  }
-});
-  function buildReviewMessage(reason = "completed") {
-  const cards = getCards();
-
-  const favs = cards.filter((card) => card.dataset.isFavourite === "true").length;
-  const maybes = cards.filter((card) => card.dataset.decision === "maybe").length;
-  const no = cards.filter((card) => card.dataset.decision === "pass").length;
-  const reviewed = favs + maybes + no;
-
-  const parts = [];
-
-  if (favs > 0) parts.push(`${favs} favourite${favs > 1 ? "s" : ""}`);
-  if (maybes > 0) parts.push(`${maybes} maybe${maybes > 1 ? "s" : ""}`);
-  if (no > 0) parts.push(`${no} not for me`);
-
-  const summary = parts.length ? parts.join(", ") : "no choices saved yet";
-
-  if (reason === "skipped") {
-  return `Buyer left after reviewing ${reviewed} of ${cards.length} homes: ${summary}.`;
-}
-
-if (reason === "comment") {
-  return `Buyer added a note after reviewing ${cards.length} homes: ${summary}.`;
-}
-
-if (reason === "consult") {
-  return `Buyer completed full review cycle (${cards.length} homes reviewed: ${summary}). Ready for agent follow-up.`;
-}
-
-return `Buyer reviewed all ${cards.length} homes: ${summary}.`;
-}
-
-async function sendReviewComplete(reason = "completed", comment = "") {
-  try {
-    const res = await fetch("/api/shortlists/review-complete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        message: buildReviewMessage(reason),
-        comment,
-        reason
-      })
-    });
-
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed");
-    }
-
-    return true;
-  } catch (err) {
-    console.warn("Could not send review summary", err);
-    return false;
-  }
-}
-
-async function autoSendReviewComplete(reason = "completed") {
-  if (isAgentView) return;
-  if (hasAutoSentReviewSummary) return;
-
-  hasAutoSentReviewSummary = true;
-  await sendReviewComplete(reason, "");
-}
-        function showContent() {
-  isShowingSummary = false;
-  sheetSummary?.classList.remove("open");
-  sheetContent?.classList.add("open");
-  if (sheetMapBtn) sheetMapBtn.style.display = "";
-}
-function sortCardsByReview() {
-  if (!shortlistGrid) return;
-
-  reviewCards = null;
-
-  const cards = Array.from(document.querySelectorAll(".card"));
-
-  const scoreCard = (card) => {
-  // HARD RULE: "Not for me" always last
-  if (card.dataset.decision === "pass") return 99;
-
-  // Then order the rest
-  if (card.dataset.isFavourite === "true") return 0;
-  if (card.dataset.decision === "maybe") return 1;
-
-  // undecided
-  return 2;
-};
-
-  cards
-    .sort((a, b) => {
-      const scoreDiff = scoreCard(a) - scoreCard(b);
-      if (scoreDiff !== 0) return scoreDiff;
-
-      return Number(a.dataset.originalOrder || 999999) - Number(b.dataset.originalOrder || 999999);
-    })
-    .forEach((card, index) => {
-      shortlistGrid.appendChild(card);
-
-      const indexEl = card.querySelector(".card__index");
-      if (indexEl) {
-        indexEl.textContent = `No. ${String(index + 1).padStart(2, "0")}`;
-      }
-
-      card.dataset.featured = index === 0 ? "true" : "false";
-    });
-
-  reviewCards = null;
-}
-        function refreshCardUI(card, tags, isFav, decision) {
-  if (!card) return;
-
-  card.dataset.likedTags = JSON.stringify(tags);
-  card.dataset.isFavourite = isFav ? "true" : "false";
-  card.dataset.decision = decision || "";
-// once viewed, never show NEW again
-card.dataset.isNew = card.dataset.viewed === "true"
-  ? "false"
-  : (!isFav && !decision ? "true" : "false");
-
-  const wrap = card.querySelector(".card__image-wrap");
-  if (!wrap) return;
-
-  wrap.querySelector(".card__love-badge")?.remove();
-  wrap.querySelector(".card__maybe-badge")?.remove();
-wrap.querySelector(".card__new-badge")?.remove();
-  if (isFav) {
-    const badge = document.createElement("div");
-    badge.className = "card__love-badge";
-    badge.innerHTML = `
-      <span class="card__love-badge-heart">♥</span>
-      <span>Loved</span>
-    `;
-    wrap.appendChild(badge);
-    return;
-  }
-
-  if (decision === "maybe") {
-    const badge = document.createElement("div");
-    badge.className = "card__maybe-badge";
-    badge.innerHTML = `
-      <span>🤔</span>
-      <span>Kinda like</span>
-    `;
-    wrap.appendChild(badge);
-  }
-}
-function getPrevCard() {
-  const cards = getCards();
-
-  if (!activeCard || !cards.length) return null;
-
-  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
-  const currentIndex = cards.findIndex((card) => {
-    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
-  });
-
-  if (currentIndex <= 0) return null;
-
-  return cards[currentIndex - 1] || null;
-}
-      function getNextCard() {
-const cards = getCards();
-
-  if (!activeCard || !cards.length) return null;
-
-  const activeId = activeCard.dataset.itemId || activeCard.dataset.cardId || "";
-  const currentIndex = cards.findIndex((card) => {
-    return (card.dataset.itemId || card.dataset.cardId || "") === activeId;
-  });
-
-  if (currentIndex === -1) return null;
-
-  return cards[currentIndex + 1] || null;
-}
-
-        function resetDecisionUI() {
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            if (!btn) return;
-            btn.classList.remove("is-selected");
-            btn.blur();
-          });
-
-          feedbackChips.forEach((chip) => {
-            chip.classList.remove("active");
-            chip.blur();
-          });
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          sheet.classList.remove("is-love-pulse", "is-pass-fade");
-        }
-
-     window.openSheet = function(card) { openSheetFromCard(card); };
-
-        function openSheetFromCard(card) {
-          if (!card) return;
-          if (editMode && isAgentView) return;
-
-          activeCard = null;
-          activeItemId = "";
-          activeTags = [];
-          activeFavourite = false;
-          activeDecision = "";
-
-          resetDecisionUI();
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          if (sheetNextBtn) sheetNextBtn.disabled = false;
-          if (sheetNextTopBtn) {
-            sheetNextTopBtn.disabled = false;
-            sheetNextTopBtn.textContent = "Next →";
-          }
-
-          showContent();
-
-        activeCard = card;
-
-markListingViewed(card);
-startListingMetrics(card);
-
-// do not reorder while the sheet is open
-
-activeItemId = String(card.dataset.itemId || "").trim();
-activeTags = parseTags(card.dataset.likedTags || "[]");
-activeFavourite = card.dataset.isFavourite === "true";
-activeDecision = card.dataset.decision || "";
-
-// 🔥 mark as viewed immediately (removes NEW pill)
-card.dataset.isNew = "false";
-card.dataset.viewed = "true";
-
-const wrap = card.querySelector(".card__image-wrap");
-wrap?.querySelector(".card__new-badge")?.remove();
-
-          renderCardStateToPanel(card);
-
-clearNewBadgesAfterModalClose();
-
-sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
-sheetImageStage?.classList.remove("is-hidden");
-if (sheetMapBtn) sheetMapBtn.textContent = "Map";
-if (sheetPrevTopBtn) sheetPrevTopBtn.textContent = cameFromSummary ? "← Summary" : "← Previous";sheetImageStage?.classList.remove("is-hidden");          resetSheetTransform();
-          sheet.classList.add("open");
-          const scrollHint = document.getElementById("panel-scroll-hint");
-if (scrollHint) {
-  scrollHint.classList.add("visible");
-  setTimeout(() => scrollHint.classList.remove("visible"), 2000);
-}
-          overlay.classList.add("open");
-          sheet.setAttribute("aria-hidden", "false");
-          document.body.style.overflow = "hidden";
-
-          resetPanelScroll();
-        }
-
-        async function saveFeedback() {
-          if (!activeItemId || isSaving || !activeCard) return false;
-          isSaving = true;
-
-          try {
-            const res = await fetch("/api/shortlists/feedback", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                shortlistItemId: activeItemId,
-                liked_tags: activeTags,
-                is_favourite: activeFavourite,
-                decision: activeDecision || null
-              })
-            });
-
-            const json = await res.json();
-            if (!res.ok || !json?.ok) throw new Error(json?.error || "Failed to save");
-
-            const savedTags = Array.isArray(json?.item?.liked_tags) ? json.item.liked_tags : activeTags;
-            const savedFav = Boolean(json?.item?.is_favourite);
-            const savedDecision = json?.item?.decision || "";
-
-            activeTags = savedTags;
-            activeFavourite = savedFav;
-            activeDecision = savedDecision;
-
-       refreshCardUI(activeCard, savedTags, savedFav, savedDecision);
-updateDecisionButtons();
-shouldRefreshOnClose = true;
-
-return true;
-          } catch (err) {
-            if (sheetFeedback) {
-              sheetFeedback.textContent = err instanceof Error ? err.message : "Could not save";
-              sheetFeedback.className = "panel__feedback";
-            }
-            return false;
-          } finally {
-            isSaving = false;
-          }
-        }
-
-     function popDecisionEmojisFromButton(button, emojiList = ["❤️"], count = 12) {
-  if (!button) return;
-
-  const rect = button.getBoundingClientRect();
-  const startX = rect.left + rect.width / 2;
-  const startY = rect.top + rect.height / 2;
-
-  for (let i = 0; i < count; i++) {
-    const emoji = document.createElement("span");
-
-    emoji.textContent = emojiList[i % emojiList.length];
-
-    emoji.style.position = "fixed";
-    emoji.style.left = `${startX}px`;
-    emoji.style.top = `${startY}px`;
-    emoji.style.zIndex = "2147483647";
-    emoji.style.pointerEvents = "none";
-    emoji.style.fontSize = i === 0 ? "36px" : "28px";
-    emoji.style.lineHeight = "1";
-    emoji.style.transform = "translate(-50%, -50%) scale(0.6)";
-    emoji.style.opacity = "1";
-    emoji.style.filter = "drop-shadow(0 6px 10px rgba(0,0,0,0.22))";
-
-    document.body.appendChild(emoji);
-
-    const driftX = (Math.random() - 0.5) * 160;
-    const driftY = -90 - Math.random() * 80;
-    const rotate = (Math.random() - 0.5) * 45;
-
-    emoji.animate(
-      [
-        { transform: "translate(-50%, -50%) scale(0.6)", opacity: 0 },
-        { transform: "translate(-50%, -70%) scale(1.15)", opacity: 1, offset: 0.18 },
-        {
-          transform: `translate(calc(-50% + ${driftX}px), calc(-50% + ${driftY}px)) scale(1.55) rotate(${rotate}deg)`,
-          opacity: 0
-        }
-      ],
-      {
-        duration: 1200,
-        delay: i * 35,
-        easing: "ease-out",
-        fill: "forwards"
-      }
-    );
-
-    window.setTimeout(() => emoji.remove(), 1600);
-  }
-}
-
-        async function handleDecision(kind) {
-          if (!activeCard) return;
-
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-
-          if (kind === "love") {
-            popDecisionEmojisFromButton(decisionLoveBtn, ["❤️", "🧡", "💛", "💚", "💙", "💜"], 1);
-            activeFavourite = true;
-            activeDecision = "";
-            sheet.classList.remove("is-pass-fade");
-            sheet.classList.add("is-love-pulse");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--love">Saved ✓</span><span>Ready when you are</span></span>`;
-              sheetFeedback.className = "panel__feedback is-love";
-            }
-          }
-
-         if (kind === "maybe") {
-  popDecisionEmojisFromButton(decisionMaybeBtn, ["🫤"], 1);
-  activeFavourite = false;
-            activeDecision = "maybe";
-            sheet.classList.remove("is-love-pulse", "is-pass-fade");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--maybe">Maybe</span><span>Saved - review this one, then continue</span></span>`;
-              sheetFeedback.className = "panel__feedback is-maybe";
-            }
-          }
-
-          if (kind === "pass") {
-  popDecisionEmojisFromButton(decisionPassBtn, ["❌"], 1);
-            activeFavourite = false;
-            activeDecision = "pass";
-            sheet.classList.remove("is-love-pulse");
-            sheet.classList.add("is-pass-fade");
-            if (sheetFeedback) {
-              sheetFeedback.innerHTML =
-                `<span class="panel__micro"><span class="panel__micro-badge panel__micro-badge--pass">Passed</span><span>Saved - continue when ready</span></span>`;
-              sheetFeedback.className = "panel__feedback is-pass";
-            }
-          }
-
-            window.setTimeout(() => {
-  renderFeedbackChips(kind);
-
- window.setTimeout(() => {
-    sheet.scrollTop = sheet.scrollHeight;
-  }, 300);
-}, 200);
-
-          refreshCardUI(activeCard, activeTags, activeFavourite, activeDecision);
-          updateDecisionButtons();
-
-const ok = await saveFeedback();
-
-if (ok) {
-            updateHeaderProgress();
-            updateDecisionButtons();
-
-            if (sheetNextBtn) sheetNextBtn.disabled = false;
-            if (sheetNextTopBtn) {
-              sheetNextTopBtn.disabled = false;
-              sheetNextTopBtn.textContent = "Next →";
-            }
-          }
-
-          window.setTimeout(() => {
-            sheet.classList.remove("is-love-pulse", "is-pass-fade");
-          }, 900);
-        }
-
-        async function goToNextCard(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  if (isShowingSummary) return;
-
-  await flushListingMetrics({
-    primaryReaction: activeFavourite ? "love" : activeDecision || "",
-    secondaryReasons: activeTags
-  });
-
-  const nextCard = getNextCard();
-          if (nextCard) {
-            window.openSheet(nextCard);
-            resetPanelScroll();
-          } else {
-            resetDecisionUI();
-            showSummary();
-            resetPanelScroll();
-          }
-        }
-
-        async function goToPrevCard(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  if (isShowingSummary) return;
-
-await flushListingMetrics({
-  primaryReaction: activeFavourite ? "love" : activeDecision || "",
-  secondaryReasons: activeTags
-});
-
-const prevCard = getPrevCard();
-
-  if (prevCard) {
-    window.openSheet(prevCard);
-    resetPanelScroll();
-  }
-}
-
-        async function closeSheet(skipReload = false) {
-        await flushListingMetrics({
-  primaryReaction: activeFavourite ? "love" : activeDecision || "",
-  secondaryReasons: activeTags
-});
-sheet.classList.remove("dragging", "closing-down", "is-love-pulse", "is-pass-fade");
-
-          if (isMobileSheet()) {
-            sheet.style.transition = "none";
-            sheet.classList.remove("open");
-            overlay.classList.remove("open");
-            sheet.setAttribute("aria-hidden", "true");
-            document.body.style.overflow = "";
-            resetSheetTransform();
-
-            requestAnimationFrame(() => {
-              sheet.style.transition = "";
-            });
-          } else {
-            sheet.classList.remove("open");
-            overlay.classList.remove("open");
-            sheet.setAttribute("aria-hidden", "true");
-            document.body.style.overflow = "";
-            resetSheetTransform();
-          }
-
-     const needsRefresh = shouldRefreshOnClose && !skipReload;
-
-if (needsRefresh) {
-  window.location.reload();
-  return;
-}
-
-          activeCard = null;
-          activeItemId = "";
-          activeTags = [];
-          activeFavourite = false;
-          activeDecision = "";
-          isSaving = false;
-          isShowingSummary = false;
-          shouldRefreshOnClose = false;
-          touchStartX = 0;
-          touchStartY = 0;
-          touchCurrentX = 0;
-          touchCurrentY = 0;
-          isDraggingSheet = false;
-          dragMode = "";
-          touchStartedOnInteractive = false;
-          isAnimatingGesture = false;
-          dragCloseY = 0;
-
-          sheetContent?.classList.remove("open");
-          sheetSummary?.classList.remove("open");
-          updateDecisionButtons();
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          if (sheetPosition) sheetPosition.textContent = "1 of 1";
-          if (sheetProgressBar) sheetProgressBar.style.width = "0%";
-
-          sheet.scrollTop = 0;
-          
-        }
-
-        async function removeShortlistItem(card) {
-          if (!isAgentView || !card) return;
-
-          const itemId = String(card.dataset.itemId || "").trim();
-          if (!itemId) {
-            alert("Missing shortlist item id.");
-            return;
-          }
-
-          const ok = window.confirm("Remove this home from the shortlist?");
-          if (!ok) return;
-
-          card.classList.add("is-removing");
-
-          try {
-            const res = await fetch("/api/shortlists/remove-item", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: itemId })
-            });
-
-            const json = await res.json().catch(() => null);
-
-            if (!res.ok || !json?.ok) {
-              throw new Error(json?.error || "Could not remove listing");
-            }
-
-            if (activeCard === card) {
-              closeSheet(true);
-            }
-
-            card.remove();
-            updateCounts();
-          } catch (err) {
-            card.classList.remove("is-removing");
-            alert(err instanceof Error ? err.message : "Could not remove listing");
-          }
-        }
-
-        function animateSheetBack(mode = "close") {
-          if (!isMobileSheet()) return;
-          isAnimatingGesture = true;
-          sheet.classList.remove("dragging");
-
-          if (mode === "nav") {
-            sheet.style.transition = "transform 0.22s ease, opacity 0.22s ease";
-            sheet.style.transform = "translateX(0)";
-            sheet.style.opacity = "1";
-            window.setTimeout(() => {
-              sheet.style.transition = "";
-              sheet.style.opacity = "";
-              resetSheetTransform();
-              isAnimatingGesture = false;
-            }, 220);
-            return;
-          }
-
-          sheet.style.transition = "transform 0.22s ease";
-          overlay.style.transition = "opacity 0.22s ease";
-          setSheetTransform("translateY(0)");
-          overlay.style.opacity = "";
-          window.setTimeout(() => {
-            sheet.style.transition = "";
-            overlay.style.transition = "";
-            resetSheetTransform();
-            isAnimatingGesture = false;
-          }, 220);
-        }
-
-        function animateSheetOffscreenAndClose() {
-          if (!isMobileSheet()) {
-            closeSheet();
-            return;
-          }
-
-          isAnimatingGesture = true;
-          sheet.classList.remove("dragging");
-
-          const startY = Math.max(0, dragCloseY || 0);
-          sheet.style.transition = "none";
-          sheet.style.transform = `translateY(${startY}px)`;
-
-          overlay.style.transition = "opacity 0.22s ease";
-          requestAnimationFrame(() => {
-            sheet.classList.add("closing-down");
-            overlay.style.opacity = "0";
-          });
-
-          window.setTimeout(() => {
-            sheet.classList.remove("closing-down");
-            sheet.style.transition = "";
-            overlay.style.transition = "";
-            closeSheet();
-            isAnimatingGesture = false;
-          }, 220);
-        }
-
-        function clearInteractionState() {
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-
-          [decisionLoveBtn, decisionMaybeBtn, decisionPassBtn].forEach((btn) => {
-            btn?.classList.remove("is-selected");
-            btn?.blur?.();
-          });
-
-          feedbackChips.forEach((chip) => {
-            chip.classList.remove("active");
-            chip?.blur?.();
-          });
-
-          if (sheetFeedback) {
-            sheetFeedback.textContent = "";
-            sheetFeedback.className = "panel__feedback";
-          }
-
-          sheet.classList.remove("is-love-pulse", "is-pass-fade");
-        }
-
-       function resetPanelScroll() {
-          requestAnimationFrame(() => {
-            sheet.scrollTop = 0;
-          });
-        }
-
-        function animateHorizontalCardChange(direction) {
-          if (isShowingSummary) return;
-          if (direction !== "next") return;
-
-          clearInteractionState();
-
-          activeFavourite = false;
-          activeDecision = "";
-          activeTags = [];
-
-          sheet.classList.remove("dragging", "is-love-pulse", "is-pass-fade");
-          sheet.style.transition = "";
-          sheet.style.opacity = "";
-          resetSheetTransform();
-
-          isAnimatingGesture = true;
-          goToNextCard();
-
-          window.setTimeout(() => {
-            isAnimatingGesture = false;
-          }, 40);
-        }
-
-        function bindCardEvents(card) {
-         card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const card = e.currentTarget.closest(".original-card");
-const listingId = card?.dataset.listingId || card?.dataset.cardId || "";
-
-if (!listingId) return;
-
-const modalCard = document.querySelector(
-  `.modal-source-card[data-listing-id="${CSS.escape(listingId)}"], 
-   .modal-source-card[data-card-id="${CSS.escape(listingId)}"]`
-);
-
-if (typeof window.openSheet === "function" && modalCard) {
-  window.openSheet(modalCard);
-}
-          });
-
-          card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const card = e.currentTarget.closest(".original-card");
-const listingId = card?.dataset.listingId || card?.dataset.cardId || "";
-
-if (!listingId) return;
-
-const modalCard = document.querySelector(
-  `.modal-source-card[data-listing-id="${CSS.escape(listingId)}"], 
-   .modal-source-card[data-card-id="${CSS.escape(listingId)}"]`
-);
-
-if (typeof window.openSheet === "function" && modalCard) {
-  window.openSheet(modalCard);
-}
-          });
-
-          card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await removeShortlistItem(card);
-          });
-
-          card.querySelector("[data-preview-image-url]")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const btn = e.currentTarget;
-  const imageUrl = btn?.getAttribute("data-preview-image-url") || "";
-
-  if (!imageUrl || !smsImageInput) return;
-
-  smsImageInput.value = imageUrl;
-
-  try {
-    btn.textContent = "Saving...";
-    await saveSmsImageUrl(imageUrl);
-    btn.textContent = "Selected ✓";
-
-    setTimeout(() => {
-  btn.textContent = "Use as text preview";
-}, 1200);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save image.");
-    btn.textContent = "Use as text preview";
-  }
-});
-        }
-
-        async function sendShortlistText(sendBtn) {
-      const slug = sendBtn?.getAttribute("data-shortlist-slug") || "";
-const clientName = sendBtn?.getAttribute("data-client-name") || "";
-const phone = sendBtn?.getAttribute("data-client-phone") || "";
-const note = sendBtn?.getAttribute("data-note") || "";
-const smsImageUrl = sendBtn?.getAttribute("data-sms-image-url") || "";
-const agentName = "{agentName}";
-
-          if (!slug) {
-            alert("Missing shortlist slug.");
-            return;
-          }
-
-          if (!phone) {
-            alert("No client phone number found.");
-            return;
-          }
-
-          const originalText = sendBtn.textContent || "Send text";
-
-          sendBtn.disabled = true;
-          sendBtn.textContent = "Sending...";
-
-          try {
-            const res = await fetch("/api/shortlists/send-text", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-  slug,
-  clientName,
-  phone,
-  note,
-  agentName,
-  smsImageUrl
-})
-            });
-
-            const data = await res.json();
-
-            if (!res.ok || !data?.ok) {
-              throw new Error(data?.error || "Failed to send text.");
-            }
-
-            sendBtn.textContent = "Text sent ✓";
-
-            setTimeout(() => {
-              sendBtn.textContent = originalText;
-            }, 1800);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to send text.");
-            sendBtn.textContent = originalText;
-          } finally {
-            sendBtn.disabled = false;
-          }
-        }
-
-        async function copyShortlistLink(copyBtn) {
-          const path = copyBtn?.getAttribute("data-copy-link");
-          if (!path) return;
-
-          const url = `${window.location.origin}${path}`;
-
-          try {
-            await navigator.clipboard.writeText(url);
-            const orig = copyBtn.textContent || "Copy link";
-            copyBtn.textContent = "Copied!";
-            setTimeout(() => {
-              copyBtn.textContent = orig;
-            }, 1400);
-          } catch {
-            alert(url);
-          }
-        }
-async function loadResourceVendors() {
-  if (!resourceVendorList) return;
-
-  resourceVendorList.textContent = "Loading resources...";
-
-  try {
-    const res = await fetch("/api/buyer-resources/vendors");
-const data = await res.json();
-
-const selectedRes = await fetch(`/api/buyer-resources/selected?shortlistSlug=${encodeURIComponent(pageSlug)}`);
-const selectedData = await selectedRes.json();
-
-const vendors = data.vendors || [];
-const selectedIds = new Set(selectedData.vendorIds || []);
-
-    if (!vendors.length) {
-      resourceVendorList.textContent = "No vendors added yet.";
-      return;
-    }
-
-   resourceVendorList.innerHTML = vendors.map((vendor) => `
-  <div class="resource-vendor-row">
-    <input type="checkbox" value="${vendor.id}" ${selectedIds.has(vendor.id) ? "checked" : ""} />
-
-    <span>
-      <strong>${vendor.name}</strong>
-      <small>${
-  String(vendor.type || "Other")
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}${vendor.email ? ` · ${vendor.email}` : ""}</small>
-    </span>
-
-   <div style="margin-left:auto; display:flex; gap:8px;">
-  <button
-    type="button"
-    class="resource-edit-btn"
-    data-edit-resource-id="${vendor.id}"
-    data-resource-type="${vendor.type || ""}"
-    data-resource-name="${vendor.name || ""}"
-    data-resource-phone="${vendor.phone || ""}"
-    data-resource-email="${vendor.email || ""}"
-    data-resource-website="${vendor.website || ""}"
-    data-resource-note="${vendor.note || ""}"
-  >
-    Edit
-  </button>
-
-  <button
-    type="button"
-    class="resource-edit-btn"
-    data-delete-resource-id="${vendor.id}"
-  >
-    Delete
-  </button>
-</div>
-  </div>
-`).join("");
-
-resourceVendorList.querySelectorAll("[data-edit-resource-id]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.getElementById("resource-custom-type-input").value =
-      String(btn.dataset.resourceType || "")
-        .replace(/[_-]+/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-
-    resourceNameInput.value = btn.dataset.resourceName || "";
-    resourcePhoneInput.value = btn.dataset.resourcePhone || "";
-    resourceEmailInput.value = btn.dataset.resourceEmail || "";
-    resourceWebsiteInput.value = btn.dataset.resourceWebsite || "";
-    resourceDescriptionInput.value = btn.dataset.resourceNote || "";
-
-    addResourceBtn.dataset.editResourceId = btn.dataset.editResourceId || "";
-    addResourceBtn.textContent = "Save resource";
-
-    resourceNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-});
-
-resourceVendorList.querySelectorAll("[data-delete-resource-id]").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    const ok = confirm("Delete this vendor?");
-    if (!ok) return;
-
-    const id = btn.dataset.deleteResourceId || "";
-
-    const res = await fetch("/api/buyer-resources/delete-vendor", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ id })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      alert(data?.error || "Could not delete vendor.");
-      return;
-    }
-
-    await loadResourceVendors();
-  });
-});
-  } catch (err) {
-    resourceVendorList.textContent = "Could not load resources.";
-  }
-}
-
-async function saveSelectedResourceVendors() {
-  if (!saveResourceVendorsBtn) return;
-
-  const selectedIds = Array.from(
-    document.querySelectorAll("#resource-vendor-list input[type='checkbox']:checked")
-  ).map((input) => input.value);
-
-  const originalText = saveResourceVendorsBtn.textContent || "Save resources";
-
-  saveResourceVendorsBtn.disabled = true;
-  saveResourceVendorsBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/buyer-resources/select", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-     body: JSON.stringify({
-        shortlistSlug:
-          document.body.dataset.shortlistSlug ||
-          window.location.pathname.split("/").filter(Boolean).pop(),
-        vendorIds: selectedIds
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save resources.");
-    }
-
-    if (showResourcesToggle) showResourcesToggle.checked = true;
-
-await fetch("/api/shortlists/update-resource-visibility", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    slug: pageSlug,
-    showResources: true
-  })
-});
-
-saveResourceVendorsBtn.textContent = "Saved ✓";
-
-setTimeout(() => {
-  window.location.reload();
-}, 500);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save resources.");
-    saveResourceVendorsBtn.textContent = originalText;
-  } finally {
-    saveResourceVendorsBtn.disabled = false;
-
-    setTimeout(() => {
-      saveResourceVendorsBtn.textContent = originalText;
-    }, 1200);
-  }
-}
-        async function saveSmsImageUrl(url) {
-  const cleanUrl = String(url || "").trim();
-
-  const res = await fetch("/api/shortlists/update-sms-image", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      slug: pageSlug,
-      smsImageUrl: cleanUrl
-    })
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data?.ok) {
-    throw new Error(data?.error || "Failed to save image.");
-  }
-
-  sendTextButtons.forEach((btn) => {
-    btn.setAttribute("data-sms-image-url", cleanUrl);
-  });
-
-  return cleanUrl;
-}
-
-        const viewedListings = getViewedListings();
-
-getCards().forEach((card, index) => {
-card.dataset.originalOrder = String(index);
-
-  const id = card.dataset.itemId || card.dataset.cardId || "";
-
-  if (id && viewedListings.has(id)) {
+    if (!id) return;
+    const viewed = getViewedListings();
+    viewed.add(id);
+    localStorage.setItem(viewedKey, JSON.stringify([...viewed]));
     card.dataset.viewed = "true";
     card.dataset.isNew = "false";
     card.querySelector(".card__new-badge")?.remove();
   }
 
-  bindCardEvents(card);
-});
-
-sortCardsByReview();
-
-const autoOpenParams = new URLSearchParams(window.location.search);
-
-if (autoOpenParams.has("openNew")) {
-  autoOpenParams.delete("openNew");
-
-  const cleanUrl =
-    window.location.pathname +
-    (autoOpenParams.toString() ? `?${autoOpenParams.toString()}` : "");
-
-  window.history.replaceState({}, "", cleanUrl);
-
- requestAnimationFrame(() => {
-  reviewCards = null;
-
-  const cards = getCards();
-
-  console.log(
-    "AUTO OPEN DEBUG",
-    cards.map((card, index) => ({
-      visualNumber: index + 1,
-      sortOrder: card.dataset.sortOrder,
-      price: card.dataset.price,
-      address: card.dataset.address
-    }))
-  );
-
-  const batchStartIndex = Math.max(0, cards.length - 3);
-  const firstNewCard = cards[batchStartIndex] || cards[0];
-
-  if (firstNewCard) {
-    window.openSheet(firstNewCard);
-  }
-});
-}
-
-presetImageButtons.forEach((btn) => {
-  btn.addEventListener("click", async (e) => {
-    e.preventDefault();
-
-    const imageUrl = btn.getAttribute("data-preset-image-url") || "";
-    if (!imageUrl || !smsImageInput) return;
-
-    const label = btn.querySelector("span");
-    const originalText = label?.textContent || "Preset";
-
-    smsImageInput.value = imageUrl;
-
-presetImageButtons.forEach((b) => b.classList.remove("is-selected"));
-btn.classList.add("is-selected");
-
-    try {
-      if (label) label.textContent = "Saving...";
-      await saveSmsImageUrl(imageUrl);
-      if (label) label.textContent = "Selected ✓";
-
-      setTimeout(() => {
-  if (label) label.textContent = originalText;
-}, 1200);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save image.");
-      if (label) label.textContent = originalText;
+  // Mark already-viewed cards on load
+  const viewedListings = getViewedListings();
+  document.querySelectorAll(".original-card").forEach((card, index) => {
+    card.dataset.originalOrder = String(index);
+    const id = card.dataset.itemId || card.dataset.cardId || "";
+    if (id && viewedListings.has(id)) {
+      card.dataset.viewed = "true";
+      card.dataset.isNew = "false";
+      card.querySelector(".card__new-badge")?.remove();
     }
   });
-});
 
-        if (editToggleBtn) {
-          editToggleBtn.addEventListener("click", () => {
-            editMode = !editMode;
-            syncEditModeUI();
-          });
-        }
-
-        decisionLoveBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("love");
-        });
-
-        decisionMaybeBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("maybe");
-        });
-
-        decisionPassBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.currentTarget?.blur?.();
-          handleDecision("pass");
-        });
-
-        
-descToggle?.addEventListener("click", () => {
-  if (!sheetDescription) return;
-
-  const isCollapsed = sheetDescription.classList.contains("is-collapsed");
-
-  sheetDescription.classList.toggle("is-collapsed");
-
-  descToggle.textContent = isCollapsed ? "Show less" : "Read more";
-});
-
-sheetPrevBtn?.addEventListener("click", goToPrevCard);
-sheetPrevTopBtn?.addEventListener("click", (e) => {
-  if (isShowingSummary) {
-    const cards = Array.from(document.querySelectorAll(".card"));
-    const lastCard = cards[cards.length - 1];
-    if (lastCard) window.openSheet(lastCard);
-    return;
-  }
-  if (cameFromSummary) {
-    cameFromSummary = false;
-    if (sheetPrevTopBtn) sheetPrevTopBtn.textContent = "← Previous";
-    showSummary();
-    return;
-  }
-  goToPrevCard(e);
-});
-
-sheetNextBtn?.addEventListener("click", goToNextCard);
-
-const mapBtn = document.getElementById("page-map-btn");
-const masthead = document.querySelector(".masthead");
-
-let googleShortlistMap = null;
-
-function loadGoogleMapsScript() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.maps?.Map) {
-      resolve();
-      return;
-    }
-
-    const key = document.body.dataset.googleMapsApiKey || "";
-
-    if (!key) {
-      reject(new Error("Missing Google Maps API key"));
-      return;
-    }
-
-    const existing = document.querySelector("script[data-google-maps-script]");
-
-    if (existing) {
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", reject, { once: true });
-
-      setTimeout(() => {
-        if (window.google?.maps?.Map) resolve();
-        else reject(new Error("Google Maps script exists but did not finish loading."));
-      }, 5000);
-
-      return;
-    }
-
-    window.__initShortlistGoogleMap = () => {
-      resolve();
+// Hook into IntentModalController's openSheet to track views
+  function wrapOpenSheet() {
+    const _orig = window.openSheet;
+    window.openSheet = function(card) {
+      markListingViewed(card);
+      if (typeof _orig === "function") _orig(card);
     };
+  }
 
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__initShortlistGoogleMap&v=weekly`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleMapsScript = "true";
-    script.onerror = () => reject(new Error("Google Maps script failed to load."));
-
-    document.head.appendChild(script);
-
-    setTimeout(() => {
-      if (!window.google?.maps?.Map) {
-        reject(new Error("Google Maps timed out. Check billing, API key, or referrer restrictions."));
+  if (typeof window.openSheet === "function") {
+    wrapOpenSheet();
+  } else {
+    // IntentModalController hasn't run yet — wait for it
+    const _poll = setInterval(() => {
+      if (typeof window.openSheet === "function") {
+        clearInterval(_poll);
+        wrapOpenSheet();
       }
-    }, 6000);
-  });
-}
-
-async function renderPageMap() {
-  const mapEl = document.querySelector("[data-deferred-map]");
-  if (!mapEl) return;
-
-  mapEl.style.height = "100%";
-  mapEl.style.minHeight = "100%";
-  mapEl.style.width = "100%";
-  mapEl.innerHTML = `<div style="padding:18px;">Loading Google map...</div>`;
-
-  try {
-    await loadGoogleMapsScript();
-  } catch (err) {
-    console.error("Google Maps load failed:", err);
-    mapEl.innerHTML = `
-      <div style="padding:18px; line-height:1.5;">
-        <strong>Google Maps could not load.</strong><br>
-        ${err instanceof Error ? err.message : "Check your API key, billing, and referrer restrictions."}
-      </div>
-    `;
-    return;
+    }, 20);
   }
 
-  const geocoder = new google.maps.Geocoder();
-  const cards = getCards();
-  const points = [];
+  // ── Card counts ───────────────────────────────────────────────────
+  const homesCountNum = document.getElementById("homes-count-num");
+  const sectionMetaCount = document.getElementById("section-meta-count");
+  const shortlistGrid = document.getElementById("shortlist-grid");
+  const emptyState = document.getElementById("empty-state");
 
-  for (const card of cards) {
-    let lat = Number(card.dataset.lat || "");
-    let lng = Number(card.dataset.lng || "");
+  function getCards() {
+    return Array.from(document.querySelectorAll(".original-card"));
+  }
 
-    if (coordsLookWrong(lat, lng, card)) {
-      try {
-        const result = await geocoder.geocode({
-          address: getGeocodeAddress(card)
-        });
-
-        const location = result?.results?.[0]?.geometry?.location;
-
-        if (location) {
-          lat = location.lat();
-          lng = location.lng();
-        }
-      } catch (err) {
-        console.warn("Google geocode failed:", card.dataset.address, err);
-      }
-    }
-
-    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
-      points.push({ card, lat, lng });
+  function updateCounts() {
+    const count = getCards().length;
+    if (homesCountNum) homesCountNum.textContent = String(count).padStart(2, "0");
+    if (sectionMetaCount) sectionMetaCount.textContent = `${count} ${count === 1 ? "home" : "homes"} chosen for review`;
+    if (shortlistGrid && emptyState) {
+      shortlistGrid.style.display = count === 0 ? "none" : "";
+      emptyState.style.display = count === 0 ? "block" : "none";
     }
   }
 
-  if (!points.length) {
-    mapEl.innerHTML = `<div style="padding:18px;">No usable coordinates or addresses found.</div>`;
-    return;
+  updateCounts();
+
+  // ── Edit mode ─────────────────────────────────────────────────────
+  let editMode = false;
+  const editToggleBtn = document.getElementById("edit-shortlist-toggle");
+  const editBanner = document.getElementById("edit-banner");
+
+  function syncEditModeUI() {
+    body.classList.toggle("edit-mode", editMode);
+    if (editToggleBtn) {
+      editToggleBtn.textContent = editMode ? "Done editing" : "Edit shortlist";
+      editToggleBtn.setAttribute("data-editing", editMode ? "true" : "false");
+    }
+    if (editBanner) editBanner.classList.toggle("show", editMode);
   }
 
-  mapEl.innerHTML = "";
-
-  googleShortlistMap = new google.maps.Map(mapEl, {
-    center: { lat: points[0].lat, lng: points[0].lng },
-    zoom: 13,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: true,
-    clickableIcons: false,
-    gestureHandling: "greedy"
+  editToggleBtn?.addEventListener("click", () => {
+    editMode = !editMode;
+    syncEditModeUI();
   });
 
-  const bounds = new google.maps.LatLngBounds();
+  syncEditModeUI();
 
-  points.forEach(({ card, lat, lng }, index) => {
- const marker = new google.maps.Marker({
- position: { lat: lat, lng: lng },
-  map: googleShortlistMap,
-  label: String(index + 1),
-  title: card.dataset.address || "Listing"
-});
+  // ── Remove shortlist item ─────────────────────────────────────────
+  async function removeShortlistItem(card) {
+    if (!isAgentView || !card) return;
+    const itemId = String(card.dataset.itemId || "").trim();
+    if (!itemId) { alert("Missing shortlist item id."); return; }
+    if (!window.confirm("Remove this home from the shortlist?")) return;
+    card.classList.add("is-removing");
+    try {
+      const res = await fetch("/api/shortlists/remove-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: itemId })
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Could not remove listing");
+      card.remove();
+      updateCounts();
+    } catch (err) {
+      card.classList.remove("is-removing");
+      alert(err instanceof Error ? err.message : "Could not remove listing");
+    }
+  }
 
-    marker.addListener("click", () => {
-      window.openSheet(card);
+  document.querySelectorAll("[data-remove-item-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await removeShortlistItem(btn.closest(".original-card"));
     });
-
-    bounds.extend({ lat, lng });
   });
 
-  googleShortlistMap.fitBounds(bounds);
+  // ── SMS + note saving ─────────────────────────────────────────────
+  const navSendTextBtn = document.getElementById("nav-send-text-btn");
+  const navCopyLinkBtn = document.getElementById("nav-copy-link-btn");
+  const saveNoteBtn = document.getElementById("save-note-btn");
+  const noteInput = document.getElementById("shortlist-note-input");
+  const smsMessageInput = document.getElementById("sms-message-input");
+  const saveSmsMessageBtn = document.getElementById("save-sms-message-btn");
+  const mastheadMessage = document.getElementById("masthead-message");
+  const sendTextButtons = Array.from(document.querySelectorAll("[data-send-text]"));
+  const saveSmsImageBtn = document.getElementById("save-sms-image-btn");
+  const smsImageInput = document.getElementById("sms-image-url-input");
+  const presetImageButtons = Array.from(document.querySelectorAll("[data-preset-image-url]"));
 
-  window.setTimeout(() => {
-    google.maps.event.trigger(googleShortlistMap, "resize");
-
-    if (points.length > 1) {
-      googleShortlistMap.fitBounds(bounds);
-    } else {
-googleShortlistMap.setCenter({ lat: points[0].lat, lng: points[0].lng });     googleShortlistMap.setZoom(15);
-    }
-  }, 250);
-}
-mapBtn?.addEventListener("click", () => {
-  const mapWrap = document.getElementById("shortlist-page-map-wrap");
-  if (!mapWrap) return;
-
-  const isOpening = mapWrap.hidden;
-
-  mapWrap.hidden = !mapWrap.hidden;
-  mapBtn.classList.toggle("is-active", isOpening);
-  masthead?.classList.toggle("map-mode", isOpening);
-
-  if (isOpening) {
-    masthead?.scrollIntoView({ behavior: "auto", block: "start" });
-    renderPageMap();
-  }
-});
-        sheetNextTopBtn?.addEventListener("click", (e) => {
-          if (isShowingSummary) {
-            e.preventDefault();
-            const firstCard = getCards()[0];
-            if (firstCard) window.openSheet(firstCard);
-            return;
-          }
-
-          goToNextCard(e);
-        });
-
-               summaryRestartBtn?.addEventListener("click", () => {
-          const firstCard = getCards()[0];
-          if (firstCard) window.openSheet(firstCard);
-        });
-
-        document.querySelectorAll("[data-summary-comment]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const input = document.getElementById("summary-comment-input");
-            const text = btn.getAttribute("data-summary-comment") || "";
-            if (input) input.value = text;
-          });
-        });
-
-        document.getElementById("summary-send-comment-btn")?.addEventListener("click", async (e) => {
-          e.preventDefault();
-
-          const btn = e.currentTarget;
-          const input = document.getElementById("summary-comment-input");
-          const status = document.getElementById("summary-comment-status");
-          const comment = String(input?.value || "").trim();
-
-          if (!comment) {
-            if (status) status.textContent = "Add a quick note first.";
-            return;
-          }
-
-          const originalText = btn.textContent || "Send note to agent";
-
-          btn.disabled = true;
-          btn.textContent = "Sending...";
-
-         const ok = await sendReviewComplete("comment", comment);
-
-         btn.textContent = ok ? "Sent ✓" : originalText;
-if (status) {
-  status.textContent = ok ? "Sent ✓" : "Could not send note.";
-}
-
-btn.style.display = "none";
-
-          setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = originalText;
-          }, 1400);
-        });
-
-        navSendTextBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-          await sendShortlistText(navSendTextBtn);
-        });
-
-        navCopyLinkBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-          await copyShortlistLink(navCopyLinkBtn);
-        });
-
-                saveSmsImageBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
-
-          const originalText = saveSmsImageBtn.textContent || "Save image URL";
-
-          try {
-            saveSmsImageBtn.disabled = true;
-            saveSmsImageBtn.textContent = "Saving...";
-
-            await saveSmsImageUrl(smsImageInput?.value || "");
-
-            saveSmsImageBtn.textContent = "Saved ✓";
-
-setTimeout(() => {
-  window.location.reload();
-}, 500);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Failed to save image.");
-            saveSmsImageBtn.textContent = originalText;
-          } finally {
-            saveSmsImageBtn.disabled = false;
-          }
-        });
-      addResourceBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = addResourceBtn.textContent || "Add resource";
-
-  const cleanType = (value) =>
-    String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-
-const editResourceId = addResourceBtn.dataset.editResourceId || "";
-
-const customType = document.getElementById("resource-custom-type-input")?.value || "";
-const resourceType = cleanType(customType) || resourceTypeInput?.value || "other";
-
-  addResourceBtn.disabled = true;
-  addResourceBtn.textContent = "Adding...";
-
-  try {
-   const res = await fetch("/api/shortlists/add-resource", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-  id: editResourceId,
-  slug: pageSlug,
-        type: resourceType,
-        name: resourceNameInput?.value?.trim() || "",
-        phone: resourcePhoneInput?.value?.trim() || "",
-        email: resourceEmailInput?.value?.trim() || "",
-        website_url: resourceWebsiteInput?.value?.trim() || "",
-        website: resourceWebsiteInput?.value?.trim() || "",
-        description: resourceDescriptionInput?.value?.trim() || "",
-        note: resourceDescriptionInput?.value?.trim() || ""
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to add resource.");
-    }
-
-    addResourceBtn.textContent = "Added ✓";
-
-await loadResourceVendors();
-
-    resourceNameInput.value = "";
-    resourcePhoneInput.value = "";
-    resourceEmailInput.value = "";
-    resourceWebsiteInput.value = "";
-    resourceDescriptionInput.value = "";
-
-    const customTypeInput = document.getElementById("resource-custom-type-input");
-    if (customTypeInput) customTypeInput.value = "";
-
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to add resource.");
-    addResourceBtn.textContent = originalText;
-  } finally {
-    addResourceBtn.disabled = false;
-
-    setTimeout(() => {
-      addResourceBtn.textContent = originalText;
-    }, 1200);
-  }
-});
-
-   
-saveResourceVisibilityBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = saveResourceVisibilityBtn.textContent || "Save resource setting";
-  const showResources = Boolean(showResourcesToggle?.checked);
-
-  saveResourceVisibilityBtn.disabled = true;
-  saveResourceVisibilityBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-resource-visibility", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        showResources
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save setting.");
-    }
-
-    saveResourceVisibilityBtn.textContent = "Saved ✓";
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save setting.");
-    saveResourceVisibilityBtn.textContent = originalText;
-  } finally {
-    saveResourceVisibilityBtn.disabled = false;
-  }
-});
-saveSmsMessageBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-
-  const originalText = saveSmsMessageBtn.textContent || "Save text message";
-  const smsMessage = smsMessageInput?.value?.trim() || "";
-
-  saveSmsMessageBtn.disabled = true;
-  saveSmsMessageBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-sms-message", {
+  async function saveSmsImageUrl(url) {
+    const cleanUrl = String(url || "").trim();
+    const res = await fetch("/api/shortlists/update-sms-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slug: pageSlug,
-        smsMessage
-      })
+      body: JSON.stringify({ slug: pageSlug, smsImageUrl: cleanUrl })
     });
-
     const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save SMS message.");
-    }
-
-    saveSmsMessageBtn.textContent = "Saved ✓";
-
-   setTimeout(() => {
-  saveSmsMessageBtn.textContent = originalText;
-}, 1400);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save SMS message.");
-    saveSmsMessageBtn.textContent = originalText;
-  } finally {
-    saveSmsMessageBtn.disabled = false;
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to save image.");
+    sendTextButtons.forEach((btn) => btn.setAttribute("data-sms-image-url", cleanUrl));
+    return cleanUrl;
   }
-});
-        saveNoteBtn?.addEventListener("click", async (e) => {
-          e.preventDefault();
 
-  const note = String(noteInput?.value || "").trim();
-  const originalText = saveNoteBtn.textContent || "Save message";
-
-  saveNoteBtn.disabled = true;
-  saveNoteBtn.textContent = "Saving...";
-
-  try {
-    const res = await fetch("/api/shortlists/update-note", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        slug: pageSlug,
-        note
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "Failed to save message.");
+  async function sendShortlistText(sendBtn) {
+    const slug = sendBtn?.getAttribute("data-shortlist-slug") || "";
+    const clientName = sendBtn?.getAttribute("data-client-name") || "";
+    const phone = sendBtn?.getAttribute("data-client-phone") || "";
+    const note = sendBtn?.getAttribute("data-note") || "";
+    const smsImageUrl = sendBtn?.getAttribute("data-sms-image-url") || "";
+    if (!slug) { alert("Missing shortlist slug."); return; }
+    if (!phone) { alert("No client phone number found."); return; }
+    const originalText = sendBtn.textContent || "Send text";
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Sending...";
+    try {
+      const res = await fetch("/api/shortlists/send-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, clientName, phone, note, agentName: "Chris Crump", smsImageUrl })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to send text.");
+      sendBtn.textContent = "Text sent ✓";
+      setTimeout(() => { sendBtn.textContent = originalText; }, 1800);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to send text.");
+      sendBtn.textContent = originalText;
+    } finally {
+      sendBtn.disabled = false;
     }
-
-    if (mastheadMessage) mastheadMessage.textContent = note;
-
-    sendTextButtons.forEach((btn) => {
-      btn.setAttribute("data-note", note);
-    });
-
-    saveNoteBtn.textContent = "Saved ✓";
-
-    setTimeout(() => {
-      saveNoteBtn.textContent = originalText;
-    }, 1400);
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Failed to save message.");
-    saveNoteBtn.textContent = originalText;
-  } finally {
-    saveNoteBtn.disabled = false;
   }
-});
 
-        sendTextButtons.forEach((btn) => {
-          if (btn === navSendTextBtn) return;
-          btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await sendShortlistText(btn);
-          });
-        });
+  async function copyShortlistLink(copyBtn) {
+    const path = copyBtn?.getAttribute("data-copy-link");
+    if (!path) return;
+    const url = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      const orig = copyBtn.textContent || "Copy link";
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => { copyBtn.textContent = orig; }, 1400);
+    } catch { alert(url); }
+  }
 
-        sheetCloseBtn?.addEventListener("click", (e) => {
-          e.preventDefault();
-          closeSheet();
-        });
+  navSendTextBtn?.addEventListener("click", async (e) => { e.preventDefault(); await sendShortlistText(navSendTextBtn); });
+  navCopyLinkBtn?.addEventListener("click", async (e) => { e.preventDefault(); await copyShortlistLink(navCopyLinkBtn); });
 
-        overlay.addEventListener("click", (e) => {
-          e.preventDefault();
-          closeSheet();
-        });
-
-        document.addEventListener("keydown", (e) => {
-          if (!sheet.classList.contains("open")) return;
-
-          if (e.key === "Escape") closeSheet();
-          if (e.key === "ArrowRight" && !sheetNextBtn?.disabled) goToNextCard();
-        });
-
-        sheet.addEventListener(
-          "touchstart",
-          (e) => {
-            if (!sheet.classList.contains("open")) return;
-            if (!isMobileSheet()) return;
-            if (isAnimatingGesture) return;
-
-            const target = e.target;
-            if (!(target instanceof HTMLElement)) return;
-
-            touchStartedOnInteractive = Boolean(
-              target.closest("button, a, input, textarea, select, [data-tag], [data-decision]")
-            );
-
-            if (touchStartedOnInteractive) return;
-
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-            isDraggingSheet = false;
-            dragMode = "";
-            dragCloseY = 0;
-          },
-          { passive: true }
-        );
-
-        sheet.addEventListener(
-          "touchmove",
-          (e) => {
-            if (!sheet.classList.contains("open")) return;
-            if (!isMobileSheet()) return;
-            if (isAnimatingGesture) return;
-            if (touchStartedOnInteractive) return;
-
-            const touch = e.touches[0];
-            touchCurrentX = touch.clientX;
-            touchCurrentY = touch.clientY;
-
-            const deltaX = touchCurrentX - touchStartX;
-            const deltaY = touchCurrentY - touchStartY;
-
-            if (!dragMode) {
-              if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
-                if (deltaY > 0 && sheet.scrollTop <= 0) {
-                  dragMode = "close";
-                } else {
-                  return;
-                }
-              } else if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
-                dragMode = "nav";
-              } else {
-                return;
-              }
-            }
-
-            if (dragMode === "close") {
-  dragMode = "";
-  return;
-}
-
-            if (dragMode === "nav") {
-              isDraggingSheet = true;
-              sheet.classList.add("dragging");
-              const limitedX = Math.max(-90, Math.min(90, deltaX));
-              sheet.style.transform = `translateX(${limitedX}px)`;
-              sheet.style.opacity = String(1 - Math.min(Math.abs(limitedX) / 220, 0.22));
-              e.preventDefault();
-            }
-          },
-          { passive: false }
-        );
-
-        sheet.addEventListener("touchend", () => {
-          if (!sheet.classList.contains("open")) return;
-          if (!isMobileSheet()) return;
-          if (isAnimatingGesture) return;
-
-          const deltaX = touchCurrentX - touchStartX;
-          const deltaY = touchCurrentY - touchStartY;
-          const absX = Math.abs(deltaX);
-          const absY = Math.abs(deltaY);
-
-        if (dragMode === "nav") {
-            if (deltaX < -70) {
-              clearInteractionState();
-              animateHorizontalCardChange("next");
-            } else {
-              animateSheetBack("nav");
-            }
-          }
-
-          if (!dragMode) {
-            resetSheetTransform();
-          }
-
-          touchStartX = 0;
-          touchStartY = 0;
-          touchCurrentX = 0;
-          touchCurrentY = 0;
-          isDraggingSheet = false;
-          dragMode = "";
-          touchStartedOnInteractive = false;
-          dragCloseY = 0;
-        });
-
-       loadResourceVendors();
-
-showAddResourceBtn?.addEventListener("click", () => {
-  resourceNameInput?.scrollIntoView({
-    behavior: "smooth",
-    block: "center"
+  sendTextButtons.forEach((btn) => {
+    if (btn === navSendTextBtn) return;
+    btn.addEventListener("click", async (e) => { e.preventDefault(); await sendShortlistText(btn); });
   });
 
-  setTimeout(() => {
-    resourceNameInput?.focus();
-  }, 350);
-});
+  saveNoteBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const note = String(noteInput?.value || "").trim();
+    const originalText = saveNoteBtn.textContent || "Save message";
+    saveNoteBtn.disabled = true;
+    saveNoteBtn.textContent = "Saving...";
+    try {
+      const res = await fetch("/api/shortlists/update-note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: pageSlug, note })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to save message.");
+      if (mastheadMessage) mastheadMessage.textContent = note;
+      sendTextButtons.forEach((btn) => btn.setAttribute("data-note", note));
+      saveNoteBtn.textContent = "Saved ✓";
+      setTimeout(() => { saveNoteBtn.textContent = originalText; }, 1400);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save message.");
+      saveNoteBtn.textContent = originalText;
+    } finally {
+      saveNoteBtn.disabled = false;
+    }
+  });
 
-saveResourceVendorsBtn?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  await saveSelectedResourceVendors();
-});
+  saveSmsMessageBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const smsMessage = smsMessageInput?.value?.trim() || "";
+    const originalText = saveSmsMessageBtn.textContent || "Save text message";
+    saveSmsMessageBtn.disabled = true;
+    saveSmsMessageBtn.textContent = "Saving...";
+    try {
+      const res = await fetch("/api/shortlists/update-sms-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: pageSlug, smsMessage })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to save SMS message.");
+      saveSmsMessageBtn.textContent = "Saved ✓";
+      setTimeout(() => { saveSmsMessageBtn.textContent = originalText; }, 1400);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save SMS message.");
+      saveSmsMessageBtn.textContent = originalText;
+    } finally {
+      saveSmsMessageBtn.disabled = false;
+    }
+  });
 
-syncEditModeUI();
-updateCounts();
+  saveSmsImageBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const originalText = saveSmsImageBtn.textContent || "Save image URL";
+    try {
+      saveSmsImageBtn.disabled = true;
+      saveSmsImageBtn.textContent = "Saving...";
+      await saveSmsImageUrl(smsImageInput?.value || "");
+      saveSmsImageBtn.textContent = "Saved ✓";
+      setTimeout(() => { window.location.reload(); }, 500);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save image.");
+      saveSmsImageBtn.textContent = originalText;
+    } finally {
+      saveSmsImageBtn.disabled = false;
+    }
+  });
+
+  presetImageButtons.forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const imageUrl = btn.getAttribute("data-preset-image-url") || "";
+      if (!imageUrl || !smsImageInput) return;
+      const label = btn.querySelector("span");
+      const originalText = label?.textContent || "Preset";
+      smsImageInput.value = imageUrl;
+      presetImageButtons.forEach((b) => b.classList.remove("is-selected"));
+      btn.classList.add("is-selected");
+      try {
+        if (label) label.textContent = "Saving...";
+        await saveSmsImageUrl(imageUrl);
+        if (label) label.textContent = "Selected ✓";
+        setTimeout(() => { if (label) label.textContent = originalText; }, 1200);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to save image.");
+        if (label) label.textContent = originalText;
       }
+    });
+  });
 
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initShortlistPage, { once: true });
-      } else {
-        initShortlistPage();
+  document.querySelectorAll("[data-preview-image-url]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const imageUrl = btn?.getAttribute("data-preview-image-url") || "";
+      if (!imageUrl || !smsImageInput) return;
+      smsImageInput.value = imageUrl;
+      try {
+        btn.textContent = "Saving...";
+        await saveSmsImageUrl(imageUrl);
+        btn.textContent = "Selected ✓";
+        setTimeout(() => { btn.textContent = "Use as text preview"; }, 1200);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to save image.");
+        btn.textContent = "Use as text preview";
       }
+    });
+  });
 
-      document.addEventListener("astro:page-load", initShortlistPage);
+  // ── Resources ─────────────────────────────────────────────────────
+  const resourceVendorList = document.getElementById("resource-vendor-list");
+  const saveResourceVendorsBtn = document.getElementById("save-resource-vendors-btn");
+  const showResourcesToggle = document.getElementById("show-resources-toggle");
+  const saveResourceVisibilityBtn = document.getElementById("save-resource-visibility-btn");
+  const addResourceBtn = document.getElementById("add-resource-btn");
+  const resourceTypeInput = document.getElementById("resource-type-input");
+  const resourceNameInput = document.getElementById("resource-name-input");
+  const resourcePhoneInput = document.getElementById("resource-phone-input");
+  const resourceEmailInput = document.getElementById("resource-email-input");
+  const resourceWebsiteInput = document.getElementById("resource-website-input");
+  const resourceDescriptionInput = document.getElementById("resource-description-input");
+  const showAddResourceBtn = document.getElementById("show-add-resource-btn");
+
+  async function loadResourceVendors() {
+    if (!resourceVendorList) return;
+    resourceVendorList.textContent = "Loading resources...";
+    try {
+      const res = await fetch("/api/buyer-resources/vendors");
+      const data = await res.json();
+      const selectedRes = await fetch(`/api/buyer-resources/selected?shortlistSlug=${encodeURIComponent(pageSlug)}`);
+      const selectedData = await selectedRes.json();
+      const vendors = data.vendors || [];
+      const selectedIds = new Set(selectedData.vendorIds || []);
+      if (!vendors.length) { resourceVendorList.textContent = "No vendors added yet."; return; }
+      resourceVendorList.innerHTML = vendors.map((vendor) => `
+        <div class="resource-vendor-row">
+          <input type="checkbox" value="${vendor.id}" ${selectedIds.has(vendor.id) ? "checked" : ""} />
+          <span>
+            <strong>${vendor.name}</strong>
+            <small>${String(vendor.type || "Other").replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}${vendor.email ? ` · ${vendor.email}` : ""}</small>
+          </span>
+          <div style="margin-left:auto; display:flex; gap:8px;">
+            <button type="button" class="resource-edit-btn" data-edit-resource-id="${vendor.id}" data-resource-type="${vendor.type || ""}" data-resource-name="${vendor.name || ""}" data-resource-phone="${vendor.phone || ""}" data-resource-email="${vendor.email || ""}" data-resource-website="${vendor.website || ""}" data-resource-note="${vendor.note || ""}">Edit</button>
+            <button type="button" class="resource-edit-btn" data-delete-resource-id="${vendor.id}">Delete</button>
+          </div>
+        </div>
+      `).join("");
+      resourceVendorList.querySelectorAll("[data-edit-resource-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.getElementById("resource-custom-type-input").value = String(btn.dataset.resourceType || "").replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          resourceNameInput.value = btn.dataset.resourceName || "";
+          resourcePhoneInput.value = btn.dataset.resourcePhone || "";
+          resourceEmailInput.value = btn.dataset.resourceEmail || "";
+          resourceWebsiteInput.value = btn.dataset.resourceWebsite || "";
+          resourceDescriptionInput.value = btn.dataset.resourceNote || "";
+          addResourceBtn.dataset.editResourceId = btn.dataset.editResourceId || "";
+          addResourceBtn.textContent = "Save resource";
+          resourceNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+      resourceVendorList.querySelectorAll("[data-delete-resource-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Delete this vendor?")) return;
+          const res = await fetch("/api/buyer-resources/delete-vendor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: btn.dataset.deleteResourceId || "" })
+          });
+          const data = await res.json();
+          if (!res.ok || !data?.ok) { alert(data?.error || "Could not delete vendor."); return; }
+          await loadResourceVendors();
+        });
+      });
+    } catch (err) {
+      resourceVendorList.textContent = "Could not load resources.";
+    }
+  }
+
+  async function saveSelectedResourceVendors() {
+    if (!saveResourceVendorsBtn) return;
+    const selectedIds = Array.from(document.querySelectorAll("#resource-vendor-list input[type='checkbox']:checked")).map((input) => input.value);
+    const originalText = saveResourceVendorsBtn.textContent || "Save resources";
+    saveResourceVendorsBtn.disabled = true;
+    saveResourceVendorsBtn.textContent = "Saving...";
+    try {
+      const res = await fetch("/api/buyer-resources/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shortlistSlug: pageSlug, vendorIds: selectedIds })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to save resources.");
+      if (showResourcesToggle) showResourcesToggle.checked = true;
+      await fetch("/api/shortlists/update-resource-visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: pageSlug, showResources: true })
+      });
+      saveResourceVendorsBtn.textContent = "Saved ✓";
+      setTimeout(() => { window.location.reload(); }, 500);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save resources.");
+      saveResourceVendorsBtn.textContent = originalText;
+    } finally {
+      saveResourceVendorsBtn.disabled = false;
+      setTimeout(() => { saveResourceVendorsBtn.textContent = originalText; }, 1200);
+    }
+  }
+
+  addResourceBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const originalText = addResourceBtn.textContent || "Add resource";
+    const cleanType = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const editResourceId = addResourceBtn.dataset.editResourceId || "";
+    const customType = document.getElementById("resource-custom-type-input")?.value || "";
+    const resourceType = cleanType(customType) || resourceTypeInput?.value || "other";
+    addResourceBtn.disabled = true;
+    addResourceBtn.textContent = "Adding...";
+    try {
+      const res = await fetch("/api/shortlists/add-resource", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editResourceId, slug: pageSlug, type: resourceType, name: resourceNameInput?.value?.trim() || "", phone: resourcePhoneInput?.value?.trim() || "", email: resourceEmailInput?.value?.trim() || "", website_url: resourceWebsiteInput?.value?.trim() || "", website: resourceWebsiteInput?.value?.trim() || "", description: resourceDescriptionInput?.value?.trim() || "", note: resourceDescriptionInput?.value?.trim() || "" })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to add resource.");
+      addResourceBtn.textContent = "Added ✓";
+      await loadResourceVendors();
+      resourceNameInput.value = ""; resourcePhoneInput.value = ""; resourceEmailInput.value = ""; resourceWebsiteInput.value = ""; resourceDescriptionInput.value = "";
+      const customTypeInput = document.getElementById("resource-custom-type-input");
+      if (customTypeInput) customTypeInput.value = "";
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to add resource.");
+      addResourceBtn.textContent = originalText;
+    } finally {
+      addResourceBtn.disabled = false;
+      setTimeout(() => { addResourceBtn.textContent = originalText; }, 1200);
+    }
+  });
+
+  saveResourceVisibilityBtn?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const originalText = saveResourceVisibilityBtn.textContent || "Save resource setting";
+    const showResources = Boolean(showResourcesToggle?.checked);
+    saveResourceVisibilityBtn.disabled = true;
+    saveResourceVisibilityBtn.textContent = "Saving...";
+    try {
+      const res = await fetch("/api/shortlists/update-resource-visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: pageSlug, showResources })
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Failed to save setting.");
+      saveResourceVisibilityBtn.textContent = "Saved ✓";
+      setTimeout(() => { window.location.reload(); }, 500);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save setting.");
+      saveResourceVisibilityBtn.textContent = originalText;
+    } finally {
+      saveResourceVisibilityBtn.disabled = false;
+    }
+  });
+
+  saveResourceVendorsBtn?.addEventListener("click", async (e) => { e.preventDefault(); await saveSelectedResourceVendors(); });
+
+  showAddResourceBtn?.addEventListener("click", () => {
+    resourceNameInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { resourceNameInput?.focus(); }, 350);
+  });
+
+  loadResourceVendors();
+
+  // ── Page map (masthead map view button) ───────────────────────────
+  const mapBtn = document.getElementById("page-map-btn");
+  const masthead = document.querySelector(".masthead");
+  let googleShortlistMap = null;
+
+  function coordsLookWrong(lat, lng, card) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+    if (lat === 0 || lng === 0) return true;
+    const city = String(card?.dataset?.city || "").toLowerCase();
+    const cityBounds = {
+      nanaimo: { minLat: 49.0, maxLat: 49.35, minLng: -124.15, maxLng: -123.75 },
+      lantzville: { minLat: 49.2, maxLat: 49.35, minLng: -124.15, maxLng: -123.9 },
+      parksville: { minLat: 49.25, maxLat: 49.4, minLng: -124.45, maxLng: -124.2 }
+    };
+    const bounds = cityBounds[city];
+    if (!bounds) return lat < 48.2 || lat > 50.7 || lng < -128.5 || lng > -122.9;
+    return lat < bounds.minLat || lat > bounds.maxLat || lng < bounds.minLng || lng > bounds.maxLng;
+  }
+
+  function getGeocodeAddress(card) {
+    const address = card.dataset.address || "";
+    const city = card.dataset.city || "";
+    return city ? `${address}, ${city}, BC, Canada` : `${address}, British Columbia, Canada`;
+  }
+
+  function loadGoogleMapsScript() {
+    return new Promise((resolve, reject) => {
+      if (window.google?.maps?.Map) { resolve(); return; }
+      const key = document.body.dataset.googleMapsApiKey || "";
+      if (!key) { reject(new Error("Missing Google Maps API key")); return; }
+      const existing = document.querySelector("script[data-google-maps-script]");
+      if (existing) {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", reject, { once: true });
+        setTimeout(() => { if (window.google?.maps?.Map) resolve(); else reject(new Error("Timed out")); }, 5000);
+        return;
+      }
+      window.__initShortlistGoogleMap = () => { resolve(); };
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__initShortlistGoogleMap&v=weekly`;
+      script.async = true; script.defer = true;
+      script.dataset.googleMapsScript = "true";
+      script.onerror = () => reject(new Error("Google Maps script failed to load."));
+      document.head.appendChild(script);
+      setTimeout(() => { if (!window.google?.maps?.Map) reject(new Error("Google Maps timed out.")); }, 6000);
+    });
+  }
+
+  async function renderPageMap() {
+    const mapEl = document.querySelector("[data-deferred-map]");
+    if (!mapEl) return;
+    mapEl.style.height = "100%"; mapEl.style.minHeight = "100%"; mapEl.style.width = "100%";
+    mapEl.innerHTML = `<div style="padding:18px;">Loading Google map...</div>`;
+    try {
+      await loadGoogleMapsScript();
+    } catch (err) {
+      mapEl.innerHTML = `<div style="padding:18px;"><strong>Google Maps could not load.</strong><br>${err instanceof Error ? err.message : ""}</div>`;
+      return;
+    }
+    const geocoder = new google.maps.Geocoder();
+    const cards = getCards();
+    const points = [];
+    for (const card of cards) {
+      let lat = Number(card.dataset.lat || "");
+      let lng = Number(card.dataset.lng || "");
+      if (coordsLookWrong(lat, lng, card)) {
+        try {
+          const result = await geocoder.geocode({ address: getGeocodeAddress(card) });
+          const location = result?.results?.[0]?.geometry?.location;
+          if (location) { lat = location.lat(); lng = location.lng(); }
+        } catch {}
+      }
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+        points.push({ card, lat, lng });
+      }
+    }
+    if (!points.length) { mapEl.innerHTML = `<div style="padding:18px;">No usable coordinates found.</div>`; return; }
+    mapEl.innerHTML = "";
+    googleShortlistMap = new google.maps.Map(mapEl, { center: { lat: points[0].lat, lng: points[0].lng }, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false, gestureHandling: "greedy" });
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach(({ card, lat, lng }, index) => {
+      const marker = new google.maps.Marker({ position: { lat, lng }, map: googleShortlistMap, label: String(index + 1), title: card.dataset.address || "Listing" });
+      marker.addListener("click", () => { window.openSheet(card); });
+      bounds.extend({ lat, lng });
+    });
+    googleShortlistMap.fitBounds(bounds);
+    window.setTimeout(() => {
+      google.maps.event.trigger(googleShortlistMap, "resize");
+      if (points.length > 1) { googleShortlistMap.fitBounds(bounds); }
+      else { googleShortlistMap.setCenter({ lat: points[0].lat, lng: points[0].lng }); googleShortlistMap.setZoom(15); }
+    }, 250);
+  }
+
+  mapBtn?.addEventListener("click", () => {
+    const mapWrap = document.getElementById("shortlist-page-map-wrap");
+    if (!mapWrap) return;
+    const isOpening = mapWrap.hidden;
+    mapWrap.hidden = !mapWrap.hidden;
+    mapBtn.classList.toggle("is-active", isOpening);
+    masthead?.classList.toggle("map-mode", isOpening);
+    if (isOpening) { masthead?.scrollIntoView({ behavior: "auto", block: "start" }); renderPageMap(); }
+  });
+
+  // ── Auto-open new listings ────────────────────────────────────────
+  const autoOpenParams = new URLSearchParams(window.location.search);
+  if (autoOpenParams.has("openNew")) {
+    autoOpenParams.delete("openNew");
+    const cleanUrl = window.location.pathname + (autoOpenParams.toString() ? `?${autoOpenParams.toString()}` : "");
+    window.history.replaceState({}, "", cleanUrl);
+    requestAnimationFrame(() => {
+      const cards = getCards();
+      const batchStartIndex = Math.max(0, cards.length - 3);
+      const firstNewCard = cards[batchStartIndex] || cards[0];
+      if (firstNewCard) window.openSheet(firstNewCard);
+    });
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initShortlistPage, { once: true });
+} else {
+  initShortlistPage();
+}
+
+document.addEventListener("astro:page-load", initShortlistPage);
 </script>
 
 

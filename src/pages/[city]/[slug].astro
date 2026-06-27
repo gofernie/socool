@@ -1792,7 +1792,17 @@ color: var(--accent) !important;
   )}
 
       <div class="section-head" style="margin:0 0 14px;">
-  <h2 style="margin:0;font-family:var(--serif);font-size:clamp(1.2rem,2vw,1.6rem);font-weight:500;letter-spacing:-0.02em;">{(page.seo_heading || page.hero_heading || "").replace(/\|/g, " ")}</h2>
+<h2
+  id="dynamic-results-heading"
+  style="margin:0;font-family:var(--serif);font-size:clamp(1.2rem,2vw,1.6rem);font-weight:500;letter-spacing:-0.02em;"
+>
+  {[
+    titleCase(city),
+    page.area ? titleCase(page.area) : "",
+    normalizedPropertyType ? titleCase(normalizedPropertyType === "house" ? "Homes" : `${normalizedPropertyType}s`) : "Homes",
+    page.price_max ? `Under ${formatPrice(page.price_max)}` : "",
+  ].filter(Boolean).join(" · ")}
+</h2>
 </div>
 
 <section class="intent-controls" style="margin-bottom:20px;">
@@ -1800,6 +1810,15 @@ color: var(--accent) !important;
     <button type="button" class="view-btn active" id="list-view-btn">☷ List</button>
     <button type="button" class="view-btn" id="map-view-btn">✦ Map</button>
   </div>
+
+  <select class="area-filter-select" aria-label="Filter by area">
+    <option value="all">Any Area</option>
+    {areas.map((area) => (
+      <option value={String(area).toLowerCase().trim()}>
+        {titleCase(area)}
+      </option>
+    ))}
+  </select>
 
   <select class="price-filter-select" aria-label="Filter by price">
     <option value="all">Any Price</option>
@@ -2606,6 +2625,15 @@ const sortSelect = document.querySelector(".sort-filter-select");
 const bedsSelect = document.querySelector(".beds-filter-select");
   let activePriceFilter = "all";
 
+function jsTitleCase(value = "") {
+  return String(value)
+    .replace(/^pq\s+/i, "")
+    .split(" ")
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
   function getCardPrice(card) {
     return Number(card.dataset.rawPrice || "0");
   }
@@ -2619,7 +2647,7 @@ const bedsMin = bedsSelect?.value || "all";
 
     const cards = Array.from(document.querySelectorAll(".original-card"));
     const resultsBar = document.querySelector(".results-bar");
-
+const heading = document.getElementById("dynamic-results-heading");
     let visibleCount = 0;
 
     cards.forEach((card) => {
@@ -2684,7 +2712,43 @@ if (interruptCard) {
     }
   }
 }
+if (heading) {
+ const cityLabel = jsTitleCase(
+  document.querySelector("[data-city]")?.dataset.city || "Nanaimo"
+);
 
+const areaLabel =
+  area === "all"
+    ? ""
+    : jsTitleCase(areaSelect.options[areaSelect.selectedIndex].text);
+
+const bedsLabel =
+  bedsMin === "all"
+    ? ""
+    : `${bedsMin}+ Bed`;
+
+const typeLabel =
+  typeValue === "all"
+    ? "Homes"
+    : typeValue === "house"
+      ? "Homes"
+      : jsTitleCase(`${typeValue}s`);
+
+const priceLabel =
+  activePriceFilter === "all"
+    ? ""
+    : priceSelect.options[priceSelect.selectedIndex].text;
+
+heading.textContent = [
+  cityLabel,
+  bedsLabel,
+  typeLabel,
+  areaLabel,
+  priceLabel
+]
+.filter(Boolean)
+.join(" · ");
+}
 if (resultsBar) {
   resultsBar.textContent = `${visibleCount} listings found`;
 }
@@ -2717,7 +2781,9 @@ if (sort === "sqft-desc") return Number(b.dataset.sqft || 0) - Number(a.dataset.
     cards.forEach((card) => grid.appendChild(card));
     applyFilters();
   }
-areaSelect?.addEventListener("change", applyFilters);
+areaSelect?.addEventListener("change", () => {
+  applyFilters();
+});
 priceSelect?.addEventListener("change", applyFilters);
 typeSelect?.addEventListener("change", (e) => {
   const selectedType = e.target.value;
