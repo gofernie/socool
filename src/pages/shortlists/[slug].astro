@@ -12,7 +12,6 @@ import {
   getListingType,
   getListingYear
 } from "../../lib/repliers";
-import ShortlistReviewModal from "../../components/ShortlistReviewModal.astro";
 import IntentModalController from "../../components/IntentModalController.astro";
 
 const supabase = createClient(
@@ -2457,10 +2456,41 @@ data-featured={i === 0 ? "true" : "false"}>
           <a href="sms:" class="cta-btn">Text your agent</a>
         )}
       </div>
+      <div id="shortlist-modal-source-cards" hidden>
+  {listings.map((listing: any) => {
+    const listingId = listing.repliers_listing_id || listing.listing_id || listing.id || "";
+    const image = normalizeImageUrl(listing.image_url) || "https://placehold.co/800x600?text=Listing";
+
+    return (
+      <article
+        class="original-card modal-source-card"
+        data-card-id={String(listingId)}
+        data-listing-id={String(listingId)}
+        data-item-id={String(listing.shortlist_item_id || listing.id || "")}
+        data-mls={String(listing.mls_number || listing.mls || listingId || "")}
+        data-price={listing.price_text || ""}
+        data-address={listing.address || ""}
+        data-beds={String(listing.beds || "")}
+        data-baths={String(listing.baths || "")}
+        data-sqft={String(listing.sqft || "")}
+        data-image={image}
+        data-images={JSON.stringify(listing.images || [image])}
+        data-description={listing.description || ""}
+        data-type={listing.property_type || listing.normalized_type || ""}
+        data-property-type={listing.property_type || listing.normalized_type || ""}
+        data-area={listing.normalized_area || listing.area || ""}
+        data-city={listing.normalized_city || listing.city || "nanaimo"}
+        data-lat={String(listing.lat || "")}
+        data-lng={String(listing.lng || "")}
+        data-liked-tags={JSON.stringify(listing.liked_tags || [])}
+        data-decision={listing.decision || ""}
+      ></article>
+    );
+  })}
+</div>
     </main>
 
-   <ShortlistReviewModal />
-<IntentModalController />
+<IntentModalController listings={listings} />
 
 
 <script is:inline>
@@ -4586,13 +4616,37 @@ if (needsRefresh) {
          card.querySelector(".preview-btn")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            window.openSheet(e.currentTarget.closest(".original-card"));
+            const card = e.currentTarget.closest(".original-card");
+const listingId = card?.dataset.listingId || card?.dataset.cardId || "";
+
+if (!listingId) return;
+
+const modalCard = document.querySelector(
+  `.modal-source-card[data-listing-id="${CSS.escape(listingId)}"], 
+   .modal-source-card[data-card-id="${CSS.escape(listingId)}"]`
+);
+
+if (typeof window.openSheet === "function" && modalCard) {
+  window.openSheet(modalCard);
+}
           });
 
           card.querySelector(".card__image-wrap")?.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            window.openSheet(e.currentTarget.closest(".original-card"));
+            const card = e.currentTarget.closest(".original-card");
+const listingId = card?.dataset.listingId || card?.dataset.cardId || "";
+
+if (!listingId) return;
+
+const modalCard = document.querySelector(
+  `.modal-source-card[data-listing-id="${CSS.escape(listingId)}"], 
+   .modal-source-card[data-card-id="${CSS.escape(listingId)}"]`
+);
+
+if (typeof window.openSheet === "function" && modalCard) {
+  window.openSheet(modalCard);
+}
           });
 
           card.querySelector("[data-remove-item-id]")?.addEventListener("click", async (e) => {

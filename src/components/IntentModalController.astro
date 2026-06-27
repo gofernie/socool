@@ -354,9 +354,7 @@ sheetSummary?.setAttribute("hidden", "");
           sheet.setAttribute("aria-hidden", "false");
           document.body.style.overflow = "hidden";
         }
-    if (!document.body.dataset.shortlistSendId) {
-        window.openSheet = openSheet;
-      }
+   window.openSheet = openSheet;
 
       function closeSheet(options = {}) {
   sheet.classList.remove("is-engagement-mode");
